@@ -37,6 +37,15 @@ const Utils = {
       clearTimeout(timeout);
       timeout = setTimeout(() => func(...args), wait);
     };
+  },
+  escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 };
 
@@ -124,11 +133,11 @@ async function carregarRecadosRecentes(limit = 10) {
       <tr>
         <td>
           <div style="font-weight:500;">${Utils.formatDate(recado.data_ligacao)}</div>
-          <div style="font-size:0.75rem;color:var(--text-secondary);">${recado.hora_ligacao}</div>
+          <div style="font-size:0.75rem;color:var(--text-secondary);">${Utils.escapeHTML(recado.hora_ligacao)}</div>
         </td>
-        <td style="font-weight:500;">${recado.destinatario}</td>
-        <td>${recado.remetente_nome}</td>
-        <td>${Utils.truncateText(recado.assunto, 40)}</td>
+        <td style="font-weight:500;">${Utils.escapeHTML(recado.destinatario)}</td>
+        <td>${Utils.escapeHTML(recado.remetente_nome)}</td>
+        <td>${Utils.escapeHTML(Utils.truncateText(recado.assunto, 40))}</td>
         <td>
           <span class="badge badge-${recado.situacao.replace('_','')}">
             ${getSituacaoLabel(recado.situacao)}
