@@ -1,6 +1,44 @@
+# Node modules
 node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# SQLite database e backups
 data/
 backup/
-.env
 *.db
+
+# Arquivos temporários
+*.tmp
+*.swp
 *.txt
+*.tar.gz
+
+# Configurações de ambiente
+.env
+.env.*
+
+# PM2 logs e dump
+.pids/
+dump.pm2
+*.pid
+*.seed
+
+# Diretórios de build e cache
+dist/
+build/
+.cache/
+
+# Configurações do sistema
+.DS_Store
+Thumbs.db
+
+# Sistema de views (caso compile HTML futuramente)
+views/**/*.html
+
+# Code editor
+.idea/
+.vscode/
