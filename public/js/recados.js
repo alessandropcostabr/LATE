@@ -69,8 +69,8 @@ async function carregarRecados(page = 1) {
   try {
     const resp = await API.getRecados({
       ...currentFilters,
-      limit: itemsPorPagina,
-      offset: (page - 1) * itemsPorPagina
+      limit: itemsPerPagina,
+      offset: (page - 1) * itemsPerPagina
     });
     let recados = [];
     let pagination = { total: 0 };
@@ -206,7 +206,7 @@ function renderizarPaginacao(pagination, page) {
   const container = document.getElementById('paginacao');
   if (!container) return;
   container.innerHTML = '';
-  const totalPages = Math.ceil(pagination.total / itemsPorPagina);
+  const totalPages = Math.ceil(pagination.total / itemsPerPagina);
   const start = Math.max(1, page - 2);
   const end = Math.min(totalPages, page + 2);
 
