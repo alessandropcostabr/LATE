@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LATE - Novo Recado</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">LATE - Web Recados</a>
+                <nav class="nav">
+                    <a href="/" class="nav-link">Dashboard</a>
+                    <a href="/recados" class="nav-link">Recados</a>
+                    <a href="/novo-recado" class="nav-link active">Novo Recado</a>
+                    <a href="/relatorios" class="nav-link">Relatórios</a>
+                </nav>
+                <button class="mobile-menu-btn">☰</button>
+            </div>
+            <nav class="mobile-nav">
+                <div class="nav">
+                    <a href="/" class="nav-link">Dashboard</a>
+                    <a href="/recados" class="nav-link">Recados</a>
+                    <a href="/novo-recado" class="nav-link active">Novo Recado</a>
+                    <a href="/relatorios" class="nav-link">Relatórios</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div style="margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Novo Recado</h1>
+                <p style="color: var(--text-secondary);">Registre uma nova ligação ou recado</p>
+            </div>
+            <div style="max-width: 800px;">
+                <form id="formNovoRecado" class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Informações do Recado</h2>
+                        <p class="card-subtitle">Preencha todos os campos obrigatórios</p>
+                    </div>
+                    <div class="card-body">
+                        <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
+                            <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📞 Dados da Ligação</legend>
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="data_ligacao" class="form-label required">Data da Ligação</label>
+                                    <input id="data_ligacao" name="data_ligacao" type="date" class="form-input" required data-label="Data da ligação" autocomplete="bday" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="hora_ligacao" class="form-label required">Hora da Ligação</label>
+                                    <input id="hora_ligacao" name="hora_ligacao" type="time" class="form-input" required data-label="Hora da ligação" autocomplete="off" />
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="destinatario" class="form-label required">Destinatário</label>
+                                <input id="destinatario" name="destinatario" type="text" class="form-input" placeholder="Nome da pessoa ou setor que deve receber o recado" required data-label="Destinatário" autocomplete="organization" />
+                                <div class="form-help">Pessoa ou setor responsável por receber esta mensagem</div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
+                            <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">👤 Dados do Remetente</legend>
+                            <div class="form-group">
+                                <label for="remetente_nome" class="form-label required">Nome do Remetente</label>
+                                <input id="remetente_nome" name="remetente_nome" type="text" class="form-input" placeholder="Nome completo de quem ligou" required data-label="Nome do remetente" autocomplete="name" />
+                            </div>
+                            <div class="form-grid-2">
+                                <div class="form-group">
+                                    <label for="remetente_telefone" class="form-label">Telefone</label>
+                                    <input id="remetente_telefone" name="remetente_telefone" type="tel" class="form-input" placeholder="(11) 99999-9999" autocomplete="tel" />
+                                    <div class="form-help">Telefone para retorno (opcional)</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="remetente_email" class="form-label">E-mail</label>
+                                    <input id="remetente_email" name="remetente_email" type="email" class="form-input" placeholder="email@exemplo.com" autocomplete="email" />
+                                    <div class="form-help">E-mail para contato (opcional)</div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="horario_retorno" class="form-label">Horário para Retorno</label>
+                                <input id="horario_retorno" name="horario_retorno" type="text" class="form-input" placeholder="Ex: Das 9h às 17h, Após 14h, etc." autocomplete="off" />
+                                <div class="form-help">Melhor horário para retornar a ligação (opcional)</div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
+                            <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Recado</legend>
+                            <div class="form-group">
+                                <label for="assunto" class="form-label required">Assunto</label>
+                                <input id="assunto" name="assunto" type="text" class="form-input" placeholder="Resumo do motivo da ligação" required data-label="Assunto" autocomplete="off" />
+                                <div class="form-help">Descreva brevemente o motivo da ligação</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="observacoes" class="form-label">Observações</label>
+                                <textarea id="observacoes" name="observacoes" class="form-textarea" rows="4" placeholder="Detalhes adicionais, contexto ou informações importantes sobre o recado..." autocomplete="off"></textarea>
+                                <div class="form-help">Informações adicionais que possam ser úteis (opcional)</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="situacao" class="form-label">Situação Inicial</label>
+                                <select id="situacao" name="situacao" class="form-select" autocomplete="off">
+                                    <option value="pendente">Pendente</option>
+                                    <option value="em_andamento">Em Andamento</option>
+                                    <option value="resolvido">Resolvido</option>
+                                </select>
+                                <div class="form-help">Status atual do recado</div>
+                            </div>
+                        </fieldset>
+                    </div>
+                    <div class="card-footer">
+                        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                            <a href="/recados" class="btn btn-outline">Cancelar</a>
+                            <button type="submit" class="btn btn-primary" id="btnSalvar">
+                                💾 Salvar Recado
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+    <script src="/js/app.js"></script>
+    <script>
+        // Configurar formulário
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('formNovoRecado');
+            // Configurar data e hora atuais
+            const dataInput = form.querySelector('input[name="data_ligacao"]');
+            const horaInput = form.querySelector('input[name="hora_ligacao"]');
+            if (!dataInput.value) dataInput.value = Utils.getCurrentDate();
+            if (!horaInput.value) horaInput.value = Utils.getCurrentTime();
+
+            // Máscara de telefone
+            const telefoneInput = form.querySelector('input[name="remetente_telefone"]');
+            telefoneInput.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 11) {
+                    if (value.length <= 2) value = value.replace(/(\d{0,2})/, '($1');
+                    else if (value.length <= 6) value = value.replace(/(\d{2})(\d{0,4})/, '($1) $2');
+                    else if (value.length <= 10) value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+                    else value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+                }
+                e.target.value = value;
+            });
+
+            // Submissão do formulário
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errors = Form.validate(form);
+                if (errors.length) return Toast.error(errors[0]);
+                try {
+                    Loading.show('btnSalvar');
+                    const data = Form.getData(form);
+                    const response = await API.createRecado(data);
+                    Toast.success('Recado criado com sucesso!');
+                    setTimeout(() => {
+                        window.location.href = `/visualizar-recado/${response.data.id}`;
+                    }, 1000);
+                } catch (error) {
+                    console.error('Erro ao criar recado:', error);
+                    Toast.error(error.message || 'Erro ao criar recado');
+                } finally {
+                    Loading.hide('btnSalvar');
+                }
+            });
+
+            // Validação em tempo real
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                field.addEventListener('blur', () => {
+                    field.classList.toggle('error', !field.value.trim());
+                });
+                field.addEventListener('input', () => {
+                    if (field.value.trim()) field.classList.remove('error');
+                });
+            });
+
+            // Validação de email em tempo real
+            const emailField = form.querySelector('input[type="email"]');
+            if (emailField) {
+                emailField.addEventListener('blur', () => {
+                    if (emailField.value && !Form.isValidEmail(emailField.value)) {
+                        emailField.classList.add('error');
+                        Toast.warning('E-mail deve ter formato válido');
+                    } else {
+                        emailField.classList.remove('error');
+                    }
+                });
+            }
+
+            // Auto-save de rascunho
+            const saveInterval = setInterval(() => {
+                localStorage.setItem('rascunho_recado', JSON.stringify(Form.getData(form)));
+            }, 30000);
+            const rascunho = localStorage.getItem('rascunho_recado');
+            if (rascunho) {
+                try {
+                    const data = JSON.parse(rascunho);
+                    if (confirm('Encontramos um rascunho salvo. Deseja recuperá-lo?')) {
+                        Form.populate(form, data);
+                        Toast.info('Rascunho recuperado com sucesso');
+                    }
+                } catch (error) {
+                    console.error('Erro ao recuperar rascunho:', error);
+                }
+            }
+
+            // Limpar rascunho ao sair
+            window.addEventListener('beforeunload', () => {
+                localStorage.removeItem('rascunho_recado');
+                clearInterval(saveInterval);
+            });
+        });
+    </script>
+</body>
+</html>

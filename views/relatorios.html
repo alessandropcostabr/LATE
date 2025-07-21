@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LATE - Relatórios</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <a href="/" class="logo" aria-label="LATE - Web Recados">
+        <span aria-hidden="true"></span>LATE - Web Recados
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="/" class="nav-link">Dashboard</a>
+        <a href="/recados" class="nav-link">Recados</a>
+        <a href="/novo-recado" class="nav-link">Novo Recado</a>
+        <a href="/relatorios" class="nav-link active">Relatórios</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" role="main">
+    <div class="container">
+      <h1>Relatórios</h1>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Estatísticas Gerais</h2>
+        </div>
+        <div class="card-body">
+          <ul>
+            <li>Total de Recados: <strong id="relTotal">-</strong></li>
+            <li>Pendentes: <strong id="relPendente">-</strong></li>
+            <li>Em Andamento: <strong id="relAndamento">-</strong></li>
+            <li>Resolvidos: <strong id="relResolvido">-</strong></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Recados por Destinatário</h2>
+        </div>
+        <div class="card-body">
+          <table class="table" aria-labelledby="relPorDestTitle">
+            <caption id="relPorDestTitle" class="sr-only">Recados por Destinatário</caption>
+            <thead>
+              <tr>
+                <th scope="col">Destinatário</th>
+                <th scope="col">Total</th>
+                <th scope="col">Pendente</th>
+                <th scope="col">Em Andamento</th>
+                <th scope="col">Resolvido</th>
+              </tr>
+            </thead>
+            <tbody id="relPorDestinatario"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="/js/app.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const stats = (await API.getStats()).data;
+        document.getElementById('relTotal').textContent = stats.total;
+        document.getElementById('relPendente').textContent = stats.pendente;
+        document.getElementById('relAndamento').textContent = stats.em_andamento;
+        document.getElementById('relResolvido').textContent = stats.resolvido;
+
+        const porDest = (await API.getStatsByDestinatario()).data;
+        const tbody = document.getElementById('relPorDestinatario');
+        porDest.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.destinatario}</td>
+            <td>${r.total}</td>
+            <td>${r.pendente}</td>
+            <td>${r.em_andamento}</td>
+            <td>${r.resolvido}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Erro ao carregar relatórios:', e);
+      }
+    });
+  </script>
+</body>
+</html>

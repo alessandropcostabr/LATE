@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recados - Sistema de Recados</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">📞 Sistema de Recados</a>
+                
+                <nav class="nav">
+                    <a href="/" class="nav-link">Dashboard</a>
+                    <a href="/recados" class="nav-link active">Recados</a>
+                    <a href="/novo-recado" class="nav-link">Novo Recado</a>
+                    <a href="/relatorios" class="nav-link">Relatórios</a>
+                </nav>
+
+                <button class="mobile-menu-btn">☰</button>
+            </div>
+            
+            <nav class="mobile-nav">
+                <div class="nav">
+                    <a href="/" class="nav-link">Dashboard</a>
+                    <a href="/recados" class="nav-link active">Recados</a>
+                    <a href="/novo-recado" class="nav-link">Novo Recado</a>
+                    <a href="/relatorios" class="nav-link">Relatórios</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Cabeçalho da página -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div>
+                    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Recados</h1>
+                    <p style="color: var(--text-secondary);">Gerencie todos os recados de ligações</p>
+                </div>
+                <a href="/novo-recado" class="btn btn-primary btn-lg">
+                    ➕ Novo Recado
+                </a>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters">
+                <form id="filtrosForm">
+                    <div class="filters-grid">
+                        <div class="form-group">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" name="data_inicio" class="form-input" id="dataInicio">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Data Fim</label>
+                            <input type="date" name="data_fim" class="form-input" id="dataFim">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Destinatário</label>
+                            <input type="text" name="destinatario" class="form-input" placeholder="Nome do destinatário">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Remetente</label>
+                            <input type="text" name="remetente" class="form-input" placeholder="Nome do remetente">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Situação</label>
+                            <select name="situacao" class="form-select">
+                                <option value="">Todas</option>
+                                <option value="pendente">Pendente</option>
+                                <option value="em_andamento">Em Andamento</option>
+                                <option value="resolvido">Resolvido</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Busca Geral</label>
+                            <input type="text" name="busca" class="form-input" placeholder="Buscar em todos os campos">
+                        </div>
+                    </div>
+                    <div class="filters-actions">
+                        <button type="button" class="btn btn-outline" onclick="limparFiltros()">Limpar</button>
+                        <button type="submit" class="btn btn-primary">Filtrar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Resultados -->
+            <div class="card">
+                <div class="card-header">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h2 class="card-title">Resultados</h2>
+                            <p class="card-subtitle" id="totalResultados">Carregando...</p>
+                        </div>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <select id="ordenacao" class="form-select" style="width: auto;">
+                                <option value="criado_em:DESC">Mais Recentes</option>
+                                <option value="criado_em:ASC">Mais Antigos</option>
+                                <option value="data_ligacao:DESC">Data da Ligação ↓</option>
+                                <option value="data_ligacao:ASC">Data da Ligação ↑</option>
+                                <option value="destinatario:ASC">Destinatário A-Z</option>
+                                <option value="destinatario:DESC">Destinatário Z-A</option>
+                                <option value="situacao:ASC">Situação</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="listaRecados">
+                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <div class="loading" style="margin: 0 auto 1rem;"></div>
+                            Carregando recados...
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div id="paginacao" class="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de confirmação de exclusão -->
+    <div class="modal-overlay" id="modalExcluir">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Exclusão</h3>
+                <button class="modal-close" onclick="Modal.hide('modalExcluir')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este recado? Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="Modal.hide('modalExcluir')">Cancelar</button>
+                <button class="btn btn-error" onclick="confirmarExclusao()" id="btnConfirmarExclusao">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentFilters = {};
+        let recadoParaExcluir = null;
+        const itemsPorPagina = 20;
+
+        // Carregar recados
+        async function carregarRecados(page = 1) {
+            try {
+                const filters = {
+                    ...currentFilters,
+                    limit: itemsPorPagina,
+                    offset: (page - 1) * itemsPorPagina
+                };
+
+                const response = await API.getRecados(filters);
+                const { data: recados, pagination } = response;
+
+                renderizarRecados(recados);
+                renderizarPaginacao(pagination, page);
+                atualizarTotalResultados(pagination.total);
+
+                currentPage = page;
+            } catch (error) {
+                console.error('Erro ao carregar recados:', error);
+                Toast.error('Erro ao carregar recados');
+                document.getElementById('listaRecados').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--error);">
+                        ❌ Erro ao carregar recados
+                    </div>
+                `;
+            }
+        }
+
+        // Renderizar lista de recados
+        function renderizarRecados(recados) {
+            const container = document.getElementById('listaRecados');
+
+            if (recados.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        📝 Nenhum recado encontrado
+                    </div>
+                `;
+                return;
+            }
+
+            const html = `
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Destinatário</th>
+                                <th>Remetente</th>
+                                <th>Assunto</th>
+                                <th>Situação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recados.map(recado => `
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 500;">${Utils.formatDate(recado.data_ligacao)}</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${recado.hora_ligacao}</div>
+                                    </td>
+                                    <td style="font-weight: 500;">${recado.destinatario}</td>
+                                    <td>
+                                        <div>${recado.remetente_nome}</div>
+                                        ${recado.remetente_telefone ? `<div style="font-size: 0.75rem; color: var(--text-secondary);">${recado.remetente_telefone}</div>` : ''}
+                                    </td>
+                                    <td>${Utils.truncateText(recado.assunto, 50)}</td>
+                                    <td>
+                                        <select class="form-select" style="width: auto; font-size: 0.75rem;" onchange="alterarSituacao(${recado.id}, this.value)">
+                                            <option value="pendente" ${recado.situacao === 'pendente' ? 'selected' : ''}>Pendente</option>
+                                            <option value="em_andamento" ${recado.situacao === 'em_andamento' ? 'selected' : ''}>Em Andamento</option>
+                                            <option value="resolvido" ${recado.situacao === 'resolvido' ? 'selected' : ''}>Resolvido</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <a href="/visualizar-recado/${recado.id}" class="btn btn-outline btn-sm" title="Visualizar">👁️</a>
+                                            <a href="/editar-recado/${recado.id}" class="btn btn-outline btn-sm" title="Editar">✏️</a>
+                                            <button class="btn btn-error btn-sm" onclick="excluirRecado(${recado.id})" title="Excluir">🗑️</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Renderizar paginação
+        function renderizarPaginacao(pagination, currentPage) {
+            const container = document.getElementById('paginacao');
+            const totalPages = Math.ceil(pagination.total / itemsPorPagina);
+
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Botão anterior
+            if (currentPage > 1) {
+                html += `<a href="#" class="pagination-btn" onclick="carregarRecados(${currentPage - 1})">‹ Anterior</a>`;
+            } else {
+                html += `<span class="pagination-btn disabled">‹ Anterior</span>`;
+            }
+
+            // Páginas
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                html += `<a href="#" class="pagination-btn" onclick="carregarRecados(1)">1</a>`;
+                if (startPage > 2) {
+                    html += `<span class="pagination-btn disabled">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += `<span class="pagination-btn active">${i}</span>`;
+                } else {
+                    html += `<a href="#" class="pagination-btn" onclick="carregarRecados(${i})">${i}</a>`;
+                }
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="pagination-btn disabled">...</span>`;
+                }
+                html += `<a href="#" class="pagination-btn" onclick="carregarRecados(${totalPages})">${totalPages}</a>`;
+            }
+
+            // Botão próximo
+            if (currentPage < totalPages) {
+                html += `<a href="#" class="pagination-btn" onclick="carregarRecados(${currentPage + 1})">Próximo ›</a>`;
+            } else {
+                html += `<span class="pagination-btn disabled">Próximo ›</span>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Atualizar total de resultados
+        function atualizarTotalResultados(total) {
+            const container = document.getElementById('totalResultados');
+            container.textContent = `${total} recado${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`;
+        }
+
+        // Aplicar filtros
+        function aplicarFiltros() {
+            const form = document.getElementById('filtrosForm');
+            const formData = new FormData(form);
+            
+            currentFilters = {};
+            for (let [key, value] of formData.entries()) {
+                if (value.trim()) {
+                    currentFilters[key] = value.trim();
+                }
+            }
+
+            // Aplicar ordenação
+            const ordenacao = document.getElementById('ordenacao').value.split(':');
+            currentFilters.orderBy = ordenacao[0];
+            currentFilters.orderDir = ordenacao[1];
+
+            carregarRecados(1);
+        }
+
+        // Limpar filtros
+        function limparFiltros() {
+            document.getElementById('filtrosForm').reset();
+            currentFilters = {};
+            carregarRecados(1);
+        }
+
+        // Alterar situação
+        async function alterarSituacao(id, novaSituacao) {
+            try {
+                await API.updateSituacao(id, novaSituacao);
+                Toast.success('Situação atualizada com sucesso');
+            } catch (error) {
+                console.error('Erro ao alterar situação:', error);
+                Toast.error('Erro ao alterar situação');
+                // Recarregar para reverter a mudança visual
+                carregarRecados(currentPage);
+            }
+        }
+
+        // Excluir recado
+        function excluirRecado(id) {
+            recadoParaExcluir = id;
+            Modal.show('modalExcluir');
+        }
+
+        // Confirmar exclusão
+        async function confirmarExclusao() {
+            if (!recadoParaExcluir) return;
+
+            try {
+                Loading.show('btnConfirmarExclusao');
+                await API.deleteRecado(recadoParaExcluir);
+                Toast.success('Recado excluído com sucesso');
+                Modal.hide('modalExcluir');
+                carregarRecados(currentPage);
+            } catch (error) {
+                console.error('Erro ao excluir recado:', error);
+                Toast.error('Erro ao excluir recado');
+            } finally {
+                Loading.hide('btnConfirmarExclusao');
+                recadoParaExcluir = null;
+            }
+        }
+
+        // Aplicar filtros da URL
+        function aplicarFiltrosURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const form = document.getElementById('filtrosForm');
+            
+            urlParams.forEach((value, key) => {
+                const field = form.querySelector(`[name="${key}"]`);
+                if (field) {
+                    field.value = value;
+                    currentFilters[key] = value;
+                }
+            });
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Aplicar filtros da URL
+            aplicarFiltrosURL();
+
+            // Configurar data fim como hoje se não especificada
+            const dataFim = document.getElementById('dataFim');
+            if (!dataFim.value) {
+                dataFim.value = Utils.getCurrentDate();
+            }
+
+            // Event listeners
+            document.getElementById('filtrosForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                aplicarFiltros();
+            });
+
+            document.getElementById('ordenacao').addEventListener('change', aplicarFiltros);
+
+            // Busca em tempo real (debounced)
+            const buscaInput = document.querySelector('input[name="busca"]');
+            if (buscaInput) {
+                buscaInput.addEventListener('input', Utils.debounce(aplicarFiltros, 500));
+            }
+
+            // Carregar dados iniciais
+            aplicarFiltros();
+        });
+    </script>
+</body>
+</html>
+

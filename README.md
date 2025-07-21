@@ -99,9 +99,9 @@ Produção com PM2
 pm2 start server.js --name "late"
 pm2 save
 pm2 startup
-
 🔧 API REST
 Principais endpoints:
+
 
 GET    /api/recados
 GET    /api/recados/:id
@@ -138,10 +138,10 @@ criado_em, atualizado_em
 
 Índices criados para performance:
 
+
 CREATE INDEX idx_data_ligacao ON recados(data_ligacao);
 CREATE INDEX idx_destinatario ON recados(destinatario);
 CREATE INDEX idx_situacao ON recados(situacao);
-
 🗄️ Backup e Logs
 
 # Backup manual
@@ -161,9 +161,16 @@ resultados_testes.md armazena feedback pós-sprint
 
 ✅ Checklist
  Views com EJS
+
  Header unificado
+
  CSP ativa e segura
+
  Validações robustas
+
  Backup automático agendado
+
  PM2 configurado
+
  Testes manuais validados
+

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LATE - Recados</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; upgrade-insecure-requests;">
+</head>
+<body>
+    <%- include('partials/header') %>
+
+    <main class="main" role="main">
+        <div class="container">
+
+            <!-- Filtros e Ações -->
+            <div class="card" style="margin-bottom: 2rem;">
+                <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                    <h2 class="card-title">Filtros</h2>
+                    <a href="/novo-recado" class="btn btn-primary btn-sm">➕ Novo Recado</a>
+                </div>
+                <div class="card-body">
+                    <form id="filtrosForm">
+                        <div class="filters-grid">
+                            <div class="form-group">
+                                <label for="data_inicio" class="form-label">Data Início</label>
+                                <input id="data_inicio" name="data_inicio" type="date" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="data_fim" class="form-label">Data Fim</label>
+                                <input id="data_fim" name="data_fim" type="date" class="form-input">
+                            </div>
+                            <div class="form-group">
+                                <label for="destinatario" class="form-label">Destinatário</label>
+                                <input id="destinatario" name="destinatario" type="text" class="form-input" placeholder="Nome do destinatário">
+                            </div>
+                            <div class="form-group">
+                                <label for="situacao" class="form-label">Situação</label>
+                                <select id="situacao" name="situacao" class="form-input">
+                                    <option value="">Todas</option>
+                                    <option value="pendente">Pendente</option>
+                                    <option value="em_andamento">Em Andamento</option>
+                                    <option value="resolvido">Resolvido</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top:1rem; display:flex; gap:1rem;">
+                            <button type="submit" class="btn btn-primary">Filtrar</button>
+			    <button type="reset" id="btnLimpar" class="btn btn-outline">Limpar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Resultados -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Resultados</h2>
+                    <p class="card-subtitle" id="totalResultados">Carregando...</p>
+                </div>
+                <div class="card-body">
+                    <div id="listaRecados" role="region" aria-live="polite">
+                        <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
+                            <span class="loading"></span> Carregando recados...
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <nav id="paginacao" class="pagination" aria-label="Paginação"></nav>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="/js/app.js"></script>
+    <script src="/js/recados.js"></script>
+    <script src="/js/navbar.js" defer></script>
+
+</body>
+</html>

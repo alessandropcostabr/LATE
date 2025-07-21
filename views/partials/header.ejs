@@ -1,0 +1,18 @@
+<header class="site-header">
+  <div class="navbar-container">
+    <a href="/" class="navbar-logo-link">
+      <img src="/assets/logo.png" alt="LATE" class="navbar-logo">
+    </a>
+    <button id="menu-toggle" class="menu-toggle" aria-label="Abrir menu">
+      &#9776;
+    </button>
+    <nav id="navbar-menu" class="navbar-menu">
+      <ul>
+        <li><a href="/" class="<%= title === 'Dashboard' ? 'active' : '' %>">Dashboard</a></li>
+        <li><a href="/recados" class="<%= title === 'Recados' ? 'active' : '' %>">Recados</a></li>
+        <li><a href="/novo-recado" class="<%= title === 'Novo Recado' ? 'active' : '' %>">Novo Recado</a></li>
+        <li><a href="/relatorios" class="<%= title === 'Relatórios' ? 'active' : '' %>">Relatórios</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>

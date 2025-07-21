@@ -1,0 +1,82 @@
+<!-- /home/ubuntu/late/views/editar-recado.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editar Recado - Sistema de Recados</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <a href="/" class="logo" aria-label="Sistema de Recados">
+        <span aria-hidden="true">📞</span> Sistema de Recados
+      </a>
+      <nav class="nav" aria-label="Navegação principal">
+        <a href="/" class="nav-link">Dashboard</a>
+        <a href="/recados" class="nav-link">Recados</a>
+        <a href="/novo-recado" class="nav-link">Novo Recado</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main" role="main">
+    <div class="container" style="max-width:800px;">
+      <h1>Editar Recado</h1>
+      <form id="formEditarRecado" class="card">
+        <!-- Fieldsets e inputs copiados de novo-recado.html -->
+        <fieldset>
+          <legend>📞 Dados da Ligação</legend>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="data_ligacao" class="form-label required">Data da Ligação</label>
+              <input id="data_ligacao" name="data_ligacao" type="date" class="form-input" required autocomplete="bday" />
+            </div>
+            <div class="form-group">
+              <label for="hora_ligacao" class="form-label required">Hora da Ligação</label>
+              <input id="hora_ligacao" name="hora_ligacao" type="time" class="form-input" required autocomplete="off" />
+            </div>
+          </div>
+        </fieldset>
+        <!-- ... repita para demais grupos (remetente, conteúdo) ... -->
+        <div class="card-footer" style="display:flex;gap:1rem;justify-content:flex-end;">
+          <a href="#" id="btnCancelar" class="btn btn-outline">Cancelar</a>
+          <button type="submit" id="btnSalvar" class="btn btn-primary">💾 Atualizar Recado</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/js/app.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const form = document.getElementById('formEditarRecado');
+      const id = location.pathname.split('/').pop();
+      try {
+        const { data } = await API.getRecado(id);
+        Form.populate(form, data);
+        document.getElementById('btnCancelar').href = `/visualizar-recado/${id}`;
+      } catch (e) {
+        Toast.error('Erro ao carregar recado');
+      }
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const errors = Form.validate(form);
+        if (errors.length) return Toast.error(errors[0]);
+        try {
+          Loading.show('btnSalvar');
+          const payload = Form.getData(form);
+          await API.updateRecado(id, payload);
+          Toast.success('Recado atualizado com sucesso!');
+          setTimeout(() => window.location.href = `/visualizar-recado/${id}`, 1000);
+        } catch (err) {
+          Toast.error(err.message || 'Erro ao atualizar recado');
+        } finally {
+          Loading.hide('btnSalvar');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
