@@ -16,7 +16,7 @@
 - **Express.js**: Servidor iniciando na porta 3000
 - **Estrutura de Rotas**: APIs e páginas web configuradas
 - **Banco SQLite**: Criação automática do banco e tabelas
-- **CORS**: Configurado para permitir requisições
+- **CORS**: Domínios liberados via variável `ALLOWED_ORIGINS`
 
 ### ⚠️ Problemas Identificados
 
