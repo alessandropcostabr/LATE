@@ -91,6 +91,8 @@ late/
 git clone <repo>
 cd late
 npm install
+# Defina os domínios permitidos no CORS
+export ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 npm start
 Acesse: http://localhost:3000 ou http://<SEU-IP>:3000
 
