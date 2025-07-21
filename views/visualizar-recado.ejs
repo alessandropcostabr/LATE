@@ -26,25 +26,47 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const id = location.pathname.split('/').pop();
+      const container = document.getElementById('detalhesRecado');
       try {
         const { data: recado } = await API.getRecado(id);
-        document.getElementById('detalhesRecado').innerHTML = `
-          <p><strong>Data/Hora:</strong> ${recado.data_ligacao} ${recado.hora_ligacao}</p>
-          <p><strong>Destinatário:</strong> ${recado.destinatario}</p>
-          <p><strong>Remetente:</strong> ${recado.remetente_nome}</p>
-          <p><strong>Telefone:</strong> ${recado.remetente_telefone || '-'}</p>
-          <p><strong>E-mail:</strong> ${recado.remetente_email || '-'}</p>
-          <p><strong>Horário de Retorno:</strong> ${recado.horario_retorno || '-'}</p>
-          <p><strong>Assunto:</strong> ${recado.assunto}</p>
-          <p><strong>Situação:</strong> ${recado.situacao}</p>
-          <p><strong>Observações:</strong> ${recado.observacoes || '-'}</p>
-          <div style="margin-top:1rem;">
-            <a href="/editar-recado/${id}" class="btn btn-primary">✏️ Editar</a>
-            <a href="/recados" class="btn btn-outline">Voltar</a>
-          </div>
-        `;
+        container.textContent = '';
+
+        const dados = [
+          ['Data/Hora:', `${recado.data_ligacao} ${recado.hora_ligacao}`],
+          ['Destinatário:', recado.destinatario],
+          ['Remetente:', recado.remetente_nome],
+          ['Telefone:', recado.remetente_telefone || '-'],
+          ['E-mail:', recado.remetente_email || '-'],
+          ['Horário de Retorno:', recado.horario_retorno || '-'],
+          ['Assunto:', recado.assunto],
+          ['Situação:', recado.situacao],
+          ['Observações:', recado.observacoes || '-']
+        ];
+
+        dados.forEach(([label, value]) => {
+          const p = document.createElement('p');
+          const strong = document.createElement('strong');
+          strong.textContent = label + ' ';
+          p.appendChild(strong);
+          p.append(document.createTextNode(value));
+          container.appendChild(p);
+        });
+
+        const actions = document.createElement('div');
+        actions.style.marginTop = '1rem';
+        const edit = document.createElement('a');
+        edit.href = `/editar-recado/${id}`;
+        edit.className = 'btn btn-primary';
+        edit.textContent = '✏️ Editar';
+        const back = document.createElement('a');
+        back.href = '/recados';
+        back.className = 'btn btn-outline';
+        back.textContent = 'Voltar';
+        actions.appendChild(edit);
+        actions.appendChild(back);
+        container.appendChild(actions);
       } catch (e) {
-        document.getElementById('detalhesRecado').textContent = 'Erro ao carregar recado.';
+        container.textContent = 'Erro ao carregar recado.';
       }
     });
   </script>

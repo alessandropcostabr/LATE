@@ -68,13 +68,24 @@
         const tbody = document.getElementById('relPorDestinatario');
         porDest.forEach(r => {
           const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${r.destinatario}</td>
-            <td>${r.total}</td>
-            <td>${r.pendente}</td>
-            <td>${r.em_andamento}</td>
-            <td>${r.resolvido}</td>
-          `;
+
+          const destTd = document.createElement('td');
+          destTd.textContent = r.destinatario;
+          const totalTd = document.createElement('td');
+          totalTd.textContent = r.total;
+          const pendTd = document.createElement('td');
+          pendTd.textContent = r.pendente;
+          const andTd = document.createElement('td');
+          andTd.textContent = r.em_andamento;
+          const resTd = document.createElement('td');
+          resTd.textContent = r.resolvido;
+
+          tr.appendChild(destTd);
+          tr.appendChild(totalTd);
+          tr.appendChild(pendTd);
+          tr.appendChild(andTd);
+          tr.appendChild(resTd);
+
           tbody.appendChild(tr);
         });
       } catch (e) {

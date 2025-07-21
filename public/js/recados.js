@@ -102,41 +102,101 @@ async function carregarRecados(page = 1) {
  */
 function renderizarRecados(recados) {
   const container = document.getElementById('listaRecados');
+  container.innerHTML = '';
   if (!recados.length) {
     container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-secondary);">📝 Nenhum recado encontrado</div>`;
     return;
   }
-  const rows = recados.map(r => `
-    <tr>
-      <td>
-        <div style="font-weight:500;">${Utils.formatDate(r.data_ligacao)}</div>
-        <div style="font-size:0.75rem;color:var(--text-secondary);">${r.hora_ligacao}</div>
-      </td>
-      <td style="font-weight:500;">${r.destinatario}</td>
-      <td>
-        <div>${r.remetente_nome}</div>
-        ${r.remetente_telefone ? `<div style="font-size:0.75rem;color:var(--text-secondary);">${r.remetente_telefone}</div>` : ''}
-      </td>
-      <td>${Utils.truncateText(r.assunto,50)}</td>
-      <td><span class="badge badge-${r.situacao.replace('_','')}">${getSituacaoLabel(r.situacao)}</span></td>
-      <td>
-        <div style="display:flex;gap:0.5rem;">
-          <a href="/visualizar-recado/${r.id}" class="btn btn-outline btn-sm">👁️</a>
-          <a href="/editar-recado/${r.id}" class="btn btn-outline btn-sm">✏️</a>
-          <button class="btn btn-error btn-sm" onclick="excluirRecado(${r.id})">🗑️</button>
-        </div>
-      </td>
-    </tr>`).join('');
 
-  container.innerHTML = `
-    <div class="table-container">
-      <table class="table">
-        <thead>
-          <tr><th>Data/Hora</th><th>Destinatário</th><th>Remetente</th><th>Assunto</th><th>Situação</th><th>Ações</th></tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'table-container';
+  const table = document.createElement('table');
+  table.className = 'table';
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Data/Hora', 'Destinatário', 'Remetente', 'Assunto', 'Situação', 'Ações'].forEach(text => {
+    const th = document.createElement('th');
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  const tbody = document.createElement('tbody');
+
+  recados.forEach(r => {
+    const tr = document.createElement('tr');
+
+    const tdData = document.createElement('td');
+    const dateDiv = document.createElement('div');
+    dateDiv.style.fontWeight = '500';
+    dateDiv.textContent = Utils.formatDate(r.data_ligacao);
+    const timeDiv = document.createElement('div');
+    timeDiv.style.fontSize = '0.75rem';
+    timeDiv.style.color = 'var(--text-secondary)';
+    timeDiv.textContent = r.hora_ligacao;
+    tdData.appendChild(dateDiv);
+    tdData.appendChild(timeDiv);
+    tr.appendChild(tdData);
+
+    const tdDest = document.createElement('td');
+    tdDest.style.fontWeight = '500';
+    tdDest.textContent = r.destinatario;
+    tr.appendChild(tdDest);
+
+    const tdRem = document.createElement('td');
+    const nomeDiv = document.createElement('div');
+    nomeDiv.textContent = r.remetente_nome;
+    tdRem.appendChild(nomeDiv);
+    if (r.remetente_telefone) {
+      const telDiv = document.createElement('div');
+      telDiv.style.fontSize = '0.75rem';
+      telDiv.style.color = 'var(--text-secondary)';
+      telDiv.textContent = r.remetente_telefone;
+      tdRem.appendChild(telDiv);
+    }
+    tr.appendChild(tdRem);
+
+    const tdAssunto = document.createElement('td');
+    tdAssunto.textContent = Utils.truncateText(r.assunto, 50);
+    tr.appendChild(tdAssunto);
+
+    const tdSit = document.createElement('td');
+    const span = document.createElement('span');
+    span.className = `badge badge-${r.situacao.replace('_','')}`;
+    span.textContent = getSituacaoLabel(r.situacao);
+    tdSit.appendChild(span);
+    tr.appendChild(tdSit);
+
+    const tdAcoes = document.createElement('td');
+    const actionDiv = document.createElement('div');
+    actionDiv.style.display = 'flex';
+    actionDiv.style.gap = '0.5rem';
+
+    const viewLink = document.createElement('a');
+    viewLink.href = `/visualizar-recado/${r.id}`;
+    viewLink.className = 'btn btn-outline btn-sm';
+    viewLink.textContent = '👁️';
+    const editLink = document.createElement('a');
+    editLink.href = `/editar-recado/${r.id}`;
+    editLink.className = 'btn btn-outline btn-sm';
+    editLink.textContent = '✏️';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-error btn-sm';
+    delBtn.textContent = '🗑️';
+    delBtn.addEventListener('click', () => excluirRecado(r.id));
+
+    actionDiv.appendChild(viewLink);
+    actionDiv.appendChild(editLink);
+    actionDiv.appendChild(delBtn);
+    tdAcoes.appendChild(actionDiv);
+    tr.appendChild(tdAcoes);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  wrapper.appendChild(table);
+  container.appendChild(wrapper);
 }
 
 /**
