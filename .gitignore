@@ -19,7 +19,6 @@ backup/
 
 # Configurações de ambiente
 .env
-.env.*
 
 # PM2 logs e dump
 .pids/
@@ -31,6 +30,12 @@ dump.pm2
 dist/
 build/
 .cache/
+
+# Test coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
 
 # Configurações do sistema
 .DS_Store
