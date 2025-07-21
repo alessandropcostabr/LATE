@@ -94,6 +94,7 @@ async function carregarRecados(page = 1) {
   } catch (err) {
     console.error('Erro ao carregar recados:', err);
     container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--error);">❌ Erro ao carregar recados</div>`;
+    atualizarTotalResultados(0);
   }
 }
 
