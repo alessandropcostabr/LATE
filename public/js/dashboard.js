@@ -39,50 +39,106 @@ export async function carregarRecadosRecentes(limit = 10) {
   const container = document.getElementById('recadosRecentes');
   if (!container) return;
 
+  container.textContent = '';
+
   try {
     const { data: recados } = await API.getRecadosRecentes(limit);
 
     if (!recados.length) {
-      container.innerHTML = `
-        <div class="no-data" style="text-align:center;padding:2rem;color:var(--text-secondary);">
-          📝 Nenhum recado encontrado
-        </div>`;
+      const noData = document.createElement('div');
+      noData.className = 'no-data';
+      noData.style.textAlign = 'center';
+      noData.style.padding = '2rem';
+      noData.style.color = 'var(--text-secondary)';
+      noData.textContent = '📝 Nenhum recado encontrado';
+      container.appendChild(noData);
       return;
     }
 
-    const rows = recados.map(recado => `
-      <tr>
-        <td>
-          <div style="font-weight:500;">${Utils.formatDate(recado.data_ligacao)}</div>
-          <div style="font-size:0.75rem;color:var(--text-secondary);">${Utils.escapeHTML(recado.hora_ligacao)}</div>
-        </td>
-        <td style="font-weight:500;">${Utils.escapeHTML(recado.destinatario)}</td>
-        <td>${Utils.escapeHTML(recado.remetente_nome)}</td>
-        <td>${Utils.escapeHTML(Utils.truncateText(recado.assunto, 40))}</td>
-        <td>
-          <span class="badge badge-${recado.situacao.replace('_','')}">
-            ${getSituacaoLabel(recado.situacao)}
-          </span>
-        </td>
-        <td>
-          <div style="display:flex;gap:0.5rem;">
-            <a href="/visualizar-recado/${recado.id}" class="btn btn-outline btn-sm">👁️</a>
-            <a href="/editar-recado/${recado.id}" class="btn btn-outline btn-sm">✏️</a>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-container';
 
-    container.innerHTML = `
-      <div class="table-container">
-        <table class="table">
-          <caption class="sr-only">Recados Recentes</caption>
-          <thead>
-            <tr><th>Data/Hora</th><th>Destinatário</th><th>Remetente</th><th>Assunto</th><th>Situação</th><th>Ações</th></tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+    const table = document.createElement('table');
+    table.className = 'table';
+
+    const caption = document.createElement('caption');
+    caption.className = 'sr-only';
+    caption.textContent = 'Recados Recentes';
+
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    ['Data/Hora', 'Destinatário', 'Remetente', 'Assunto', 'Situação', 'Ações'].forEach(text => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+
+    const tbody = document.createElement('tbody');
+
+    recados.forEach(recado => {
+      const tr = document.createElement('tr');
+
+      const tdData = document.createElement('td');
+      const dateDiv = document.createElement('div');
+      dateDiv.style.fontWeight = '500';
+      dateDiv.textContent = Utils.formatDate(recado.data_ligacao);
+      const timeDiv = document.createElement('div');
+      timeDiv.style.fontSize = '0.75rem';
+      timeDiv.style.color = 'var(--text-secondary)';
+      timeDiv.textContent = recado.hora_ligacao;
+      tdData.appendChild(dateDiv);
+      tdData.appendChild(timeDiv);
+      tr.appendChild(tdData);
+
+      const tdDest = document.createElement('td');
+      tdDest.style.fontWeight = '500';
+      tdDest.textContent = recado.destinatario;
+      tr.appendChild(tdDest);
+
+      const tdRem = document.createElement('td');
+      tdRem.textContent = recado.remetente_nome;
+      tr.appendChild(tdRem);
+
+      const tdAssunto = document.createElement('td');
+      tdAssunto.textContent = Utils.truncateText(recado.assunto, 40);
+      tr.appendChild(tdAssunto);
+
+      const tdSit = document.createElement('td');
+      const sitSpan = document.createElement('span');
+      sitSpan.className = `badge badge-${recado.situacao.replace('_','')}`;
+      sitSpan.textContent = getSituacaoLabel(recado.situacao);
+      tdSit.appendChild(sitSpan);
+      tr.appendChild(tdSit);
+
+      const tdAcoes = document.createElement('td');
+      const actionDiv = document.createElement('div');
+      actionDiv.style.display = 'flex';
+      actionDiv.style.gap = '0.5rem';
+
+      const viewLink = document.createElement('a');
+      viewLink.href = `/visualizar-recado/${recado.id}`;
+      viewLink.className = 'btn btn-outline btn-sm';
+      viewLink.textContent = '👁️';
+
+      const editLink = document.createElement('a');
+      editLink.href = `/editar-recado/${recado.id}`;
+      editLink.className = 'btn btn-outline btn-sm';
+      editLink.textContent = '✏️';
+
+      actionDiv.appendChild(viewLink);
+      actionDiv.appendChild(editLink);
+      tdAcoes.appendChild(actionDiv);
+      tr.appendChild(tdAcoes);
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(caption);
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
+    container.appendChild(wrapper);
   } catch {
     Toast.error('Erro ao carregar recados recentes');
   }
