@@ -246,6 +246,19 @@ function atualizarTotalResultados(total) {
   if (el) el.textContent = `${total} recado${total!==1?'s':''} encontrado${total!==1?'s':''}`;
 }
 
+/**
+ * Exclui um recado após confirmação e atualiza a lista
+ */
+async function excluirRecado(id) {
+  if (!confirm('Excluir recado?')) return;
+  try {
+    await API.deleteRecado(id);
+    carregarRecados(currentPage);
+  } catch (err) {
+    Toast.error(err.message || 'Erro ao excluir recado');
+  }
+}
+
 // Expõe globalmente
 window.aplicarFiltros      = aplicarFiltros;
 window.limparFiltros       = limparFiltros;
