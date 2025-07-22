@@ -3,6 +3,8 @@
 let currentPage = 1;
 let currentFilters = {};
 const itemsPerPagina = 20;
+// compatibilidade com versões antigas
+const itemsPorPagina = itemsPerPagina;
 
 // Fallback para Toast.error
 if (typeof window.Toast !== 'object') {
