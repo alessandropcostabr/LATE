@@ -59,6 +59,11 @@ const API = {
     };
     try {
       const res = await fetch(url, config);
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Resposta do servidor não é JSON: ${text}`);
+      }
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || 'Erro na requisição');
       return json;
