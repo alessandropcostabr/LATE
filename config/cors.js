@@ -1,7 +1,8 @@
 const defaultOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://seu-dominio.com'
+  'https://seu-dominio.com',
+  'https://late.miahchat.com'
 ];
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
