@@ -62,7 +62,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cache-control
 app.use((req, res, next) => {
   if (req.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/)) {
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    // Apply long-term caching for versioned (hashed) assets
+    if (req.url.match(/\.[0-9a-fA-F]{8,}\./)) {
+      res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
   } else {
     res.setHeader('Cache-Control', 'no-cache');
   }
