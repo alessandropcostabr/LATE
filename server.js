@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const compression = require('compression');
 
 // Importar middlewares e rotas
 const corsMiddleware = require('./middleware/cors');
@@ -49,6 +50,7 @@ app.use('/api/', limiter);
 // Servir assets estáticos e logging
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use(morgan('combined'));
+app.use(compression());
 app.use(corsMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
