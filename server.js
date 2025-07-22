@@ -15,6 +15,12 @@ const webRoutes     = require('./routes/web');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Define o caminho do CSS baseado no ambiente
+app.locals.cssFile =
+  process.env.NODE_ENV === 'production'
+    ? '/css/style.min.css'
+    : '/css/style.css';
+
 // ─── Configuração de View Engine ─────────────────────────────────────────────
 // Configurar EJS para renderização server-side
 app.set('view engine', 'ejs');
