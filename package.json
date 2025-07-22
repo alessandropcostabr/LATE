@@ -29,9 +29,9 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
+    "jest": "^30.0.5",
     "cssnano": "^7.1.0",
     "cssnano-cli": "^1.0.5",
-    "jest": "^30.0.4",
     "lighthouse": "^12.8.0",
     "nodemon": "^3.0.2",
     "ts-jest": "^29.4.0",
