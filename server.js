@@ -9,6 +9,7 @@ const path = require('path');
 const compression = require('compression');
 
 // Importar middlewares e rotas
+const dbManager     = require('./config/database');
 const corsMiddleware = require('./middleware/cors');
 const apiRoutes     = require('./routes/api');
 const webRoutes     = require('./routes/web');
@@ -114,20 +115,24 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 Recebido SIGTERM. Encerrando servidor...');
+  dbManager.close();
   server.close(() => process.exit(0));
 });
 process.on('SIGINT', () => {
   console.log('🛑 Recebido SIGINT. Encerrando servidor...');
+  dbManager.close();
   server.close(() => process.exit(0));
 });
 
 // Captura exceções não tratadas
 process.on('uncaughtException', err => {
   console.error('❌ Exceção não capturada:', err);
+  dbManager.close();
   process.exit(1);
 });
 process.on('unhandledRejection', reason => {
   console.error('❌ Promise rejeitada não tratada:', reason);
+  dbManager.close();
   process.exit(1);
 });
 
