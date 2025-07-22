@@ -168,6 +168,7 @@ Relatórios Lighthouse em `lighthouse-reports/`:
   - `relatorios.html` e `relatorios.json`
   - `editar-recado.html` e `editar-recado.json`
   - `visualizar-recado.html` e `visualizar-recado.json`
+Para gerar novos relatórios, execute `npm run lighthouse` com o servidor rodando em `http://localhost:3000`.
 
 ✅ Checklist
  Views com EJS

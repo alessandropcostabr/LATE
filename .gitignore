@@ -47,3 +47,6 @@ views/**/*.html
 # Code editor
 .idea/
 .vscode/
+
+# Relatórios Lighthouse
+lighthouse-reports/
