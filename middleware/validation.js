@@ -1,4 +1,7 @@
 const { body, query, param, validationResult } = require('express-validator');
+const ALLOWED_STATUS    = ['pendente','em_andamento','resolvido'];
+const ALLOWED_ORDER_BY  = ['criado_em','data_ligacao','situacao'];
+const ALLOWED_ORDER_DIR = ['ASC','DESC'];
 
 // Middleware para verificar erros de validação
 const handleValidationErrors = (req, res, next) => {
@@ -100,8 +103,8 @@ const validateUpdateSituacao = [
     handleValidationErrors
 ];
 
-// Validações para parâmetros de consulta
-const validateQueryParams = [
+// Validações para parâmetros de consulta (listagem)
+const validateQueryRecados = [
     query('data_inicio')
         .optional()
         .isDate()
@@ -111,10 +114,8 @@ const validateQueryParams = [
         .optional()
         .isDate()
         .withMessage('Data de fim deve estar no formato YYYY-MM-DD'),
-    
-    query('situacao')
-        .optional()
-        .isIn(['pendente', 'em_andamento', 'resolvido'])
+
+    query('situacao').optional().isIn(ALLOWED_STATUS)
         .withMessage('Situação deve ser: pendente, em_andamento ou resolvido'),
     
     query('limit')
@@ -126,17 +127,11 @@ const validateQueryParams = [
         .optional()
         .isInt({ min: 0 })
         .withMessage('Offset deve ser um número não negativo'),
-    
-    query('orderBy')
-        .optional()
-        .isIn(['data_ligacao', 'hora_ligacao', 'destinatario', 'remetente_nome', 'situacao', 'criado_em'])
-        .withMessage('OrderBy deve ser um campo válido'),
-    
-    query('orderDir')
-        .optional()
-        .isIn(['ASC', 'DESC'])
-        .withMessage('OrderDir deve ser ASC ou DESC'),
-    
+
+    query('orderBy').optional().isIn(ALLOWED_ORDER_BY),
+
+    query('orderDir').optional().isIn(ALLOWED_ORDER_DIR),
+
     handleValidationErrors
 ];
 
@@ -150,11 +145,10 @@ const validateId = [
 ];
 
 module.exports = {
-    validateCreateRecado,
-    validateUpdateRecado,
-    validateUpdateSituacao,
-    validateQueryParams,
-    validateId,
-    handleValidationErrors
+  validateCreateRecado,
+  validateUpdateRecado,
+  validateUpdateSituacao,
+  validateQueryRecados,
+  validateId,
+  handleValidationErrors
 };
-
