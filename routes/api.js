@@ -5,8 +5,9 @@ const {
     validateCreateRecado,
     validateUpdateRecado,
     validateUpdateSituacao,
-    validateQueryParams,
-    validateId
+    validateQueryRecados,
+    validateId,
+    handleValidationErrors
 } = require('../middleware/validation');
 
 // Middleware para log de requisições da API
@@ -16,19 +17,14 @@ router.use((req, res, next) => {
 });
 
 // GET /api/recados - Listar recados com filtros
-router.get('/recados', validateQueryParams, async (req, res) => {
-    try {
-        const filters = {
-            data_inicio: req.query.data_inicio,
-            data_fim: req.query.data_fim,
-            destinatario: req.query.destinatario,
-            situacao: req.query.situacao,
-            remetente: req.query.remetente,
-            busca: req.query.busca,
-            orderBy: req.query.orderBy || 'criado_em',
-            orderDir: req.query.orderDir || 'DESC',
-            limit: req.query.limit ? parseInt(req.query.limit) : null,
-            offset: req.query.offset ? parseInt(req.query.offset) : null
+router.get('/recados',
+  validateQueryRecados,
+  handleValidationErrors,          // early-return 422 se houver falha
+  (req, res) => {
+	const filters = {
+          ...req.query,
+          limit:  Number(req.query.limit  ?? 20),
+          offset: Number(req.query.offset ?? 0),
         };
 
         const recados = RecadoModel.findAll(filters);
@@ -44,13 +40,10 @@ router.get('/recados', validateQueryParams, async (req, res) => {
                 hasMore: filters.limit ? (filters.offset || 0) + filters.limit < total : false
             }
         });
-    } catch (error) {
-        console.error('Erro ao listar recados:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Erro interno do servidor',
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
+
+    } catch (err) {
+        console.error('Erro ao listar recados:', err);
+        res.status(500).json({ success:false, message:'Erro interno do servidor' });
     }
 });
 
