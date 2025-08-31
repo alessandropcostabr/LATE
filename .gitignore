@@ -50,3 +50,25 @@ views/**/*.html
 
 # Relatórios Lighthouse
 lighthouse-reports/
+
+# ===== LATE: backups e temporários =====
+*.backup.*
+backup_*/
+backup_*
+*.sqlite
+*.db
+*.db-*
+*.db-wal
+*.db-shm
+
+# Relatórios/artefatos locais
+lighthouse-reports/
+resultados_testes.md
+
+# Logs
+logs/
+*.log
+
+#Scripts
+*.sh
+
