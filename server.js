@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 // Compression middleware
 const compression = require('compression');
 
@@ -78,6 +79,39 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+const jsDir = path.join(__dirname, 'public', 'js');
+const sendAppBundle = (req, res) => {
+  const appJs = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');
+  const utilsJs = fs.readFileSync(path.join(jsDir, 'utils.js'), 'utf8');
+  const combined = utilsJs + '\n' + appJs;
+  const wrapped =
+    '(function (root, factory) {\n' +
+    '  if (typeof module === "object" && module.exports) {\n' +
+    '    const mod = factory(root);\n' +
+    '    module.exports = mod;\n' +
+    '    module.exports.default = mod;\n' +
+    '  } else if (typeof define === "function" && define.amd) {\n' +
+    '    define([], function () { return factory(root); });\n' +
+    '  } else {\n' +
+    '    factory(root);\n' +
+    '  }\n' +
+    '}(typeof self !== "undefined" ? self : this, function (root) {\n' +
+    '  if (!root.API || !root.Utils || !root.Form || !root.Loading || !root.Toast) {\n' +
+    combined + '\n' +
+    '    if (!root.API && typeof API !== "undefined") root.API = API;\n' +
+    '    if (!root.Utils && typeof Utils !== "undefined") root.Utils = Utils;\n' +
+    '    if (!root.Form && typeof Form !== "undefined") root.Form = Form;\n' +
+    '    if (!root.Loading && typeof Loading !== "undefined") root.Loading = Loading;\n' +
+    '  }\n' +
+    '  root.Toast = root.Toast || (typeof Toast !== "undefined" ? Toast : {});\n' +
+    '  return { API: root.API, Utils: root.Utils, Form: root.Form, Loading: root.Loading, Toast: root.Toast };\n' +
+    '}));';
+  res.type('application/javascript').send(wrapped);
+};
+
+app.get('/js/app.js', sendAppBundle);
+app.get('/js/utils.js', sendAppBundle);
 
 app.get('/js/toast.js', (req, res) => {
   res
