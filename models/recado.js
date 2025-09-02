@@ -91,7 +91,6 @@ class RecadoModel {
         if (filters.limit) {
             query += ' LIMIT ?';
             params.push(parseInt(filters.limit));
-            
             if (filters.offset) {
                 query += ' OFFSET ?';
                 params.push(parseInt(filters.offset));
@@ -103,11 +102,13 @@ class RecadoModel {
     }
 
     // Contar registros com filtros
+    // Este método pode não existir em versões antigas do sistema. Caso
+    // necessite adicionar suporte à contagem de registros, implemente aqui.
     count(filters = {}) {
         let query = 'SELECT COUNT(*) as total FROM recados WHERE 1=1';
         const params = [];
 
-        // Aplicar os mesmos filtros do findAll
+        // Reaplicar filtros usados em findAll para manter consistência
         if (filters.data_inicio) {
             query += ' AND data_ligacao >= ?';
             params.push(filters.data_inicio);
@@ -140,7 +141,8 @@ class RecadoModel {
         }
 
         const stmt = this.db.prepare(query);
-        return stmt.get(...params).total;
+        const row = stmt.get(...params);
+        return row ? row.total : 0;
     }
 
     // Atualizar recado
@@ -179,7 +181,6 @@ class RecadoModel {
                 atualizado_em = CURRENT_TIMESTAMP 
             WHERE id = ?
         `);
-        
         const result = stmt.run(situacao, id);
         return result.changes > 0;
     }
@@ -193,40 +194,35 @@ class RecadoModel {
 
     // Estatísticas
     getStats() {
-        const totalStmt = this.db.prepare('SELECT COUNT(*) as total FROM recados');
-        const pendenteStmt = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'pendente'");
+        const totalStmt     = this.db.prepare('SELECT COUNT(*) as total FROM recados');
+        const pendenteStmt  = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'pendente'");
         const andamentoStmt = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'em_andamento'");
         const resolvidoStmt = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'resolvido'");
-        const hojeStmt = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE date(criado_em) = date('now')");
 
         return {
-            total: totalStmt.get().total,
-            pendente: pendenteStmt.get().total,
-            em_andamento: andamentoStmt.get().total,
-            resolvido: resolvidoStmt.get().total,
-            hoje: hojeStmt.get().total
+            total:     totalStmt.get().total,
+            pendentes: pendenteStmt.get().total,
+            andamento: andamentoStmt.get().total,
+            resolvidos: resolvidoStmt.get().total,
         };
     }
 
-    // Estatísticas por destinatário
+    // Estatísticas agrupadas por destinatário
     getStatsByDestinatario() {
         const stmt = this.db.prepare(`
-            SELECT destinatario, COUNT(*) as total,
-                   SUM(CASE WHEN situacao = 'pendente' THEN 1 ELSE 0 END) as pendente,
-                   SUM(CASE WHEN situacao = 'em_andamento' THEN 1 ELSE 0 END) as em_andamento,
-                   SUM(CASE WHEN situacao = 'resolvido' THEN 1 ELSE 0 END) as resolvido
-            FROM recados 
-            GROUP BY destinatario 
+            SELECT destinatario, COUNT(*) as total
+            FROM recados
+            GROUP BY destinatario
             ORDER BY total DESC
         `);
         return stmt.all();
     }
 
-    // Recados recentes
+    // Últimos N recados
     getRecentes(limit = 10) {
         const stmt = this.db.prepare(`
-            SELECT * FROM recados 
-            ORDER BY criado_em DESC 
+            SELECT * FROM recados
+            ORDER BY criado_em DESC
             LIMIT ?
         `);
         return stmt.all(limit);
@@ -234,4 +230,3 @@ class RecadoModel {
 }
 
 module.exports = new RecadoModel();
-

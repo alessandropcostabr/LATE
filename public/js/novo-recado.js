@@ -1,92 +1,102 @@
-// public/js/novo-recado.js
-// Código extraído de views/novo-recado.ejs
+// /public/js/novo-recado.js
+// Script de Novo Recado — intercepta submissão do formulário e evita duplos envios
 
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('formNovoRecado');
-    // Configurar data e hora atuais
-    const dataInput = form.querySelector('input[name="data_ligacao"]');
-    const horaInput = form.querySelector('input[name="hora_ligacao"]');
-    if (!dataInput.value) dataInput.value = Utils.getCurrentDate();
-    if (!horaInput.value) horaInput.value = Utils.getCurrentTime();
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('✅ Novo Recado JS carregado');
 
-    // Máscara de telefone
-    const telefoneInput = form.querySelector('input[name="remetente_telefone"]');
-    telefoneInput.addEventListener('input', (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 11) {
-            if (value.length <= 2) value = value.replace(/(\d{0,2})/, '($1');
-            else if (value.length <= 6) value = value.replace(/(\d{2})(\d{0,4})/, '($1) $2');
-            else if (value.length <= 10) value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
-            else value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
-        }
-        e.target.value = value;
-    });
+  // Procura pelo formulário usando os possíveis IDs historicamente utilizados
+  const form = document.getElementById('formNovoRecado') || document.getElementById('novoRecadoForm');
+  if (!form) {
+    console.log('⚠️  Formulário de recado não encontrado');
+    return;
+  }
 
-    // Submissão do formulário
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errors = Form.validate(form);
-        if (errors.length) return Toast.error(errors[0]);
-        try {
-            Loading.show('btnSalvar');
-            const data = Form.getData(form);
-            const response = await API.createRecado(data);
-            Toast.success('Recado criado com sucesso!');
-            setTimeout(() => {
-                window.location.href = `/visualizar-recado/${response.data.id}`;
-            }, 1000);
-        } catch (error) {
-            console.error('Erro ao criar recado:', error);
-            Toast.error(error.message || 'Erro ao criar recado');
-        } finally {
-            Loading.hide('btnSalvar');
-        }
-    });
+  // Obtém o botão de submit dentro do formulário
+  const submitBtn = form.querySelector('button[type="submit"]');
 
-    // Validação em tempo real
-    const requiredFields = form.querySelectorAll('[required]');
-    requiredFields.forEach(field => {
-        field.addEventListener('blur', () => {
-            field.classList.toggle('error', !field.value.trim());
-        });
-        field.addEventListener('input', () => {
-            if (field.value.trim()) field.classList.remove('error');
-        });
-    });
+  // Flag para evitar envios duplicados
+  let isSubmitting = false;
 
-    // Validação de email em tempo real
-    const emailField = form.querySelector('input[type="email"]');
-    if (emailField) {
-        emailField.addEventListener('blur', () => {
-            if (emailField.value && !Form.isValidEmail(emailField.value)) {
-                emailField.classList.add('error');
-                Toast.warning('E-mail deve ter formato válido');
-            } else {
-                emailField.classList.remove('error');
-            }
-        });
+  /**
+   * Função responsável por processar o envio do formulário.
+   * Coleta dados, valida campos obrigatórios e envia via fetch.
+   * Pode ser chamada pelo evento submit ou pelo clique no botão.
+   */
+  async function handleSubmit(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
     }
 
-    // Auto-save de rascunho
-    const saveInterval = setInterval(() => {
-        localStorage.setItem('rascunho_recado', JSON.stringify(Form.getData(form)));
-    }, 30000);
-    const rascunho = localStorage.getItem('rascunho_recado');
-    if (rascunho) {
-        try {
-            const data = JSON.parse(rascunho);
-            if (confirm('Encontramos um rascunho salvo. Deseja recuperá-lo?')) {
-                Form.populate(form, data);
-                Toast.info('Rascunho recuperado com sucesso');
-            }
-        } catch (error) {
-            console.error('Erro ao recuperar rascunho:', error);
-        }
+    if (isSubmitting) {
+      console.log('⚠️  Já está enviando, ignorando submit duplicado');
+      return false;
+    }
+    isSubmitting = true;
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Salvando...';
     }
 
-    // Limpar rascunho ao sair
-    window.addEventListener('beforeunload', () => {
-        localStorage.removeItem('rascunho_recado');
-        clearInterval(saveInterval);
+    try {
+      const formData = new FormData(form);
+      const data = {};
+      for (const [key, value] of formData.entries()) {
+        data[key] = typeof value === 'string' ? value.trim() : value;
+      }
+      console.log('✅ Dados coletados:', data);
+
+      // Validação básica
+      if (!data.destinatario || !data.remetente_nome || !data.assunto) {
+        alert('Por favor, preencha todos os campos obrigatórios');
+        return;
+      }
+
+      const response = await fetch('/api/recados', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('✅ Recado criado com sucesso');
+        alert('Recado criado com sucesso!');
+        form.reset();
+        setTimeout(() => {
+          window.location.href = '/recados';
+        }, 1000);
+      } else {
+        console.error('❌ Erro do servidor:', result.message);
+        alert('Erro ao salvar recado: ' + (result.message || 'Erro interno do servidor'));
+      }
+    } catch (error) {
+      console.error('❌ Erro na requisição:', error);
+      alert('Erro ao salvar recado. Verifique sua conexão e tente novamente.');
+    } finally {
+      isSubmitting = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Salvar Recado';
+      }
+    }
+  }
+
+  // Listener padrão de submit
+  form.addEventListener('submit', handleSubmit);
+
+  // Fallback para clique no botão
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      handleSubmit(event);
     });
+  }
+
+  console.log('✅ Manipuladores de evento configurados para Novo Recado');
 });

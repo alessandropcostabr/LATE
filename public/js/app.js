@@ -95,7 +95,7 @@ const API = {
 };
 
 // Notificações e modais (mantidos conforme original)
-const Toast = { error: msg => console.error(msg) };
+//const Toast = { error: msg => console.error(msg) };
 const Modal = { /* … */ };
 
 

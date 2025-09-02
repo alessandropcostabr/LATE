@@ -46,8 +46,20 @@ router.get(
       offset: Number(offset),
     };
 
-    const data  = RecadoModel.findAll(parsedFilters);
-    const total = RecadoModel.count(parsedFilters);
+    const data = RecadoModel.findAll(parsedFilters);
+    // O método count() pode não existir se o modelo estiver desatualizado.
+    // Utilizamos data.length como fallback para manter a aplicação funcional.
+    let total = 0;
+    if (typeof RecadoModel.count === 'function') {
+      try {
+        total = RecadoModel.count(parsedFilters);
+      } catch (err) {
+        console.error('Erro ao contar recados:', err);
+        total = Array.isArray(data) ? data.length : 0;
+      }
+    } else {
+      total = Array.isArray(data) ? data.length : 0;
+    }
 
     res.json({
       success: true,
