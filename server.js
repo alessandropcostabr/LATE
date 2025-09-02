@@ -110,8 +110,20 @@ const sendAppBundle = (req, res) => {
   res.type('application/javascript').send(wrapped);
 };
 
+const sendRecadosBundle = (req, res) => {
+  const recadosJs = fs.readFileSync(path.join(jsDir, 'recados.js'), 'utf8');
+  const helper = "const q = sel => document.querySelector(sel);\n";
+  const content =
+    helper +
+    recadosJs
+      .replace(/document.getElementById\('listaRecados'\)/g, "q('#listaRecados, #recadosContainer')")
+      .replace(/document.getElementById\('totalResultados'\)/g, "q('#totalResultados, #totalRecados')");
+  res.type('application/javascript').send(content);
+};
+
 app.get('/js/app.js', sendAppBundle);
 app.get('/js/utils.js', sendAppBundle);
+app.get('/js/recados.js', sendRecadosBundle);
 
 app.get('/js/toast.js', (req, res) => {
   res
