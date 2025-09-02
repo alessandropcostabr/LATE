@@ -106,3 +106,15 @@ test('count ignores pagination options', () => {
   const total = RecadoModel.count(filters);
   expect(total).toBe(2);
 });
+
+test('findAll defaults to safe ordering when invalid params provided', () => {
+  const defaultList = RecadoModel.findAll({});
+  const invalidList = RecadoModel.findAll({ orderBy: 'malicious', orderDir: 'INVALID' });
+  expect(invalidList).toEqual(defaultList);
+});
+
+test('findAll defaults to DESC when orderDir invalid', () => {
+  const expected = RecadoModel.findAll({ orderBy: 'id', orderDir: 'DESC' });
+  const invalidDir = RecadoModel.findAll({ orderBy: 'id', orderDir: 'bad' });
+  expect(invalidDir).toEqual(expected);
+});

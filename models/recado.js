@@ -3,6 +3,17 @@ const dbManager = require('../config/database');
 class RecadoModel {
     constructor() {
         this.db = dbManager.getDatabase();
+        this.allowedOrderBy = [
+            'id',
+            'data_ligacao',
+            'hora_ligacao',
+            'destinatario',
+            'remetente_nome',
+            'situacao',
+            'criado_em',
+            'atualizado_em'
+        ];
+        this.allowedOrderDir = ['ASC', 'DESC'];
     }
 
     // Helper para construir filtros reutilizáveis
@@ -91,8 +102,11 @@ class RecadoModel {
         let query = `SELECT * FROM recados WHERE 1=1${clause}`;
 
         // Ordenação
-        const orderBy = filters.orderBy || 'criado_em';
-        const orderDir = filters.orderDir || 'DESC';
+        const orderBy = this.allowedOrderBy.includes(filters.orderBy)
+            ? filters.orderBy
+            : 'criado_em';
+        const dir = (filters.orderDir || '').toUpperCase();
+        const orderDir = this.allowedOrderDir.includes(dir) ? dir : 'DESC';
         query += ` ORDER BY ${orderBy} ${orderDir}`;
 
         // Paginação
