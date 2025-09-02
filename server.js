@@ -79,6 +79,51 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/js/toast.js', (req, res) => {
+  res
+    .type('application/javascript')
+    .send(`(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    const mod = factory();
+    module.exports = mod;
+    module.exports.default = mod;
+  } else if (typeof define === 'function' && define.amd) {
+    define([], factory);
+  } else {
+    root.Toast = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof window !== 'undefined' && window.Toast) return window.Toast;
+  const Toast = {
+    container: null,
+    _create(message, type) {
+      if (!Toast.container) {
+        Toast.container = document.createElement('div');
+        Toast.container.className = 'toast-container';
+        document.body.appendChild(Toast.container);
+      }
+      const el = document.createElement('div');
+      el.className = 'toast toast-' + type;
+      el.textContent = message;
+      Toast.container.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      setTimeout(() => {
+        el.classList.remove('show');
+        el.addEventListener('transitionend', () => el.remove());
+      }, 3000);
+    },
+    success(msg) { Toast._create(msg, 'success'); },
+    warning(msg) { Toast._create(msg, 'warning'); },
+    error(msg) { Toast._create(msg, 'error'); },
+    info(msg) { Toast._create(msg, 'info'); }
+  };
+  if (typeof window !== 'undefined' && !window.Toast) {
+    window.Toast = Toast;
+  }
+  return Toast;
+}));`);
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Rotas ───────────────────────────────────────────────────────────────────
