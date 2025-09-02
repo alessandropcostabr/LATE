@@ -13,10 +13,7 @@
   <main class="main" role="main">
     <div class="container">
       <h1>Visualizar Recado</h1>
-      <div id="detalhesRecado" class="card-body">Carregando...</div>
-      <div style="margin-top:1rem;">
-        <a href="/recados" class="btn btn-outline">Voltar</a>
-      </div>
+      <div id="detalhesRecado" class="card-body"></div>
     </div>
   </main>
 
@@ -68,7 +65,14 @@
         actions.appendChild(back);
         container.appendChild(actions);
       } catch (e) {
-        container.textContent = 'Erro ao carregar recado.';
+          const message =
+            (e && typeof e.message === 'string' && e.message.includes('404'))
+              ? 'Recado não encontrado.'
+              : 'Erro ao carregar recado.';
+          container.textContent = message;
+          if (typeof Toast !== 'undefined' && Toast.error) {
+            Toast.error(message);
+          }
       }
     });
   </script>
