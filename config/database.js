@@ -16,9 +16,14 @@ class DatabaseManager {
   getDatabase() {
     if (!this.db) {
       const dbPath = path.join(__dirname, '..', 'data', 'recados.db');
-      this.db = new Database(dbPath);
-      // Habilitar chaves estrangeiras, se necessário
-      this.db.pragma('foreign_keys = ON');
+      try {
+        this.db = new Database(dbPath);
+        // Habilitar chaves estrangeiras, se necessário
+        this.db.pragma('foreign_keys = ON');
+      } catch (err) {
+        console.error('Erro ao inicializar o banco de dados:', err);
+        this.db = null;
+      }
     }
     return this.db;
   }
@@ -28,8 +33,13 @@ class DatabaseManager {
    */
   close() {
     if (this.db) {
-      this.db.close();
-      this.db = null;
+      try {
+        this.db.close();
+      } catch (err) {
+        console.error('Erro ao fechar o banco de dados:', err);
+      } finally {
+        this.db = null;
+      }
     }
   }
 }

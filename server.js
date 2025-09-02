@@ -10,10 +10,18 @@ const fs = require('fs');
 const compression = require('compression');
 
 // Importar middlewares e rotas
-const dbManager     = require('./config/database');
+const dbManager      = require('./config/database');
 const corsMiddleware = require('./middleware/cors');
-const apiRoutes     = require('./routes/api');
-const webRoutes     = require('./routes/web');
+const apiRoutes      = require('./routes/api');
+const webRoutes      = require('./routes/web');
+
+// Middleware opcional para validar origem
+let validateOrigin;
+try {
+  validateOrigin = require('./middleware/validateOrigin');
+} catch {
+  validateOrigin = null;
+}
 
 // Inicializar aplicação Express
 const app  = express();
@@ -46,15 +54,18 @@ app.use(helmet({
   }
 }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max:     100,
-  message: {
-    success: false,
-    message: 'Muitas requisições. Tente novamente em 15 minutos.'
-  }
-});
-app.use('/api/', limiter);
+if (process.env.NODE_ENV === 'production') {
+  if (validateOrigin) app.use(validateOrigin);
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutos
+    max: 100,
+    message: {
+      success: false,
+      message: 'Muitas requisições. Tente novamente em 15 minutos.'
+    }
+  });
+  app.use('/api/', limiter);
+}
 
 // Servir assets estáticos e logging
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
