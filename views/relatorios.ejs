@@ -97,11 +97,11 @@
             const totalTd = document.createElement('td');
             totalTd.textContent = r.total;
             const pendTd  = document.createElement('td');
-            pendTd.textContent  = r.pendente ?? '-';
+            pendTd.textContent  = r.pendente;
             const andTd   = document.createElement('td');
-            andTd.textContent   = r.em_andamento ?? '-';
+            andTd.textContent   = r.em_andamento;
             const resTd   = document.createElement('td');
-            resTd.textContent   = r.resolvido ?? '-';
+            resTd.textContent   = r.resolvido;
 
             tr.appendChild(destTd);
             tr.appendChild(totalTd);
