@@ -100,11 +100,21 @@ app.use((req, res, next) => {
 });
 
 const jsDir = path.join(__dirname, 'public', 'js');
-const sendAppBundle = (req, res) => {
+// Enable bundle caching by default. For development you can set
+// BYPASS_BUNDLE_CACHE=true (with NODE_ENV=development) to rebuild on each
+// request.
+const shouldBypassCache =
+  process.env.NODE_ENV === 'development' &&
+  process.env.BYPASS_BUNDLE_CACHE === 'true';
+
+let appBundle;
+let recadosBundle;
+
+const buildAppBundle = () => {
   const appJs = fs.readFileSync(path.join(jsDir, 'app.js'), 'utf8');
   const utilsJs = fs.readFileSync(path.join(jsDir, 'utils.js'), 'utf8');
   const combined = utilsJs + '\n' + appJs;
-  const wrapped =
+  return (
     '(function (root, factory) {\n' +
     '  if (typeof module === "object" && module.exports) {\n' +
     '    const mod = factory(root);\n' +
@@ -125,19 +135,34 @@ const sendAppBundle = (req, res) => {
     '  }\n' +
     '  root.Toast = root.Toast || (typeof Toast !== "undefined" ? Toast : {});\n' +
     '  return { API: root.API, Utils: root.Utils, Form: root.Form, Loading: root.Loading, Toast: root.Toast };\n' +
-    '}));';
-  res.type('application/javascript').send(wrapped);
+    '}));'
+  );
 };
 
-const sendRecadosBundle = (req, res) => {
+const buildRecadosBundle = () => {
   const recadosJs = fs.readFileSync(path.join(jsDir, 'recados.js'), 'utf8');
   const helper = "const q = sel => document.querySelector(sel);\n";
-  const content =
+  return (
     helper +
     recadosJs
       .replace(/document.getElementById\('listaRecados'\)/g, "q('#listaRecados, #recadosContainer')")
-      .replace(/document.getElementById\('totalResultados'\)/g, "q('#totalResultados, #totalRecados')");
-  res.type('application/javascript').send(content);
+      .replace(/document.getElementById\('totalResultados'\)/g, "q('#totalResultados, #totalRecados')")
+  );
+};
+
+if (!shouldBypassCache) {
+  appBundle = buildAppBundle();
+  recadosBundle = buildRecadosBundle();
+}
+
+const sendAppBundle = (req, res) => {
+  if (shouldBypassCache || !appBundle) appBundle = buildAppBundle();
+  res.type('application/javascript').send(appBundle);
+};
+
+const sendRecadosBundle = (req, res) => {
+  if (shouldBypassCache || !recadosBundle) recadosBundle = buildRecadosBundle();
+  res.type('application/javascript').send(recadosBundle);
 };
 
 app.get('/js/app.js', sendAppBundle);
