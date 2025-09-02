@@ -5,17 +5,38 @@ const API_BASE = '/api';
 
 // Utilitários
 const Utils = {
+  /**
+   * Constrói um objeto Date no fuso local a partir de 'YYYY-MM-DD'.
+   */
+  _parseDate(dateString = '') {
+    const [y, m, d] = dateString.split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  },
+
+  /**
+   * Constrói um objeto Date no fuso local a partir de 'YYYY-MM-DDTHH:mm:ss'.
+   */
+  _parseDateTime(dateString = '') {
+    const [datePart, timePart = ''] = dateString.split(/T| /);
+    const [y, m, d] = datePart.split('-').map(Number);
+    const [h = 0, min = 0, s = 0] = timePart.split(':').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1, h, min, s);
+  },
+
   formatDate(dateString) {
-    const date = new Date(dateString);
+    const date = this._parseDate(dateString);
     return date.toLocaleDateString('pt-BR');
   },
   formatDateTime(dateString) {
-    const date = new Date(dateString);
+    const date = this._parseDateTime(dateString);
     return date.toLocaleString('pt-BR');
   },
   formatDateForInput(dateString) {
-    const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    const date = this._parseDate(dateString);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   },
   formatTimeForInput(timeString) {
     return timeString.substring(0, 5);
