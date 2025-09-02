@@ -27,6 +27,13 @@ try {
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Configure trust proxy before middleware using client IP
+// Allow override via TRUST_PROXY env var, defaulting to 1
+const trustProxy = process.env.TRUST_PROXY
+  ? parseInt(process.env.TRUST_PROXY, 10)
+  : 1;
+app.set('trust proxy', trustProxy);
+
 // Define o caminho do CSS baseado no ambiente
 app.locals.cssFile =
   process.env.NODE_ENV === 'production'
@@ -55,10 +62,9 @@ app.use(helmet({
 }));
 
 if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
   if (validateOrigin) app.use(validateOrigin);
   const limiter = rateLimit({
-    validate: false,
+    validate: true,
     windowMs: 15 * 60 * 1000, // 15 minutos
     max: 100,
     message: {
