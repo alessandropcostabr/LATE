@@ -11,7 +11,12 @@ const makePayload = (overrides = {}) => ({
   hora_ligacao: '10:00',
   destinatario: 'Destinatario',
   remetente_nome: 'Remetente',
+  remetente_telefone: '11999999999',
+  remetente_email: 'remetente@example.com',
+  horario_retorno: 'Manhã',
   assunto: 'Assunto de teste',
+  situacao: 'pendente',
+  observacoes: 'Observação de teste',
   ...overrides,
 });
 
@@ -49,10 +54,12 @@ afterAll(() => {
 
 describe('API endpoints', () => {
   test('POST /api/recados creates a new record', async () => {
-    const res = await request(app).post('/api/recados').send(makePayload());
+    const payload = makePayload();
+    const res = await request(app).post('/api/recados').send(payload);
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('success', true);
     expect(res.body.data).toHaveProperty('id');
+    expect(res.body.data).toMatchObject(payload);
   });
 
   test('GET /api/recados lists with filters and pagination', async () => {
@@ -79,11 +86,25 @@ describe('API endpoints', () => {
   test('PUT /api/recados/:id updates recado', async () => {
     const createRes = await request(app).post('/api/recados').send(makePayload());
     const id = createRes.body.data.id;
+    const updatedPayload = makePayload({
+      data_ligacao: '2025-02-02',
+      hora_ligacao: '11:11',
+      destinatario: 'Destinatario Atualizado',
+      remetente_nome: 'Remetente Atualizado',
+      remetente_telefone: '11888888888',
+      remetente_email: 'novo@example.com',
+      horario_retorno: 'Tarde',
+      assunto: 'Atualizado',
+      situacao: 'resolvido',
+      observacoes: 'Observações atualizadas',
+    });
     const updateRes = await request(app)
       .put(`/api/recados/${id}`)
-      .send(makePayload({ assunto: 'Atualizado', situacao: 'resolvido' }));
+      .send(updatedPayload);
     expect(updateRes.status).toBe(200);
-    expect(updateRes.body.data.assunto).toBe('Atualizado');
+    expect(updateRes.body.data).toMatchObject(updatedPayload);
+    const fetchRes = await request(app).get(`/api/recados/${id}`);
+    expect(fetchRes.body.data).toMatchObject(updatedPayload);
     const notFound = await request(app)
       .put('/api/recados/9999')
       .send(makePayload());
