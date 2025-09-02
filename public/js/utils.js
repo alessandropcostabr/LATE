@@ -41,15 +41,23 @@ const Form = {
 
 /** Loading utility */
 const Loading = {
-  show(id) {
-    const btn = document.getElementById(id);
+  show(target) {
+    const btn = typeof target === 'string'
+      ? document.getElementById(target)
+      : target instanceof HTMLElement
+        ? target
+        : null;
     if (!btn) return;
     if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<span class="loading"></span> ${btn.textContent.trim()}`;
   },
-  hide(id) {
-    const btn = document.getElementById(id);
+  hide(target) {
+    const btn = typeof target === 'string'
+      ? document.getElementById(target)
+      : target instanceof HTMLElement
+        ? target
+        : null;
     if (!btn) return;
     btn.disabled = false;
     if (btn.dataset.originalText) {
