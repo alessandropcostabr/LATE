@@ -1,9 +1,5 @@
 const express = require('express');
-const path = require('path');
 const router = express.Router();
-
-// Servir arquivos estáticos (assets, CSS, JS)
-router.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Dashboard
 router.get('/', (req, res) => {
