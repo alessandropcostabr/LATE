@@ -58,6 +58,7 @@ router.get(
         total = Array.isArray(data) ? data.length : 0;
       }
     } else {
+      console.warn('RecadoModel.count não disponível. Usando data.length como fallback.');
       total = Array.isArray(data) ? data.length : 0;
     }
 
