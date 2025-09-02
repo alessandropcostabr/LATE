@@ -146,4 +146,17 @@ describe('API endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('data.total', 1);
   });
+
+  test('GET /api/stats/por-destinatario returns counts by status', async () => {
+    await request(app).post('/api/recados').send(makePayload({ destinatario: 'Alice', situacao: 'pendente' }));
+    await request(app).post('/api/recados').send(makePayload({ destinatario: 'Alice', situacao: 'resolvido' }));
+    await request(app).post('/api/recados').send(makePayload({ destinatario: 'Bob', situacao: 'em_andamento' }));
+
+    const res = await request(app).get('/api/stats/por-destinatario');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([
+      { destinatario: 'Alice', total: 2, pendente: 1, em_andamento: 0, resolvido: 1 },
+      { destinatario: 'Bob', total: 1, pendente: 0, em_andamento: 1, resolvido: 0 }
+    ]);
+  });
 });

@@ -165,7 +165,14 @@ router.get('/stats', wrap((_, res) => {
 // GET /api/stats/por-destinatario – estatísticas agrupadas
 // ───────────────────────────────────────────────────────────
 router.get('/stats/por-destinatario', wrap((_, res) => {
-  const data = RecadoModel.getStatsByDestinatario();
+  const rows = RecadoModel.getStatsByDestinatario();
+  const data = rows.map(r => ({
+    destinatario: r.destinatario,
+    total: r.total,
+    pendente: r.pendente,
+    em_andamento: r.em_andamento,
+    resolvido: r.resolvido,
+  }));
   res.json({ success: true, data });
 }));
 

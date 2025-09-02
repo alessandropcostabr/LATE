@@ -218,7 +218,12 @@ class RecadoModel {
     getStatsByDestinatario() {
         this._ensureDb();
         const stmt = this.db.prepare(`
-            SELECT destinatario, COUNT(*) as total
+            SELECT
+                destinatario,
+                COUNT(*) AS total,
+                SUM(CASE WHEN situacao = 'pendente' THEN 1 ELSE 0 END)      AS pendente,
+                SUM(CASE WHEN situacao = 'em_andamento' THEN 1 ELSE 0 END) AS em_andamento,
+                SUM(CASE WHEN situacao = 'resolvido' THEN 1 ELSE 0 END)    AS resolvido
             FROM recados
             GROUP BY destinatario
             ORDER BY total DESC
