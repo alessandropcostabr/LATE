@@ -55,8 +55,10 @@ app.use(helmet({
 }));
 
 if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
   if (validateOrigin) app.use(validateOrigin);
   const limiter = rateLimit({
+    validate: false,
     windowMs: 15 * 60 * 1000, // 15 minutos
     max: 100,
     message: {
