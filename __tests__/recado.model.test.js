@@ -172,3 +172,17 @@ test('delete removes recado and returns true', () => {
 test('count with filter returns number of matching records', () => {
   expect(RecadoModel.count({ situacao: 'pendente' })).toBe(2);
 });
+
+test('methods throw error when database instance missing', () => {
+  const originalDb = RecadoModel.db;
+  RecadoModel.db = null;
+  expect(() => RecadoModel.findAll({})).toThrow('Database connection is not initialized');
+  RecadoModel.db = originalDb;
+});
+
+test('methods throw error when database connection is closed', () => {
+  const dbManager = require('../config/database');
+  dbManager.close();
+  expect(() => RecadoModel.findAll({})).toThrow('Database connection is not initialized');
+  RecadoModel.db = dbManager.getDatabase();
+});
