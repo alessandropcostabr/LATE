@@ -47,9 +47,21 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       console.log('✅ Dados coletados:', data);
 
-      // Validação básica
-      if (!data.destinatario || !data.remetente_nome || !data.assunto) {
-        alert('Por favor, preencha todos os campos obrigatórios');
+      // Validação básica dos campos obrigatórios
+      const requiredFields = [
+        { key: 'destinatario', message: 'Destinatário é obrigatório.' },
+        { key: 'remetente_nome', message: 'Remetente é obrigatório.' },
+        { key: 'assunto', message: 'Assunto é obrigatório.' },
+        { key: 'data_ligacao', message: 'Data da ligação é obrigatória.' },
+        { key: 'hora_ligacao', message: 'Hora da ligação é obrigatória.' }
+      ];
+
+      const missing = requiredFields
+        .filter(field => !data[field.key])
+        .map(field => field.message);
+
+      if (missing.length > 0) {
+        alert(missing.join('\n'));
         return;
       }
 
