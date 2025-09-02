@@ -14,15 +14,20 @@ class DatabaseManager {
    * Retorna uma instância única do banco. Cria o arquivo se não existir.
    */
   getDatabase() {
-    if (!this.db) {
+    if (!this.db || !this.db.open) {
       const dbPath = path.join(__dirname, '..', 'data', 'recados.db');
       try {
+        console.info(`[DatabaseManager] Inicializando banco em ${dbPath}`);
         this.db = new Database(dbPath);
         // Habilitar chaves estrangeiras, se necessário
         this.db.pragma('foreign_keys = ON');
       } catch (err) {
-        console.error('Erro ao inicializar o banco de dados:', err);
+        console.error(
+          `[DatabaseManager] Falha ao inicializar o banco em ${dbPath}: ${err.message}`,
+          err
+        );
         this.db = null;
+        throw err;
       }
     }
     return this.db;

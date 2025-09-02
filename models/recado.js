@@ -16,6 +16,12 @@ class RecadoModel {
         this.allowedOrderDir = ['ASC', 'DESC'];
     }
 
+    _ensureDb() {
+        if (!this.db || !this.db.open) {
+            throw new Error('Database connection is not initialized');
+        }
+    }
+
     // Helper para construir filtros reutilizáveis
     _buildFilterQuery(filters = {}) {
         let clause = '';
@@ -66,6 +72,7 @@ class RecadoModel {
 
     // Criar novo recado
     create(recadoData) {
+        this._ensureDb();
         const stmt = this.db.prepare(`
             INSERT INTO recados (
                 data_ligacao, hora_ligacao, destinatario, remetente_nome,
@@ -92,12 +99,14 @@ class RecadoModel {
 
     // Buscar por ID
     findById(id) {
+        this._ensureDb();
         const stmt = this.db.prepare('SELECT * FROM recados WHERE id = ?');
         return stmt.get(id);
     }
 
     // Listar todos com filtros
     findAll(filters = {}) {
+        this._ensureDb();
         const { clause, params } = this._buildFilterQuery(filters);
         let query = `SELECT * FROM recados WHERE 1=1${clause}`;
 
@@ -127,6 +136,7 @@ class RecadoModel {
     // Este método pode não existir em versões antigas do sistema. Caso
     // necessite adicionar suporte à contagem de registros, implemente aqui.
     count(filters = {}) {
+        this._ensureDb();
         const { clause, params } = this._buildFilterQuery(filters);
         const query = `SELECT COUNT(*) as total FROM recados WHERE 1=1${clause}`;
         const stmt = this.db.prepare(query);
@@ -136,6 +146,7 @@ class RecadoModel {
 
     // Atualizar recado
     update(id, recadoData) {
+        this._ensureDb();
         const stmt = this.db.prepare(`
             UPDATE recados SET
                 data_ligacao = ?, hora_ligacao = ?, destinatario = ?,
@@ -164,10 +175,11 @@ class RecadoModel {
 
     // Atualizar apenas situação
     updateSituacao(id, situacao) {
+        this._ensureDb();
         const stmt = this.db.prepare(`
-            UPDATE recados SET 
-                situacao = ?, 
-                atualizado_em = CURRENT_TIMESTAMP 
+            UPDATE recados SET
+                situacao = ?,
+                atualizado_em = CURRENT_TIMESTAMP
             WHERE id = ?
         `);
         const result = stmt.run(situacao, id);
@@ -176,6 +188,7 @@ class RecadoModel {
 
     // Excluir recado
     delete(id) {
+        this._ensureDb();
         const stmt = this.db.prepare('DELETE FROM recados WHERE id = ?');
         const result = stmt.run(id);
         return result.changes > 0;
@@ -183,6 +196,7 @@ class RecadoModel {
 
     // Estatísticas
     getStats() {
+        this._ensureDb();
         const stmt = this.db.prepare(`
             SELECT
                 COUNT(*) AS total,
@@ -202,6 +216,7 @@ class RecadoModel {
 
     // Estatísticas agrupadas por destinatário
     getStatsByDestinatario() {
+        this._ensureDb();
         const stmt = this.db.prepare(`
             SELECT destinatario, COUNT(*) as total
             FROM recados
@@ -213,6 +228,7 @@ class RecadoModel {
 
     // Últimos N recados
     getRecentes(limit = 10) {
+        this._ensureDb();
         const stmt = this.db.prepare(`
             SELECT * FROM recados
             ORDER BY criado_em DESC
