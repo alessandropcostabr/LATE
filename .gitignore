@@ -72,3 +72,5 @@ logs/
 #Scripts
 *.sh
 
+backup/
+*.bak
