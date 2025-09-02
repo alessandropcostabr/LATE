@@ -118,3 +118,57 @@ test('findAll defaults to DESC when orderDir invalid', () => {
   const invalidDir = RecadoModel.findAll({ orderBy: 'id', orderDir: 'bad' });
   expect(invalidDir).toEqual(expected);
 });
+
+test('create stores and returns a new recado with default status', () => {
+  const sample = {
+    data_ligacao: '2024-03-01',
+    hora_ligacao: '13:00',
+    destinatario: 'Grace',
+    remetente_nome: 'Heidi',
+    assunto: 'Follow up'
+  };
+  const created = RecadoModel.create(sample);
+  expect(created).toMatchObject({
+    ...sample,
+    situacao: 'pendente'
+  });
+  expect(created).toHaveProperty('id');
+  expect(RecadoModel.count({})).toBe(5);
+});
+
+test('findAll supports pagination with limit and offset', () => {
+  const full = RecadoModel.findAll({ orderBy: 'id', orderDir: 'ASC' });
+  const paged = RecadoModel.findAll({ orderBy: 'id', orderDir: 'ASC', limit: 2, offset: 1 });
+  expect(paged).toEqual(full.slice(1, 3));
+});
+
+test('update modifies all fields of a recado', () => {
+  const original = RecadoModel.findAll({ orderBy: 'id', orderDir: 'ASC' })[0];
+  const updated = RecadoModel.update(original.id, {
+    ...original,
+    assunto: 'Updated assunto',
+    situacao: 'em_andamento'
+  });
+  expect(updated.assunto).toBe('Updated assunto');
+  expect(updated.situacao).toBe('em_andamento');
+});
+
+test('updateSituacao changes only the status field', () => {
+  const recado = RecadoModel.findAll({ orderBy: 'id', orderDir: 'ASC' })[0];
+  const ok = RecadoModel.updateSituacao(recado.id, 'resolvido');
+  expect(ok).toBe(true);
+  const fetched = RecadoModel.findById(recado.id);
+  expect(fetched.situacao).toBe('resolvido');
+});
+
+test('delete removes recado and returns true', () => {
+  const recado = RecadoModel.findAll({ orderBy: 'id', orderDir: 'ASC' })[0];
+  const ok = RecadoModel.delete(recado.id);
+  expect(ok).toBe(true);
+  expect(RecadoModel.findById(recado.id)).toBeUndefined();
+  expect(RecadoModel.count({})).toBe(3);
+});
+
+test('count with filter returns number of matching records', () => {
+  expect(RecadoModel.count({ situacao: 'pendente' })).toBe(2);
+});
