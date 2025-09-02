@@ -87,7 +87,7 @@ const API = {
   async deleteRecado(id) { return this.request(`/recados/${id}`, { method: 'DELETE' }); },
 
   // Estatísticas pro Dashboard
-  async getStats() { return this.request('/stats/dashboard'); },
+  async getStats() { return this.request('/stats'); },
   async getStatsByDestinatario() { return this.request('/stats/por-destinatario'); },
 
   // Recados recentes pro Dashboard

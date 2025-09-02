@@ -54,7 +54,7 @@ CREATE INDEX idx_remetente_nome ON recados(remetente_nome);
 - `GET /api/recados?remetente=nome`
 
 ### 3. Estatísticas
-- `GET /api/stats/dashboard` - Estatísticas gerais
+- `GET /api/stats` - Estatísticas gerais
 - `GET /api/stats/por-destinatario` - Recados por destinatário
 - `GET /api/stats/por-situacao` - Distribuição por situação
 

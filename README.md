@@ -111,7 +111,7 @@ POST   /api/recados
 PUT    /api/recados/:id
 PATCH  /api/recados/:id/situacao
 DELETE /api/recados/:id
-GET    /api/stats/dashboard
+GET    /api/stats
 GET    /api/stats/por-destinatario
 
 📊 Dashboard

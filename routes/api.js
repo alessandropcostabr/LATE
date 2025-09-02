@@ -153,9 +153,9 @@ router.delete(
 );
 
 // ───────────────────────────────────────────────────────────
-// GET /api/stats/dashboard – estatísticas gerais
+// GET /api/stats – estatísticas gerais
 // ───────────────────────────────────────────────────────────
-router.get('/stats/dashboard', wrap((_, res) => {
+router.get('/stats', wrap((_, res) => {
   const data = RecadoModel.getStats();
   res.json({ success: true, data });
 }));

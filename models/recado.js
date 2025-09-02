@@ -194,16 +194,20 @@ class RecadoModel {
 
     // Estatísticas
     getStats() {
-        const totalStmt     = this.db.prepare('SELECT COUNT(*) as total FROM recados');
-        const pendenteStmt  = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'pendente'");
-        const andamentoStmt = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'em_andamento'");
-        const resolvidoStmt = this.db.prepare("SELECT COUNT(*) as total FROM recados WHERE situacao = 'resolvido'");
-
+        const stmt = this.db.prepare(`
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN situacao = 'pendente' THEN 1 ELSE 0 END)      AS pendente,
+                SUM(CASE WHEN situacao = 'em_andamento' THEN 1 ELSE 0 END) AS em_andamento,
+                SUM(CASE WHEN situacao = 'resolvido' THEN 1 ELSE 0 END)    AS resolvido
+            FROM recados
+        `);
+        const row = stmt.get();
         return {
-            total:     totalStmt.get().total,
-            pendentes: pendenteStmt.get().total,
-            andamento: andamentoStmt.get().total,
-            resolvidos: resolvidoStmt.get().total,
+            total:        row.total,
+            pendente:     row.pendente,
+            em_andamento: row.em_andamento,
+            resolvido:    row.resolvido,
         };
     }
 
