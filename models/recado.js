@@ -5,6 +5,54 @@ class RecadoModel {
         this.db = dbManager.getDatabase();
     }
 
+    // Helper para construir filtros reutilizáveis
+    _buildFilterQuery(filters = {}) {
+        let clause = '';
+        const params = [];
+
+        // Filtro por data
+        if (filters.data_inicio) {
+            clause += ' AND data_ligacao >= ?';
+            params.push(filters.data_inicio);
+        }
+        if (filters.data_fim) {
+            clause += ' AND data_ligacao <= ?';
+            params.push(filters.data_fim);
+        }
+
+        // Filtro por destinatário
+        if (filters.destinatario) {
+            clause += ' AND destinatario LIKE ?';
+            params.push(`%${filters.destinatario}%`);
+        }
+
+        // Filtro por situação
+        if (filters.situacao) {
+            clause += ' AND situacao = ?';
+            params.push(filters.situacao);
+        }
+
+        // Filtro por remetente
+        if (filters.remetente) {
+            clause += ' AND remetente_nome LIKE ?';
+            params.push(`%${filters.remetente}%`);
+        }
+
+        // Busca geral
+        if (filters.busca) {
+            clause += ` AND (
+                remetente_nome LIKE ? OR
+                destinatario LIKE ? OR
+                assunto LIKE ? OR
+                observacoes LIKE ?
+            )`;
+            const searchTerm = `%${filters.busca}%`;
+            params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+        }
+
+        return { clause, params };
+    }
+
     // Criar novo recado
     create(recadoData) {
         const stmt = this.db.prepare(`
@@ -39,48 +87,8 @@ class RecadoModel {
 
     // Listar todos com filtros
     findAll(filters = {}) {
-        let query = 'SELECT * FROM recados WHERE 1=1';
-        const params = [];
-
-        // Filtro por data
-        if (filters.data_inicio) {
-            query += ' AND data_ligacao >= ?';
-            params.push(filters.data_inicio);
-        }
-        if (filters.data_fim) {
-            query += ' AND data_ligacao <= ?';
-            params.push(filters.data_fim);
-        }
-
-        // Filtro por destinatário
-        if (filters.destinatario) {
-            query += ' AND destinatario LIKE ?';
-            params.push(`%${filters.destinatario}%`);
-        }
-
-        // Filtro por situação
-        if (filters.situacao) {
-            query += ' AND situacao = ?';
-            params.push(filters.situacao);
-        }
-
-        // Filtro por remetente
-        if (filters.remetente) {
-            query += ' AND remetente_nome LIKE ?';
-            params.push(`%${filters.remetente}%`);
-        }
-
-        // Busca geral
-        if (filters.busca) {
-            query += ` AND (
-                remetente_nome LIKE ? OR 
-                destinatario LIKE ? OR 
-                assunto LIKE ? OR 
-                observacoes LIKE ?
-            )`;
-            const searchTerm = `%${filters.busca}%`;
-            params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-        }
+        const { clause, params } = this._buildFilterQuery(filters);
+        let query = `SELECT * FROM recados WHERE 1=1${clause}`;
 
         // Ordenação
         const orderBy = filters.orderBy || 'criado_em';
@@ -105,41 +113,8 @@ class RecadoModel {
     // Este método pode não existir em versões antigas do sistema. Caso
     // necessite adicionar suporte à contagem de registros, implemente aqui.
     count(filters = {}) {
-        let query = 'SELECT COUNT(*) as total FROM recados WHERE 1=1';
-        const params = [];
-
-        // Reaplicar filtros usados em findAll para manter consistência
-        if (filters.data_inicio) {
-            query += ' AND data_ligacao >= ?';
-            params.push(filters.data_inicio);
-        }
-        if (filters.data_fim) {
-            query += ' AND data_ligacao <= ?';
-            params.push(filters.data_fim);
-        }
-        if (filters.destinatario) {
-            query += ' AND destinatario LIKE ?';
-            params.push(`%${filters.destinatario}%`);
-        }
-        if (filters.situacao) {
-            query += ' AND situacao = ?';
-            params.push(filters.situacao);
-        }
-        if (filters.remetente) {
-            query += ' AND remetente_nome LIKE ?';
-            params.push(`%${filters.remetente}%`);
-        }
-        if (filters.busca) {
-            query += ` AND (
-                remetente_nome LIKE ? OR 
-                destinatario LIKE ? OR 
-                assunto LIKE ? OR 
-                observacoes LIKE ?
-            )`;
-            const searchTerm = `%${filters.busca}%`;
-            params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-        }
-
+        const { clause, params } = this._buildFilterQuery(filters);
+        const query = `SELECT COUNT(*) as total FROM recados WHERE 1=1${clause}`;
         const stmt = this.db.prepare(query);
         const row = stmt.get(...params);
         return row ? row.total : 0;

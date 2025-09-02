@@ -18,6 +18,50 @@ beforeAll(() => {
   RecadoModel = require('../models/recado');
 });
 
+beforeEach(() => {
+  // Limpa tabela e insere dados de teste
+  RecadoModel.db.prepare('DELETE FROM recados').run();
+  const samples = [
+    {
+      data_ligacao: '2024-01-01',
+      hora_ligacao: '09:00',
+      destinatario: 'Alice',
+      remetente_nome: 'Bob',
+      assunto: 'Assunto1',
+      situacao: 'pendente',
+      observacoes: 'Obs1',
+    },
+    {
+      data_ligacao: '2024-01-02',
+      hora_ligacao: '10:00',
+      destinatario: 'Alice',
+      remetente_nome: 'Charlie',
+      assunto: 'Assunto2',
+      situacao: 'em_andamento',
+      observacoes: 'Obs2',
+    },
+    {
+      data_ligacao: '2024-01-03',
+      hora_ligacao: '11:00',
+      destinatario: 'Dave',
+      remetente_nome: 'Bob',
+      assunto: 'Assunto3',
+      situacao: 'resolvido',
+      observacoes: 'Obs3',
+    },
+    {
+      data_ligacao: '2024-02-01',
+      hora_ligacao: '12:00',
+      destinatario: 'Eve',
+      remetente_nome: 'Frank',
+      assunto: 'Meeting schedule',
+      situacao: 'pendente',
+      observacoes: 'Check details',
+    },
+  ];
+  samples.forEach((s) => RecadoModel.create(s));
+});
+
 afterAll(() => {
   const dbManager = require('../config/database');
   dbManager.close();
@@ -35,4 +79,30 @@ test('getStats returns object with expected keys', () => {
   expect(stats).toHaveProperty('pendente');
   expect(stats).toHaveProperty('em_andamento');
   expect(stats).toHaveProperty('resolvido');
+});
+
+test('findAll and count return same totals without filters', () => {
+  const list = RecadoModel.findAll({});
+  const total = RecadoModel.count({});
+  expect(list.length).toBe(total);
+});
+
+test.each([
+  [{ destinatario: 'Alice' }],
+  [{ situacao: 'pendente' }],
+  [{ remetente: 'Bob' }],
+  [{ data_inicio: '2024-01-01', data_fim: '2024-01-02' }],
+  [{ busca: 'Meeting' }],
+])('findAll and count apply identical filters %p', (filters) => {
+  const list = RecadoModel.findAll(filters);
+  const total = RecadoModel.count(filters);
+  expect(list.length).toBe(total);
+});
+
+test('count ignores pagination options', () => {
+  const filters = { situacao: 'pendente', limit: 1, offset: 0 };
+  const list = RecadoModel.findAll(filters);
+  expect(list.length).toBe(1);
+  const total = RecadoModel.count(filters);
+  expect(total).toBe(2);
 });
