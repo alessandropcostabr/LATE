@@ -182,8 +182,8 @@ router.delete('/recados/:id', validateId, async (req, res) => {
     }
 });
 
-// GET /api/stats/dashboard - Estatísticas gerais
-router.get('/stats/dashboard', async (req, res) => {
+// GET /api/stats - Estatísticas gerais
+router.get('/stats', async (req, res) => {
     try {
         const stats = RecadoModel.getStats();
         
