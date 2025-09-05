@@ -1,6 +1,11 @@
--- Renomeia colunas existentes para novo padrão
-ALTER TABLE users RENAME COLUMN nome TO name;
-ALTER TABLE users RENAME COLUMN senha TO password_hash;
+-- 02_users_auth_rbac.sql
+-- Padroniza nomes e adiciona colunas para autenticação moderna e RBAC.
+-- Pré-requisito: a tabela `users` já existe no formato legado:
+-- users(id, nome, email, senha, criado_em)
+
+-- Renomeia colunas legadas (SQLite 3.45+ suporta RENAME COLUMN)
+ALTER TABLE users RENAME COLUMN nome      TO name;
+ALTER TABLE users RENAME COLUMN senha     TO password_hash;
 ALTER TABLE users RENAME COLUMN criado_em TO created_at;
 
 -- Novas colunas para controle de acesso e auditoria
