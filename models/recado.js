@@ -108,8 +108,10 @@ class RecadoModel {
     this._ensureDb();
     const { clause, params } = this._buildFilterQuery(filters);
     let query = `SELECT * FROM recados WHERE 1=1${clause}`;
-    const orderBy = this.allowedOrderBy.includes(filters.orderBy)
-      ? filters.orderBy
+    let requestedOrder = filters.orderBy;
+    if (requestedOrder === 'criado_em') requestedOrder = 'created_at';
+    const orderBy = this.allowedOrderBy.includes(requestedOrder)
+      ? requestedOrder
       : 'created_at';
     const dir = (filters.orderDir || '').toUpperCase();
     const orderDir = this.allowedOrderDir.includes(dir) ? dir : 'DESC';

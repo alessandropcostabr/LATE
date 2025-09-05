@@ -20,24 +20,30 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-header">
           <h2 class="card-title">Recados por Destinatário</h2>
         </div>
         <div class="card-body">
-          <table class="table" aria-labelledby="relPorDestTitle">
-            <caption id="relPorDestTitle" class="sr-only">Recados por Destinatário</caption>
-            <thead>
-              <tr>
-                <th scope="col">Destinatário</th>
-                <th scope="col">Total</th>
-                <th scope="col">Pendente</th>
-                <th scope="col">Em Andamento</th>
-                <th scope="col">Resolvido</th>
-              </tr>
-            </thead>
-            <tbody id="relPorDestinatario"></tbody>
-          </table>
+          <canvas id="graficoPorDestinatario" aria-label="Gráfico de recados por destinatário"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Recados por Status</h2>
+        </div>
+        <div class="card-body">
+          <canvas id="graficoPorStatus" aria-label="Gráfico de recados por status"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Recados por Mês</h2>
+        </div>
+        <div class="card-body">
+          <canvas id="graficoPorMes" aria-label="Gráfico de recados por mês"></canvas>
         </div>
       </div>
 

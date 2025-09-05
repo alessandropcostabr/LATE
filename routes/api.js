@@ -201,6 +201,33 @@ router.get('/stats/por-responsavel', wrap((_, res) => {
 }));
 
 // ───────────────────────────────────────────────────────────
+// Endpoints para gráficos do Chart.js
+// ───────────────────────────────────────────────────────────
+router.get('/relatorios/por-mes', wrap((_, res) => {
+  const rows = RecadoModel.reportByMonth();
+  res.json({
+    labels: rows.map(r => r.month),
+    data: rows.map(r => r.total)
+  });
+}));
+
+router.get('/relatorios/por-status', wrap((_, res) => {
+  const rows = RecadoModel.reportByStatus();
+  res.json({
+    labels: rows.map(r => r.status),
+    data: rows.map(r => r.total)
+  });
+}));
+
+router.get('/relatorios/por-destinatario', wrap((_, res) => {
+  const rows = RecadoModel.getStatsByDestinatario();
+  res.json({
+    labels: rows.map(r => r.destinatario),
+    data: rows.map(r => r.total)
+  });
+}));
+
+// ───────────────────────────────────────────────────────────
 // GET /api/recados-recentes – últimos N recados (default 10)
 // ───────────────────────────────────────────────────────────
 router.get('/recados-recentes', wrap((req, res) => {
