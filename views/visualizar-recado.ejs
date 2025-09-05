@@ -1,26 +1,22 @@
-<!-- /home/ubuntu/late/views/visualizar-recado.html -->
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Visualizar Recado - Sistema de Recados</title>
-  <link rel="stylesheet" href="<%= cssFile %>" />
-</head>
+<%- include('partials/header') %>
 <body>
-  <%- include('partials/header') %>
+  <%- include('partials/navbar') %>
 
   <main class="main" role="main">
     <div class="container">
-      <h1>Visualizar Recado</h1>
-      <div id="detalhesRecado" class="card-body"></div>
+      <div class="card" id="detalhesRecado" data-id="<%= id %>">
+        <div class="card-header">
+          <h2 class="card-title">Detalhes do Recado</h2>
+        </div>
+        <div class="card-body" id="conteudoRecado">
+          <p>Carregando...</p>
+        </div>
+        <div class="card-footer">
+          <a href="/recados" class="btn btn-outline">Voltar</a>
+          <a href="/editar-recado/<%= id %>" class="btn btn-primary">Editar</a>
+        </div>
+      </div>
     </div>
   </main>
 
-  <script src="/js/toast.js" defer></script>
-  <script src="/js/utils.js" defer></script>
-  <script src="/js/app.js" defer></script>
-  <script src="/js/navbar.js" defer></script>
-  <script src="/js/visualizar-recado.js" defer></script>
-</body>
-</html>
+  <%- include('partials/footer', { scripts: ['/js/visualizar-recado.js'] }) %>
