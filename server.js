@@ -77,6 +77,11 @@ const loginLimiter = rateLimit({
 });
 app.use('/login', loginLimiter);
 
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100
+});
+
 // Servir assets estáticos e logging
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use(morgan('combined'));
@@ -237,6 +242,7 @@ app.get('/js/toast.js', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Rotas ───────────────────────────────────────────────────────────────────
+app.use('/api', apiLimiter);
 app.use('/api', apiRoutes);
 app.use('/',     webRoutes);
 
