@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= title %></title>
+</head>
+<body>
+  <h1>Registrar Usuário</h1>
+  <form method="POST" action="/register">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div>
+      <label>Usuário</label>
+      <input type="text" name="username" />
+    </div>
+    <div>
+      <label>Senha</label>
+      <input type="password" name="password" />
+    </div>
+    <div>
+      <label>Papel</label>
+      <select name="role">
+        <option value="USER">USER</option>
+        <option value="ADMIN">ADMIN</option>
+      </select>
+    </div>
+    <button type="submit">Registrar</button>
+  </form>
+</body>
+</html>

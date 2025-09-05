@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title><%= title %></title>
+</head>
+<body>
+  <h1>Login</h1>
+  <form method="POST" action="/login">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div>
+      <label>Usuário</label>
+      <input type="text" name="username" />
+    </div>
+    <div>
+      <label>Senha</label>
+      <input type="password" name="password" />
+    </div>
+    <button type="submit">Entrar</button>
+  </form>
+  <% if (typeof error !== 'undefined') { %>
+    <p><%= error %></p>
+  <% } %>
+</body>
+</html>
