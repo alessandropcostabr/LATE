@@ -14,20 +14,35 @@ fs.closeSync(fs.openSync(sessionDb, 'a'));
 const db = new Database(dbPath);
 
 try {
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS _migrations(name TEXT PRIMARY KEY, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)"
+  );
+
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith('.sql'))
     .sort();
 
-  for (const file of files) {
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
-    const statements = sql
-      .split(/;\s*(?:\n|$)/)
-      .map((s) => s.trim())
-      .filter(Boolean);
+  let inTx = false;
+  try {
+    db.exec('BEGIN');
+    inTx = true;
 
-    try {
-      db.exec('BEGIN');
+    for (const file of files) {
+      const applied = db
+        .prepare('SELECT 1 FROM _migrations WHERE name = ?')
+        .get(file);
+      if (applied) {
+        console.info(`[migrate] Skipping already applied ${file}`);
+        continue;
+      }
+
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      const statements = sql
+        .split(/;\s*(?:\n|$)/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       for (const stmt of statements) {
         try {
           db.exec(stmt);
@@ -44,17 +59,19 @@ try {
           }
         }
       }
-      db.exec('COMMIT');
+
+      db.prepare('INSERT INTO _migrations(name) VALUES (?)').run(file);
       console.info(`[migrate] Executed ${file}`);
-    } catch (err) {
-      db.exec('ROLLBACK');
-      console.error(`[migrate] Error executing ${file}: ${err.message}`);
-      throw err;
     }
+
+    db.exec('COMMIT');
+    inTx = false;
+    console.info('[migrate] All migrations executed successfully');
+  } catch (err) {
+    if (inTx) db.exec('ROLLBACK');
+    console.error(`[migrate] Migration process failed: ${err.message}`);
+    throw err;
   }
-  console.info('[migrate] All migrations executed successfully');
-} catch (err) {
-  console.error('[migrate] Migration process failed');
 } finally {
   db.close();
 }
