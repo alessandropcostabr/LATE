@@ -4,6 +4,8 @@ const express = require('express');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const path = require('path');
 const fs = require('fs');
 // Compression middleware
@@ -50,8 +52,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc:  ["'self'"],
-      styleSrc:   ["'self'", "https://fonts.googleapis.com"],
+      scriptSrc:  ["'self'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
+      styleSrc:   ["'self'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
       fontSrc:    ["'self'", "https://fonts.gstatic.com"],
       imgSrc:     ["'self'", "data:", "https:"],
       connectSrc: ["'self'"],
@@ -61,19 +63,19 @@ app.use(helmet({
   }
 }));
 
-if (process.env.NODE_ENV === 'production') {
-  if (validateOrigin) app.use(validateOrigin);
-  const limiter = rateLimit({
-    validate: true,
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100,
-    message: {
-      success: false,
-      message: 'Muitas requisições. Tente novamente em 15 minutos.'
-    }
-  });
-  app.use('/api/', limiter);
+if (process.env.NODE_ENV === 'production' && validateOrigin) {
+  app.use(validateOrigin);
 }
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 20,
+  message: {
+    success: false,
+    message: 'Muitas requisições. Tente novamente em 15 minutos.'
+  }
+});
+app.use('/login', loginLimiter);
 
 // Servir assets estáticos e logging
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
@@ -83,6 +85,24 @@ app.use(compression());
 app.use(corsMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use(
+  session({
+    store: new SQLiteStore({
+      db: 'sessions.sqlite',
+      dir: path.join(__dirname, 'data')
+    }),
+    name: 'late.sid',
+    secret: process.env.SESSION_SECRET || 'late_secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,
+      httpOnly: true,
+      sameSite: 'lax'
+    }
+  })
+);
 
 // Cache-control
 app.use((req, res, next) => {
