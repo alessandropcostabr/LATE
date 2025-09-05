@@ -1,6 +1,6 @@
 const { body, query, param, validationResult } = require('express-validator');
 const ALLOWED_STATUS    = ['pendente','em_andamento','resolvido'];
-const ALLOWED_ORDER_BY  = ['created_at','updated_at','data_ligacao','situacao'];
+const ALLOWED_ORDER_BY  = ['created_at','updated_at','data_ligacao','situacao','criado_em'];
 const ALLOWED_ORDER_DIR = ['ASC','DESC'];
 
 // Middleware para verificar erros de validação
