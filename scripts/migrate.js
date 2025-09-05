@@ -21,9 +21,29 @@ try {
 
   for (const file of files) {
     const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+    const statements = sql
+      .split(/;\s*(?:\n|$)/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     try {
       db.exec('BEGIN');
-      db.exec(sql);
+      for (const stmt of statements) {
+        try {
+          db.exec(stmt);
+        } catch (err) {
+          const msg = err.message.toLowerCase();
+          if (
+            msg.includes('duplicate column name') ||
+            msg.includes('no such column') ||
+            msg.includes('already exists')
+          ) {
+            console.warn(`[migrate] Skipping statement in ${file}: ${err.message}`);
+          } else {
+            throw err;
+          }
+        }
+      }
       db.exec('COMMIT');
       console.info(`[migrate] Executed ${file}`);
     } catch (err) {
