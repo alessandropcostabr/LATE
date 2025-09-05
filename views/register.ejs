@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="container mt-5" style="max-width:500px;">
+    <h1 class="mb-4">Registrar Usuário</h1>
+    <form method="POST" action="/register">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="mb-3">
+        <label for="username" class="form-label">Usuário</label>
+        <input type="text" class="form-control" id="username" name="username">
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Senha</label>
+        <input type="password" class="form-control" id="password" name="password">
+      </div>
+      <div class="mb-3">
+        <label for="role" class="form-label">Papel</label>
+        <select class="form-select" id="role" name="role">
+          <option value="USER">USER</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+  </main>
+
+  <%- include('partials/footer') %>

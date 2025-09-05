@@ -10,12 +10,14 @@ CREATE TABLE IF NOT EXISTS recados (
     assunto TEXT NOT NULL,
     situacao VARCHAR(20) DEFAULT 'pendente' CHECK (situacao IN ('pendente','em_andamento','resolvido')),
     observacoes TEXT,
-    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_by INTEGER REFERENCES users(id),
+    updated_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_data_ligacao ON recados(data_ligacao);
 CREATE INDEX IF NOT EXISTS idx_destinatario ON recados(destinatario);
 CREATE INDEX IF NOT EXISTS idx_situacao ON recados(situacao);
 CREATE INDEX IF NOT EXISTS idx_remetente_nome ON recados(remetente_nome);
-CREATE INDEX IF NOT EXISTS idx_criado_em ON recados(criado_em);
+CREATE INDEX IF NOT EXISTS idx_created_at ON recados(created_at);

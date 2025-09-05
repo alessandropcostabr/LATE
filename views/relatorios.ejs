@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LATE - Relatórios</title>
-  <link rel="stylesheet" href="<%= cssFile %>" />
-</head>
+<%- include('partials/header') %>
 <body>
-  <%- include('partials/header') %>
+  <%- include('partials/navbar') %>
 
   <main class="main" role="main">
     <div class="container">
@@ -27,97 +20,34 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-header">
           <h2 class="card-title">Recados por Destinatário</h2>
         </div>
         <div class="card-body">
-          <table class="table" aria-labelledby="relPorDestTitle">
-            <caption id="relPorDestTitle" class="sr-only">Recados por Destinatário</caption>
-            <thead>
-              <tr>
-                <th scope="col">Destinatário</th>
-                <th scope="col">Total</th>
-                <th scope="col">Pendente</th>
-                <th scope="col">Em Andamento</th>
-                <th scope="col">Resolvido</th>
-              </tr>
-            </thead>
-            <tbody id="relPorDestinatario"></tbody>
-          </table>
+          <canvas id="graficoPorDestinatario" aria-label="Gráfico de recados por destinatário"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Recados por Status</h2>
+        </div>
+        <div class="card-body">
+          <canvas id="graficoPorStatus" aria-label="Gráfico de recados por status"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Recados por Mês</h2>
+        </div>
+        <div class="card-body">
+          <canvas id="graficoPorMes" aria-label="Gráfico de recados por mês"></canvas>
         </div>
       </div>
 
     </div>
   </main>
 
-  <script src="/js/toast.js" defer></script>
-  <script src="/js/utils.js" defer></script>
-  <script src="/js/app.js" defer></script>
-  <script src="/js/navbar.js" defer></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      const totalEl = document.getElementById('relTotal');
-      const pendEl  = document.getElementById('relPendente');
-      const andEl   = document.getElementById('relAndamento');
-      const resEl   = document.getElementById('relResolvido');
-      const tbody   = document.getElementById('relPorDestinatario');
-
-      // Estatísticas gerais
-      try {
-        const stats = (await API.getStats()).data;
-        totalEl.textContent = stats.total;
-        pendEl.textContent  = stats.pendente;
-        andEl.textContent   = stats.em_andamento;
-        resEl.textContent   = stats.resolvido;
-      } catch (e) {
-        console.error('Erro ao carregar estatísticas:', e);
-        totalEl.textContent = pendEl.textContent =
-          andEl.textContent = resEl.textContent = 'Não disponível';
-      }
-
-      // Estatísticas por destinatário
-      try {
-        const porDest = (await API.getStatsByDestinatario()).data;
-        if (porDest.length === 0) {
-          const tr = document.createElement('tr');
-          const td = document.createElement('td');
-          td.colSpan = 5;
-          td.textContent = 'Sem dados disponíveis';
-          tr.appendChild(td);
-          tbody.appendChild(tr);
-        } else {
-          porDest.forEach(r => {
-            const tr = document.createElement('tr');
-
-            const destTd  = document.createElement('td');
-            destTd.textContent  = r.destinatario;
-            const totalTd = document.createElement('td');
-            totalTd.textContent = r.total;
-            const pendTd  = document.createElement('td');
-            pendTd.textContent  = r.pendente;
-            const andTd   = document.createElement('td');
-            andTd.textContent   = r.em_andamento;
-            const resTd   = document.createElement('td');
-            resTd.textContent   = r.resolvido;
-
-            tr.appendChild(destTd);
-            tr.appendChild(totalTd);
-            tr.appendChild(pendTd);
-            tr.appendChild(andTd);
-            tr.appendChild(resTd);
-
-            tbody.appendChild(tr);
-          });
-        }
-      } catch (e) {
-        console.error('Erro ao carregar estatísticas por destinatário:', e);
-        tbody.innerHTML = '<tr><td colspan="5">Não foi possível carregar dados.</td></tr>';
-      }
-    });
-  </script>
-
-  <script src="/js/relatorios.js" defer></script>
-</body>
-</html>
+  <%- include('partials/footer', { scripts: ['/js/relatorios.js'] }) %>
