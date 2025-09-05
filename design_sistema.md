@@ -25,8 +25,10 @@ CREATE TABLE recados (
     assunto TEXT NOT NULL,
     situacao ENUM('pendente', 'em_andamento', 'resolvido') DEFAULT 'pendente',
     observacoes TEXT,
-    criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_by INTEGER REFERENCES users(id),
+    updated_by INTEGER REFERENCES users(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -36,6 +38,7 @@ CREATE INDEX idx_data_ligacao ON recados(data_ligacao);
 CREATE INDEX idx_destinatario ON recados(destinatario);
 CREATE INDEX idx_situacao ON recados(situacao);
 CREATE INDEX idx_remetente_nome ON recados(remetente_nome);
+CREATE INDEX idx_created_at ON recados(created_at);
 ```
 
 ## API Endpoints

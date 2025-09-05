@@ -177,6 +177,30 @@ router.get('/stats/por-destinatario', wrap((_, res) => {
 }));
 
 // ───────────────────────────────────────────────────────────
+// GET /api/stats/por-mes – estatísticas agrupadas por mês
+// ───────────────────────────────────────────────────────────
+router.get('/stats/por-mes', wrap((_, res) => {
+  const data = RecadoModel.reportByMonth();
+  res.json({ success: true, data });
+}));
+
+// ───────────────────────────────────────────────────────────
+// GET /api/stats/por-status – estatísticas agrupadas por status
+// ───────────────────────────────────────────────────────────
+router.get('/stats/por-status', wrap((_, res) => {
+  const data = RecadoModel.reportByStatus();
+  res.json({ success: true, data });
+}));
+
+// ───────────────────────────────────────────────────────────
+// GET /api/stats/por-responsavel – estatísticas por usuário responsável
+// ───────────────────────────────────────────────────────────
+router.get('/stats/por-responsavel', wrap((_, res) => {
+  const data = RecadoModel.reportByResponsavel();
+  res.json({ success: true, data });
+}));
+
+// ───────────────────────────────────────────────────────────
 // GET /api/recados-recentes – últimos N recados (default 10)
 // ───────────────────────────────────────────────────────────
 router.get('/recados-recentes', wrap((req, res) => {
