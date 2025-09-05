@@ -3,8 +3,11 @@ const argon2 = require('argon2');
 const UserModel = require('../models/user');
 
 exports.list = (req, res) => {
-  const users = UserModel.findAll();
-  res.json({ success: true, data: users });
+  const page  = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 10;
+  const q     = req.query.q || '';
+  const result = UserModel.list({ q, page, limit });
+  res.json({ success: true, data: result.data, pagination: result.pagination });
 };
 
 exports.create = async (req, res) => {
@@ -12,9 +15,9 @@ exports.create = async (req, res) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
   }
-  const { username, password, role } = req.body;
+  const { name, email, password, role } = req.body;
   const hash = await argon2.hash(password, { type: argon2.argon2id });
-  const user = UserModel.create({ username, password: hash, role });
+  const user = UserModel.create({ name, email, password_hash: hash, role });
   res.status(201).json({ success: true, data: user });
 };
 

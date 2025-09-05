@@ -136,7 +136,7 @@ remetente_telefone, remetente_email, horario_retorno
 
 assunto, situacao, observacoes
 
-criado_em, atualizado_em
+created_at, updated_at, created_by, updated_by
 
 Índices criados para performance:
 
