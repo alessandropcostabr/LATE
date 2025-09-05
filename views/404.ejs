@@ -1,13 +1,6 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LATE - Página não encontrada</title>
-  <link rel="stylesheet" href="<%= cssFile %>">
-</head>
+<%- include('partials/header') %>
 <body>
-  <%- include('partials/header') %>
+  <%- include('partials/navbar') %>
 
   <main class="main" role="main">
     <div class="container">
@@ -27,10 +20,4 @@
     </div>
   </main>
 
-  <script src="/js/toast.js" defer></script>
-  <script src="/js/utils.js" defer></script>
-  <script src="/js/app.js" defer></script>
-  <script src="/js/navbar.js" defer></script>
-
-</body>
-</html>
+  <%- include('partials/footer') %>

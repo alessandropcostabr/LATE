@@ -1,24 +1,24 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title><%= title %></title>
-</head>
+<%- include('partials/header') %>
 <body>
-  <h1>Login</h1>
-  <form method="POST" action="/login">
-    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div>
-      <label>Usuário</label>
-      <input type="text" name="username" />
-    </div>
-    <div>
-      <label>Senha</label>
-      <input type="password" name="password" />
-    </div>
-    <button type="submit">Entrar</button>
-  </form>
-  <% if (typeof error !== 'undefined') { %>
-    <p><%= error %></p>
-  <% } %>
-</body>
-</html>
+  <%- include('partials/navbar') %>
+
+  <main class="container mt-5" style="max-width:500px;">
+    <h1 class="mb-4">Login</h1>
+    <form method="POST" action="/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="mb-3">
+        <label for="username" class="form-label">Usuário</label>
+        <input type="text" class="form-control" id="username" name="username">
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Senha</label>
+        <input type="password" class="form-control" id="password" name="password">
+      </div>
+      <% if (typeof error !== 'undefined') { %>
+        <div class="alert alert-danger"><%= error %></div>
+      <% } %>
+      <button type="submit" class="btn btn-primary">Entrar</button>
+    </form>
+  </main>
+
+  <%- include('partials/footer') %>

@@ -1,98 +1,85 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LATE - Dashboard</title>
-    <link rel="stylesheet" href="<%= cssFile %>">
-</head>
+<%- include('partials/header') %>
 <body>
-    <%- include('partials/header') %>
+  <%- include('partials/navbar') %>
 
-    <main class="main" role="main">
-        <div class="container">
-            <!-- Cabeçalho da página -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <div>
-                    <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Dashboard</h1>
-                    <p style="color: var(--text-secondary);">Visão geral dos recados</p>
-                </div>
-                <a href="/novo-recado" class="btn btn-primary btn-lg">
-                    <span aria-hidden="true">➕</span> Novo Recado
-                </a>
+  <main class="main" role="main">
+    <div class="container">
+        <!-- Cabeçalho da página -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <div>
+                <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Dashboard</h1>
+                <p style="color: var(--text-secondary);">Visão geral dos recados</p>
             </div>
+            <a href="/novo-recado" class="btn btn-primary btn-lg">
+                <span aria-hidden="true">➕</span> Novo Recado
+            </a>
+        </div>
 
-            <!-- Estatísticas Gerais -->
-            <div class="stats-grid" id="statsGrid">
-                <div class="stat-card total">
-                    <div class="stat-number" id="totalRecados">-</div>
-                    <div class="stat-label">Total de Recados</div>
-                </div>
-                <div class="stat-card pendente">
-                    <div class="stat-number" id="totalPendentes">-</div>
-                    <div class="stat-label">Pendentes</div>
-                </div>
-                <div class="stat-card andamento">
-                    <div class="stat-number" id="totalAndamento">-</div>
-                    <div class="stat-label">Em Andamento</div>
-                </div>
-                <div class="stat-card resolvido">
-                    <div class="stat-number" id="totalResolvidos">-</div>
-                    <div class="stat-label">Resolvidos</div>
+        <!-- Estatísticas Gerais -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card total">
+                <div class="stat-number" id="totalRecados">-</div>
+                <div class="stat-label">Total de Recados</div>
+            </div>
+            <div class="stat-card pendente">
+                <div class="stat-number" id="totalPendentes">-</div>
+                <div class="stat-label">Pendentes</div>
+            </div>
+            <div class="stat-card andamento">
+                <div class="stat-number" id="totalAndamento">-</div>
+                <div class="stat-label">Em Andamento</div>
+            </div>
+            <div class="stat-card resolvido">
+                <div class="stat-number" id="totalResolvidos">-</div>
+                <div class="stat-label">Resolvidos</div>
+            </div>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h2 class="card-title">Filtros Rápidos</h2>
+                <p class="card-subtitle">Acesso rápido aos recados mais importantes</p>
+            </div>
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <a href="/recados?situacao=pendente" class="btn btn-warning">
+                        <span aria-hidden="true">⏳</span> Pendentes
+                    </a>
+                    <a href="/recados?situacao=em_andamento" class="btn btn-primary">
+                        <span aria-hidden="true">🔄</span> Em Andamento
+                    </a>
+                    <a href="/recados?data_inicio=&data_fim=" class="btn btn-outline" id="btnHoje">
+                        <span aria-hidden="true">📅</span> Hoje
+                    </a>
+                    <a href="/recados?data_inicio=&data_fim=" class="btn btn-outline" id="btnSemana">
+                        <span aria-hidden="true">📊</span> Esta Semana
+                    </a>
                 </div>
             </div>
+        </div>
 
-            <!-- Filtros Rápidos -->
-            <div class="card" style="margin-bottom: 2rem;">
-                <div class="card-header">
-                    <h2 class="card-title">Filtros Rápidos</h2>
-                    <p class="card-subtitle">Acesso rápido aos recados mais importantes</p>
-                </div>
-                <div class="card-body">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                        <a href="/recados?situacao=pendente" class="btn btn-warning">
-                            <span aria-hidden="true">⏳</span> Pendentes
-                        </a>
-                        <a href="/recados?situacao=em_andamento" class="btn btn-primary">
-                            <span aria-hidden="true">🔄</span> Em Andamento
-                        </a>
-                        <a href="/recados?data_inicio=&data_fim=" class="btn btn-outline" id="btnHoje">
-                            <span aria-hidden="true">📅</span> Hoje
-                        </a>
-                        <a href="/recados?data_inicio=&data_fim=" class="btn btn-outline" id="btnSemana">
-                            <span aria-hidden="true">📊</span> Esta Semana
-                        </a>
+        <!-- Recados Recentes -->
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 class="card-title">Recados Recentes</h2>
+                        <p class="card-subtitle">Últimos 10 recados registrados</p>
                     </div>
+                    <a href="/recados" class="btn btn-outline btn-sm">Ver Todos</a>
                 </div>
             </div>
-
-            <!-- Recados Recentes -->
-            <div class="card">
-                <div class="card-header">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h2 class="card-title">Recados Recentes</h2>
-                            <p class="card-subtitle">Últimos 10 recados registrados</p>
-                        </div>
-                        <a href="/recados" class="btn btn-outline btn-sm">Ver Todos</a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="recadosRecentes" role="region" aria-live="polite" aria-label="Recados Recentes">
-                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                            <div class="loading" style="margin: 0 auto 1rem;"></div>
-                            Carregando recados...
-                        </div>
+            <div class="card-body">
+                <div id="recadosRecentes" role="region" aria-live="polite" aria-label="Recados Recentes">
+                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                        <div class="loading" style="margin: 0 auto 1rem;"></div>
+                        Carregando recados...
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
+  </main>
 
-    <script src="/js/toast.js" defer></script>
-    <script src="/js/utils.js" defer></script>
-    <script src="/js/app.js" defer></script>
-    <script src="/js/navbar.js" defer></script>
-
-</body>
-</html>
+  <%- include('partials/footer') %>

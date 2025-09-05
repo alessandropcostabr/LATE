@@ -109,6 +109,12 @@ app.use(
   })
 );
 
+// Disponibiliza o usuário logado nas views
+app.use((req, res, next) => {
+  res.locals.user = req.session.user;
+  next();
+});
+
 // Cache-control
 app.use((req, res, next) => {
   if (req.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/)) {

@@ -11,7 +11,7 @@ function requireRole(...roles) {
       if (roles.length === 0 || roles.includes(req.session.user.role)) {
         return next();
       }
-      return res.status(403).send('Forbidden');
+      return res.status(403).render('403', { title: 'Acesso negado' });
     }
     return res.redirect('/login');
   };
