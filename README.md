@@ -88,19 +88,20 @@ Para proteger o serviço contra abuso, duas políticas de limite de requisiçõe
 
 ### Verificando os limites
 
-Cada resposta dessas rotas inclui cabeçalhos que informam seu status dentro da janela:
+As respostas dessas rotas retornam cabeçalhos `RateLimit-*` que indicam seu status na janela atual:
 
-- `X-RateLimit-Limit` – total de requisições permitidas na janela.
-- `X-RateLimit-Remaining` – quantas requisições restam.
-- `Retry-After` – presente ao atingir o limite, indica em quantos segundos tentar novamente.
+- `RateLimit-Limit` – total de requisições permitidas na janela.
+- `RateLimit-Remaining` – quantas requisições restam.
+- `RateLimit-Reset` – em quantos segundos o limite será reiniciado.
+- `Retry-After` – presente ao atingir o limite, indica quando tentar novamente.
 
-Exemplo:
+Exemplo de inspeção:
 
 ```bash
 curl -i https://late.miahchat.com/api/ping
 ```
 
-Confira os valores dos cabeçalhos acima para confirmar a aplicação dos limites.
+O parâmetro `-i` exibe os cabeçalhos para que você confira os valores de `RateLimit-*`.
 
 ## 🚀 Instalação e Execução
 
