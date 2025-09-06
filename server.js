@@ -47,7 +47,9 @@ app.set('views', path.join(__dirname, 'views'));
 
 // ─── Segurança, Limites e Middleware ─────────────────────────────────────────
 app.use(corsMw);
-app.options('*', corsMw);
+// Express 5 with path-to-regexp v7 cannot parse a bare '*' path.
+// Use a regex to handle CORS preflight requests on any route.
+app.options(/.*/, corsMw);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
