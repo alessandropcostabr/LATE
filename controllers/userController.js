@@ -17,8 +17,20 @@ exports.create = async (req, res) => {
   }
   const { name, email, password, role } = req.body;
   const hash = await argon2.hash(password, { type: argon2.argon2id });
-  const user = UserModel.create({ name, email, password_hash: hash, role });
-  res.status(201).json({ success: true, data: user });
+  try {
+    const user = UserModel.create({ name, email, password_hash: hash, role });
+    return res.status(201).json({ success: true, data: user });
+  } catch (err) {
+    if (
+      err.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+      (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('users.email'))
+    ) {
+      return res
+        .status(409)
+        .json({ success: false, message: 'E-mail já cadastrado' });
+    }
+    throw err;
+  }
 };
 
 exports.setActive = (req, res) => {
