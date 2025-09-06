@@ -8,11 +8,13 @@ npm-debug.log*
 
 # SQLite database e backups
 data/*
-!data/migrations/
-!data/migrations/*.sql
-!data/sessions.sqlite
+data/migrations/
+data/migrations/*.sql
+data/sessions.sqlite
 backup/
 *.db
+data/sessions.sqlite-shm
+data/sessions.sqlite-wal
 
 # Arquivos temporários
 *.tmp
@@ -78,3 +80,8 @@ logs/
 
 backup/
 *.bak
+
+# session store
+data/sessions.sqlite
+data/sessions.sqlite-shm
+data/sessions.sqlite-wal
