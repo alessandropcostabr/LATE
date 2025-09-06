@@ -114,7 +114,7 @@ Confira os valores dos cabeçalhos acima para confirmar a aplicação dos limite
 git clone <repo>
 cd late
 npm install
-# Defina os domínios permitidos no CORS
+# Defina os domínios permitidos no CORS via CORS_ORIGINS
 export CORS_ORIGINS=http://localhost:3000,http://localhost:8080
 # Opcional: quantidade de proxies de confiança (quando atrás de proxy reverso)
 export TRUST_PROXY=1
