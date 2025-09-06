@@ -85,3 +85,7 @@ backup/
 data/sessions.sqlite
 data/sessions.sqlite-shm
 data/sessions.sqlite-wal
+
+# local db & backups
+data/recados.db
+backups/
