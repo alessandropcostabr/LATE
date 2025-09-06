@@ -3,7 +3,14 @@ const argon2 = require('argon2');
 const UserModel = require('../models/user');
 
 exports.showLogin = (req, res) => {
-  res.render('login', { title: 'Login', csrfToken: req.csrfToken() });
+  res.render('login', {
+    title: 'Login',
+    csrfToken: req.csrfToken(),
+    scripts: [
+      'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js',
+      '/js/login.js'
+    ]
+  });
 };
 
 exports.login = async (req, res) => {
