@@ -111,6 +111,8 @@ pm2 start ecosystem.config.js
 
 Se você quiser usar uma porta padrão (80/443):
 
+Os cabeçalhos CORS devem ser tratados pela aplicação Node.js. No Nginx, apenas encaminhe o cabeçalho `Origin` original e não adicione `Access-Control-Allow-*`.
+
 ```nginx
 # /etc/nginx/sites-available/late
 server {
@@ -123,6 +125,7 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
+        proxy_set_header Origin $http_origin;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
