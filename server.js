@@ -1,6 +1,7 @@
 // server.js
 
 const express = require('express');
+const corsMw = require('./middleware/cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
@@ -12,10 +13,9 @@ const fs = require('fs');
 const compression = require('compression');
 
 // Importar middlewares e rotas
-const dbManager      = require('./config/database');
-const corsMiddleware = require('./middleware/cors');
-const apiRoutes      = require('./routes/api');
-const webRoutes      = require('./routes/web');
+const dbManager = require('./config/database');
+const apiRoutes = require('./routes/api');
+const webRoutes = require('./routes/web');
 
 // Middleware opcional para validar origem
 let validateOrigin;
@@ -26,15 +26,9 @@ try {
 }
 
 // Inicializar aplicação Express
-const app  = express();
+const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
-
-// Configure trust proxy before middleware using client IP
-// Allow override via TRUST_PROXY env var, defaulting to 1
-const trustProxy = process.env.TRUST_PROXY
-  ? parseInt(process.env.TRUST_PROXY, 10)
-  : 1;
-app.set('trust proxy', trustProxy);
 
 // Define o caminho do CSS baseado no ambiente
 app.locals.cssFile =
@@ -48,6 +42,8 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // ─── Segurança, Limites e Middleware ─────────────────────────────────────────
+app.use(corsMw);
+app.options('*', corsMw);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -87,7 +83,6 @@ app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use(morgan('combined'));
 // Enable gzip compression
 app.use(compression());
-app.use(corsMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
