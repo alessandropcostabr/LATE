@@ -27,7 +27,10 @@ try {
 
 // Inicializar aplicação Express
 const app = express();
-app.set('trust proxy', 1);
+// Trust first proxy when running behind a reverse proxy
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 const PORT = process.env.PORT || 3000;
 
 // Define o caminho do CSS baseado no ambiente
@@ -99,7 +102,7 @@ app.use(
     cookie: {
       secure: true,
       httpOnly: true,
-      sameSite: 'lax'
+      sameSite: process.env.SAMESITE || 'lax'
     }
   })
 );
