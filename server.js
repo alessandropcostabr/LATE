@@ -26,12 +26,14 @@ try {
 }
 
 // Inicializar aplicação Express
-const trust = Number(process.env.TRUST_PROXY || 0);
 const app = express();
-// Configure trusted proxies when running behind a reverse proxy
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', trust);
-}
+
+// Em ambiente atrás de NGINX, padrão seguro = 1 (pode sobrescrever via TRUST_PROXY)
+const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? 1);
+app.set('trust proxy', TRUST_PROXY);
+
+console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV}`);
+
 const PORT = process.env.PORT || 3000;
 
 // Define o caminho do CSS baseado no ambiente
@@ -47,8 +49,10 @@ app.set('views', path.join(__dirname, 'views'));
 
 // ─── Segurança, Limites e Middleware ─────────────────────────────────────────
 app.use(corsMw);
+
 // Express 5 with path-to-regexp v7 cannot parse a bare '*' path.
 // Use a regex to handle CORS preflight requests on any route.
+
 app.options(/.*/, corsMw);
 app.use(helmet({
   contentSecurityPolicy: {
