@@ -26,10 +26,11 @@ try {
 }
 
 // Inicializar aplicação Express
+const trust = Number(process.env.TRUST_PROXY || 0);
 const app = express();
-// Trust first proxy when running behind a reverse proxy
+// Configure trusted proxies when running behind a reverse proxy
 if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
+  app.set('trust proxy', trust);
 }
 const PORT = process.env.PORT || 3000;
 
