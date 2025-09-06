@@ -115,6 +115,7 @@ git clone <repo>
 cd late
 npm install
 # Defina os domínios permitidos no CORS via CORS_ORIGINS
+# (ALLOWED_ORIGINS ainda é suportada, mas será descontinuada futuramente)
 export CORS_ORIGINS=http://localhost:3000,http://localhost:8080
 # Opcional: quantidade de proxies de confiança (quando atrás de proxy reverso)
 export TRUST_PROXY=1
