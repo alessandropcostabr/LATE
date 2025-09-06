@@ -115,6 +115,12 @@ curl -i -X OPTIONS https://late.miahchat.com/login \
   -H "Access-Control-Request-Headers: Content-Type"
 ```
 
+Headers esperados:
+
+- `Access-Control-Allow-Origin: https://late.miahchat.com`
+- `Access-Control-Allow-Credentials: true`
+- `Set-Cookie:` *(nenhum)*
+
 ### Login
 
 ```bash
@@ -125,13 +131,25 @@ curl -i -X POST https://late.miahchat.com/login \
   -d '{"username":"usuario","password":"senha"}'
 ```
 
-### Requisição autenticada
+Headers esperados:
+
+- `Access-Control-Allow-Origin: https://late.miahchat.com`
+- `Access-Control-Allow-Credentials: true`
+- `Set-Cookie: session=<id>; Path=/; HttpOnly; SameSite=None; Secure`
+
+### Ping autenticado
 
 ```bash
-curl -i https://late.miahchat.com/ \
+curl -i https://late.miahchat.com/api/ping \
   -H "Origin: https://late.miahchat.com" \
   -b cookies.txt
 ```
+
+Headers esperados:
+
+- `Access-Control-Allow-Origin: https://late.miahchat.com`
+- `Access-Control-Allow-Credentials: true`
+- `Set-Cookie:` *(nenhum, a menos que a sessão seja renovada)*
 
 🔧 API REST
 Principais endpoints:
