@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest --runInBand --coverage",
     "lighthouse": "lighthouse http://localhost:3000 --output html --output json --output-path ./lighthouse-reports/report",
-    "build:css": "postcss public/css/*.css --dir public/css",
+    "build:css": "postcss public/css/style.css -o public/css/style.min.css",
     "build": "npm run build:css"
   },
   "keywords": [
