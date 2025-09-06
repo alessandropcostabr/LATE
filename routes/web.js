@@ -14,7 +14,7 @@ router.get('/login', csrfProtection, authController.showLogin);
 router.post(
   '/login',
   csrfProtection,
-  body('username').notEmpty(),
+  body('email').isEmail(),
   body('password').notEmpty(),
   authController.login
 );

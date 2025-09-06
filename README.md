@@ -151,7 +151,7 @@ curl -i -X POST https://late.miahchat.com/login \
   -H "Origin: https://late.miahchat.com" \
   -H "Content-Type: application/json" \
   -c cookies.txt \
-  -d '{"username":"usuario","password":"senha"}'
+  -d '{"email":"usuario@example.com","password":"senha"}'
 ```
 
 Headers esperados:
