@@ -72,13 +72,14 @@ const loginLimiter = rateLimit({
   message: {
     success: false,
     message: 'Muitas requisições. Tente novamente em 15 minutos.'
-  }
+  },
+  skip: req => req.method === 'OPTIONS'
 });
-app.use('/login', loginLimiter);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100
+  max: 100,
+  skip: req => req.method === 'OPTIONS'
 });
 
 // Servir assets estáticos e logging
@@ -246,6 +247,7 @@ app.get('/js/toast.js', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Rotas ───────────────────────────────────────────────────────────────────
+app.use('/login', loginLimiter);
 app.use('/api', apiLimiter);
 app.use('/api', apiRoutes);
 app.use('/',     webRoutes);
