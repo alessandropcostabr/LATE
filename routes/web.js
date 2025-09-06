@@ -35,10 +35,11 @@ router.post(
   requireAuth,
   requireRole('ADMIN'),
   csrfProtection,
-  body('username').notEmpty(),
+  body('name').notEmpty(),
+  body('email').isEmail(),
   body('password').isLength({ min: 6 }),
   body('role').optional().isIn(['ADMIN', 'USER']),
-  userController.create
+  (req, res) => userController.create(req, res)
 );
 
 // Dashboard
