@@ -116,8 +116,12 @@ cd late
 npm install
 # Defina os domínios permitidos no CORS
 export CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+# Opcional: quantidade de proxies de confiança (quando atrás de proxy reverso)
+export TRUST_PROXY=1
 npm start
 Acesse: http://localhost:3000 ou http://<SEU-IP>:3000
+
+`TRUST_PROXY` informa ao Express quantos proxies existem à frente da aplicação e só é aplicado quando `NODE_ENV=production`.
 
 Produção com PM2
 
