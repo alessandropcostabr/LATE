@@ -5,8 +5,10 @@ const defaultOrigins = [
   'https://late.miahchat.com'
 ];
 
-const allowedOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
+const originsEnv = process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS;
+
+const allowedOrigins = originsEnv
+  ? originsEnv.split(',').map(o => o.trim()).filter(Boolean)
   : defaultOrigins;
 
 module.exports = { allowedOrigins };
