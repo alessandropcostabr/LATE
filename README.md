@@ -92,7 +92,7 @@ git clone <repo>
 cd late
 npm install
 # Defina os domínios permitidos no CORS
-export ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+export CORS_ORIGINS=http://localhost:3000,http://localhost:8080
 npm start
 Acesse: http://localhost:3000 ou http://<SEU-IP>:3000
 
@@ -101,6 +101,38 @@ Produção com PM2
 pm2 start server.js --name "late"
 pm2 save
 pm2 startup
+
+## 🔐 Auth + CORS
+
+Exemplos de requisições utilizando CORS e autenticação de sessão:
+
+### Preflight
+
+```bash
+curl -i -X OPTIONS https://late.miahchat.com/login \
+  -H "Origin: https://late.miahchat.com" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: Content-Type"
+```
+
+### Login
+
+```bash
+curl -i -X POST https://late.miahchat.com/login \
+  -H "Origin: https://late.miahchat.com" \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{"username":"usuario","password":"senha"}'
+```
+
+### Requisição autenticada
+
+```bash
+curl -i https://late.miahchat.com/ \
+  -H "Origin: https://late.miahchat.com" \
+  -b cookies.txt
+```
+
 🔧 API REST
 Principais endpoints:
 
