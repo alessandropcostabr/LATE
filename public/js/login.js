@@ -1,5 +1,5 @@
 // public/js/login.js
-// Handles login submission via fetch and exposes an axios helper.
+// Handles login submission via fetch using email and password and exposes an axios helper.
 
 (function() {
   document.addEventListener('DOMContentLoaded', () => {
@@ -8,7 +8,12 @@
 
     form.addEventListener('submit', async event => {
       event.preventDefault();
-      const data = Object.fromEntries(new FormData(form));
+      const formData = Object.fromEntries(new FormData(form));
+      const data = {
+        email: formData.email,
+        password: formData.password,
+        _csrf: formData._csrf
+      };
 
       try {
         const response = await fetch('/login', {
@@ -41,8 +46,8 @@
   });
 
   // Axios helper with withCredentials
-  window.loginWithAxios = function(data) {
-    return axios.post('/login', data, { withCredentials: true });
+  window.loginWithAxios = function({ email, password, _csrf }) {
+    return axios.post('/login', { email, password, _csrf }, { withCredentials: true });
   };
 })();
 
