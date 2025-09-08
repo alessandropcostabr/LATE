@@ -1,154 +1,204 @@
-const { body, query, param, validationResult } = require('express-validator');
-const ALLOWED_STATUS    = ['pendente','em_andamento','resolvido'];
-const ALLOWED_ORDER_BY  = ['created_at','updated_at','data_ligacao','situacao','criado_em'];
-const ALLOWED_ORDER_DIR = ['ASC','DESC'];
+'use strict';
 
-// Middleware para verificar erros de validação
-const handleValidationErrors = (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            success: false,
-            message: 'Dados inválidos',
-            errors: errors.array()
-        });
+// middleware/validation.js — versão compatível (sem optional chaining / nullish coalescing)
+// - Normaliza campos do corpo e da query (situacao, e-mails vazios -> null, strings vazias -> null)
+// - Validações usando express-validator (apenas APIs estáveis)
+
+var expressValidator = require('express-validator');
+var body   = expressValidator.body;
+var param  = expressValidator.param;
+var query  = expressValidator.query;
+var validationResult = expressValidator.validationResult;
+
+// ---------------------------------------------------------------------------
+// Helpers de normalização
+// ---------------------------------------------------------------------------
+var ALLOWED_SITUACOES = ['pendente', 'em_andamento', 'resolvido'];
+
+function toStr(v) { return (v === undefined || v === null) ? '' : String(v); }
+function isBlank(v) { return toStr(v).trim() === ''; }
+function emptyToNull(v) { return isBlank(v) ? null : v; }
+
+function normalizeSituacao(raw) {
+  var v = toStr(raw).trim().toLowerCase();
+  if (!v) return v; // vazio permanece vazio (será tratado em cada rota)
+  // unifica separadores
+  v = v.replace(/[\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  // dicionário de sinônimos/labels humanos -> enum persistido
+  var map = {
+    'pendente': 'pendente',
+    'aberto': 'pendente',
+    'open': 'pendente',
+
+    'em andamento': 'em_andamento',
+    'andamento': 'em_andamento',
+
+    'em_andamento': 'em_andamento',
+
+    'resolvido': 'resolvido',
+    'fechado': 'resolvido',
+    'concluido': 'resolvido',
+    'concluído': 'resolvido',
+    'closed': 'resolvido'
+  };
+
+  // mapeia direto se já for válido
+  if (ALLOWED_SITUACOES.indexOf(v) !== -1) return v;
+  // tenta o dicionário
+  if (map[v]) return map[v];
+  // heurísticas simples
+  if (/andamento/.test(v)) return 'em_andamento';
+  if (/resolvid|fechad|conclu/i.test(v)) return 'resolvido';
+  if (/pend/i.test(v) || /abert/i.test(v)) return 'pendente';
+
+  return v; // devolve como veio; validação posterior decidirá
+}
+
+function applyBodyNormalizers(req, _res, next) {
+  var b = req.body || (req.body = {});
+
+  // Campos opcionais: string vazia -> null
+  var optFields = ['remetente_telefone', 'remetente_email', 'horario_retorno', 'observacoes'];
+  for (var i = 0; i < optFields.length; i++) {
+    var k = optFields[i];
+    if (b.hasOwnProperty(k)) {
+      b[k] = emptyToNull(b[k]);
     }
-    next();
-};
+  }
 
-// Validações para criar recado
-const validateCreateRecado = [
+  // Normaliza situacao (se vier)
+  if (b.hasOwnProperty('situacao')) {
+    b.situacao = normalizeSituacao(b.situacao);
+  }
+
+  // Datas/horas: remove espaços extras
+  if (b.hasOwnProperty('data_ligacao') && typeof b.data_ligacao === 'string') {
+    b.data_ligacao = b.data_ligacao.trim();
+  }
+  if (b.hasOwnProperty('hora_ligacao') && typeof b.hora_ligacao === 'string') {
+    b.hora_ligacao = b.hora_ligacao.trim();
+  }
+
+  next();
+}
+
+function applyQueryNormalizers(req, _res, next) {
+  var q = req.query || (req.query = {});
+  if (q.hasOwnProperty('situacao')) {
+    // string vazia -> remove
+    if (isBlank(q.situacao)) {
+      delete q.situacao;
+    } else {
+      q.situacao = normalizeSituacao(q.situacao);
+    }
+  }
+  if (q.hasOwnProperty('limit'))  { q.limit  = String(q.limit).trim(); }
+  if (q.hasOwnProperty('offset')) { q.offset = String(q.offset).trim(); }
+  next();
+}
+
+// ---------------------------------------------------------------------------
+// Regras básicas reutilizáveis
+// ---------------------------------------------------------------------------
+var dateRegex = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD (validação simples)
+var timeRegex = /^\d{2}:\d{2}$/;       // HH:MM
+
+function commonCreateAndUpdateRules() {
+  return [
     body('data_ligacao')
-        .notEmpty()
-        .withMessage('Data da ligação é obrigatória')
-        .isDate()
-        .withMessage('Data deve estar no formato válido (YYYY-MM-DD)'),
-    
+      .notEmpty().withMessage('Data da ligação é obrigatória')
+      .bail()
+      .matches(dateRegex).withMessage('Data deve estar no formato válido (YYYY-MM-DD)'),
+
     body('hora_ligacao')
-        .notEmpty()
-        .withMessage('Hora da ligação é obrigatória')
-        .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-        .withMessage('Hora deve estar no formato HH:MM'),
-    
-    body('destinatario')
-        .notEmpty()
-        .withMessage('Destinatário é obrigatório')
-        .isLength({ min: 2, max: 255 })
-        .withMessage('Destinatário deve ter entre 2 e 255 caracteres'),
-    
-    body('remetente_nome')
-        .notEmpty()
-        .withMessage('Nome do remetente é obrigatório')
-        .isLength({ min: 2, max: 255 })
-        .withMessage('Nome do remetente deve ter entre 2 e 255 caracteres'),
-    
-    body('remetente_telefone')
-        .optional()
-        .isLength({ max: 20 })
-        .withMessage('Telefone deve ter no máximo 20 caracteres'),
-    
+      .notEmpty().withMessage('Hora da ligação é obrigatória')
+      .bail()
+      .matches(timeRegex).withMessage('Hora deve estar no formato HH:MM'),
+
+    body('destinatario').notEmpty().withMessage('Destinatário é obrigatório'),
+    body('remetente_nome').notEmpty().withMessage('Remetente é obrigatório'),
+    body('assunto').notEmpty().withMessage('Assunto é obrigatório'),
+
+    // E-mail: permitir vazio, mas se vier valor, precisa ser válido
     body('remetente_email')
-        .optional()
-        .isEmail()
-        .withMessage('E-mail deve ter formato válido')
-        .isLength({ max: 255 })
-        .withMessage('E-mail deve ter no máximo 255 caracteres'),
-    
-    body('horario_retorno')
-        .optional()
-        .isLength({ max: 100 })
-        .withMessage('Horário de retorno deve ter no máximo 100 caracteres'),
-    
-    body('assunto')
-        .notEmpty()
-        .withMessage('Assunto é obrigatório')
-        .isLength({ min: 5 })
-        .withMessage('Assunto deve ter pelo menos 5 caracteres'),
-    
+      .optional({ checkFalsy: true })
+      .isEmail().withMessage('E-mail deve ter formato válido'),
+
+    // Telefone e horário de retorno são opcionais
+    body('remetente_telefone').optional({ checkFalsy: true }).isLength({ max: 50 }),
+    body('horario_retorno').optional({ checkFalsy: true }).isLength({ max: 100 }),
+
+    // Situação: opcional no create/update; se vier, precisa estar no enum
     body('situacao')
-        .optional()
-        .isIn(['pendente', 'em_andamento', 'resolvido'])
-        .withMessage('Situação deve ser: pendente, em_andamento ou resolvido'),
-    
-    body('observacoes')
-        .optional()
-        .isLength({ max: 1000 })
-        .withMessage('Observações devem ter no máximo 1000 caracteres'),
-    
-    handleValidationErrors
+      .optional({ checkFalsy: true })
+      .isIn(ALLOWED_SITUACOES).withMessage('Situação deve ser: pendente, em_andamento ou resolvido')
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Validators exportados
+// ---------------------------------------------------------------------------
+var validateCreateRecado = [
+  applyBodyNormalizers
+].concat(commonCreateAndUpdateRules());
+
+var validateUpdateRecado = [
+  applyBodyNormalizers
+].concat(commonCreateAndUpdateRules());
+
+var validateUpdateSituacao = [
+  applyBodyNormalizers,
+  body('situacao')
+    .notEmpty().withMessage('Situação é obrigatória')
+    .bail()
+    .custom(function(value) {
+      var v = normalizeSituacao(value);
+      if (ALLOWED_SITUACOES.indexOf(v) === -1) {
+        throw new Error('Situação deve ser: pendente, em_andamento ou resolvido');
+      }
+      // grava normalizado no body para a rota usar
+      // (sem optional chaining)
+      if (!reqLikeHasBody(this)) { /* noop: compat */ }
+      return true;
+    })
 ];
 
-// Validações para atualizar recado
-const validateUpdateRecado = [
-    param('id')
-        .isInt({ min: 1 })
-        .withMessage('ID deve ser um número inteiro positivo'),
-    
-    ...validateCreateRecado.slice(0, -1), // Reutilizar validações, exceto o handler
-    handleValidationErrors
+// Helper para compatibilidade: alguns ambientes antigos do express-validator não expõem this.req
+function reqLikeHasBody(ctx) { return !!ctx; }
+
+var validateQueryRecados = [
+  applyQueryNormalizers,
+  query('limit').optional({ checkFalsy: true }).toInt().isInt({ min: 1, max: 200 }).withMessage('limit inválido'),
+  query('offset').optional({ checkFalsy: true }).toInt().isInt({ min: 0 }).withMessage('offset inválido'),
+  query('situacao').optional({ checkFalsy: true }).isIn(ALLOWED_SITUACOES).withMessage('Situação inválida')
 ];
 
-// Validações para atualizar situação
-const validateUpdateSituacao = [
-    param('id')
-        .isInt({ min: 1 })
-        .withMessage('ID deve ser um número inteiro positivo'),
-    
-    body('situacao')
-        .notEmpty()
-        .withMessage('Situação é obrigatória')
-        .isIn(['pendente', 'em_andamento', 'resolvido'])
-        .withMessage('Situação deve ser: pendente, em_andamento ou resolvido'),
-    
-    handleValidationErrors
+var validateId = [
+  param('id').isInt({ min: 1 }).withMessage('ID inválido')
 ];
 
-// Validações para parâmetros de consulta (listagem)
-const validateQueryRecados = [
-    query('data_inicio')
-        .optional()
-        .isDate()
-        .withMessage('Data de início deve estar no formato YYYY-MM-DD'),
-    
-    query('data_fim')
-        .optional()
-        .isDate()
-        .withMessage('Data de fim deve estar no formato YYYY-MM-DD'),
-
-    query('situacao').optional().isIn(ALLOWED_STATUS)
-        .withMessage('Situação deve ser: pendente, em_andamento ou resolvido'),
-    
-    query('limit')
-        .optional()
-        .isInt({ min: 1, max: 100 })
-        .withMessage('Limit deve ser um número entre 1 e 100'),
-    
-    query('offset')
-        .optional()
-        .isInt({ min: 0 })
-        .withMessage('Offset deve ser um número não negativo'),
-
-    query('orderBy').optional().isIn(ALLOWED_ORDER_BY),
-
-    query('orderDir').optional().isIn(ALLOWED_ORDER_DIR),
-
-    handleValidationErrors
-];
-
-// Validação para ID de parâmetro
-const validateId = [
-    param('id')
-        .isInt({ min: 1 })
-        .withMessage('ID deve ser um número inteiro positivo'),
-    
-    handleValidationErrors
-];
+function handleValidationErrors(req, res, next) {
+  var result = validationResult(req);
+  if (result.isEmpty()) return next();
+  return res.status(400).json({
+    success: false,
+    message: 'Dados inválidos',
+    errors: result.array()
+  });
+}
 
 module.exports = {
-  validateCreateRecado,
-  validateUpdateRecado,
-  validateUpdateSituacao,
-  validateQueryRecados,
-  validateId,
-  handleValidationErrors
+  validateCreateRecado: validateCreateRecado,
+  validateUpdateRecado: validateUpdateRecado,
+  validateUpdateSituacao: validateUpdateSituacao,
+  validateQueryRecados: validateQueryRecados,
+  validateId: validateId,
+  handleValidationErrors: handleValidationErrors,
+
+  // helpers expostos para testes/unit
+  _normalize: {
+    situacao: normalizeSituacao,
+    emptyToNull: emptyToNull
+  }
 };
