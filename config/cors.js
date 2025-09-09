@@ -12,7 +12,12 @@ const envOrigins = originsEnv
   .map(o => o.trim())
   .filter(Boolean);
 
-// Garante que os domínios padrão estejam sempre permitidos
-const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+// Permite habilitar qualquer origem usando "*" nas variáveis de ambiente
+const allowAll = envOrigins.includes('*');
 
-module.exports = { allowedOrigins };
+// Garante que os domínios padrão estejam sempre permitidos quando não estiver liberado geral
+const allowedOrigins = allowAll
+  ? []
+  : Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+module.exports = { allowedOrigins, allowAll };

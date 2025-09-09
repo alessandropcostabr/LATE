@@ -1,12 +1,10 @@
 const cors = require('cors');
-const { allowedOrigins } = require('../config/cors');
+const { allowedOrigins, allowAll } = require('../config/cors');
 
 const corsOptions = {
     origin: function (origin, callback) {
         // Permitir requisições sem origin (mobile apps, Postman, etc.)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.includes(origin)) {
+        if (!origin || allowAll || allowedOrigins.includes(origin)) {
             return callback(null, true);
         }
 
