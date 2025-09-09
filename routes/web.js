@@ -13,6 +13,7 @@ const csrfProtection = csrf();
 router.get('/login', csrfProtection, authController.showLogin);
 router.post(
   '/login',
+  csrfProtection,
   body('email').isEmail(),
   body('password').notEmpty(),
   authController.login

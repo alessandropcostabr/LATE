@@ -26,7 +26,10 @@ try {
 }
 
 // Inicializar aplicação Express
+// Evita 304 Not Modified em respostas da API (Axios trata como erro)
+// Desliga geração de ETag no Express (também dispensa If-None-Match)
 const app = express();
+app.set('etag', false);
 
 // Em ambiente atrás de NGINX, padrão seguro = 1 (pode sobrescrever via TRUST_PROXY)
 const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? 1);
