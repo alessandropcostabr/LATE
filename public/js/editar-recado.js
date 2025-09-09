@@ -34,14 +34,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       Loading.show('btnSalvar');
       const payload = Form.getData(form);
-      fields.forEach(f => {
-        if (!(f in payload)) payload[f] = '';
-      });
+      fields.forEach(f => { if (!(f in payload)) payload[f] = ''; });
+      payload.situacao = (payload.situacao || '').toLowerCase().replace(/\s+/g, '_');
       await API.updateRecado(id, payload);
       Toast.success('Recado atualizado com sucesso!');
       setTimeout(() => (window.location.href = `/visualizar-recado/${id}`), 1000);
     } catch (err) {
-      Toast.error(err.message || 'Erro ao atualizar recado');
+      const msg = err.details?.[0]?.msg || err.details?.[0]?.message || err.message || 'Erro ao atualizar recado';
+      Toast.error(msg);
     } finally {
       Loading.hide('btnSalvar');
     }

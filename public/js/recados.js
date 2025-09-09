@@ -29,11 +29,14 @@ function initFiltersFromUrl() {
 function aplicarFiltros() {
   const form = document.getElementById('filtrosForm');
   if (!form) return;
-  const formData = new FormData(form);
+  const data = Form.getData(form);
   currentFilters = {};
-  for (let [key, value] of formData.entries()) {
-    if (value.trim()) currentFilters[key] = value.trim();
-  }
+  Object.keys(data).forEach(key => {
+    const value = data[key];
+    if (typeof value === 'string' && value.trim()) {
+      currentFilters[key] = value.trim();
+    }
+  });
   // Atualiza URL sem reload
   const query = new URLSearchParams(currentFilters).toString();
   window.history.replaceState({}, '', '/recados' + (query ? `?${query}` : ''));
@@ -90,7 +93,7 @@ async function carregarRecados(page = 1) {
     currentPage = page;
   } catch (err) {
     console.error('Erro ao carregar recados:', err);
-    const msg = err.message || 'Erro ao carregar recados';
+    const msg = err.details?.[0]?.msg || err.message || 'Erro ao carregar recados';
     container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--error);">❌ ${Utils.escapeHTML(msg)}</div>`;
     atualizarTotalResultados(0);
   }

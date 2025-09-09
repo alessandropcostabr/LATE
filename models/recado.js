@@ -1,4 +1,5 @@
 const dbManager = require('../config/database');
+const isPlainObject = v => v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype;
 
 class RecadoModel {
   constructor() {
@@ -23,47 +24,38 @@ class RecadoModel {
   }
 
   _buildFilterQuery(filters = {}) {
+    const q = isPlainObject(filters) ? filters : {};
     let clause = '';
     const params = [];
 
-    if (filters.data_inicio) {
+    const like = (field, value) => {
+      clause += ` AND ${field} LIKE ?`;
+      params.push(`%${value}%`);
+    };
+
+    if (q.data_inicio) {
       clause += ' AND data_ligacao >= ?';
-      params.push(filters.data_inicio);
+      params.push(q.data_inicio);
     }
-    if (filters.data_fim) {
+    if (q.data_fim) {
       clause += ' AND data_ligacao <= ?';
-      params.push(filters.data_fim);
+      params.push(q.data_fim);
     }
-
-    if (filters.destinatario) {
-      clause += ' AND destinatario LIKE ?';
-      params.push(`%${filters.destinatario}%`);
-    }
-
-    if (filters.situacao) {
+    if (q.destinatario) like('destinatario', q.destinatario);
+    if (q.situacao && ['pendente','em_andamento','resolvido'].includes(q.situacao)) {
       clause += ' AND situacao = ?';
-      params.push(filters.situacao);
+      params.push(q.situacao);
     }
-
-    if (filters.remetente) {
-      clause += ' AND remetente_nome LIKE ?';
-      params.push(`%${filters.remetente}%`);
-    }
-
-    if (filters.created_by || filters.user_id || filters.userId) {
-      const user = filters.created_by || filters.user_id || filters.userId;
+    if (q.remetente_nome) like('remetente_nome', q.remetente_nome);
+    if (q.remetente) like('remetente_nome', q.remetente);
+    if (q.created_by || q.user_id || q.userId) {
+      const user = q.created_by || q.user_id || q.userId;
       clause += ' AND created_by = ?';
       params.push(user);
     }
-
-    if (filters.busca) {
-      clause += ` AND (
-        remetente_nome LIKE ? OR
-        destinatario LIKE ? OR
-        assunto LIKE ? OR
-        observacoes LIKE ?
-      )`;
-      const searchTerm = `%${filters.busca}%`;
+    if (q.busca) {
+      const searchTerm = `%${q.busca}%`;
+      clause += ' AND (remetente_nome LIKE ? OR destinatario LIKE ? OR assunto LIKE ? OR observacoes LIKE ?)';
       params.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
@@ -106,22 +98,26 @@ class RecadoModel {
 
   findAll(filters = {}) {
     this._ensureDb();
-    const { clause, params } = this._buildFilterQuery(filters);
+    const f = isPlainObject(filters) ? { ...filters } : {};
+    const { limit: lim, offset: off, orderBy, orderDir, ...rest } = f;
+    const { clause, params } = this._buildFilterQuery(rest);
     let query = `SELECT * FROM recados WHERE 1=1${clause}`;
-    let requestedOrder = filters.orderBy;
+    let requestedOrder = orderBy;
     if (requestedOrder === 'criado_em') requestedOrder = 'created_at';
-    const orderBy = this.allowedOrderBy.includes(requestedOrder)
+    const orderByFinal = this.allowedOrderBy.includes(requestedOrder)
       ? requestedOrder
       : 'created_at';
-    const dir = (filters.orderDir || '').toUpperCase();
-    const orderDir = this.allowedOrderDir.includes(dir) ? dir : 'DESC';
-    query += ` ORDER BY ${orderBy} ${orderDir}`;
-    if (filters.limit) {
+    const dir = (orderDir || '').toUpperCase();
+    const orderDirFinal = this.allowedOrderDir.includes(dir) ? dir : 'DESC';
+    query += ` ORDER BY ${orderByFinal} ${orderDirFinal}`;
+    const limit = parseInt(lim, 10);
+    const offset = parseInt(off, 10);
+    if (Number.isFinite(limit)) {
       query += ' LIMIT ?';
-      params.push(parseInt(filters.limit));
-      if (filters.offset) {
+      params.push(limit);
+      if (Number.isFinite(offset)) {
         query += ' OFFSET ?';
-        params.push(parseInt(filters.offset));
+        params.push(offset);
       }
     }
     const stmt = this.db.prepare(query);

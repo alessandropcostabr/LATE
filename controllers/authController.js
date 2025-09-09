@@ -7,7 +7,6 @@ exports.showLogin = (req, res) => {
     title: 'Login',
     csrfToken: req.csrfToken(),
     scripts: [
-      'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js',
       '/js/login.js'
     ]
   });

@@ -22,6 +22,8 @@ const wrap = fn => (req, res, next) => {
   }
 };
 
+const isPlainObject = v => v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype;
+
 // ───────────────────────────────────────────────────────────
 // Middleware de log simples
 // ───────────────────────────────────────────────────────────
@@ -38,12 +40,25 @@ router.get(
   validateQueryRecados,
   handleValidationErrors,
   wrap((req, res) => {
-    const { limit = 20, offset = 0, ...filters } = req.query;
+    const q = req.query;
+    let plain = {};
+    if (isPlainObject(q)) {
+      plain = { ...q };
+    } else if (q && typeof q[Symbol.iterator] === 'function') {
+      plain = Object.fromEntries(q);
+    } else if (q && typeof q === 'object') {
+      plain = Object.fromEntries(Object.entries(q));
+    }
+
+    const limit = parseInt(plain.limit, 10);
+    const offset = parseInt(plain.offset, 10);
+    delete plain.limit;
+    delete plain.offset;
 
     const parsedFilters = {
-      ...filters,
-      limit:  Number(limit),
-      offset: Number(offset),
+      ...plain,
+      limit: Number.isFinite(limit) ? limit : 20,
+      offset: Number.isFinite(offset) ? offset : 0,
     };
 
     const data = RecadoModel.findAll(parsedFilters);
