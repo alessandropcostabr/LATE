@@ -106,7 +106,12 @@ export async function carregarRecadosRecentes(limit = 10) {
 
       const tdSit = document.createElement('td');
       const sitSpan = document.createElement('span');
-      sitSpan.className = `badge badge-${recado.situacao.replace('_','')}`;
+      const statusClasses = {
+        pendente: 'badge-pendente',
+        em_andamento: 'badge-andamento',
+        resolvido: 'badge-resolvido',
+      };
+      sitSpan.className = `badge ${statusClasses[recado.situacao] || ''}`;
       sitSpan.textContent = getSituacaoLabel(recado.situacao);
       tdSit.appendChild(sitSpan);
       tr.appendChild(tdSit);
