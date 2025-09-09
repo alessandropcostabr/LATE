@@ -5,10 +5,14 @@ const defaultOrigins = [
   'https://late.miahchat.com'
 ];
 
-const originsEnv = process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS;
+// Aceita lista separada por vírgula ou espaço nas variáveis de ambiente
+const originsEnv = process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || '';
+const envOrigins = originsEnv
+  .split(/[\s,]+/)
+  .map(o => o.trim())
+  .filter(Boolean);
 
-const allowedOrigins = originsEnv
-  ? originsEnv.split(',').map(o => o.trim()).filter(Boolean)
-  : defaultOrigins;
+// Garante que os domínios padrão estejam sempre permitidos
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 module.exports = { allowedOrigins };
