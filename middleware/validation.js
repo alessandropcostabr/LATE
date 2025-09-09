@@ -62,21 +62,21 @@ function applyBodyNormalizers(req, _res, next) {
   var optFields = ['remetente_telefone', 'remetente_email', 'horario_retorno', 'observacoes'];
   for (var i = 0; i < optFields.length; i++) {
     var k = optFields[i];
-    if (b.hasOwnProperty(k)) {
+    if (Object.prototype.hasOwnProperty.call(b, k)) {
       b[k] = emptyToNull(b[k]);
     }
   }
 
   // Normaliza situacao (se vier)
-  if (b.hasOwnProperty('situacao')) {
+  if (Object.prototype.hasOwnProperty.call(b, 'situacao')) {
     b.situacao = normalizeSituacao(b.situacao);
   }
 
   // Datas/horas: remove espaços extras
-  if (b.hasOwnProperty('data_ligacao') && typeof b.data_ligacao === 'string') {
+  if (Object.prototype.hasOwnProperty.call(b, 'data_ligacao') && typeof b.data_ligacao === 'string') {
     b.data_ligacao = b.data_ligacao.trim();
   }
-  if (b.hasOwnProperty('hora_ligacao') && typeof b.hora_ligacao === 'string') {
+  if (Object.prototype.hasOwnProperty.call(b, 'hora_ligacao') && typeof b.hora_ligacao === 'string') {
     b.hora_ligacao = b.hora_ligacao.trim();
   }
 
@@ -85,7 +85,7 @@ function applyBodyNormalizers(req, _res, next) {
 
 function applyQueryNormalizers(req, _res, next) {
   var q = req.query || (req.query = {});
-  if (q.hasOwnProperty('situacao')) {
+  if (Object.prototype.hasOwnProperty.call(q, 'situacao')) {
     // string vazia -> remove
     if (isBlank(q.situacao)) {
       delete q.situacao;
@@ -93,8 +93,8 @@ function applyQueryNormalizers(req, _res, next) {
       q.situacao = normalizeSituacao(q.situacao);
     }
   }
-  if (q.hasOwnProperty('limit'))  { q.limit  = String(q.limit).trim(); }
-  if (q.hasOwnProperty('offset')) { q.offset = String(q.offset).trim(); }
+  if (Object.prototype.hasOwnProperty.call(q, 'limit'))  { q.limit  = String(q.limit).trim(); }
+  if (Object.prototype.hasOwnProperty.call(q, 'offset')) { q.offset = String(q.offset).trim(); }
   next();
 }
 
