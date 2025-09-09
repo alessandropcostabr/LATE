@@ -4,7 +4,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('formEditarRecado');
   const id = location.pathname.split('/').pop();
-  const fields = [
+  const allFields = [
     'data_ligacao',
     'hora_ligacao',
     'destinatario',
@@ -17,12 +17,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     'observacoes'
   ];
 
+  let safeData = {};
+  let fields = [];
   try {
     const { data } = await API.getRecado(id);
-    const safeData = {};
-    fields.forEach(f => (safeData[f] = data[f] ?? ''));
+    allFields.forEach(f => {
+      if (data[f] !== undefined) safeData[f] = data[f] ?? '';
+    });
     Form.populate(form, safeData);
-    document.getElementById('btnCancelar').href = `/visualizar-recado/${id}`;
+    const formFields = Array.from(form.querySelectorAll('[name]')).map(el => el.name);
+    fields = Array.from(new Set([...formFields, ...Object.keys(safeData)]));
+    const cancel = document.getElementById('btnCancelar');
+    if (cancel) cancel.href = `/visualizar-recado/${id}`;
   } catch (e) {
     Toast.error('Erro ao carregar recado');
   }
@@ -33,8 +39,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (errors.length) return Toast.error(errors[0]);
     try {
       Loading.show('btnSalvar');
-      const payload = Form.getData(form);
-      fields.forEach(f => { if (!(f in payload)) payload[f] = ''; });
+      const formData = Form.getData(form);
+      const payload = {};
+      fields.forEach(f => {
+        if (formData[f] !== undefined && formData[f] !== '') {
+          payload[f] = formData[f];
+        } else if (safeData[f] !== undefined) {
+          payload[f] = safeData[f];
+        }
+      });
       payload.situacao = (payload.situacao || '').toLowerCase().replace(/\s+/g, '_');
       await API.updateRecado(id, payload);
       Toast.success('Recado atualizado com sucesso!');
