@@ -163,7 +163,12 @@ function renderizarRecados(recados) {
 
     const tdSit = document.createElement('td');
     const span = document.createElement('span');
-    span.className = `badge badge-${r.situacao.replace('_','')}`;
+    const statusClasses = {
+      pendente: 'badge-pendente',
+      em_andamento: 'badge-andamento',
+      resolvido: 'badge-resolvido',
+    };
+    span.className = `badge ${statusClasses[r.situacao] || ''}`;
     span.textContent = getSituacaoLabel(r.situacao);
     tdSit.appendChild(span);
     tr.appendChild(tdSit);
