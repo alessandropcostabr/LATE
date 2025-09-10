@@ -255,6 +255,15 @@ app.get('/js/toast.js', (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// --- Safety default para templates EJS ---
+app.use((req, res, next) => {
+  if (!Array.isArray(res.locals.errors)) res.locals.errors = [];
+  next();
+});
+
+// --- Healthcheck básico ---
+app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+
 // ─── Rotas ───────────────────────────────────────────────────────────────────
 app.use('/login', loginLimiter);
 app.use('/api', apiLimiter);
