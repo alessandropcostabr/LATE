@@ -4,7 +4,6 @@ const csrf = require('csurf');
 
 const { requireAuth, requireRole } = require('../middleware/auth');
 const authController = require('../controllers/authController');
-const userController = require('../controllers/userController');
 
 const router = express.Router();
 const csrfProtection = csrf();
@@ -21,25 +20,16 @@ router.post(
 
 router.get('/logout', requireAuth, authController.logout);
 
-// Registro de usuários (apenas ADMIN)
-router.get(
-  '/register',
-  requireAuth,
-  requireRole('ADMIN'),
-  csrfProtection,
-  userController.showRegister
-);
+// Registro de usuários
+router.get('/register', csrfProtection, authController.showRegister);
 
 router.post(
   '/register',
-  requireAuth,
-  requireRole('ADMIN'),
   csrfProtection,
   body('name').notEmpty(),
   body('email').isEmail(),
   body('password').isLength({ min: 6 }),
-  body('role').optional().isIn(['ADMIN', 'USER']),
-  (req, res) => userController.create(req, res)
+  authController.register
 );
 
 // Dashboard

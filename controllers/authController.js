@@ -53,6 +53,48 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.showRegister = (req, res) => {
+  res.render('register', {
+    title: 'Registrar',
+    csrfToken: req.csrfToken()
+  });
+};
+
+exports.register = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).render('register', {
+      title: 'Registrar',
+      csrfToken: req.csrfToken(),
+      errors: errors.array()
+    });
+  }
+
+  const { name, email, password } = req.body;
+  try {
+    const hash = await argon2.hash(password, { type: argon2.argon2id });
+    await UserModel.create({ name, email, password_hash: hash, role: 'OPERADOR' });
+    return res.redirect('/login');
+  } catch (err) {
+    if (
+      err.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+      (err.code === 'SQLITE_CONSTRAINT' && err.message.includes('users.email'))
+    ) {
+      return res.status(409).render('register', {
+        title: 'Registrar',
+        csrfToken: req.csrfToken(),
+        error: 'E-mail já cadastrado'
+      });
+    }
+    console.error('Erro ao registrar usuário:', err);
+    return res.status(500).render('register', {
+      title: 'Registrar',
+      csrfToken: req.csrfToken(),
+      error: 'Erro interno'
+    });
+  }
+};
+
 exports.logout = (req, res) => {
   req.session.destroy(() => {
     res.redirect('/login');
