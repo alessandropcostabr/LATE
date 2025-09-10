@@ -68,34 +68,32 @@ exports.login = async (req, res) => {
 };
 
 exports.showRegister = (req, res) => {
+  const roles = req.session.user?.role === 'ADMIN' ? ALLOWED_ROLES : ['OPERADOR'];
   res.render('register', {
     title: 'Registrar',
     csrfToken: req.csrfToken(),
     errors: [],
-    roles: ALLOWED_ROLES
+    roles,
+    selectedRole: undefined
   });
 };
 
 exports.register = async (req, res) => {
   const errors = validationResult(req);
+  const { name, email, password, role: requestedRole } = req.body;
+  const role =
+    req.session.user?.role === 'ADMIN' && ALLOWED_ROLES.includes(requestedRole)
+      ? requestedRole
+      : 'OPERADOR';
+  const roles = req.session.user?.role === 'ADMIN' ? ALLOWED_ROLES : ['OPERADOR'];
+
   if (!errors.isEmpty()) {
     return res.status(400).render('register', {
       title: 'Registrar',
       csrfToken: req.csrfToken(),
       errors: errors.array(),
-      roles: ALLOWED_ROLES
-    });
-  }
-
-  const { name, email, password, role } = req.body;
-
-  if (!ALLOWED_ROLES.includes(role)) {
-    return res.status(400).render('register', {
-      title: 'Registrar',
-      csrfToken: req.csrfToken(),
-      errors: [],
-      error: 'Perfil inválido',
-      roles: ALLOWED_ROLES
+      roles,
+      selectedRole: requestedRole
     });
   }
 
@@ -112,7 +110,8 @@ exports.register = async (req, res) => {
         title: 'Registrar',
         csrfToken: req.csrfToken(),
         error: 'E-mail já cadastrado',
-        roles: ALLOWED_ROLES
+        roles,
+        selectedRole: requestedRole
       });
     }
     console.error('Erro ao registrar usuário:', err);
@@ -120,7 +119,8 @@ exports.register = async (req, res) => {
       title: 'Registrar',
       csrfToken: req.csrfToken(),
       error: 'Erro interno',
-      roles: ALLOWED_ROLES
+      roles,
+      selectedRole: requestedRole
     });
   }
 };
