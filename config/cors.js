@@ -1,7 +1,6 @@
 const defaultOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
-  'https://seu-dominio.com',
   'https://late.miahchat.com',
   'https://www.late.miahchat.com'
 ];
