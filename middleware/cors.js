@@ -8,9 +8,10 @@ const corsOptions = {
             return callback(null, true);
         }
 
-        const err = new Error('Não permitido pelo CORS');
-        err.status = 403;
-        callback(err);
+         // Não autoriza CORS para a origem, mas sem quebrar a requisição.
+         // O navegador bloqueará o acesso por não receber os headers CORS.
+         // Evita 403 em SSR e chamadas disparadas por extensões.
+         callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
