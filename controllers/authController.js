@@ -56,7 +56,8 @@ exports.login = async (req, res) => {
 exports.showRegister = (req, res) => {
   res.render('register', {
     title: 'Registrar',
-    csrfToken: req.csrfToken()
+    csrfToken: req.csrfToken(),
+    errors: []
   });
 };
 

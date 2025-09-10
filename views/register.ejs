@@ -18,7 +18,7 @@
         <label for="password" class="form-label">Senha</label>
         <input type="password" class="form-control" id="password" name="password">
       </div>
-      <% if (Array.isArray(errors)) { %>
+      <% if (typeof errors !== 'undefined' && Array.isArray(errors)) { %>
         <div class="alert alert-danger">
           <ul class="mb-0">
             <% errors.forEach(e => { %>
