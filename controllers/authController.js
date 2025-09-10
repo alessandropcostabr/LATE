@@ -17,6 +17,9 @@ exports.showLogin = (req, res) => {
 exports.login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    if (req.accepts('json')) {
+      return res.status(400).json({ error: 'Dados inválidos' });
+    }
     return res.status(400).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
@@ -27,6 +30,9 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
   const user = UserModel.findByEmail(email);
   if (!user || !user.is_active) {
+    if (req.accepts('json')) {
+      return res.status(401).json({ error: 'Credenciais inválidas' });
+    }
     return res.status(401).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
@@ -37,6 +43,9 @@ exports.login = async (req, res) => {
   try {
     const valid = await argon2.verify(user.password_hash, password, { type: argon2.argon2id });
     if (!valid) {
+      if (req.accepts('json')) {
+        return res.status(401).json({ error: 'Credenciais inválidas' });
+      }
       return res.status(401).render('login', {
         title: 'Login',
         csrfToken: req.csrfToken(),
@@ -47,6 +56,9 @@ exports.login = async (req, res) => {
     res.redirect('/');
   } catch (err) {
     console.error('Erro ao verificar senha:', err);
+    if (req.accepts('json')) {
+      return res.status(500).json({ error: 'Erro interno' });
+    }
     res.status(500).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
