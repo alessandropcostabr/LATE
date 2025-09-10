@@ -110,7 +110,8 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,
+      // Only use secure cookies in production to allow HTTP during development
+      secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       sameSite: process.env.SAMESITE || 'lax'
     }
