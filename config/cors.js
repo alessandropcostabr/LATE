@@ -15,9 +15,9 @@ const envOrigins = originsEnv
 // Permite habilitar qualquer origem usando "*" nas variáveis de ambiente
 const allowAll = envOrigins.includes('*');
 
-// Garante que os domínios padrão estejam sempre permitidos quando não estiver liberado geral
+// Usa domínios definidos via ambiente quando houver; caso contrário mantém os padrões
 const allowedOrigins = allowAll
   ? []
-  : Array.from(new Set([...defaultOrigins, ...envOrigins]));
+  : Array.from(new Set(envOrigins.length > 0 ? envOrigins : defaultOrigins));
 
 module.exports = { allowedOrigins, allowAll };

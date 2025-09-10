@@ -117,7 +117,10 @@ cd late
 npm install
 # Defina os domínios permitidos no CORS via CORS_ORIGINS
 # (ALLOWED_ORIGINS ainda é suportada, mas será descontinuada futuramente)
-export CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+# Separe por vírgula **ou** espaço. Quando não definido, utiliza os domínios padrão
+# (http://localhost:3000, http://localhost:8080, https://seu-dominio.com, https://late.miahchat.com).
+# Ao definir a variável, **apenas** os domínios informados serão permitidos.
+export CORS_ORIGINS=http://localhost:3000 http://localhost:8080
 # Opcional: quantidade de proxies de confiança (quando atrás de proxy reverso)
 export TRUST_PROXY=1
 npm start
