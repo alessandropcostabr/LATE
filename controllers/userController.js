@@ -42,7 +42,3 @@ exports.setActive = (req, res) => {
   }
   res.json({ success: true });
 };
-
-exports.showRegister = (req, res) => {
-  res.render('register', { title: 'Registrar Usuário', csrfToken: req.csrfToken() });
-};
