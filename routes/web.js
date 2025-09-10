@@ -21,10 +21,18 @@ router.post(
 router.get('/logout', requireAuth, authController.logout);
 
 // Registro de usuários
-router.get('/register', csrfProtection, authController.showRegister);
+router.get(
+  '/register',
+  requireAuth,
+  requireRole('ADMIN'),
+  csrfProtection,
+  authController.showRegister
+);
 
 router.post(
   '/register',
+  requireAuth,
+  requireRole('ADMIN'),
   csrfProtection,
   body('name').notEmpty(),
   body('email').isEmail(),
