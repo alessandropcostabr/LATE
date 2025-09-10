@@ -1,3 +1,5 @@
+// controllers/authController.js
+
 const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
@@ -8,9 +10,7 @@ exports.showLogin = (req, res) => {
   res.render('login', {
     title: 'Login',
     csrfToken: req.csrfToken(),
-    scripts: [
-      '/js/login.js'
-    ]
+    scripts: ['/js/login.js'],
   });
 };
 
@@ -23,7 +23,7 @@ exports.login = async (req, res) => {
     return res.status(400).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
-      errors: errors.array()
+      errors: errors.array(),
     });
   }
 
@@ -36,7 +36,7 @@ exports.login = async (req, res) => {
     return res.status(401).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
-      error: 'Credenciais inválidas'
+      error: 'Credenciais inválidas',
     });
   }
 
@@ -49,7 +49,7 @@ exports.login = async (req, res) => {
       return res.status(401).render('login', {
         title: 'Login',
         csrfToken: req.csrfToken(),
-        error: 'Credenciais inválidas'
+        error: 'Credenciais inválidas',
       });
     }
     req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
@@ -62,7 +62,7 @@ exports.login = async (req, res) => {
     res.status(500).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
-      error: 'Erro interno'
+      error: 'Erro interno',
     });
   }
 };
@@ -74,7 +74,9 @@ exports.showRegister = (req, res) => {
     csrfToken: req.csrfToken(),
     errors: [],
     roles,
-    selectedRole: undefined
+    selectedRole: undefined,
+    name: '',
+    email: '',
   });
 };
 
@@ -93,7 +95,9 @@ exports.register = async (req, res) => {
       csrfToken: req.csrfToken(),
       errors: errors.array(),
       roles,
-      selectedRole: role
+      selectedRole: role,
+      name,
+      email,
     });
   }
 
@@ -111,7 +115,9 @@ exports.register = async (req, res) => {
         csrfToken: req.csrfToken(),
         error: 'E-mail já cadastrado',
         roles,
-        selectedRole: role
+        selectedRole: role,
+        name,
+        email,
       });
     }
     console.error('Erro ao registrar usuário:', err);
@@ -120,7 +126,9 @@ exports.register = async (req, res) => {
       csrfToken: req.csrfToken(),
       error: 'Erro interno',
       roles,
-      selectedRole: role
+      selectedRole: role,
+      name,
+      email,
     });
   }
 };
