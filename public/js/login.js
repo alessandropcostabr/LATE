@@ -37,7 +37,7 @@
         }
 
         const result = await response.json().catch(() => ({}));
-        alert(result.error || 'Falha no login');
+        alert(result.error || result.message || 'Falha no login');
       } catch (err) {
         console.error('Erro no login:', err);
         alert('Erro ao realizar login');

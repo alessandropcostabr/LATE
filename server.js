@@ -80,7 +80,7 @@ const loginLimiter = rateLimit({
   max: 20,
   message: {
     success: false,
-    message: 'Muitas requisições. Tente novamente em 15 minutos.'
+    error: 'Muitas requisições. Tente novamente em 15 minutos.'
   },
   skip: req => req.method !== 'POST'
 });
