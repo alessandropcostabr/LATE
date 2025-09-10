@@ -93,7 +93,7 @@ exports.register = async (req, res) => {
       csrfToken: req.csrfToken(),
       errors: errors.array(),
       roles,
-      selectedRole: requestedRole
+      selectedRole: role
     });
   }
 
@@ -111,7 +111,7 @@ exports.register = async (req, res) => {
         csrfToken: req.csrfToken(),
         error: 'E-mail já cadastrado',
         roles,
-        selectedRole: requestedRole
+        selectedRole: role
       });
     }
     console.error('Erro ao registrar usuário:', err);
@@ -120,7 +120,7 @@ exports.register = async (req, res) => {
       csrfToken: req.csrfToken(),
       error: 'Erro interno',
       roles,
-      selectedRole: requestedRole
+      selectedRole: role
     });
   }
 };
