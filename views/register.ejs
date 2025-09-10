@@ -8,11 +8,11 @@
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="mb-3">
         <label for="name" class="form-label">Nome</label>
-        <input type="text" class="form-control" id="name" name="name">
+        <input type="text" class="form-control" id="name" name="name" value="<%= typeof name !== 'undefined' ? name : '' %>">
       </div>
       <div class="mb-3">
         <label for="email" class="form-label">E-mail</label>
-        <input type="email" class="form-control" id="email" name="email">
+        <input type="email" class="form-control" id="email" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>">
       </div>
       <div class="mb-3">
         <label for="password" class="form-label">Senha</label>
@@ -23,7 +23,7 @@
         <select id="role" name="role" class="form-select">
           <% if (Array.isArray(roles)) { %>
             <% roles.forEach(r => { %>
-              <option value="<%= r %>"><%= r %></option>
+              <option value="<%= r %>" <%= (selectedRole ? selectedRole === r : r === 'OPERADOR') ? 'selected' : '' %>><%= r %></option>
             <% }) %>
           <% } %>
         </select>

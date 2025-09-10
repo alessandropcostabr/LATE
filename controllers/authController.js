@@ -72,7 +72,10 @@ exports.showRegister = (req, res) => {
     title: 'Registrar',
     csrfToken: req.csrfToken(),
     errors: [],
-    roles: ALLOWED_ROLES
+    roles: ALLOWED_ROLES,
+    selectedRole: undefined,
+    name: '',
+    email: ''
   });
 };
 
@@ -83,7 +86,10 @@ exports.register = async (req, res) => {
       title: 'Registrar',
       csrfToken: req.csrfToken(),
       errors: errors.array(),
-      roles: ALLOWED_ROLES
+      roles: ALLOWED_ROLES,
+      selectedRole: req.body.role,
+      name: req.body.name,
+      email: req.body.email
     });
   }
 
@@ -95,7 +101,10 @@ exports.register = async (req, res) => {
       csrfToken: req.csrfToken(),
       errors: [],
       error: 'Perfil inválido',
-      roles: ALLOWED_ROLES
+      roles: ALLOWED_ROLES,
+      selectedRole: req.body.role,
+      name: req.body.name,
+      email: req.body.email
     });
   }
 
@@ -112,7 +121,10 @@ exports.register = async (req, res) => {
         title: 'Registrar',
         csrfToken: req.csrfToken(),
         error: 'E-mail já cadastrado',
-        roles: ALLOWED_ROLES
+        roles: ALLOWED_ROLES,
+        selectedRole: req.body.role,
+        name: req.body.name,
+        email: req.body.email
       });
     }
     console.error('Erro ao registrar usuário:', err);
@@ -120,7 +132,10 @@ exports.register = async (req, res) => {
       title: 'Registrar',
       csrfToken: req.csrfToken(),
       error: 'Erro interno',
-      roles: ALLOWED_ROLES
+      roles: ALLOWED_ROLES,
+      selectedRole: req.body.role,
+      name: req.body.name,
+      email: req.body.email
     });
   }
 };
