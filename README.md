@@ -169,6 +169,12 @@ Headers esperados:
 - `Access-Control-Allow-Credentials: true`
 - `Set-Cookie: session=<id>; Path=/; HttpOnly; SameSite=None; Secure`
 
+Se o cabeçalho `Accept` incluir `application/json`, respostas de erro do `/login` serão retornadas em JSON no formato:
+
+```json
+{ "error": "Credenciais inválidas" }
+```
+
 ### Ping autenticado
 
 ```bash
