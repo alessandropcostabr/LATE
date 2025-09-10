@@ -2,6 +2,9 @@ const path = require('path');
 const express = require('express');
 const session = require('express-session');
 const request = require('supertest');
+const { body } = require('express-validator');
+const authController = require('../controllers/authController');
+const UserModel = require('../models/user');
 
 function createApp(sessionUser) {
   const app = express();
@@ -20,6 +23,28 @@ function createApp(sessionUser) {
   });
   const webRoutes = require('../routes/web');
   app.use(webRoutes);
+  return app;
+}
+
+function createRegisterApp(sessionUser) {
+  const app = express();
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json());
+  app.use(session({ secret: 'test', resave: false, saveUninitialized: false }));
+  app.use((req, res, next) => {
+    if (sessionUser) {
+      req.session.user = sessionUser;
+    }
+    req.csrfToken = () => 'test';
+    next();
+  });
+  app.post(
+    '/register',
+    body('name').notEmpty(),
+    body('email').isEmail(),
+    body('password').isLength({ min: 6 }),
+    authController.register
+  );
   return app;
 }
 
@@ -49,6 +74,21 @@ describe('GET /register', () => {
     const app = createApp({ role: 'ADMIN' });
     const res = await request(app).get('/register');
     expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /register', () => {
+  test('non-admin signup receives OPERADOR role', async () => {
+    const app = createRegisterApp();
+    const email = `user.${Date.now()}@example.com`;
+    const res = await request(app)
+      .post('/register')
+      .type('form')
+      .send({ name: 'Teste', email, password: 'SenhaSegura@123', role: 'ADMIN' });
+
+    expect(res.status).toBe(302);
+    const user = UserModel.findByEmail(email);
+    expect(user.role).toBe('OPERADOR');
   });
 });
 
