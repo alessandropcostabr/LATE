@@ -66,10 +66,13 @@ late/
 │ ├── editar-recado.ejs
 │ └── visualizar-recado.ejs
 ├── data/
-│ └── recados.db
+│ ├── recados.db
+│ └── migrations/
 ├── backup/
 │ └── recados_YYYYMMDD.db
 └── resultados_testes.md
+
+Todas as migrações do banco de dados devem estar em `data/migrations/` e ser aplicadas com `node scripts/migrate.js`.
 
 ## 🔐 Segurança
 
@@ -115,6 +118,7 @@ O parâmetro `-i` exibe os cabeçalhos para que você confira os valores de `Rat
 git clone <repo>
 cd late
 npm install
+node scripts/migrate.js # aplica migrations de data/migrations
 # Defina os domínios permitidos no CORS via CORS_ORIGINS
 # (ALLOWED_ORIGINS ainda é suportada, mas será descontinuada futuramente)
 # Separe por vírgula **ou** espaço. Quando não definido, utiliza os domínios padrão

@@ -252,9 +252,17 @@ class RecadoModel {
 
   getRecentes(limit = 10) {
     this._ensureDb();
+    // Determina coluna de ordenação de forma retrocompatível.
+    // Verifica o schema atual para evitar erro caso a migration ainda não tenha rodado.
+    const columns = this.db.prepare('PRAGMA table_info(recados)').all();
+    const names = new Set(columns.map(c => c.name));
+    let orderCol = 'created_at';
+    if (!names.has(orderCol)) {
+      orderCol = names.has('criado_em') ? 'criado_em' : 'id';
+    }
     const stmt = this.db.prepare(`
       SELECT * FROM recados
-      ORDER BY created_at DESC
+      ORDER BY ${orderCol} DESC
       LIMIT ?
     `);
     return stmt.all(limit);

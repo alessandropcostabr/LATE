@@ -37,6 +37,23 @@ try {
         continue;
       }
 
+      if (file === '08_recados_add_created_at.sql') {
+        const hasCreatedAt = db
+          .prepare("SELECT 1 FROM pragma_table_info('recados') WHERE name = 'created_at'")
+          .get();
+        if (hasCreatedAt) {
+          db.exec(
+            'CREATE TABLE IF NOT EXISTS migrations_meta (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, run_on DATETIME DEFAULT CURRENT_TIMESTAMP)'
+          );
+          db.prepare('INSERT OR IGNORE INTO _migrations(name) VALUES (?)').run(file);
+          db.prepare(
+            "INSERT OR IGNORE INTO migrations_meta(name) VALUES ('08_recados_add_created_at')"
+          ).run();
+          console.info(`[migrate] Skipping ${file}; created_at already exists`);
+          continue;
+        }
+      }
+
       const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
       const statements = sql
         .split(/;\s*(?:\n|$)/)
@@ -51,7 +68,8 @@ try {
           if (
             msg.includes('duplicate column name') ||
             msg.includes('no such column') ||
-            msg.includes('already exists')
+            msg.includes('already exists') ||
+            msg.includes('cannot start a transaction')
           ) {
             console.warn(`[migrate] Skipping statement in ${file}: ${err.message}`);
           } else {
@@ -60,6 +78,13 @@ try {
         }
       }
 
+      if (file === '08_recados_add_created_at.sql') {
+        db
+          .prepare(
+            "INSERT OR IGNORE INTO migrations_meta(name) VALUES ('08_recados_add_created_at')"
+          )
+          .run();
+      }
       db.prepare('INSERT INTO _migrations(name) VALUES (?)').run(file);
       console.info(`[migrate] Executed ${file}`);
     }
