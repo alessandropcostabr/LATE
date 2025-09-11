@@ -89,3 +89,4 @@ data/sessions.sqlite-wal
 # local db & backups
 data/recados.db
 backups/
+__tests__/
