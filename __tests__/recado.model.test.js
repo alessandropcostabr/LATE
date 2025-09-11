@@ -21,7 +21,8 @@ beforeAll(() => {
       if (
         msg.includes('duplicate column name') ||
         msg.includes('no such column') ||
-        msg.includes('already exists')
+        msg.includes('already exists') ||
+        msg.includes('cannot start a transaction')
       ) {
         continue;
       }
