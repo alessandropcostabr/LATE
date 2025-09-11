@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
@@ -15,15 +16,26 @@ class DatabaseManager {
    */
   getDatabase() {
     if (!this.db || !this.db.open) {
-      const dbPath = path.join(__dirname, '..', 'data', 'recados.db');
+      const isTest = process.env.NODE_ENV === 'test';
+      const defaultPath = isTest
+        ? ':memory:'
+        : path.join(__dirname, '..', 'data', 'recados.db');
+      const envPath = process.env.DB_PATH && process.env.DB_PATH.trim() !== ''
+        ? process.env.DB_PATH
+        : defaultPath;
+
+      if (envPath !== ':memory:') {
+        fs.mkdirSync(path.dirname(envPath), { recursive: true });
+      }
+
       try {
-        console.info(`[DatabaseManager] Inicializando banco em ${dbPath}`);
-        this.db = new Database(dbPath);
+        console.info(`[DatabaseManager] Inicializando banco em ${envPath}`);
+        this.db = new Database(envPath);
         // Habilitar chaves estrangeiras, se necessário
         this.db.pragma('foreign_keys = ON');
       } catch (err) {
         console.error(
-          `[DatabaseManager] Falha ao inicializar o banco em ${dbPath}: ${err.message}`,
+          `[DatabaseManager] Falha ao inicializar o banco em ${envPath}: ${err.message}`,
           err
         );
         this.db = null;
