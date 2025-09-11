@@ -7,12 +7,27 @@ const dbManager = require('../config/database');
 
 beforeAll(() => {
   const db = dbManager.getDatabase();
-  let schema = fs.readFileSync(
-    path.join(__dirname, '..', 'migrations', 'schema_20250718.sql'),
-    'utf8'
-  );
-  schema = schema.replace(/CREATE TABLE sqlite_sequence\(name,seq\);/i, '');
-  db.exec(schema);
+  const migrationsDir = path.join(__dirname, '..', 'data', 'migrations');
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  for (const file of files) {
+    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+    try {
+      db.exec(sql);
+    } catch (err) {
+      const msg = err.message.toLowerCase();
+      if (
+        msg.includes('duplicate column name') ||
+        msg.includes('no such column') ||
+        msg.includes('already exists')
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
   RecadoModel = require('../models/recado');
 });
 
