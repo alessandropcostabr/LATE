@@ -23,15 +23,21 @@ class RecadoModel {
     }
   }
 
-  _resolveTimestampColumn() {
+  _resolveTimestampColumns() {
     const columns = this.db.prepare('PRAGMA table_info(recados)').all();
     const names = new Set(columns.map(c => c.name));
-    const column = names.has('created_at')
+    const createdCol = names.has('created_at')
       ? 'created_at'
       : names.has('criado_em')
         ? 'criado_em'
-        : 'id';
-    return { column, names };
+        : null;
+    const updatedCol = names.has('updated_at')
+      ? 'updated_at'
+      : names.has('atualizado_em')
+        ? 'atualizado_em'
+        : null;
+    const defaultOrderCol = createdCol || 'id';
+    return { createdCol, updatedCol, defaultOrderCol, names };
   }
 
   _buildFilterQuery(filters = {}) {
@@ -77,12 +83,17 @@ class RecadoModel {
     this._ensureDb();
     const creator = recadoData.created_by || recadoData.user_id || recadoData.userId || null;
     const updater = recadoData.updated_by || creator;
+    const { createdCol, updatedCol } = this._resolveTimestampColumns();
+    const tsCols = [];
+    if (createdCol) tsCols.push(createdCol);
+    if (updatedCol) tsCols.push(updatedCol);
+    const tsVals = tsCols.map(() => 'CURRENT_TIMESTAMP');
     const stmt = this.db.prepare(`
       INSERT INTO recados (
         data_ligacao, hora_ligacao, destinatario, remetente_nome,
         remetente_telefone, remetente_email, horario_retorno,
-        assunto, situacao, observacoes, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        assunto, situacao, observacoes, created_by, updated_by${tsCols.length ? ', ' + tsCols.join(', ') : ''}
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${tsVals.length ? ', ' + tsVals.join(', ') : ''})
     `);
     const result = stmt.run(
       recadoData.data_ligacao,
@@ -114,19 +125,29 @@ class RecadoModel {
     const { clause, params } = this._buildFilterQuery(rest);
     let query = `SELECT * FROM recados WHERE 1=1${clause}`;
 
-    const { column: defaultOrderCol, names } = this._resolveTimestampColumn();
+    const { createdCol, updatedCol, defaultOrderCol, names } = this._resolveTimestampColumns();
     if (names.has('criado_em') && !this.allowedOrderBy.includes('criado_em')) {
       this.allowedOrderBy.push('criado_em');
+    }
+    if (names.has('atualizado_em') && !this.allowedOrderBy.includes('atualizado_em')) {
+      this.allowedOrderBy.push('atualizado_em');
     }
     if (names.has('created_at') && !this.allowedOrderBy.includes('created_at')) {
       this.allowedOrderBy.push('created_at');
     }
+    if (names.has('updated_at') && !this.allowedOrderBy.includes('updated_at')) {
+      this.allowedOrderBy.push('updated_at');
+    }
 
     let requestedOrder = orderBy;
-    if (requestedOrder === 'criado_em' && names.has('created_at') && !names.has('criado_em')) {
+    if (requestedOrder === 'criado_em' && createdCol === 'created_at') {
       requestedOrder = 'created_at';
-    } else if (requestedOrder === 'created_at' && names.has('criado_em') && !names.has('created_at')) {
+    } else if (requestedOrder === 'created_at' && createdCol === 'criado_em') {
       requestedOrder = 'criado_em';
+    } else if (requestedOrder === 'atualizado_em' && updatedCol === 'updated_at') {
+      requestedOrder = 'updated_at';
+    } else if (requestedOrder === 'updated_at' && updatedCol === 'atualizado_em') {
+      requestedOrder = 'atualizado_em';
     }
 
     const orderByFinal = this.allowedOrderBy.includes(requestedOrder)
@@ -161,12 +182,14 @@ class RecadoModel {
   update(id, recadoData) {
     this._ensureDb();
     const updater = recadoData.updated_by || recadoData.user_id || recadoData.userId || null;
+    const { updatedCol } = this._resolveTimestampColumns();
+    const tsSql = updatedCol ? `${updatedCol} = CURRENT_TIMESTAMP,` : '';
     const stmt = this.db.prepare(`
       UPDATE recados SET
         data_ligacao = ?, hora_ligacao = ?, destinatario = ?,
         remetente_nome = ?, remetente_telefone = ?, remetente_email = ?,
         horario_retorno = ?, assunto = ?, situacao = ?, observacoes = ?,
-        updated_at = CURRENT_TIMESTAMP, updated_by = ?
+        ${tsSql} updated_by = ?
       WHERE id = ?
     `);
     const result = stmt.run(
@@ -188,11 +211,12 @@ class RecadoModel {
 
   updateSituacao(id, situacao, userId = null) {
     this._ensureDb();
+    const { updatedCol } = this._resolveTimestampColumns();
+    const tsSql = updatedCol ? `${updatedCol} = CURRENT_TIMESTAMP,` : '';
     const stmt = this.db.prepare(`
       UPDATE recados SET
         situacao = ?,
-        updated_at = CURRENT_TIMESTAMP,
-        updated_by = ?
+        ${tsSql} updated_by = ?
       WHERE id = ?
     `);
     const result = stmt.run(situacao, userId, id);
@@ -277,7 +301,7 @@ class RecadoModel {
 
   getRecentes(limit = 10) {
     this._ensureDb();
-    const { column: orderCol } = this._resolveTimestampColumn();
+    const { defaultOrderCol: orderCol } = this._resolveTimestampColumns();
     const stmt = this.db.prepare(`
       SELECT * FROM recados
       ORDER BY ${orderCol} DESC
