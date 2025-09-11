@@ -36,12 +36,9 @@ class RecadoModel {
   // Resolve a melhor coluna de timestamp disponível para ORDER BY default
   _resolveTimestampColumn() {
     const names = this._tableColumns();
-    const column = names.has('created_at')
-      ? 'created_at'
-      : names.has('criado_em')
-        ? 'criado_em'
-        : 'id'; // fallback estável
-    return { column, names };
+    if (names.has('created_at')) return { column: 'created_at', names };
+    if (names.has('criado_em')) return { column: 'criado_em', names };
+    return { column: 'id', names };
   }
 
   // Coluna de atualização (para UPDATE ... SET <updCol> = CURRENT_TIMESTAMP)
@@ -115,7 +112,10 @@ class RecadoModel {
     const { clause, params } = this._buildFilterQuery(rest);
 
     const { column: defaultOrderCol, names } = this._resolveTimestampColumn();
-    const orderByFinal = this._normalizeOrderBy(orderBy, names, defaultOrderCol);
+    let orderByFinal = this._normalizeOrderBy(orderBy, names, defaultOrderCol);
+    if (!names.has(orderByFinal)) {
+      orderByFinal = defaultOrderCol;
+    }
     const dir = String(orderDir || '').toUpperCase();
     const orderDirFinal = this.allowedOrderDir.includes(dir) ? dir : 'DESC';
 
