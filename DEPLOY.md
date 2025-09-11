@@ -43,7 +43,15 @@ cd late
 npm install
 ```
 
-### 3. Configurar PM2
+### 3. Executar Migrações
+
+As migrações do banco devem estar em `data/migrations`.
+
+```bash
+node scripts/migrate.js
+```
+
+### 4. Configurar PM2
 
 ```bash
 # Parar aplicações existentes (se houver)
@@ -59,7 +67,7 @@ pm2 status
 pm2 save
 ```
 
-### 4. Configurar Firewall (se necessário)
+### 5. Configurar Firewall (se necessário)
 
 ```bash
 # Permitir acesso à porta 3000
@@ -69,7 +77,7 @@ sudo ufw allow 3000
 sudo ufw status
 ```
 
-### 5. Testar Funcionamento
+### 6. Testar Funcionamento
 
 ```bash
 # Verificar se o servidor está rodando
