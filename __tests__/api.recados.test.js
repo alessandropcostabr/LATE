@@ -1,10 +1,11 @@
+process.env.DB_PATH = '';
+
 const path = require('path');
 const fs = require('fs');
-const Database = require('better-sqlite3');
 const express = require('express');
 const request = require('supertest');
+const dbManager = require('../config/database');
 let app;
-const dbPath = path.join(__dirname, '..', 'data', 'recados.db');
 
 const makePayload = (overrides = {}) => ({
   data_ligacao: '2025-01-01',
@@ -21,15 +22,13 @@ const makePayload = (overrides = {}) => ({
 });
 
 beforeAll(() => {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  const db = new Database(dbPath);
+  const db = dbManager.getDatabase();
   let schema = fs.readFileSync(
     path.join(__dirname, '..', 'migrations', 'schema_20250718.sql'),
     'utf8'
   );
   schema = schema.replace(/CREATE TABLE sqlite_sequence\(name,seq\);/i, '');
   db.exec(schema);
-  db.close();
   const apiRoutes = require('../routes/api');
   app = express();
   app.use(express.json());
@@ -37,19 +36,12 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  const db = require('../config/database').getDatabase();
+  const db = dbManager.getDatabase();
   db.exec('DELETE FROM recados');
 });
 
 afterAll(() => {
-  const dbManager = require('../config/database');
   dbManager.close();
-  if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-  try {
-    fs.rmdirSync(path.dirname(dbPath));
-  } catch (err) {
-    // ignore
-  }
 });
 
 describe('API endpoints', () => {
