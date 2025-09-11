@@ -54,4 +54,5 @@ test('GET /api/recados-recentes funciona sem created_at', async () => {
   expect(res.body).toHaveProperty('success', true);
   expect(Array.isArray(res.body.data)).toBe(true);
   expect(res.body.data.length).toBeGreaterThan(0);
+  expect(res.body.data[0]).toHaveProperty('destinatario', 'Destinatario');
 });

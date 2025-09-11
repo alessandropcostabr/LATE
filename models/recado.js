@@ -254,15 +254,11 @@ class RecadoModel {
     this._ensureDb();
     // Determina coluna de ordenação de forma retrocompatível.
     // Verifica o schema atual para evitar erro caso a migration ainda não tenha rodado.
-    const columns = this.db.prepare("PRAGMA table_info(recados)").all();
-    const names = columns.map(c => c.name);
+    const columns = this.db.prepare('PRAGMA table_info(recados)').all();
+    const names = new Set(columns.map(c => c.name));
     let orderCol = 'created_at';
-    if (!names.includes(orderCol)) {
-      if (names.includes('criado_em')) {
-        orderCol = 'criado_em';
-      } else {
-        orderCol = 'id';
-      }
+    if (!names.has(orderCol)) {
+      orderCol = names.has('criado_em') ? 'criado_em' : 'id';
     }
     const stmt = this.db.prepare(`
       SELECT * FROM recados
