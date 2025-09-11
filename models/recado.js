@@ -25,20 +25,31 @@ class RecadoModel {
   }
 
   _ensureDb() {
-    if (!this.db) this.db = dbManager.getDatabase();
+    if (!this.db || !this.db.open) {
+      throw new Error('Database connection is not initialized');
+    }
   }
 
   _tableColumns() {
+    this._ensureDb();
     const rows = this.db.prepare('PRAGMA table_info(recados)').all();
     return new Set(rows.map(r => r.name));
   }
 
-  // Resolve a melhor coluna de timestamp disponível para ORDER BY default
-  _resolveTimestampColumn() {
+  _resolveTimestampColumns() {
     const names = this._tableColumns();
-    if (names.has('created_at')) return { column: 'created_at', names };
-    if (names.has('criado_em')) return { column: 'criado_em', names };
-    return { column: 'id', names };
+    const createdCol = names.has('created_at')
+      ? 'created_at'
+      : names.has('criado_em')
+        ? 'criado_em'
+        : null;
+    const updatedCol = names.has('updated_at')
+      ? 'updated_at'
+      : names.has('atualizado_em')
+        ? 'atualizado_em'
+        : null;
+    const defaultOrderCol = createdCol || 'id';
+    return { createdCol, updatedCol, defaultOrderCol, names };
   }
 
   // Coluna de atualização (para UPDATE ... SET <updCol> = CURRENT_TIMESTAMP)
@@ -69,7 +80,11 @@ class RecadoModel {
     const params = [];
 
     // Data: aplica sobre data_ligacao se existir; senão sobre timestamp de criação
-    let dateCol = names.has('data_ligacao') ? 'data_ligacao' : (names.has('created_at') ? 'date(created_at)' : (names.has('criado_em') ? 'date(criado_em)' : null));
+    let dateCol = names.has('data_ligacao')
+      ? 'data_ligacao'
+      : (names.has('created_at')
+          ? 'date(created_at)'
+          : (names.has('criado_em') ? 'date(criado_em)' : null));
     if (filters.data_inicio && dateCol) {
       where.push(`${dateCol} >= ?`);
       params.push(String(filters.data_inicio));
@@ -105,17 +120,71 @@ class RecadoModel {
     return { clause, params };
   }
 
+  create(data) {
+    this._ensureDb();
+    if (!isPlainObject(data)) throw new Error('Dados inválidos');
+
+    const { createdCol, updatedCol, names } = this._resolveTimestampColumns();
+    const creator = data.created_by ?? data.user_id ?? data.userId ?? null;
+    const updater = data.updated_by ?? creator;
+
+    // Campos conhecidos
+    const candidates = {
+      data_ligacao: data.data_ligacao,
+      hora_ligacao: data.hora_ligacao,
+      destinatario: data.destinatario,
+      remetente_nome: data.remetente_nome,
+      remetente_telefone: data.remetente_telefone,
+      remetente_email: data.remetente_email,
+      horario_retorno: data.horario_retorno,
+      assunto: data.assunto,
+      situacao: data.situacao || 'pendente',
+      observacoes: data.observacoes,
+      created_by: creator,
+      updated_by: updater
+    };
+
+    const cols = [];
+    const placeholders = [];
+    const values = [];
+
+    for (const [k, v] of Object.entries(candidates)) {
+      if (v !== undefined && names.has(k)) {
+        cols.push(k);
+        placeholders.push('?');
+        values.push(v);
+      }
+    }
+
+    if (createdCol) {
+      cols.push(createdCol);
+      placeholders.push('CURRENT_TIMESTAMP');
+    }
+    if (updatedCol) {
+      cols.push(updatedCol);
+      placeholders.push('CURRENT_TIMESTAMP');
+    }
+
+    if (!cols.length) throw new Error('Nada para inserir');
+    const sql = `INSERT INTO recados (${cols.join(', ')}) VALUES (${placeholders.join(', ')})`;
+    const info = this.db.prepare(sql).run(...values);
+    return this.findById(info.lastInsertRowid);
+  }
+
+  findById(id) {
+    this._ensureDb();
+    const stmt = this.db.prepare('SELECT * FROM recados WHERE id = ?');
+    return stmt.get(id);
+  }
+
   findAll(filters = {}) {
     this._ensureDb();
     const f = isPlainObject(filters) ? { ...filters } : {};
     const { limit, offset, orderBy, orderDir, ...rest } = f;
     const { clause, params } = this._buildFilterQuery(rest);
 
-    const { column: defaultOrderCol, names } = this._resolveTimestampColumn();
-    let orderByFinal = this._normalizeOrderBy(orderBy, names, defaultOrderCol);
-    if (!names.has(orderByFinal)) {
-      orderByFinal = defaultOrderCol;
-    }
+    const { defaultOrderCol, names } = this._resolveTimestampColumns();
+    const orderByFinal = this._normalizeOrderBy(orderBy, names, defaultOrderCol);
     const dir = String(orderDir || '').toUpperCase();
     const orderDirFinal = this.allowedOrderDir.includes(dir) ? dir : 'DESC';
 
@@ -143,44 +212,6 @@ class RecadoModel {
     return row?.total || 0;
   }
 
-  findById(id) {
-    this._ensureDb();
-    const stmt = this.db.prepare('SELECT * FROM recados WHERE id = ?');
-    return stmt.get(id);
-  }
-
-  create(data) {
-    this._ensureDb();
-    if (!isPlainObject(data)) throw new Error('Dados inválidos');
-
-    const names = this._tableColumns();
-    // Campos conhecidos
-    const candidates = {
-      data_ligacao: data.data_ligacao,
-      hora_ligacao: data.hora_ligacao,
-      destinatario: data.destinatario,
-      remetente_nome: data.remetente_nome,
-      remetente_telefone: data.remetente_telefone,
-      remetente_email: data.remetente_email,
-      horario_retorno: data.horario_retorno,
-      assunto: data.assunto,
-      situacao: data.situacao || 'pendente',
-      observacoes: data.observacoes,
-      created_by: data.created_by ?? data.user_id ?? data.userId ?? null,
-      updated_by: data.updated_by ?? null
-    };
-
-    // Seleciona apenas colunas existentes na tabela
-    const cols = Object.keys(candidates).filter(k => names.has(k) && candidates[k] !== undefined);
-    const placeholders = cols.map(_ => '?').join(', ');
-    const values = cols.map(k => candidates[k]);
-
-    if (!cols.length) throw new Error('Nada para inserir');
-    const sql = `INSERT INTO recados (${cols.join(', ')}) VALUES (${placeholders})`;
-    const info = this.db.prepare(sql).run(...values);
-    return this.findById(info.lastInsertRowid);
-  }
-
   update(id, data) {
     this._ensureDb();
     if (!isPlainObject(data)) throw new Error('Dados inválidos');
@@ -189,7 +220,7 @@ class RecadoModel {
     const updCol = this._resolveUpdateColumn(names);
 
     // Campos atualizáveis
-    const candidates = {
+    the const candidates = {
       data_ligacao: data.data_ligacao,
       hora_ligacao: data.hora_ligacao,
       destinatario: data.destinatario,
@@ -213,12 +244,12 @@ class RecadoModel {
     }
 
     if (updCol) sets.push(`${updCol} = CURRENT_TIMESTAMP`);
-    if (!sets.length) return false;
+    if (!sets.length) return null;
 
     const sql = `UPDATE recados SET ${sets.join(', ')} WHERE id = ?`;
     values.push(id);
     const info = this.db.prepare(sql).run(...values);
-    return info.changes > 0;
+    return info.changes > 0 ? this.findById(id) : null;
   }
 
   delete(id) {
@@ -249,11 +280,50 @@ class RecadoModel {
     return info.changes > 0;
   }
 
+  getStats() {
+    this._ensureDb();
+    const stmt = this.db.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN situacao = 'pendente' THEN 1 ELSE 0 END)      AS pendente,
+        SUM(CASE WHEN situacao = 'em_andamento' THEN 1 ELSE 0 END) AS em_andamento,
+        SUM(CASE WHEN situacao = 'resolvido' THEN 1 ELSE 0 END)    AS resolvido
+      FROM recados
+    `);
+    const row = stmt.get();
+    return {
+      total: row.total,
+      pendente: row.pendente,
+      em_andamento: row.em_andamento,
+      resolvido: row.resolvido,
+    };
+  }
+
+  getStatsByDestinatario() {
+    this._ensureDb();
+    const stmt = this.db.prepare(`
+      SELECT
+        destinatario,
+        COUNT(*) AS total,
+        SUM(CASE WHEN situacao = 'pendente' THEN 1 ELSE 0 END)      AS pendente,
+        SUM(CASE WHEN situacao = 'em_andamento' THEN 1 ELSE 0 END) AS em_andamento,
+        SUM(CASE WHEN situacao = 'resolvido' THEN 1 ELSE 0 END)    AS resolvido
+      FROM recados
+      GROUP BY destinatario
+      ORDER BY total DESC
+    `);
+    return stmt.all();
+  }
+
   // Estatísticas por período (conta por situacao)
   getEstatisticasPorPeriodo({ data_inicio, data_fim } = {}) {
     this._ensureDb();
     const names = this._tableColumns();
-    let dateCol = names.has('data_ligacao') ? 'data_ligacao' : (names.has('created_at') ? 'date(created_at)' : (names.has('criado_em') ? 'date(criado_em)' : null));
+    let dateCol = names.has('data_ligacao')
+      ? 'data_ligacao'
+      : (names.has('created_at')
+          ? 'date(created_at)'
+          : (names.has('criado_em') ? 'date(criado_em)' : null));
 
     let where = 'WHERE 1=1';
     const params = [];
@@ -276,7 +346,11 @@ class RecadoModel {
     const names = this._tableColumns();
     if (!names.has('created_by')) return [];
 
-    let dateCol = names.has('data_ligacao') ? 'data_ligacao' : (names.has('created_at') ? 'date(created_at)' : (names.has('criado_em') ? 'date(criado_em)' : null));
+    let dateCol = names.has('data_ligacao')
+      ? 'data_ligacao'
+      : (names.has('created_at')
+          ? 'date(created_at)'
+          : (names.has('criado_em') ? 'date(criado_em)' : null));
     let where = 'WHERE 1=1';
     const params = [];
     if (dateCol && data_inicio) { where += ` AND ${dateCol} >= ?`; params.push(String(data_inicio)); }
@@ -294,9 +368,13 @@ class RecadoModel {
 
   getRecentes(limit = 10) {
     this._ensureDb();
-    const { column: orderCol } = this._resolveTimestampColumn();
-    const sql = `SELECT * FROM recados ORDER BY ${orderCol} DESC LIMIT ?`;
-    return this.db.prepare(sql).all(limit);
+    const { defaultOrderCol: orderCol } = this._resolveTimestampColumns();
+    const stmt = this.db.prepare(`
+      SELECT * FROM recados
+      ORDER BY ${orderCol} DESC
+      LIMIT ?
+    `);
+    return stmt.all(limit);
   }
 }
 
