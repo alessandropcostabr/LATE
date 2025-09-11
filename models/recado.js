@@ -220,7 +220,7 @@ class RecadoModel {
     const updCol = this._resolveUpdateColumn(names);
 
     // Campos atualizáveis
-    the const candidates = {
+    const candidates = {
       data_ligacao: data.data_ligacao,
       hora_ligacao: data.hora_ligacao,
       destinatario: data.destinatario,
