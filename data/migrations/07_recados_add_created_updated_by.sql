@@ -9,3 +9,9 @@ ALTER TABLE recados ADD COLUMN updated_by INTEGER;
 CREATE INDEX IF NOT EXISTS idx_recados_created_by ON recados(created_by);
 CREATE INDEX IF NOT EXISTS idx_recados_updated_by ON recados(updated_by);
 COMMIT;
+
+-- Rollback:
+-- ALTER TABLE recados DROP COLUMN created_by;
+-- ALTER TABLE recados DROP COLUMN updated_by;
+-- DROP INDEX IF EXISTS idx_recados_created_by;
+-- DROP INDEX IF EXISTS idx_recados_updated_by;

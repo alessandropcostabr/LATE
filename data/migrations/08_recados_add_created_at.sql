@@ -38,3 +38,6 @@ CREATE INDEX IF NOT EXISTS idx_created_at ON recados(created_at);
 INSERT INTO migrations_meta (name) VALUES ('08_recados_add_created_at');
 
 COMMIT;
+
+-- Rollback (manual):
+-- Recriar estrutura antiga de recados com coluna 'criado_em' e restaurar dados de backup.
