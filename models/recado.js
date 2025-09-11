@@ -80,7 +80,11 @@ class RecadoModel {
     const params = [];
 
     // Data: aplica sobre data_ligacao se existir; senão sobre timestamp de criação
-    let dateCol = names.has('data_ligacao') ? 'data_ligacao' : (names.has('created_at') ? 'date(created_at)' : (names.has('criado_em') ? 'date(criado_em)' : null));
+    let dateCol = names.has('data_ligacao')
+      ? 'data_ligacao'
+      : (names.has('created_at')
+          ? 'date(created_at)'
+          : (names.has('criado_em') ? 'date(criado_em)' : null));
     if (filters.data_inicio && dateCol) {
       where.push(`${dateCol} >= ?`);
       params.push(String(filters.data_inicio));
@@ -216,7 +220,7 @@ class RecadoModel {
     const updCol = this._resolveUpdateColumn(names);
 
     // Campos atualizáveis
-    const candidates = {
+    the const candidates = {
       data_ligacao: data.data_ligacao,
       hora_ligacao: data.hora_ligacao,
       destinatario: data.destinatario,
@@ -315,7 +319,11 @@ class RecadoModel {
   getEstatisticasPorPeriodo({ data_inicio, data_fim } = {}) {
     this._ensureDb();
     const names = this._tableColumns();
-    let dateCol = names.has('data_ligacao') ? 'data_ligacao' : (names.has('created_at') ? 'date(created_at)' : (names.has('criado_em') ? 'date(criado_em)' : null));
+    let dateCol = names.has('data_ligacao')
+      ? 'data_ligacao'
+      : (names.has('created_at')
+          ? 'date(created_at)'
+          : (names.has('criado_em') ? 'date(criado_em)' : null));
 
     let where = 'WHERE 1=1';
     const params = [];
@@ -338,7 +346,11 @@ class RecadoModel {
     const names = this._tableColumns();
     if (!names.has('created_by')) return [];
 
-    let dateCol = names.has('data_ligacao') ? 'data_ligacao' : (names.has('created_at') ? 'date(created_at)' : (names.has('criado_em') ? 'date(criado_em)' : null));
+    let dateCol = names.has('data_ligacao')
+      ? 'data_ligacao'
+      : (names.has('created_at')
+          ? 'date(created_at)'
+          : (names.has('criado_em') ? 'date(criado_em)' : null));
     let where = 'WHERE 1=1';
     const params = [];
     if (dateCol && data_inicio) { where += ` AND ${dateCol} >= ?`; params.push(String(data_inicio)); }
