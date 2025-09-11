@@ -23,6 +23,17 @@ class RecadoModel {
     }
   }
 
+  _resolveTimestampColumn() {
+    const columns = this.db.prepare('PRAGMA table_info(recados)').all();
+    const names = new Set(columns.map(c => c.name));
+    const column = names.has('created_at')
+      ? 'created_at'
+      : names.has('criado_em')
+        ? 'criado_em'
+        : 'id';
+    return { column, names };
+  }
+
   _buildFilterQuery(filters = {}) {
     const q = isPlainObject(filters) ? filters : {};
     let clause = '';
@@ -103,20 +114,12 @@ class RecadoModel {
     const { clause, params } = this._buildFilterQuery(rest);
     let query = `SELECT * FROM recados WHERE 1=1${clause}`;
 
-    // Detect available timestamp column from schema for backward compatibility
-    const columns = this.db.prepare('PRAGMA table_info(recados)').all();
-    const names = new Set(columns.map(c => c.name));
+    const { column: defaultOrderCol, names } = this._resolveTimestampColumn();
     if (names.has('criado_em') && !this.allowedOrderBy.includes('criado_em')) {
       this.allowedOrderBy.push('criado_em');
     }
     if (names.has('created_at') && !this.allowedOrderBy.includes('created_at')) {
       this.allowedOrderBy.push('created_at');
-    }
-    let defaultOrderCol = 'id';
-    if (names.has('created_at')) {
-      defaultOrderCol = 'created_at';
-    } else if (names.has('criado_em')) {
-      defaultOrderCol = 'criado_em';
     }
 
     let requestedOrder = orderBy;
@@ -274,14 +277,7 @@ class RecadoModel {
 
   getRecentes(limit = 10) {
     this._ensureDb();
-    // Determina coluna de ordenação de forma retrocompatível.
-    // Verifica o schema atual para evitar erro caso a migration ainda não tenha rodado.
-    const columns = this.db.prepare('PRAGMA table_info(recados)').all();
-    const names = new Set(columns.map(c => c.name));
-    let orderCol = 'created_at';
-    if (!names.has(orderCol)) {
-      orderCol = names.has('criado_em') ? 'criado_em' : 'id';
-    }
+    const { column: orderCol } = this._resolveTimestampColumn();
     const stmt = this.db.prepare(`
       SELECT * FROM recados
       ORDER BY ${orderCol} DESC
