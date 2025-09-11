@@ -55,6 +55,24 @@ class UserModel {
 
   list({ q = '', page = 1, limit = 10 } = {}) {
     this._ensureDb();
+
+    // Determine available timestamp columns
+    const columns = this.db.prepare('PRAGMA table_info(users)').all();
+    const hasCreatedAt = columns.some((c) => c.name === 'created_at');
+    const hasUpdatedAt = columns.some((c) => c.name === 'updated_at');
+    const hasCriadoEm = columns.some((c) => c.name === 'criado_em');
+
+    const selectCols = ['id', 'name', 'email', 'role', 'is_active'];
+    if (hasCreatedAt) {
+      selectCols.push('created_at');
+    } else if (hasCriadoEm) {
+      selectCols.push('criado_em AS created_at');
+    }
+    if (hasUpdatedAt) {
+      selectCols.push('updated_at');
+    }
+    const selectClause = selectCols.join(', ');
+
     const offset = (page - 1) * limit;
     const params = [];
     let where = '';
@@ -64,7 +82,7 @@ class UserModel {
       params.push(term, term);
     }
     const dataStmt = this.db.prepare(`
-      SELECT id, name, email, role, is_active, created_at, updated_at
+      SELECT ${selectClause}
       FROM users
       ${where}
       ORDER BY name ASC
