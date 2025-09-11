@@ -122,7 +122,7 @@ class RecadoModel {
 
     const { createdCol, updatedCol, names } = this._resolveTimestampColumns();
     const creator = data.created_by ?? data.user_id ?? data.userId ?? null;
-    the updater = data.updated_by ?? creator;
+    const updater = data.updated_by ?? creator;
 
     // Campos conhecidos
     const candidates = {
