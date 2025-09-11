@@ -1,5 +1,12 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS migrations_meta (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     run_on DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+COMMIT;
+
+-- Rollback:
+-- DROP TABLE IF EXISTS migrations_meta;

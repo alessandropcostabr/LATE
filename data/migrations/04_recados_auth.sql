@@ -1,3 +1,5 @@
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS recados (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     data_ligacao DATE NOT NULL,
@@ -21,3 +23,8 @@ CREATE INDEX IF NOT EXISTS idx_destinatario ON recados(destinatario);
 CREATE INDEX IF NOT EXISTS idx_situacao ON recados(situacao);
 CREATE INDEX IF NOT EXISTS idx_remetente_nome ON recados(remetente_nome);
 CREATE INDEX IF NOT EXISTS idx_created_at ON recados(created_at);
+
+COMMIT;
+
+-- Rollback:
+-- DROP TABLE IF EXISTS recados;
