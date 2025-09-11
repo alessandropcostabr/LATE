@@ -102,11 +102,33 @@ class RecadoModel {
     const { limit: lim, offset: off, orderBy, orderDir, ...rest } = f;
     const { clause, params } = this._buildFilterQuery(rest);
     let query = `SELECT * FROM recados WHERE 1=1${clause}`;
+
+    // Detect available timestamp column from schema for backward compatibility
+    const columns = this.db.prepare('PRAGMA table_info(recados)').all();
+    const names = new Set(columns.map(c => c.name));
+    if (names.has('criado_em') && !this.allowedOrderBy.includes('criado_em')) {
+      this.allowedOrderBy.push('criado_em');
+    }
+    if (names.has('created_at') && !this.allowedOrderBy.includes('created_at')) {
+      this.allowedOrderBy.push('created_at');
+    }
+    let defaultOrderCol = 'id';
+    if (names.has('created_at')) {
+      defaultOrderCol = 'created_at';
+    } else if (names.has('criado_em')) {
+      defaultOrderCol = 'criado_em';
+    }
+
     let requestedOrder = orderBy;
-    if (requestedOrder === 'criado_em') requestedOrder = 'created_at';
+    if (requestedOrder === 'criado_em' && names.has('created_at') && !names.has('criado_em')) {
+      requestedOrder = 'created_at';
+    } else if (requestedOrder === 'created_at' && names.has('criado_em') && !names.has('created_at')) {
+      requestedOrder = 'criado_em';
+    }
+
     const orderByFinal = this.allowedOrderBy.includes(requestedOrder)
       ? requestedOrder
-      : 'created_at';
+      : defaultOrderCol;
     const dir = (orderDir || '').toUpperCase();
     const orderDirFinal = this.allowedOrderDir.includes(dir) ? dir : 'DESC';
     query += ` ORDER BY ${orderByFinal} ${orderDirFinal}`;
