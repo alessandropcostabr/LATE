@@ -14,7 +14,7 @@ class UserModel {
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'OPERADOR' CHECK (role IN ('ADMIN','SUPERVISOR','OPERADOR','LEITOR')),
-      is_active INTEGER NOT NULL DEFAULT 1,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`).run();
@@ -30,7 +30,11 @@ class UserModel {
     this._ensureDb();
     const normalizedEmail = email.trim().toLowerCase();
     const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-    return stmt.get(normalizedEmail);
+    const user = stmt.get(normalizedEmail);
+    if (user) {
+      user.is_active = Boolean(user.is_active);
+    }
+    return user;
   }
 
   create(user) {
@@ -51,7 +55,7 @@ class UserModel {
       name: user.name,
       email,
       role: user.role || 'OPERADOR',
-      is_active: 1,
+      is_active: true,
     };
   }
 
@@ -90,7 +94,9 @@ class UserModel {
       ORDER BY name ASC
       LIMIT ? OFFSET ?
     `);
-    const data = dataStmt.all(...params, limit, offset);
+    const data = dataStmt
+      .all(...params, limit, offset)
+      .map((u) => ({ ...u, is_active: Boolean(u.is_active) }));
     const countStmt = this.db.prepare(`SELECT COUNT(*) as total FROM users ${where}`);
     const { total } = countStmt.get(...params);
     return {

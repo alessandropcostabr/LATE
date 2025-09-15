@@ -30,6 +30,7 @@ exports.login = async (req, res) => {
   const { password } = req.body;
   const email = req.body.email.trim().toLowerCase();
   const user = UserModel.findByEmail(email);
+
   if (!user || !user.is_active) {
     const errorMsg = 'Usuário não encontrado ou inativo';
     if (req.accepts('json')) {
