@@ -176,7 +176,13 @@ Headers esperados:
 Se o cabeçalho `Accept` incluir `application/json`, respostas de erro do `/login` serão retornadas em JSON no formato:
 
 ```json
-{ "error": "Credenciais inválidas" }
+{ "error": "Usuário não encontrado ou inativo" }
+```
+
+ou
+
+```json
+{ "error": "Senha incorreta" }
 ```
 
 ### Ping autenticado
