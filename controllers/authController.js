@@ -30,27 +30,30 @@ exports.login = async (req, res) => {
   const { password } = req.body;
   const email = req.body.email.trim().toLowerCase();
   const user = UserModel.findByEmail(email);
-  if (!user || Number(user.is_active) !== 1) {
+
+  if (!user || !user.is_active) {
+    const errorMsg = 'Usuário não encontrado ou inativo';
     if (req.accepts('json')) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return res.status(401).json({ error: errorMsg });
     }
     return res.status(401).render('login', {
       title: 'Login',
       csrfToken: req.csrfToken(),
-      error: 'Credenciais inválidas',
+      error: errorMsg,
     });
   }
 
   try {
     const valid = await argon2.verify(user.password_hash, password);
     if (!valid) {
+      const errorMsg = 'Senha incorreta';
       if (req.accepts('json')) {
-        return res.status(401).json({ error: 'Credenciais inválidas' });
+        return res.status(401).json({ error: errorMsg });
       }
       return res.status(401).render('login', {
         title: 'Login',
         csrfToken: req.csrfToken(),
-        error: 'Credenciais inválidas',
+        error: errorMsg,
       });
     }
     req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
