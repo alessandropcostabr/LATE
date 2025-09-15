@@ -42,7 +42,7 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const valid = await argon2.verify(user.password_hash, password, { type: argon2.argon2id });
+    const valid = await argon2.verify(user.password_hash, password);
     if (!valid) {
       if (req.accepts('json')) {
         return res.status(401).json({ error: 'Credenciais inválidas' });
