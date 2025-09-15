@@ -31,6 +31,7 @@ exports.login = async (req, res) => {
   const email = req.body.email.trim().toLowerCase();
   const user = UserModel.findByEmail(email);
   if (!user || Number(user.is_active) !== 1) {
+    console.warn('Login failed', { email, reason: 'user not found or inactive' });
     if (req.accepts('json')) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
@@ -44,6 +45,7 @@ exports.login = async (req, res) => {
   try {
     const valid = await argon2.verify(user.password_hash, password);
     if (!valid) {
+      console.warn('Login failed', { email, reason: 'invalid password' });
       if (req.accepts('json')) {
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }
