@@ -32,7 +32,7 @@ exports.login = async (req, res) => {
   const user = UserModel.findByEmail(email);
 
   if (!user || Number(user.is_active) !== 1) {
-    console.warn('Login failed', { email, reason: 'Usuário não encontrado ou inativo });
+    console.warn('Login failed', { email, reason: 'Usuário não encontrado ou inativo' });
     if (req.accepts('json')) {
       return res.status(401).json({ error: errorMsg });
     }
