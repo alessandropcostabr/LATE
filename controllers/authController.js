@@ -30,7 +30,7 @@ exports.login = async (req, res) => {
   const { password } = req.body;
   const email = req.body.email.trim().toLowerCase();
   const user = UserModel.findByEmail(email);
-  if (!user || !user.is_active) {
+  if (!user || Number(user.is_active) !== 1) {
     if (req.accepts('json')) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
