@@ -28,26 +28,28 @@ class UserModel {
 
   findByEmail(email) {
     this._ensureDb();
+    const normalizedEmail = email.trim().toLowerCase();
     const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-    return stmt.get(email);
+    return stmt.get(normalizedEmail);
   }
 
   create(user) {
     this._ensureDb();
+    const email = user.email.trim().toLowerCase();
     const stmt = this.db.prepare(`
       INSERT INTO users (name, email, password_hash, role, is_active)
       VALUES (?, ?, ?, ?, 1)
     `);
     const result = stmt.run(
       user.name,
-      user.email,
+      email,
       user.password_hash,
       user.role || 'OPERADOR'
     );
     return {
       id: result.lastInsertRowid,
       name: user.name,
-      email: user.email,
+      email,
       role: user.role || 'OPERADOR',
       is_active: 1,
     };

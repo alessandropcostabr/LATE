@@ -27,7 +27,8 @@ exports.login = async (req, res) => {
     });
   }
 
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = req.body.email.trim().toLowerCase();
   const user = UserModel.findByEmail(email);
   if (!user || !user.is_active) {
     if (req.accepts('json')) {
@@ -83,6 +84,7 @@ exports.showRegister = (req, res) => {
 exports.register = async (req, res) => {
   const errors = validationResult(req);
   const { name, email, password, role: requestedRole } = req.body;
+  const normalizedEmail = email.trim().toLowerCase();
   const role =
     req.session.user?.role === 'ADMIN' && ALLOWED_ROLES.includes(requestedRole)
       ? requestedRole
@@ -103,7 +105,7 @@ exports.register = async (req, res) => {
 
   try {
     const hash = await argon2.hash(password, { type: argon2.argon2id });
-    await UserModel.create({ name, email, password_hash: hash, role });
+    await UserModel.create({ name, email: normalizedEmail, password_hash: hash, role });
     return res.redirect('/login');
   } catch (err) {
     if (
