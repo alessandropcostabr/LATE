@@ -1,23 +1,29 @@
-const defaultOrigins = [
-  'http://localhost:3000',
-  'http://localhost:8080',
-  'https://late.miahchat.com',
-  'https://www.late.miahchat.com'
-];
+import cors from 'cors';
 
-// Aceita lista separada por vírgula ou espaço nas variáveis de ambiente
-const originsEnv = process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || '';
-const envOrigins = originsEnv
-  .split(/[\s,]+/)
-  .map(o => o.trim())
+// Use ENV CORS_ORIGINS para múltiplas origens, separadas por vírgula.
+const fromEnv = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
   .filter(Boolean);
 
-// Permite habilitar qualquer origem usando "*" nas variáveis de ambiente
-const allowAll = envOrigins.includes('*');
+const defaultOrigins = fromEnv.length > 0
+  ? fromEnv
+  : [
+      'http://localhost:3000', // dev padrão
+      'http://localhost',      // fallback
+    ];
 
-// Usa domínios definidos via ambiente quando houver; caso contrário mantém os padrões
-const allowedOrigins = allowAll
-  ? []
-  : Array.from(new Set(envOrigins.length > 0 ? envOrigins : defaultOrigins));
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permite ferramentas locais (sem header Origin), ex.: curl/Postman
+    if (!origin) return callback(null, true);
+    const allowed = defaultOrigins.includes(origin);
+    if (allowed) return callback(null, true);
+    return callback(new Error(`Origem não permitida pelo CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  allowedHeaders: ['Content-Type','X-CSRF-Token','X-Requested-With'],
+};
 
-module.exports = { allowedOrigins, allowAll };
+export default cors(corsOptions);

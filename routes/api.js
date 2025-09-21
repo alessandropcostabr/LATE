@@ -1,259 +1,145 @@
+// routes/api.js
+// Rotas de API para Recados (CRUD básico + estatísticas).
+// Padrões: respostas em pt-BR, JSON consistente e tratamento de erros.
+
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const RecadoModel = require('../models/recado');
-const {
-  validateCreateRecado,
-  validateUpdateRecado,
-  validateUpdateSituacao,
-  validateQueryRecados,
-  validateId,
-  handleValidationErrors,
-} = require('../middleware/validation');
 
-/**
- * Helper que envolve handlers síncronos para propagar erros ao middleware de erro do Express.
- */
-const wrap = fn => (req, res, next) => {
-  try {
-    fn(req, res, next);
-  } catch (err) {
-    next(err);
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de resposta
+
+function ok(res, dados) {
+  return res.json({ sucesso: true, dados });
+}
+
+function fail(res, status, mensagem, detalhe) {
+  const payload = { sucesso: false, erro: mensagem };
+  if (process.env.NODE_ENV === 'development' && detalhe) {
+    payload.detalhe = String(detalhe);
   }
-};
+  return res.status(status).json(payload);
+}
 
-const isPlainObject = v => v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype;
+// Validação mínima de criação/atualização (alinha com schema do SQLite)
+function validarEntrada(base) {
+  const faltando = [];
+  if (!base.data_ligacao) faltando.push('data_ligacao');
+  if (!base.hora_ligacao) faltando.push('hora_ligacao');
+  if (!base.destinatario) faltando.push('destinatario');
+  if (!base.remetente_nome) faltando.push('remetente_nome');
+  if (!base.assunto) faltando.push('assunto');
+  if (!base.mensagem) faltando.push('mensagem (ou preencher observacoes)');
+  return faltando;
+}
 
-// ───────────────────────────────────────────────────────────
-// Middleware de log simples
-// ───────────────────────────────────────────────────────────
-router.use((req, _res, next) => {
-  console.log(`[API] ${req.method} ${req.originalUrl}`);
-  next();
+// Normaliza body e aplica fallback de mensagem ← observacoes
+function normalizarBody(b = {}) {
+  const dados = {
+    data_ligacao: String(b.data_ligacao || '').trim(),
+    hora_ligacao: String(b.hora_ligacao || '').trim(),
+    destinatario: String(b.destinatario || '').trim(),
+    remetente_nome: String(b.remetente_nome || '').trim(),
+    remetente_telefone: b.remetente_telefone ? String(b.remetente_telefone).trim() : null,
+    remetente_email: b.remetente_email ? String(b.remetente_email).trim() : null,
+    assunto: String(b.assunto || '').trim(),
+    mensagem: String((b.mensagem ?? b.observacoes ?? '')).trim(), // ← essencial p/ NOT NULL
+    situacao: b.situacao || 'pendente', // 'pendente' | 'em_andamento' | 'resolvido'
+    horario_retorno: b.horario_retorno ? String(b.horario_retorno).trim() : null,
+    observacoes: b.observacoes ? String(b.observacoes).trim() : null
+  };
+  return dados;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rotas de Recados
+
+// GET /api/recados?limit=10 — lista recentes (p/ Dashboard e Listagem)
+router.get('/recados', (req, res) => {
+  try {
+    const lim = Number(req.query.limit || 10);
+    const rows = RecadoModel.listarRecentes(isNaN(lim) ? 10 : lim);
+    return ok(res, rows);
+  } catch (e) {
+    console.error('[recados] erro ao listar:', e);
+    return fail(res, 500, 'Erro ao listar recados.', e);
+  }
 });
 
-// ───────────────────────────────────────────────────────────
-// GET /api/recados  – listagem com filtros, paginação e ordenação
-// ───────────────────────────────────────────────────────────
-router.get(
-  '/recados',
-  validateQueryRecados,
-  handleValidationErrors,
-  wrap((req, res) => {
-    const q = req.query;
-    let plain = {};
-    if (isPlainObject(q)) {
-      plain = { ...q };
-    } else if (q && typeof q[Symbol.iterator] === 'function') {
-      plain = Object.fromEntries(q);
-    } else if (q && typeof q === 'object') {
-      plain = Object.fromEntries(Object.entries(q));
+// GET /api/recados/estatisticas — cards do Dashboard
+router.get('/recados/estatisticas', (_req, res) => {
+  try {
+    const r = RecadoModel.estatisticas(); // { total, pendentes, em_andamento, resolvidos }
+    return ok(res, r);
+  } catch (e) {
+    console.error('[recados] erro nas estatísticas:', e);
+    return fail(res, 500, 'Erro ao carregar estatísticas.', e);
+  }
+});
+
+// GET /api/recados/:id — detalhe
+router.get('/recados/:id', (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return fail(res, 400, 'ID inválido.');
+    const row = RecadoModel.obterPorId(id);
+    if (!row) return fail(res, 404, 'Recado não encontrado.');
+    return ok(res, row);
+  } catch (e) {
+    console.error('[recados] erro ao obter:', e);
+    return fail(res, 500, 'Erro ao obter recado.', e);
+  }
+});
+
+// POST /api/recados — criar
+router.post('/recados', (req, res) => {
+  try {
+    const dados = normalizarBody(req.body);
+    const faltando = validarEntrada(dados);
+    if (faltando.length) {
+      return fail(res, 400, `Campos obrigatórios ausentes: ${faltando.join(', ')}.`);
     }
+    const id = RecadoModel.create(dados);
+    return res.status(201).json({ sucesso: true, id });
+  } catch (e) {
+    console.error('[recados] erro ao criar:', e);
+    return fail(res, 500, 'Erro interno ao criar recado.', e);
+  }
+});
 
-    const limit = parseInt(plain.limit, 10);
-    const offset = parseInt(plain.offset, 10);
-    delete plain.limit;
-    delete plain.offset;
-
-    const parsedFilters = {
-      ...plain,
-      limit: Number.isFinite(limit) ? limit : 20,
-      offset: Number.isFinite(offset) ? offset : 0,
-    };
-
-    const data = RecadoModel.findAll(parsedFilters);
-    // O método count() pode não existir se o modelo estiver desatualizado.
-    // Utilizamos data.length como fallback para manter a aplicação funcional.
-    let total = 0;
-    if (typeof RecadoModel.count === 'function') {
-      try {
-        total = RecadoModel.count(parsedFilters);
-      } catch (err) {
-        console.error('Erro ao contar recados:', err);
-        total = Array.isArray(data) ? data.length : 0;
-      }
-    } else {
-      console.warn('RecadoModel.count não disponível. Usando data.length como fallback.');
-      total = Array.isArray(data) ? data.length : 0;
+// PUT /api/recados/:id — atualizar
+router.put('/recados/:id', (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return fail(res, 400, 'ID inválido.');
+    const dados = normalizarBody(req.body);
+    const faltando = validarEntrada(dados);
+    if (faltando.length) {
+      return fail(res, 400, `Campos obrigatórios ausentes: ${faltando.join(', ')}.`);
     }
+    const okUpd = RecadoModel.atualizar(id, dados);
+    if (!okUpd) return fail(res, 404, 'Recado não encontrado para atualização.');
+    return ok(res, { id, atualizado: true });
+  } catch (e) {
+    console.error('[recados] erro ao atualizar:', e);
+    return fail(res, 500, 'Erro ao atualizar recado.', e);
+  }
+});
 
-    res.json({
-      success: true,
-      data,
-      pagination: {
-        total,
-        limit:  parsedFilters.limit,
-        offset: parsedFilters.offset,
-        hasMore: parsedFilters.offset + parsedFilters.limit < total,
-      },
-    });
-  })
-);
-
-// ───────────────────────────────────────────────────────────
-// GET /api/recados/:id – obter recado específico
-// ───────────────────────────────────────────────────────────
-router.get(
-  '/recados/:id',
-  validateId,
-  handleValidationErrors,
-  wrap((req, res) => {
-    const recado = RecadoModel.findById(Number(req.params.id));
-    if (!recado) {
-      return res.status(404).json({ success: false, message: 'Recado não encontrado' });
-    }
-    res.json({ success: true, data: recado });
-  })
-);
-
-// ───────────────────────────────────────────────────────────
-// POST /api/recados – criar novo recado
-// ───────────────────────────────────────────────────────────
-router.post(
-  '/recados',
-  validateCreateRecado,
-  handleValidationErrors,
-  wrap((req, res) => {
-    const recado = RecadoModel.create(req.body);
-    res.status(201).json({ success: true, data: recado });
-  })
-);
-
-// ───────────────────────────────────────────────────────────
-// PUT /api/recados/:id – atualizar recado inteiro
-// ───────────────────────────────────────────────────────────
-router.put(
-  '/recados/:id',
-  validateUpdateRecado,
-  handleValidationErrors,
-  wrap((req, res) => {
-    const recado = RecadoModel.update(Number(req.params.id), req.body);
-    if (!recado) {
-      return res.status(404).json({ success: false, message: 'Recado não encontrado' });
-    }
-    res.json({ success: true, data: recado });
-  })
-);
-
-// ───────────────────────────────────────────────────────────
-// PATCH /api/recados/:id/situacao – atualizar somente o status
-// ───────────────────────────────────────────────────────────
-router.patch(
-  '/recados/:id/situacao',
-  validateUpdateSituacao,
-  handleValidationErrors,
-  wrap((req, res) => {
-    const ok = RecadoModel.updateSituacao(Number(req.params.id), req.body.situacao);
-    if (!ok) {
-      return res.status(404).json({ success: false, message: 'Recado não encontrado' });
-    }
-    const recado = RecadoModel.findById(Number(req.params.id));
-    res.json({ success: true, data: recado });
-  })
-);
-
-// ───────────────────────────────────────────────────────────
-// DELETE /api/recados/:id – remover recado
-// ───────────────────────────────────────────────────────────
-router.delete(
-  '/recados/:id',
-  validateId,
-  handleValidationErrors,
-  wrap((req, res) => {
-    const ok = RecadoModel.delete(Number(req.params.id));
-    if (!ok) {
-      return res.status(404).json({ success: false, message: 'Recado não encontrado' });
-    }
-    res.json({ success: true });
-  })
-);
-
-// ───────────────────────────────────────────────────────────
-// GET /api/stats – estatísticas gerais
-// ───────────────────────────────────────────────────────────
-router.get('/stats', wrap((_, res) => {
-  const data = RecadoModel.getStats();
-  res.json({ success: true, data });
-}));
-
-// ───────────────────────────────────────────────────────────
-// GET /api/stats/por-destinatario – estatísticas agrupadas
-// ───────────────────────────────────────────────────────────
-router.get('/stats/por-destinatario', wrap((_, res) => {
-  const rows = RecadoModel.getStatsByDestinatario();
-  const data = rows.map(r => ({
-    destinatario: r.destinatario,
-    total: r.total,
-    pendente: r.pendente,
-    em_andamento: r.em_andamento,
-    resolvido: r.resolvido,
-  }));
-  res.json({ success: true, data });
-}));
-
-// ───────────────────────────────────────────────────────────
-// GET /api/stats/por-mes – estatísticas agrupadas por mês
-// ───────────────────────────────────────────────────────────
-router.get('/stats/por-mes', wrap((_, res) => {
-  const data = RecadoModel.reportByMonth();
-  res.json({ success: true, data });
-}));
-
-// ───────────────────────────────────────────────────────────
-// GET /api/stats/por-status – estatísticas agrupadas por status
-// ───────────────────────────────────────────────────────────
-router.get('/stats/por-status', wrap((_, res) => {
-  const data = RecadoModel.reportByStatus();
-  res.json({ success: true, data });
-}));
-
-// ───────────────────────────────────────────────────────────
-// GET /api/stats/por-responsavel – estatísticas por usuário responsável
-// ───────────────────────────────────────────────────────────
-router.get('/stats/por-responsavel', wrap((_, res) => {
-  const data = RecadoModel.reportByResponsavel();
-  res.json({ success: true, data });
-}));
-
-// ───────────────────────────────────────────────────────────
-// Endpoints para gráficos do Chart.js
-// ───────────────────────────────────────────────────────────
-router.get('/relatorios/por-mes', wrap((_, res) => {
-  const rows = RecadoModel.reportByMonth();
-  res.json({
-    labels: rows.map(r => r.month),
-    data: rows.map(r => r.total)
-  });
-}));
-
-router.get('/relatorios/por-status', wrap((_, res) => {
-  const rows = RecadoModel.reportByStatus();
-  res.json({
-    labels: rows.map(r => r.status),
-    data: rows.map(r => r.total)
-  });
-}));
-
-router.get('/relatorios/por-destinatario', wrap((_, res) => {
-  const rows = RecadoModel.getStatsByDestinatario();
-  res.json({
-    labels: rows.map(r => r.destinatario),
-    data: rows.map(r => r.total)
-  });
-}));
-
-// ───────────────────────────────────────────────────────────
-// GET /api/recados-recentes – últimos N recados (default 10)
-// ───────────────────────────────────────────────────────────
-router.get('/recados-recentes', wrap((req, res) => {
-  const limit = Number(req.query.limit) || 10;
-  const data  = RecadoModel.getRecentes(limit);
-  res.json({ success: true, data });
-}));
-
-// ───────────────────────────────────────────────────────────
-// Health‑check simples
-// ───────────────────────────────────────────────────────────
-router.get('/healthz', (_, res) => res.json({ ok: true }));
+// DELETE /api/recados/:id — excluir
+router.delete('/recados/:id', (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return fail(res, 400, 'ID inválido.');
+    const okDel = RecadoModel.excluir(id);
+    if (!okDel) return fail(res, 404, 'Recado não encontrado para exclusão.');
+    return ok(res, { id, excluido: true });
+  } catch (e) {
+    console.error('[recados] erro ao excluir:', e);
+    return fail(res, 500, 'Erro ao excluir recado.', e);
+  }
+});
 
 module.exports = router;
+

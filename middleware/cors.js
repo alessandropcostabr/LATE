@@ -1,22 +1,27 @@
+// middleware/cors.js
 const cors = require('cors');
-const { allowedOrigins, allowAll } = require('../config/cors');
 
+// Lê CORS_ORIGINS da env (separadas por vírgula) ou usa defaults para DEV
+const fromEnv = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+const defaultOrigins = fromEnv.length > 0
+  ? fromEnv
+  : ['http://localhost:3000', 'http://localhost'];
+
+// Opções de CORS com guarda para requests sem Origin (curl, devtools, health, etc.)
 const corsOptions = {
-    origin: function (origin, callback) {
-        // Permitir requisições sem origin (mobile apps, Postman, etc.)
-        if (!origin || allowAll || allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-
-         // Não autoriza CORS para a origem, mas sem quebrar a requisição.
-         // O navegador bloqueará o acesso por não receber os headers CORS.
-         // Evita 403 em SSR e chamadas disparadas por extensões.
-         callback(null, false);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token']
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // sem Origin → permite (curl/localhost)
+    const allowed = defaultOrigins.includes(origin);
+    return cb(allowed ? null : new Error(`Origem não permitida pelo CORS: ${origin}`), allowed);
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  allowedHeaders: ['Content-Type','X-CSRF-Token','X-Requested-With'],
 };
 
+// Exporta o middleware configurado
 module.exports = cors(corsOptions);
-

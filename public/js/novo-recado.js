@@ -1,114 +1,95 @@
-// /public/js/novo-recado.js
-// Script de Novo Recado — intercepta submissão do formulário e evita duplos envios
+// public/js/novo-recado.js
+// Página "Novo Recado" — coleta do formulário, normalização e envio para a API.
+// Por quê: garantir JSON válido e presença de 'mensagem' (fallback de 'observacoes').
 
-document.addEventListener('DOMContentLoaded', function () {
+(() => {
   console.log('✅ Novo Recado JS carregado');
 
-  // Procura pelo formulário usando os possíveis IDs historicamente utilizados
-  const form = document.getElementById('formNovoRecado') || document.getElementById('novoRecadoForm');
-  if (!form) {
-    console.log('⚠️  Formulário de recado não encontrado');
-    return;
+  // Helper seguro para capturar valor de input/textarea
+  const val = (sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return '';
+    return String(el.value || '').trim();
+  };
+
+  function coletarDados() {
+    const data_ligacao = val('#data_ligacao');
+    const hora_ligacao = val('#hora_ligacao');
+    const destinatario = val('#destinatario');
+    const remetente_nome = val('#remetente_nome');
+    const remetente_telefone = val('#remetente_telefone');
+    const remetente_email = val('#remetente_email');
+    const assunto = val('#assunto');
+    const situacao = val('#situacao') || 'pendente';
+    const horario_retorno = val('#horario_retorno');
+    const observacoes = val('#observacoes');
+
+    // 'mensagem' pode não existir no template atual; tentamos capturar, senão criamos fallback
+    const mensagemRaw = val('#mensagem'); // se não existir, retorna ''
+    const mensagem = (mensagemRaw || observacoes || '(sem mensagem)');
+
+    const payload = {
+      data_ligacao,
+      hora_ligacao,
+      destinatario,
+      remetente_nome,
+      remetente_telefone,
+      remetente_email,
+      assunto,
+      mensagem,            // <- obrigatório no banco; garantimos aqui
+      situacao,
+      horario_retorno,
+      observacoes
+    };
+
+    console.log('✅ Dados coletados:', payload);
+    return payload;
   }
 
-  // Obtém o botão de submit dentro do formulário
-  const submitBtn = form.querySelector('button[type="submit"]');
-
-  // Flag para evitar envios duplicados
-  let isSubmitting = false;
-
-  /**
-   * Função responsável por processar o envio do formulário.
-   * Coleta dados, valida campos obrigatórios e envia via fetch.
-   * Pode ser chamada pelo evento submit ou pelo clique no botão.
-   */
-  async function handleSubmit(event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-
-    if (isSubmitting) {
-      console.log('⚠️  Já está enviando, ignorando submit duplicado');
-      return false;
-    }
-    isSubmitting = true;
-
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Salvando...';
-    }
-
+  async function handleSubmit(ev) {
+    ev.preventDefault();
     try {
-      const formData = new FormData(form);
-      const data = {};
-      for (const [key, value] of formData.entries()) {
-        data[key] = typeof value === 'string' ? value.trim() : value;
-      }
-      console.log('✅ Dados coletados:', data);
+      const recado = coletarDados();
 
-      // Validação básica dos campos obrigatórios
-      const requiredFields = [
-        { key: 'destinatario', message: 'Destinatário é obrigatório.' },
-        { key: 'remetente_nome', message: 'Remetente é obrigatório.' },
-        { key: 'assunto', message: 'Assunto é obrigatório.' },
-        { key: 'data_ligacao', message: 'Data da ligação é obrigatória.' },
-        { key: 'hora_ligacao', message: 'Hora da ligação é obrigatória.' }
-      ];
+      // Validação mínima no front para UX (backend também valida)
+      const faltando = [];
+      if (!recado.data_ligacao) faltando.push('Data da ligação');
+      if (!recado.hora_ligacao) faltando.push('Hora da ligação');
+      if (!recado.destinatario) faltando.push('Destinatário');
+      if (!recado.remetente_nome) faltando.push('Remetente');
+      if (!recado.assunto) faltando.push('Assunto');
+      if (!recado.mensagem) faltando.push('Mensagem');
 
-      const missing = requiredFields
-        .filter(field => !data[field.key])
-        .map(field => field.message);
-
-      if (missing.length > 0) {
-        alert(missing.join('\n'));
+      if (faltando.length) {
+        alert(`Preencha os campos obrigatórios: ${faltando.join(', ')}`);
         return;
       }
 
-      const response = await fetch('/api/recados', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(data)
-      });
-      const result = await response.json();
+      const resp = await API.createRecado(recado);
+      console.log('✅ Recado criado:', resp);
 
-      if (response.ok && result.success) {
-        console.log('✅ Recado criado com sucesso');
-        alert('Recado criado com sucesso!');
-        form.reset();
-        setTimeout(() => {
-          window.location.href = '/recados';
-        }, 1000);
+      // Redireciona para lista/detalhe após criar (ajuste conforme sua navegação)
+      if (resp?.sucesso) {
+        window.location.href = '/recados';
       } else {
-        console.error('❌ Erro do servidor:', result.message);
-        alert('Erro ao salvar recado: ' + (result.message || 'Erro interno do servidor'));
+        alert('Não foi possível criar o recado.');
       }
-    } catch (error) {
-      console.error('❌ Erro na requisição:', error);
-      alert('Erro ao salvar recado. Verifique sua conexão e tente novamente.');
-    } finally {
-      isSubmitting = false;
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Salvar Recado';
-      }
+    } catch (err) {
+      console.error('❌ Erro do servidor:', err?.message || err);
+      alert(err?.message || 'Erro ao salvar recado. Tente novamente.');
     }
   }
 
-  // Listener padrão de submit
-  form.addEventListener('submit', handleSubmit);
-
-  // Fallback para clique no botão
-  if (submitBtn) {
-    submitBtn.addEventListener('click', function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      handleSubmit(event);
-    });
+  function iniciar() {
+    const form = document.querySelector('#form-novo-recado') || document.querySelector('form');
+    if (!form) {
+      console.warn('⚠️ Formulário de novo recado não encontrado.');
+      return;
+    }
+    form.addEventListener('submit', handleSubmit);
+    console.log('✅ Manipuladores de evento configurados para Novo Recado');
   }
 
-  console.log('✅ Manipuladores de evento configurados para Novo Recado');
-});
+  document.addEventListener('DOMContentLoaded', iniciar);
+})();
+
