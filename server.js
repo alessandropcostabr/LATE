@@ -1,5 +1,7 @@
-// server.js
+// server.js — foco DEV estável
+// Arquitetura: Express 5 + EJS + SQLite (better-sqlite3) + sessions
 
+// ─── Imports base ────────────────────────────────────────────────────────────
 const express = require('express');
 const corsMw = require('./middleware/cors');
 const helmet = require('helmet');
@@ -9,7 +11,6 @@ const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const path = require('path');
 const fs = require('fs');
-// Compression middleware
 const compression = require('compression');
 
 // Importar middlewares e rotas
@@ -17,106 +18,81 @@ const dbManager = require('./config/database');
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 
-// Middleware opcional para validar origem
+// Middleware opcional para validar origem (carrega só se existir)
 let validateOrigin;
-try {
-  validateOrigin = require('./middleware/validateOrigin');
-} catch {
-  validateOrigin = null;
-}
+try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
 
-// Inicializar aplicação Express
-// Evita 304 Not Modified em respostas da API (Axios trata como erro)
-// Desliga geração de ETag no Express (também dispensa If-None-Match)
-const app = express();
-app.set('etag', false);
-
-// Em ambiente atrás de NGINX, padrão seguro = 1 (pode sobrescrever via TRUST_PROXY)
-const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? 1);
-app.set('trust proxy', TRUST_PROXY);
-
-console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV}`);
-
+// ─── Flags/Ambiente ─────────────────────────────────────────────────────────
+const isProd = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 3000;
 
-// Define o caminho do CSS baseado no ambiente
-app.locals.cssFile =
-  process.env.NODE_ENV === 'production'
-    ? '/css/style.min.css'
-    : '/css/style.css';
+// Em ambiente atrás de proxy (ex.: Nginx), confiar no proxy somente em produção.
+// Em DEV, manter 0 para não bagunçar req.secure e flags de cookie.
+const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? (isProd ? 1 : 0));
 
-// ─── Configuração de View Engine ─────────────────────────────────────────────
-// Configurar EJS para renderização server-side
+// ─── App Express ─────────────────────────────────────────────────────────────
+const app = express();
+
+// Evita ETag/304 para simplificar debug no DEV
+app.set('etag', false);
+app.set('trust proxy', TRUST_PROXY);
+
+// Helmet compatível em DEV (CSP endurecida entra na Sprint 5 com nonce/hash)
+app.use(helmet({ contentSecurityPolicy: false }));
+
+console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV || 'undefined'}`);
+
+// Define o caminho do CSS baseado no ambiente
+app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
+
+// ─── View Engine ─────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ─── Segurança, Limites e Middleware ─────────────────────────────────────────
+// ─── CORS / Pré-flight ───────────────────────────────────────────────────────
 app.use(corsMw);
-
-// Express 5 with path-to-regexp v7 cannot parse a bare '*' path.
-// Use a regex to handle CORS preflight requests on any route.
-
+// Express 5 + path-to-regexp v7: use regex para OPTIONS global
 app.options(/.*/, corsMw);
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc:  ["'self'", "'unsafe-inline'"],
-      styleSrc:   ["'self'", "'unsafe-inline'"],
-      fontSrc:    ["'self'"],
-      imgSrc:     ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
-      objectSrc:  ["'none'"]
-    }
-  }
-}));
 
-if (process.env.NODE_ENV === 'production' && validateOrigin) {
-  app.use(validateOrigin);
-}
+// Validação de origem (se fornecida) apenas em produção
+if (isProd && validateOrigin) app.use(validateOrigin);
 
+// ─── Rate Limiters ──────────────────────────────────────────────────────────
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
+  windowMs: 15 * 60 * 1000,
   max: 20,
-  message: {
-    success: false,
-    error: 'Muitas requisições. Tente novamente em 15 minutos.'
-  },
+  message: { sucesso: false, erro: 'Muitas requisições. Tente novamente em 15 minutos.' },
   skip: req => req.method !== 'POST'
 });
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
+  windowMs: 15 * 60 * 1000,
   max: 100,
   skip: req => req.method === 'OPTIONS'
 });
 
-// Servir assets estáticos e logging
+// ─── Estáticos / Logs / Body Parsers / Compressão ───────────────────────────
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use(morgan('combined'));
-// Enable gzip compression
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use(
-  session({
-    store: new SQLiteStore({
-      db: 'sessions.sqlite',
-      dir: path.join(__dirname, 'data')
-    }),
-    name: 'late.sid',
-    secret: process.env.SESSION_SECRET || 'late_secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      // Only use secure cookies in production to allow HTTP during development
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: process.env.SAMESITE || 'lax'
-    }
-  })
-);
+// ─── Sessão (ÚNICA) ─────────────────────────────────────────────────────────
+// Por quê: estabilidade em DEV (HTTP), segurança em PROD (HTTPS)
+app.use(session({
+  name: 'connect.sid',
+  secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
+  resave: false,
+  saveUninitialized: false,
+  store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.join(__dirname, 'data') }),
+  cookie: {
+    httpOnly: true,
+    secure: isProd,       // true somente atrás de HTTPS real (PROD)
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 4 // 4h
+  }
+}));
 
 // Disponibiliza o usuário logado nas views
 app.use((req, res, next) => {
@@ -124,10 +100,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Cache-control
+// ─── Cache-control básico ────────────────────────────────────────────────────
 app.use((req, res, next) => {
   if (req.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/)) {
-    // Apply long-term caching for versioned (hashed) assets
     if (req.url.match(/\.[0-9a-fA-F]{8,}\./)) {
       res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
     } else {
@@ -139,13 +114,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// ─── Bundlers leves p/ JS público (mantidos) ────────────────────────────────
 const jsDir = path.join(__dirname, 'public', 'js');
-// Enable bundle caching by default. For development you can set
-// BYPASS_BUNDLE_CACHE=true (with NODE_ENV=development) to rebuild on each
-// request.
-const shouldBypassCache =
-  process.env.NODE_ENV === 'development' &&
-  process.env.BYPASS_BUNDLE_CACHE === 'true';
+const shouldBypassCache = !isProd && process.env.BYPASS_BUNDLE_CACHE === 'true';
 
 let appBundle;
 let recadosBundle;
@@ -167,7 +138,7 @@ const buildAppBundle = () => {
     '  }\n' +
     '}(typeof self !== "undefined" ? self : this, function (root) {\n' +
     '  if (!root.API || !root.Utils || !root.Form || !root.Loading || !root.Toast) {\n' +
-    combined + '\n' +
+           combined + '\n' +
     '    if (!root.API && typeof API !== "undefined") root.API = API;\n' +
     '    if (!root.Utils && typeof Utils !== "undefined") root.Utils = Utils;\n' +
     '    if (!root.Form && typeof Form !== "undefined") root.Form = Form;\n' +
@@ -209,7 +180,7 @@ app.get('/js/app.js', sendAppBundle);
 app.get('/js/utils.js', sendAppBundle);
 app.get('/js/recados.js', sendRecadosBundle);
 
-app.get('/js/toast.js', (req, res) => {
+app.get('/js/toast.js', (_req, res) => {
   res
     .type('application/javascript')
     .send(`(function (root, factory) {
@@ -254,51 +225,50 @@ app.get('/js/toast.js', (req, res) => {
 }));`);
 });
 
+// Estáticos raiz
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- Safety default para templates EJS ---
+// Safety default para templates EJS
 app.use((req, res, next) => {
   if (!Array.isArray(res.locals.errors)) res.locals.errors = [];
   next();
 });
 
-// --- Healthcheck básico ---
+// Healthcheck
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
 // ─── Rotas ───────────────────────────────────────────────────────────────────
 app.use('/login', loginLimiter);
 app.use('/api', apiLimiter);
 app.use('/api', apiRoutes);
-app.use('/',     webRoutes);
+app.use('/', webRoutes);
 
-// ─── Tratamento de Erros ─────────────────────────────────────────────────────
-app.use((err, req, res, next) => {
+// ─── Tratamento de erros ─────────────────────────────────────────────────────
+app.use((err, req, res, _next) => {
   console.error('Erro não tratado:', err);
   res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Erro interno do servidor',
-    error:   process.env.NODE_ENV === 'development' ? err.stack : undefined
+    sucesso: false,
+    mensagem: err.message || 'Erro interno do servidor',
+    erro: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
-// ─── 404 Handler (ajustado para EJS) ─────────────────────────────────────────
+// 404 Handler
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    res.status(404).json({
-      success: false,
-      message: 'Endpoint não encontrado'
-    });
+    res.status(404).json({ sucesso: false, mensagem: 'Endpoint não encontrado' });
   } else {
     res.status(404).render('404');
   }
 });
 
-// ─── Inicializar Servidor ────────────────────────────────────────────────────
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+// ─── Inicialização / Shutdown ────────────────────────────────────────────────
+// Em Cloudflare Tunnel, mantenha o app só em loopback:
+const HOST = process.env.HOST || '127.0.0.1';
+const server = app.listen(PORT, HOST, () => {
+  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'})`);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 Recebido SIGTERM. Encerrando servidor...');
   dbManager.close();
@@ -310,7 +280,6 @@ process.on('SIGINT', () => {
   server.close(() => process.exit(0));
 });
 
-// Captura exceções não tratadas
 process.on('uncaughtException', err => {
   console.error('❌ Exceção não capturada:', err);
   dbManager.close();

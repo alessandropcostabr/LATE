@@ -1,123 +1,129 @@
-const dbManager = require('../config/database');
+// models/user.js
+// User model using DatabaseManager helper (SQLite / ready for PG adapter).
+// Table: users (id, name, email, password_hash, role, is_active, created_at, updated_at)
+
+const db = require('./_db');
 
 class UserModel {
   constructor() {
-    this.db = dbManager.getDatabase();
     this._init();
   }
 
   _init() {
-    this._ensureDb();
-    this.db.prepare(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'OPERADOR' CHECK (role IN ('ADMIN','SUPERVISOR','OPERADOR','LEITOR')),
-      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1)),
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`).run();
+    // Guarantees table; aligns with your current schema (English)
+    db().prepare(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'OPERADOR' CHECK (role IN ('ADMIN','SUPERVISOR','OPERADOR','LEITOR')),
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
   }
 
-  _ensureDb() {
-    if (!this.db || !this.db.open) {
-      throw new Error('Database connection is not initialized');
-    }
+  _normalizeEmail(email) {
+    return String(email || '').trim().toLowerCase();
   }
 
   findByEmail(email) {
-    this._ensureDb();
-    const normalizedEmail = email.trim().toLowerCase();
-    const stmt = this.db.prepare('SELECT * FROM users WHERE email = ?');
-    const user = stmt.get(normalizedEmail);
-    if (user) {
-      user.is_active = Boolean(user.is_active);
-    }
-    return user;
+    const row = db().prepare(`
+      SELECT id, name, email, password_hash, role, is_active, created_at, updated_at
+        FROM users
+       WHERE email = ?
+       LIMIT 1
+    `).get(this._normalizeEmail(email));
+    if (!row) return null;
+    // safety booleans
+    row.is_active = Boolean(row.is_active);
+    return row;
   }
 
-  create(user) {
-    this._ensureDb();
-    const email = user.email.trim().toLowerCase();
-    const stmt = this.db.prepare(`
-      INSERT INTO users (name, email, password_hash, role, is_active)
-      VALUES (?, ?, ?, ?, 1)
-    `);
-    const result = stmt.run(
-      user.name,
-      email,
-      user.password_hash,
-      user.role || 'OPERADOR'
-    );
+  findById(id) {
+    const row = db().prepare(`
+      SELECT id, name, email, role, is_active, created_at, updated_at
+        FROM users
+       WHERE id = ?
+    `).get(id);
+    if (!row) return null;
+    row.is_active = Boolean(row.is_active);
+    return row;
+  }
+
+  create({ name, email, password_hash, role = 'OPERADOR' }) {
+    const info = db().prepare(`
+      INSERT INTO users (name, email, password_hash, role, is_active, created_at, updated_at)
+      VALUES (@name, LOWER(@email), @password_hash, @role, 1,
+              COALESCE(@created_at, CURRENT_TIMESTAMP),
+              COALESCE(@updated_at, CURRENT_TIMESTAMP))
+    `).run({
+      name: String(name || '').trim(),
+      email: this._normalizeEmail(email),
+      password_hash,
+      role: String(role || 'OPERADOR').trim().toUpperCase(),
+    });
+
     return {
-      id: result.lastInsertRowid,
-      name: user.name,
-      email,
-      role: user.role || 'OPERADOR',
+      id: info.lastInsertRowid,
+      name: String(name || '').trim(),
+      email: this._normalizeEmail(email),
+      role: String(role || 'OPERADOR').trim().toUpperCase(),
       is_active: true,
     };
   }
 
+  updatePassword(id, password_hash) {
+    const info = db().prepare(`
+      UPDATE users
+         SET password_hash = @password_hash,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = @id
+    `).run({ id, password_hash });
+    return info.changes > 0;
+  }
+
+  setActive(id, active) {
+    const info = db().prepare(`
+      UPDATE users
+         SET is_active = @active,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = @id
+    `).run({ id, active: active ? 1 : 0 });
+    return info.changes > 0;
+  }
+
   list({ q = '', page = 1, limit = 10 } = {}) {
-    this._ensureDb();
-
-    // Determine available timestamp columns
-    const columns = this.db.prepare('PRAGMA table_info(users)').all();
-    const hasCreatedAt = columns.some((c) => c.name === 'created_at');
-    const hasUpdatedAt = columns.some((c) => c.name === 'updated_at');
-    const hasCriadoEm = columns.some((c) => c.name === 'criado_em');
-
-    const selectCols = ['id', 'name', 'email', 'role', 'is_active'];
-    if (hasCreatedAt) {
-      selectCols.push('created_at');
-    } else if (hasCriadoEm) {
-      selectCols.push('criado_em AS created_at');
-    }
-    if (hasUpdatedAt) {
-      selectCols.push('updated_at');
-    }
-    const selectClause = selectCols.join(', ');
-
     const offset = (page - 1) * limit;
-    const params = [];
     let where = '';
+    const params = [];
+
     if (q) {
       where = 'WHERE name LIKE ? OR email LIKE ?';
       const term = `%${q}%`;
       params.push(term, term);
     }
-    const dataStmt = this.db.prepare(`
-      SELECT ${selectClause}
-      FROM users
-      ${where}
-      ORDER BY name ASC
-      LIMIT ? OFFSET ?
-    `);
-    const data = dataStmt
-      .all(...params, limit, offset)
-      .map((u) => ({ ...u, is_active: Boolean(u.is_active) }));
-    const countStmt = this.db.prepare(`SELECT COUNT(*) as total FROM users ${where}`);
-    const { total } = countStmt.get(...params);
-    return {
-      data,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
-      }
-    };
-  }
 
-  setActive(id, active) {
-    this._ensureDb();
-    const stmt = this.db.prepare(
-      'UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    );
-    const result = stmt.run(active ? 1 : 0, id);
-    return result.changes > 0;
+    const rows = db().prepare(`
+      SELECT id, name, email, role, is_active, created_at, updated_at
+        FROM users
+        ${where}
+    ORDER BY name ASC
+       LIMIT ? OFFSET ?
+    `).all(...params, limit, offset).map(u => ({ ...u, is_active: Boolean(u.is_active) }));
+
+    const { total } = db().prepare(`
+      SELECT COUNT(*) AS total FROM users ${where}
+    `).get(...params);
+
+    return {
+      data: rows,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
+    };
   }
 }
 
 module.exports = new UserModel();
+

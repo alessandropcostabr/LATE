@@ -7,12 +7,8 @@ logs/
 npm-debug.log*
 
 # SQLite database e backups
-data/*
-data/migrations/
-data/migrations/*.sql
+!*.db
 data/sessions.sqlite
-backup/
-*.db
 data/sessions.sqlite-shm
 data/sessions.sqlite-wal
 
@@ -47,7 +43,7 @@ coverage/
 Thumbs.db
 
 # Sistema de views (caso compile HTML futuramente)
-views/**/*.html
+!views/**/*.html
 
 # Code editor
 .idea/
@@ -60,12 +56,7 @@ lighthouse-reports/
 *.backup.*
 backup_*/
 backup_*
-*.sqlite
-!data/sessions.sqlite
-*.db
-*.db-*
-*.db-wal
-*.db-shm
+*.bak
 
 # Relatórios/artefatos locais
 lighthouse-reports/
@@ -78,15 +69,4 @@ logs/
 #Scripts
 *.sh
 
-backup/
-*.bak
-
-# session store
-data/sessions.sqlite
-data/sessions.sqlite-shm
-data/sessions.sqlite-wal
-
-# local db & backups
-data/recados.db
-backups/
 __tests__/

@@ -1,44 +1,80 @@
 // public/js/api.js
+// Cliente HTTP simples para a API do LATE.
+// Por quê: centralizar fetch com JSON, headers e tratamento de erros em pt-BR.
 
-const API_BASE = '/api';
+const API = (() => {
+  const base = '/api';
 
-const API = {
-  async request(endpoint, options = {}) {
-    const url = `${API_BASE}${endpoint}`;
-    const config = { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options };
+  async function request(path, { method = 'GET', data, headers = {} } = {}) {
+    const opts = {
+      method,
+      credentials: 'include', // envia/recebe cookie de sessão
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers
+      }
+    };
+
+    if (data !== undefined) {
+      // Garante JSON válido
+      opts.body = JSON.stringify(data);
+    }
+
+    const res = await fetch(base + path, opts);
+
+    // Tenta decodificar como JSON; se falhar, cria um corpo padrão
+    let body;
     try {
-      const res = await fetch(url, config);
-      const contentType = res.headers.get('content-type') || '';
-      let data = {};
-      if (contentType.includes('application/json')) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        throw { message: `Resposta do servidor não é JSON: ${text}` };
-      }
-      if (!res.ok) {
-        throw { message: data.message || 'Erro na requisição', details: data.errors || data.details };
-      }
-      return data;
-    } catch (err) {
-      console.error('Erro na API:', err);
+      body = await res.json();
+    } catch (_e) {
+      body = { sucesso: res.ok, erro: `Resposta inválida do servidor (${res.status})` };
+    }
+
+    if (!res.ok) {
+      // Propaga erro com mensagem do backend quando disponível
+      const msg = body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
+      const err = new Error(msg);
+      err.status = res.status;
+      err.body = body;
       throw err;
     }
-  },
 
-  async getRecados(filters = {}) {
-    const params = new URLSearchParams(filters).toString();
-    return this.request(`/recados${params ? `?${params}` : ''}`);
-  },
-  async getRecado(id) { return this.request(`/recados/${id}`); },
-  async createRecado(data) { return this.request(`/recados`, { method: 'POST', body: JSON.stringify(data) }); },
-  async updateRecado(id, data) { return this.request(`/recados/${id}`, { method: 'PUT', body: JSON.stringify(data) }); },
-  async updateSituacao(id, situacao) { return this.request(`/recados/${id}/situacao`, { method: 'PATCH', body: JSON.stringify({ situacao }) }); },
-  async deleteRecado(id) { return this.request(`/recados/${id}`, { method: 'DELETE' }); },
-  async getStats() { return this.request('/stats'); },
-  async getStatsByDestinatario() { return this.request('/stats/por-destinatario'); },
-  async getRecadosRecentes(limit = 10) { return this.request(`/recados-recentes?limit=${limit}`); }
-};
+    return body;
+  }
 
-window.API = API;
+  // === Endpoints específicos ===
+
+  async function createRecado(recado) {
+    return request('/recados', { method: 'POST', data: recado });
+  }
+
+  async function listarRecados(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    return request('/recados' + (qs ? `?${qs}` : ''));
+  }
+
+  async function obterRecado(id) {
+    return request(`/recados/${encodeURIComponent(id)}`);
+  }
+
+  async function atualizarRecado(id, dados) {
+    return request(`/recados/${encodeURIComponent(id)}`, { method: 'PUT', data: dados });
+  }
+
+  async function excluirRecado(id) {
+    return request(`/recados/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  return {
+    createRecado,
+    listarRecados,
+    obterRecado,
+    atualizarRecado,
+    excluirRecado
+  };
+})();
+
+if (typeof window !== 'undefined') {
+  window.API = API;
+}
 
