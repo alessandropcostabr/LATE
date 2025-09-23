@@ -263,8 +263,10 @@ app.use((req, res) => {
 });
 
 // ─── Inicialização / Shutdown ────────────────────────────────────────────────
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+// Em Cloudflare Tunnel, mantenha o app só em loopback:
+const HOST = process.env.HOST || '127.0.0.1';
+const server = app.listen(PORT, HOST, () => {
+  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'})`);
 });
 
 process.on('SIGTERM', () => {

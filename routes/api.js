@@ -1,61 +1,70 @@
 // routes/api.js
-// Rotas de API para Recados (CRUD básico + estatísticas).
-// Padrões: respostas em pt-BR, JSON consistente e tratamento de erros.
+// Rotas de API – Recados (pt-BR no payload) + Users (padrão internacional nos campos).
+// Mantém respostas JSON padronizadas e evita mexer em views/public.
+//
+// Observações:
+// - /api/users* NÃO usa CSRF (recomendado para API).
+// - As rotas de recados permanecem como você já usa (pt-BR / schema atual).
+// - Em desenvolvimento, há um /api/whoami opcional para inspecionar a sessão.
 
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 
+// ───────────────────────────────────────────────────────────
+// Controllers
+// ───────────────────────────────────────────────────────────
 const RecadoModel = require('../models/recado');
+const userController = require('../controllers/userController');
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers de resposta
+const {
+   validateCreateRecado, validateUpdateRecado, validateUpdateSituacao,
+   validateQueryRecados, validateId, handleValidationErrors
+} = require('../middleware/validation');
 
+// ───────────────────────────────────────────────────────────
+// Helpers de resposta (recados)
+// ───────────────────────────────────────────────────────────
 function ok(res, dados) {
   return res.json({ sucesso: true, dados });
 }
-
 function fail(res, status, mensagem, detalhe) {
   const payload = { sucesso: false, erro: mensagem };
-  if (process.env.NODE_ENV === 'development' && detalhe) {
-    payload.detalhe = String(detalhe);
-  }
+  if (process.env.NODE_ENV === 'development' && detalhe) payload.detalhe = String(detalhe);
   return res.status(status).json(payload);
 }
 
-// Validação mínima de criação/atualização (alinha com schema do SQLite)
+// Validação mínima para criação/atualização de recado
 function validarEntrada(base) {
   const faltando = [];
-  if (!base.data_ligacao) faltando.push('data_ligacao');
-  if (!base.hora_ligacao) faltando.push('hora_ligacao');
-  if (!base.destinatario) faltando.push('destinatario');
+  if (!base.data_ligacao)   faltando.push('data_ligacao');
+  if (!base.hora_ligacao)   faltando.push('hora_ligacao');
+  if (!base.destinatario)   faltando.push('destinatario');
   if (!base.remetente_nome) faltando.push('remetente_nome');
-  if (!base.assunto) faltando.push('assunto');
-  if (!base.mensagem) faltando.push('mensagem (ou preencher observacoes)');
+  if (!base.assunto)        faltando.push('assunto');
+  if (!base.mensagem)       faltando.push('mensagem (ou preencher observacoes)');
   return faltando;
 }
-
 // Normaliza body e aplica fallback de mensagem ← observacoes
 function normalizarBody(b = {}) {
-  const dados = {
-    data_ligacao: String(b.data_ligacao || '').trim(),
-    hora_ligacao: String(b.hora_ligacao || '').trim(),
-    destinatario: String(b.destinatario || '').trim(),
-    remetente_nome: String(b.remetente_nome || '').trim(),
+  return {
+    data_ligacao:       String(b.data_ligacao || '').trim(),
+    hora_ligacao:       String(b.hora_ligacao || '').trim(),
+    destinatario:       String(b.destinatario || '').trim(),
+    remetente_nome:     String(b.remetente_nome || '').trim(),
     remetente_telefone: b.remetente_telefone ? String(b.remetente_telefone).trim() : null,
-    remetente_email: b.remetente_email ? String(b.remetente_email).trim() : null,
-    assunto: String(b.assunto || '').trim(),
-    mensagem: String((b.mensagem ?? b.observacoes ?? '')).trim(), // ← essencial p/ NOT NULL
-    situacao: b.situacao || 'pendente', // 'pendente' | 'em_andamento' | 'resolvido'
-    horario_retorno: b.horario_retorno ? String(b.horario_retorno).trim() : null,
-    observacoes: b.observacoes ? String(b.observacoes).trim() : null
+    remetente_email:    b.remetente_email ? String(b.remetente_email).trim() : null,
+    assunto:            String(b.assunto || '').trim(),
+    mensagem:           String((b.mensagem ?? b.observacoes ?? '')).trim(),
+    situacao:           b.situacao || 'pendente',
+    horario_retorno:    b.horario_retorno ? String(b.horario_retorno).trim() : null,
+    observacoes:        b.observacoes ? String(b.observacoes).trim() : null
   };
-  return dados;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Rotas de Recados
+// ───────────────────────────────────────────────────────────
+// RECADOS (pt-BR, mantém seu schema atual)
+// ───────────────────────────────────────────────────────────
 
-// GET /api/recados?limit=10 — lista recentes (p/ Dashboard e Listagem)
 router.get('/recados', (req, res) => {
   try {
     const lim = Number(req.query.limit || 10);
@@ -67,10 +76,9 @@ router.get('/recados', (req, res) => {
   }
 });
 
-// GET /api/recados/estatisticas — cards do Dashboard
 router.get('/recados/estatisticas', (_req, res) => {
   try {
-    const r = RecadoModel.estatisticas(); // { total, pendentes, em_andamento, resolvidos }
+    const r = RecadoModel.estatisticas();
     return ok(res, r);
   } catch (e) {
     console.error('[recados] erro nas estatísticas:', e);
@@ -78,7 +86,6 @@ router.get('/recados/estatisticas', (_req, res) => {
   }
 });
 
-// GET /api/recados/:id — detalhe
 router.get('/recados/:id', (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -92,7 +99,6 @@ router.get('/recados/:id', (req, res) => {
   }
 });
 
-// POST /api/recados — criar
 router.post('/recados', (req, res) => {
   try {
     const dados = normalizarBody(req.body);
@@ -108,7 +114,6 @@ router.post('/recados', (req, res) => {
   }
 });
 
-// PUT /api/recados/:id — atualizar
 router.put('/recados/:id', (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -127,7 +132,6 @@ router.put('/recados/:id', (req, res) => {
   }
 });
 
-// DELETE /api/recados/:id — excluir
 router.delete('/recados/:id', (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -140,6 +144,24 @@ router.delete('/recados/:id', (req, res) => {
     return fail(res, 500, 'Erro ao excluir recado.', e);
   }
 });
+
+// Health-check da API
+router.get('/healthz', (_req, res) => res.json({ ok: true }));
+
+// ───────────────────────────────────────────────────────────
+// USERS (padrão internacional nos campos; mensagens pt-BR)
+// ───────────────────────────────────────────────────────────
+
+router.get('/users', userController.list);               // lista paginada
+router.post('/users', userController.create);            // cria usuário
+router.patch('/users/:id/active', userController.setActive); // ativa/inativa
+
+// Opcional (DEV): inspecionar sessão atual
+if (process.env.NODE_ENV === 'development') {
+  router.get('/whoami', (req, res) => {
+    res.json({ success: true, user: req.session?.usuario || null });
+  });
+}
 
 module.exports = router;
 
