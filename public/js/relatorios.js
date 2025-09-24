@@ -21,18 +21,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Gráficos
   await Promise.all([
-    renderChart('/relatorios/por-destinatario', 'graficoPorDestinatario', 'Recados por Destinatário'),
-    renderChart('/relatorios/por-status', 'graficoPorStatus', 'Recados por Status', 'pie'),
-    renderChart('/relatorios/por-mes', 'graficoPorMes', 'Recados por Mês', 'line')
+    renderChart('/stats/by-recipient', 'graficoPorDestinatario', 'Recados por Destinatário'),
+    renderChart('/stats/by-status', 'graficoPorStatus', 'Recados por Status', 'pie'),
+    renderChart('/stats/by-month', 'graficoPorMes', 'Recados por Mês', 'line')
   ]);
 });
 
 async function renderChart(endpoint, canvasId, label, type = 'bar') {
   try {
-    const { labels, data } = await API.request(endpoint);
+    const response = await API.request(endpoint);
+    const payload = response?.data ?? response;
+    const labels = Array.isArray(payload?.labels) ? payload.labels : [];
+    const dataset = Array.isArray(payload?.data) ? payload.data : [];
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
-    const colors = generateColors(data.length);
+    const colors = generateColors(dataset.length);
     new Chart(ctx, {
       type,
       data: {
@@ -40,7 +43,7 @@ async function renderChart(endpoint, canvasId, label, type = 'bar') {
         datasets: [
           {
             label,
-            data,
+            data: dataset,
             backgroundColor: type === 'line' ? colors[0] : colors,
             borderColor: colors,
             borderWidth: 1,

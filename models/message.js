@@ -147,6 +147,9 @@ const INSERT_VALUES = INSERT_FIELDS.map(field => {
 
 const STATUS_COLUMN = column('status');
 const ID_COLUMN = column('id');
+const RECIPIENT_COLUMN = column('recipient');
+const CALL_DATE_COLUMN = column('call_date');
+const CREATED_AT_COLUMN = column('created_at');
 
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
@@ -434,6 +437,79 @@ function stats() {
   };
 }
 
+function sanitizeLimit(limit, { fallback = 10, max = 100 } = {}) {
+  const parsed = Number(limit);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.min(Math.floor(parsed), max);
+  }
+  return fallback;
+}
+
+function statsByRecipient({ limit = 10 } = {}) {
+  const sanitizedLimit = sanitizeLimit(limit, { fallback: 10, max: 100 });
+  const rows = db().prepare(`
+    SELECT
+      COALESCE(NULLIF(TRIM(${RECIPIENT_COLUMN}), ''), 'Não informado') AS recipient,
+      COUNT(*) AS count
+      FROM ${TABLE}
+  GROUP BY recipient
+  ORDER BY count DESC, recipient ASC
+     LIMIT @limit
+  `).all({ limit: sanitizedLimit });
+
+  return rows.map(row => ({ recipient: row.recipient, count: row.count }));
+}
+
+function statsByStatus() {
+  const totals = STATUS_VALUES.reduce((acc, status) => {
+    acc[status] = 0;
+    return acc;
+  }, {});
+
+  const rows = db().prepare(`
+    SELECT
+      ${STATUS_COLUMN} AS raw_status,
+      COUNT(*)         AS count
+      FROM ${TABLE}
+  GROUP BY ${STATUS_COLUMN}
+  `).all();
+
+  for (const row of rows) {
+    const normalized = normalizeStatus(row.raw_status);
+    totals[normalized] = (totals[normalized] || 0) + (row.count || 0);
+  }
+
+  return STATUS_VALUES.map(status => ({
+    status,
+    label: STATUS_LABELS_PT[status] || status,
+    count: totals[status] || 0,
+  }));
+}
+
+function statsByMonth({ limit = 12 } = {}) {
+  const sanitizedLimit = sanitizeLimit(limit, { fallback: 12, max: 120 });
+  const rows = db().prepare(`
+    WITH aggregated AS (
+      SELECT
+        strftime('%Y-%m', CASE
+          WHEN ${CALL_DATE_COLUMN} IS NOT NULL AND TRIM(${CALL_DATE_COLUMN}) != ''
+            THEN ${CALL_DATE_COLUMN}
+          ELSE ${CREATED_AT_COLUMN}
+        END) AS month,
+        COUNT(*) AS count
+        FROM ${TABLE}
+    GROUP BY month
+      HAVING month IS NOT NULL
+    )
+    SELECT month, count
+      FROM aggregated
+  ORDER BY month DESC
+     LIMIT @limit
+  `).all({ limit: sanitizedLimit });
+
+  return rows.reverse().map(row => ({ month: row.month, count: row.count }));
+}
+
 migrateLegacyStatuses();
 
 module.exports = {
@@ -445,6 +521,9 @@ module.exports = {
   list,
   listRecent,
   stats,
+  statsByRecipient,
+  statsByStatus,
+  statsByMonth,
   normalizeStatus,
   STATUS_VALUES,
   STATUS_LABELS_PT,
