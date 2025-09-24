@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Estatísticas gerais numéricas
   try {
-    const stats = (await API.getStats()).data;
+    const stats = (await API.getMessageStats()).data;
     totalEl.textContent = stats.total;
-    pendEl.textContent  = stats.pendente;
-    andEl.textContent   = stats.em_andamento;
-    resEl.textContent   = stats.resolvido;
+    pendEl.textContent  = stats.pending;
+    andEl.textContent   = stats.in_progress;
+    resEl.textContent   = stats.resolved;
   } catch (e) {
     console.error('Erro ao carregar estatísticas:', e);
     totalEl.textContent = pendEl.textContent =

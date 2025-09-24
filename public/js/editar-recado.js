@@ -5,22 +5,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('formEditarRecado');
   const id = location.pathname.split('/').pop();
   const allFields = [
-    'data_ligacao',
-    'hora_ligacao',
-    'destinatario',
-    'remetente_nome',
-    'remetente_telefone',
-    'remetente_email',
-    'horario_retorno',
-    'assunto',
-    'situacao',
-    'observacoes'
+    'call_date',
+    'call_time',
+    'recipient',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'callback_time',
+    'subject',
+    'status',
+    'notes',
+    'message'
   ];
 
   let safeData = {};
   let fields = [];
   try {
-    const { data } = await API.getRecado(id);
+    const response = await API.getMessage(id);
+    const data = response?.data || {};
     allFields.forEach(f => {
       if (data[f] !== undefined) safeData[f] = data[f] ?? '';
     });
@@ -48,12 +50,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           payload[f] = safeData[f];
         }
       });
-      payload.situacao = (payload.situacao || '').toLowerCase().replace(/\s+/g, '_');
-      await API.updateRecado(id, payload);
+      if (typeof Form !== 'undefined' && Form && typeof Form.prepareMessagePayload === 'function') {
+        Object.assign(payload, Form.prepareMessagePayload(payload));
+      } else if (payload.status) {
+        payload.status = (payload.status || '').toLowerCase().replace(/\s+/g, '_');
+      }
+      await API.updateMessage(id, payload);
       Toast.success('Recado atualizado com sucesso!');
       setTimeout(() => (window.location.href = `/visualizar-recado/${id}`), 1000);
     } catch (err) {
-      const msg = err.details?.[0]?.msg || err.details?.[0]?.message || err.message || 'Erro ao atualizar recado';
+      const validationError = err.body?.errors?.[0] || err.errors?.[0];
+      const msg = validationError?.msg || validationError?.message || err.message || 'Erro ao atualizar recado';
       Toast.error(msg);
     } finally {
       Loading.hide('btnSalvar');

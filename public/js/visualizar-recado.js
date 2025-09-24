@@ -5,19 +5,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   const id = location.pathname.split('/').pop();
   const container = document.getElementById('detalhesRecado');
   try {
-    const { data: recado } = await API.getRecado(id);
+    const response = await API.getMessage(id);
+    const recado = response?.data;
     container.textContent = '';
 
+    const statusLabel = recado?.status_label
+      || (typeof getStatusLabel === 'function'
+        ? getStatusLabel(recado?.status)
+        : (typeof getSituacaoLabel === 'function' ? getSituacaoLabel(recado?.status) : recado?.status));
+
     const dados = [
-      ['Data/Hora:', `${recado.data_ligacao} ${recado.hora_ligacao}`],
-      ['Destinatário:', recado.destinatario],
-      ['Remetente:', recado.remetente_nome],
-      ['Telefone:', recado.remetente_telefone || '-'],
-      ['E-mail:', recado.remetente_email || '-'],
-      ['Horário de Retorno:', recado.horario_retorno || '-'],
-      ['Assunto:', recado.assunto],
-      ['Situação:', recado.situacao],
-      ['Observações:', recado.observacoes || '-']
+      ['Data/Hora:', `${recado?.call_date || ''} ${recado?.call_time || ''}`.trim()],
+      ['Destinatário:', recado?.recipient || '-'],
+      ['Remetente:', recado?.sender_name || '-'],
+      ['Telefone:', recado?.sender_phone || '-'],
+      ['E-mail:', recado?.sender_email || '-'],
+      ['Horário de Retorno:', recado?.callback_time || '-'],
+      ['Assunto:', recado?.subject || '-'],
+      ['Situação:', statusLabel || '-'],
+      ['Observações:', recado?.notes || '-']
     ];
 
     dados.forEach(([label, value]) => {
@@ -43,10 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     actions.appendChild(back);
     container.appendChild(actions);
   } catch (e) {
-    const message =
-      e && typeof e.message === 'string' && e.message.includes('404')
-        ? 'Recado não encontrado.'
-        : 'Erro ao carregar recado.';
+    const message = e?.status === 404
+      ? 'Recado não encontrado.'
+      : (e?.message || 'Erro ao carregar recado.');
     container.textContent = message;
     if (typeof Toast !== 'undefined' && Toast.error) {
       Toast.error(message);

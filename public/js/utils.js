@@ -12,7 +12,7 @@ const Normalizer = {
       .toLowerCase()
       .replace(/[^a-z0-9]/g, ""); // remove espaços, _, -, etc
   },
-  normalizeSituacao(value) {
+  normalizeStatus(value) {
     const key = Normalizer.simplify(value);
 
     // mapeia variações e sinônimos
@@ -24,7 +24,8 @@ const Normalizer = {
       case "aberto":
       case "open":
       case "todo":
-        return "pendente";
+      case "pending":
+        return "pending";
 
       // em andamento
       case "emandamento":
@@ -33,7 +34,8 @@ const Normalizer = {
       case "progress":
       case "ongoing":
       case "working":
-        return "em_andamento";
+      case "in_progress":
+        return "in_progress";
 
       // resolvido
       case "resolvido":
@@ -45,11 +47,12 @@ const Normalizer = {
       case "fechado":
       case "done":
       case "ok":
-        return "resolvido";
+      case "resolved":
+        return "resolved";
     }
 
     // Se já veio em formato canônico, preserva
-    if (value === "pendente" || value === "em_andamento" || value === "resolvido") {
+    if (value === "pending" || value === "in_progress" || value === "resolved") {
       return value;
     }
 
@@ -81,17 +84,26 @@ const Form = {
     const out = { ...data };
 
     // Campos opcionais: vazio -> null
-    out.remetente_email    = Normalizer.toNullIfEmpty(out.remetente_email);
-    out.remetente_telefone = Normalizer.toNullIfEmpty(out.remetente_telefone);
-    out.horario_retorno    = Normalizer.toNullIfEmpty(out.horario_retorno);
-    out.observacoes        = Normalizer.toNullIfEmpty(out.observacoes);
+    out.sender_email    = Normalizer.toNullIfEmpty(out.sender_email);
+    out.sender_phone   = Normalizer.toNullIfEmpty(out.sender_phone);
+    out.callback_time  = Normalizer.toNullIfEmpty(out.callback_time);
+    out.notes          = Normalizer.toNullIfEmpty(out.notes);
 
     // Situação: aceita rótulos e sinônimos
-    if (out.situacao !== undefined) {
-      out.situacao = Normalizer.normalizeSituacao(out.situacao);
+    if (out.status !== undefined) {
+      out.status = Normalizer.normalizeStatus(out.status);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(out, 'message')) {
+      const msg = typeof out.message === 'string' ? out.message.trim() : out.message;
+      out.message = msg ? msg : '(sem mensagem)';
     }
 
     return out;
+  },
+
+  prepareMessagePayload(data) {
+    return Form.prepareRecadoPayload(data);
   },
 
   validate(form) {
@@ -154,6 +166,10 @@ const Loading = {
     }
   }
 };
+
+// Aliases de compatibilidade
+Normalizer.normalizeSituacao = Normalizer.normalizeStatus;
+Form.prepareMessagePayload = Form.prepareRecadoPayload;
 
 // Expose globally
 window.Form = Form;

@@ -18,18 +18,18 @@ function initQuickFilters() {
     const semanaAtras = new Date();
     semanaAtras.setDate(semanaAtras.getDate() - 7);
     const semanaStr = semanaAtras.toISOString().split('T')[0];
-    btnHoje.href = `/recados?data_inicio=${hoje}&data_fim=${hoje}`;
-    btnSemana.href = `/recados?data_inicio=${semanaStr}&data_fim=${hoje}`;
+    btnHoje.href = `/recados?start_date=${hoje}&end_date=${hoje}`;
+    btnSemana.href = `/recados?start_date=${semanaStr}&end_date=${hoje}`;
   }
 }
 
 export async function carregarEstatisticas() {
   try {
-    const { data: stats } = await API.getStats();
-    document.getElementById('totalRecados').textContent = stats.total ?? '-';
-    document.getElementById('totalPendentes').textContent = stats.pendente ?? '-';
-    document.getElementById('totalAndamento').textContent = stats.em_andamento ?? '-';
-    document.getElementById('totalResolvidos').textContent = stats.resolvido ?? '-';
+    const { data: stats } = await API.getMessageStats();
+    document.getElementById('totalRecados').textContent = stats?.total ?? '-';
+    document.getElementById('totalPendentes').textContent = stats?.pending ?? '-';
+    document.getElementById('totalAndamento').textContent = stats?.in_progress ?? '-';
+    document.getElementById('totalResolvidos').textContent = stats?.resolved ?? '-';
   } catch {
     Toast.error('Erro ao carregar estatísticas');
   }
@@ -42,7 +42,7 @@ export async function carregarRecadosRecentes(limit = 10) {
   container.textContent = '';
 
   try {
-    const { data: recados } = await API.getRecadosRecentes(limit);
+    const { data: recados } = await API.listRecentMessages(limit);
 
     if (!recados.length) {
       const noData = document.createElement('div');
@@ -82,37 +82,41 @@ export async function carregarRecadosRecentes(limit = 10) {
       const tdData = document.createElement('td');
       const dateDiv = document.createElement('div');
       dateDiv.style.fontWeight = '500';
-      dateDiv.textContent = Utils.formatDate(recado.data_ligacao);
+      dateDiv.textContent = recado.call_date ? Utils.formatDate(recado.call_date) : '';
       const timeDiv = document.createElement('div');
       timeDiv.style.fontSize = '0.75rem';
       timeDiv.style.color = 'var(--text-secondary)';
-      timeDiv.textContent = recado.hora_ligacao;
+      timeDiv.textContent = recado.call_time || '';
       tdData.appendChild(dateDiv);
       tdData.appendChild(timeDiv);
       tr.appendChild(tdData);
 
       const tdDest = document.createElement('td');
       tdDest.style.fontWeight = '500';
-      tdDest.textContent = recado.destinatario;
+      tdDest.textContent = recado.recipient;
       tr.appendChild(tdDest);
 
       const tdRem = document.createElement('td');
-      tdRem.textContent = recado.remetente_nome;
+      tdRem.textContent = recado.sender_name;
       tr.appendChild(tdRem);
 
       const tdAssunto = document.createElement('td');
-      tdAssunto.textContent = Utils.truncateText(recado.assunto, 40);
+      tdAssunto.textContent = Utils.truncateText(recado.subject, 40);
       tr.appendChild(tdAssunto);
 
       const tdSit = document.createElement('td');
       const sitSpan = document.createElement('span');
       const statusClasses = {
-        pendente: 'badge-pendente',
-        em_andamento: 'badge-andamento',
-        resolvido: 'badge-resolvido',
+        pending: 'badge-pendente',
+        in_progress: 'badge-andamento',
+        resolved: 'badge-resolvido',
       };
-      sitSpan.className = `badge ${statusClasses[recado.situacao] || ''}`;
-      sitSpan.textContent = getSituacaoLabel(recado.situacao);
+      sitSpan.className = `badge ${statusClasses[recado.status] || ''}`;
+      const statusLabel = recado.status_label
+        || (typeof getStatusLabel === 'function'
+          ? getStatusLabel(recado.status)
+          : getSituacaoLabel(recado.status));
+      sitSpan.textContent = statusLabel;
       tdSit.appendChild(sitSpan);
       tr.appendChild(tdSit);
 
