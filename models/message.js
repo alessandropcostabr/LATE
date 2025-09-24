@@ -1,31 +1,40 @@
+//models/message.js
+
 const databaseManager = require('../config/database');
 
+// Função auxiliar para obter a instância do banco de dados.
 function db() {
   return databaseManager.getDatabase();
 }
 
+// Possíveis nomes de tabela para armazenar os recados.
 const MESSAGE_TABLE_CANDIDATES = ['messages', 'recados'];
 
+/**
+ * Tenta resolver o nome real da tabela de recados. Retorna um
+ * objeto com o nome e um indicador de confirmação: confirmed = true
+ * significa que a tabela existe no banco de dados; false indica
+ * fallback para 'recados'.
+ */
 function resolveMessageTable() {
   try {
     const database = db();
     const statement = database.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name=@table LIMIT 1"
     );
-
     for (const tableName of MESSAGE_TABLE_CANDIDATES) {
       const found = statement.get({ table: tableName });
-      if (found && found.name) return found.name;
+      if (found && found.name) {
+        return { name: found.name, confirmed: true };
+      }
     }
   } catch (err) {
     console.warn('[message:model] Falha ao resolver tabela de recados:', err.message);
   }
-
-  return 'recados';
+  return { name: 'recados', confirmed: false };
 }
 
-const TABLE = resolveMessageTable();
-
+// Mapeamentos de colunas para as versões de schema moderno e legado.
 const COLUMN_MAPS = {
   modern: {
     id: 'id',
@@ -61,43 +70,45 @@ const COLUMN_MAPS = {
   },
 };
 
+/**
+ * Inspeciona o schema da tabela e devolve o mapeamento de colunas
+ * adequado (modern ou legacy). Inclui a indicação de confirmação.
+ */
 function resolveColumnMap(tableName) {
+  const fallbackSchema = tableName === 'recados' ? 'legacy' : 'modern';
   try {
     const database = db();
-    const pragmaStatement = database.prepare(`PRAGMA table_info(${JSON.stringify(tableName)})`);
+    const pragmaStatement = database.prepare(
+      `PRAGMA table_info(${JSON.stringify(tableName)})`
+    );
     const columnsInfo = pragmaStatement.all();
+    // Se não encontrou colunas, volta ao fallback.
+    if (!columnsInfo || columnsInfo.length === 0) {
+      return { schema: fallbackSchema, map: COLUMN_MAPS[fallbackSchema], confirmed: false };
+    }
     const columnNames = new Set(columnsInfo.map(column => column.name));
-
+    // Verifica indícios de schema legado.
     const isLegacy = ['situacao', 'data_ligacao', 'mensagem'].some(name => columnNames.has(name));
     if (isLegacy) {
-      return { schema: 'legacy', map: COLUMN_MAPS.legacy };
+      return { schema: 'legacy', map: COLUMN_MAPS.legacy, confirmed: true };
     }
-
+    // Verifica indícios de schema moderno.
     const looksModern = ['call_date', 'message', 'notes'].every(name => columnNames.has(name));
     if (looksModern) {
-      return { schema: 'modern', map: COLUMN_MAPS.modern };
+      return { schema: 'modern', map: COLUMN_MAPS.modern, confirmed: true };
     }
-
-    if (tableName === 'recados') {
-      return { schema: 'legacy', map: COLUMN_MAPS.legacy };
-    }
+    // Caso nenhum padrão seja reconhecido, utiliza o schema de fallback.
+    return { schema: fallbackSchema, map: COLUMN_MAPS[fallbackSchema], confirmed: false };
   } catch (err) {
     console.warn(
       `[message:model] Falha ao inspecionar colunas da tabela ${tableName}:`,
       err.message
     );
   }
-
-  return { schema: 'modern', map: COLUMN_MAPS.modern };
+  return { schema: fallbackSchema, map: COLUMN_MAPS[fallbackSchema], confirmed: false };
 }
 
-let COLUMN_CONFIG = resolveColumnMap(TABLE);
-let COLUMN_MAP = COLUMN_CONFIG.map;
-
-function column(name) {
-  return COLUMN_MAP[name] || name;
-}
-
+// Campos utilizáveis em SELECT e INSERT.
 const SELECTABLE_FIELDS = [
   'id',
   'call_date',
@@ -131,86 +142,173 @@ const INSERT_FIELDS = [
   'updated_at',
 ];
 
-function buildSelectColumns() {
-  return SELECTABLE_FIELDS.map(field => {
-    const mapped = column(field);
-    return mapped === field ? mapped : `${mapped} AS ${field}`;
-  }).join(',\n      ');
+// Estado padrão quando ainda não há confirmação de tabela ou colunas.
+function defaultTableState() {
+  return { name: 'recados', confirmed: false };
 }
 
-function buildInsertColumns() {
-  return INSERT_FIELDS.map(field => column(field)).join(',\n      ');
+function defaultColumnState() {
+  return { schema: 'modern', map: COLUMN_MAPS.modern, confirmed: false };
 }
 
-function buildInsertValues() {
-  return INSERT_FIELDS.map(field => {
-    if (field === 'created_at' || field === 'updated_at') {
-      return `COALESCE(@${field}, datetime('now'))`;
+// Estado dinâmico para tabela/colunas, cache de SQL e marca de migração.
+let tableState = defaultTableState();
+let columnState = defaultColumnState();
+let sqlCache = null;
+let legacyMigrationPending = true;
+
+// Reseta o runtime para o estado inicial.
+function resetRuntime() {
+  tableState = defaultTableState();
+  columnState = defaultColumnState();
+  sqlCache = null;
+  legacyMigrationPending = true;
+}
+
+// Garante que a tabela correta está resolvida.
+function ensureTable() {
+  if (!tableState.confirmed) {
+    const resolved = resolveMessageTable();
+    const tableChanged = tableState.name !== resolved.name;
+    tableState = resolved;
+    if (tableChanged) {
+      columnState = defaultColumnState();
+      sqlCache = null;
     }
-    return `@${field}`;
-  }).join(',\n      ');
+  }
+  return tableState;
 }
 
-let SELECT_COLUMNS = buildSelectColumns();
-let INSERT_COLUMNS = buildInsertColumns();
-let INSERT_VALUES = buildInsertValues();
-let STATUS_COLUMN = column('status');
-let ID_COLUMN = column('id');
-let RECIPIENT_COLUMN = column('recipient');
-let CALL_DATE_COLUMN = column('call_date');
-let CREATED_AT_COLUMN = column('created_at');
-
-function refreshDerivedColumns() {
-  COLUMN_MAP = COLUMN_CONFIG.map;
-  SELECT_COLUMNS = buildSelectColumns();
-  INSERT_COLUMNS = buildInsertColumns();
-  INSERT_VALUES = buildInsertValues();
-  STATUS_COLUMN = column('status');
-  ID_COLUMN = column('id');
-  RECIPIENT_COLUMN = column('recipient');
-  CALL_DATE_COLUMN = column('call_date');
-  CREATED_AT_COLUMN = column('created_at');
+// Garante que o mapeamento de colunas está resolvido.
+function ensureColumnConfig() {
+  const { name: tableName } = ensureTable();
+  if (!columnState.confirmed) {
+    const resolved = resolveColumnMap(tableName);
+    const mapChanged = columnState.map !== resolved.map;
+    columnState = resolved;
+    if (mapChanged) {
+      sqlCache = null;
+    }
+  }
+  return columnState;
 }
 
-function refreshColumnConfig() {
-  COLUMN_CONFIG = resolveColumnMap(TABLE);
-  refreshDerivedColumns();
+// Constrói e cacheia trechos SQL derivados do mapeamento de colunas.
+function buildSqlCache(map) {
+  const column = name => map[name] || name;
+  return {
+    map,
+    selectColumns: SELECTABLE_FIELDS.map(field => {
+      const mapped = column(field);
+      return mapped === field ? mapped : `${mapped} AS ${field}`;
+    }).join(',\n      '),
+    insertColumns: INSERT_FIELDS.map(column).join(',\n      '),
+    insertValues: INSERT_FIELDS.map(field => {
+      if (field === 'created_at' || field === 'updated_at') {
+        return `COALESCE(@${field}, datetime('now'))`;
+      }
+      return `@${field}`;
+    }).join(',\n      '),
+    statusColumn: column('status'),
+    idColumn: column('id'),
+    recipientColumn: column('recipient'),
+    callDateColumn: column('call_date'),
+    createdAtColumn: column('created_at'),
+  };
 }
 
-const DETECTION_FIELDS = ['call_date', 'status', 'created_at'];
+/**
+ * Obtém a configuração atual de runtime: nome de tabela, mapeamento de
+ * colunas, sentenças SQL cacheadas e indicadores de confirmação.
+ */
+function getRuntime() {
+  const tableInfo = ensureTable();
+  const columnInfo = ensureColumnConfig();
+  if (!sqlCache || sqlCache.map !== columnInfo.map) {
+    sqlCache = buildSqlCache(columnInfo.map);
+  }
+  const column = name => columnInfo.map[name] || name;
+  return {
+    table: tableInfo.name,
+    schema: columnInfo.schema,
+    confirmed: tableInfo.confirmed && columnInfo.confirmed,
+    column,
+    selectColumns: sqlCache.selectColumns,
+    insertColumns: sqlCache.insertColumns,
+    insertValues: sqlCache.insertValues,
+    statusColumn: sqlCache.statusColumn,
+    idColumn: sqlCache.idColumn,
+    recipientColumn: sqlCache.recipientColumn,
+    callDateColumn: sqlCache.callDateColumn,
+    createdAtColumn: sqlCache.createdAtColumn,
+  };
+}
 
-function inspectTableColumns(tableName) {
+// Verifica se um erro indica a necessidade de tentar novamente após reset.
+function shouldRetryError(err) {
+  if (!err || typeof err.message !== 'string') return false;
+  return /no such table/i.test(err.message) || /no column/i.test(err.message);
+}
+
+// Faz uma migração simples de status legados para inglês. Executa
+// apenas uma vez por inicialização.
+function attemptLegacyMigration(runtime) {
+  if (!legacyMigrationPending || !runtime.confirmed) return;
   try {
-    const pragmaStatement = db().prepare(`PRAGMA table_info(${JSON.stringify(tableName)})`);
-    return pragmaStatement.all();
+    const database = db();
+    const exists = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=@table LIMIT 1")
+      .get({ table: runtime.table });
+    if (!exists) {
+      return;
+    }
+    const updates = [
+      { from: 'pendente', to: 'pending' },
+      { from: 'em_andamento', to: 'in_progress' },
+      { from: 'resolvido', to: 'resolved' },
+    ];
+    const updateStmt = database.prepare(`
+      UPDATE ${runtime.table}
+         SET ${runtime.statusColumn} = @to
+       WHERE ${runtime.statusColumn} = @from
+    `);
+    for (const pair of updates) {
+      updateStmt.run(pair);
+    }
   } catch (err) {
-    console.warn(
-      `[message:model] Falha ao inspecionar colunas da tabela ${tableName}:`,
-      err.message
-    );
-    return [];
+    console.warn('[message:model] Falha ao migrar status legados:', err.message);
+  } finally {
+    legacyMigrationPending = false;
   }
 }
 
-function mappingMatchesColumns(currentMap, columnNames) {
-  return DETECTION_FIELDS.every(field => {
-    const mapped = currentMap[field] || field;
-    return columnNames.has(mapped);
-  });
+/**
+ * Envolve a chamada com carregamento de runtime e tentativas de correção
+ * automática em caso de erros de tabela/coluna inexistente.
+ */
+function withRuntime(callback) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt === 1) {
+      // Reinicializa runtime antes da segunda tentativa.
+      resetRuntime();
+    }
+    const runtime = getRuntime();
+    attemptLegacyMigration(runtime);
+    try {
+      return callback(runtime);
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0 && shouldRetryError(err)) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
 }
 
-function ensureColumnConfigUpToDate() {
-  const columnsInfo = inspectTableColumns(TABLE);
-  if (!columnsInfo.length) {
-    return;
-  }
-
-  const columnNames = new Set(columnsInfo.map(column => column.name));
-  if (!mappingMatchesColumns(COLUMN_MAP, columnNames)) {
-    refreshColumnConfig();
-  }
-}
-
+// Traduções de status para português/inglês.
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
   in_progress: 'em_andamento',
@@ -244,6 +342,7 @@ const LEGACY_STATUS_ALIASES = {
   closed: 'resolved',
 };
 
+// Utilidades de normalização e tratamento de campos.
 function toString(value) {
   if (value === undefined || value === null) return '';
   return String(value);
@@ -266,13 +365,16 @@ function normalizeStatus(raw) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[\s-]+/g, '_');
-
   if (STATUS_EN_TO_PT[normalized]) return normalized;
   if (STATUS_PT_TO_EN[normalized]) return STATUS_PT_TO_EN[normalized];
   if (LEGACY_STATUS_ALIASES[normalized]) return LEGACY_STATUS_ALIASES[normalized];
   return 'pending';
 }
 
+/**
+ * Normaliza o payload recebido no API, garantindo campos obrigatórios e
+ * convertendo campos vazios para null.
+ */
 function normalizePayload(payload = {}) {
   const messageContent = trim(payload.message || payload.notes || '');
   const statusProvided = Object.prototype.hasOwnProperty.call(payload, 'status');
@@ -290,10 +392,11 @@ function normalizePayload(payload = {}) {
       callback_time: emptyToNull(payload.callback_time),
       notes: emptyToNull(payload.notes),
     },
-    statusProvided: statusProvided,
+    statusProvided,
   };
 }
 
+// Transforma uma linha do banco em objeto padronizado.
 function mapRow(row) {
   if (!row) return null;
   const status = normalizeStatus(row.status);
@@ -313,33 +416,6 @@ function mapRow(row) {
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
   };
-}
-
-function migrateLegacyStatuses() {
-  const database = db();
-  try {
-    const statement = database.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=@table LIMIT 1`);
-    const exists = statement.get({ table: TABLE });
-    if (!exists) return;
-
-    const updates = [
-      { from: 'pendente', to: 'pending' },
-      { from: 'em_andamento', to: 'in_progress' },
-      { from: 'resolvido', to: 'resolved' },
-    ];
-
-    const updateStmt = database.prepare(`
-      UPDATE ${TABLE}
-         SET ${STATUS_COLUMN} = @to
-       WHERE ${STATUS_COLUMN} = @from
-    `);
-
-    for (const pair of updates) {
-      updateStmt.run(pair);
-    }
-  } catch (err) {
-    console.warn('[message:model] Falha ao migrar status legados:', err.message);
-  }
 }
 
 function ensureStatus(value) {
@@ -364,140 +440,146 @@ function attachTimestamps(payload, source = {}) {
   return { ...payload, ...timestamps };
 }
 
-function selectBase(
-  whereClause = '',
-  orderClause = `ORDER BY ${ID_COLUMN} DESC`,
-  limitClause = 'LIMIT @limit OFFSET @offset'
-) {
-  return `
-    SELECT
-      ${SELECT_COLUMNS}
-      FROM ${TABLE}
-      ${whereClause}
-      ${orderClause}
-      ${limitClause}
-  `;
+/**
+ * Constrói a consulta base para listagem. A ordem padrão é por ID
+ * decrescente. Permite customizar ordem e limites.
+ */
+function selectBase(runtime, whereClause = '', orderClause, limitClause = 'LIMIT @limit OFFSET @offset') {
+  const orderSegment = orderClause || `ORDER BY ${runtime.idColumn} DESC`;
+  return `\n    SELECT\n      ${runtime.selectColumns}\n      FROM ${runtime.table}\n      ${whereClause}\n      ${orderSegment}\n      ${limitClause}\n  `;
 }
 
+// Funções CRUD expostas utilizando o runtime.
 function create(payload) {
-  ensureColumnConfigUpToDate();
-  const normalizedPayload = normalizePayload(payload);
-  const timestamps = attachTimestamps({}, payload);
-  const data = {
-    ...normalizedPayload.data,
-    status: normalizedPayload.statusProvided && normalizedPayload.data.status
-      ? normalizedPayload.data.status
-      : 'pending',
-  };
-  const info = db().prepare(`
-    INSERT INTO ${TABLE} (
-      ${INSERT_COLUMNS}
-    ) VALUES (
-      ${INSERT_VALUES}
-    )
-  `).run({ ...data, ...timestamps });
-
-  return info.lastInsertRowid;
+  return withRuntime(runtime => {
+    const normalizedPayload = normalizePayload(payload);
+    const timestamps = attachTimestamps({}, payload);
+    const data = {
+      ...normalizedPayload.data,
+      status:
+        normalizedPayload.statusProvided && normalizedPayload.data.status
+          ? normalizedPayload.data.status
+          : 'pending',
+    };
+    const info = db()
+      .prepare(`
+        INSERT INTO ${runtime.table} (
+          ${runtime.insertColumns}
+        ) VALUES (
+          ${runtime.insertValues}
+        )
+      `)
+      .run({ ...data, ...timestamps });
+    return info.lastInsertRowid;
+  });
 }
 
 function findById(id) {
-  ensureColumnConfigUpToDate();
-  const row = db().prepare(`
-    SELECT
-      ${SELECT_COLUMNS}
-      FROM ${TABLE}
-     WHERE ${ID_COLUMN} = @id
-     LIMIT 1
-  `).get({ id });
-  return mapRow(row);
+  return withRuntime(runtime => {
+    const row = db()
+      .prepare(`
+        SELECT
+          ${runtime.selectColumns}
+          FROM ${runtime.table}
+         WHERE ${runtime.idColumn} = @id
+         LIMIT 1
+      `)
+      .get({ id });
+    return mapRow(row);
+  });
 }
 
 function update(id, payload) {
-  ensureColumnConfigUpToDate();
-  const normalizedPayload = normalizePayload(payload);
-  const info = db().prepare(`
-    UPDATE ${TABLE}
-       SET ${column('call_date')}     = @call_date,
-           ${column('call_time')}     = @call_time,
-           ${column('recipient')}     = @recipient,
-           ${column('sender_name')}   = @sender_name,
-           ${column('sender_phone')}  = @sender_phone,
-           ${column('sender_email')}  = @sender_email,
-           ${column('subject')}       = @subject,
-           ${column('message')}       = @message,
-           ${STATUS_COLUMN}           = COALESCE(@status, ${STATUS_COLUMN}),
-           ${column('callback_time')} = @callback_time,
-           ${column('notes')}         = @notes,
-           ${column('updated_at')}    = datetime('now')
-     WHERE ${ID_COLUMN} = @id
-  `).run({ id, ...normalizedPayload.data, status: normalizedPayload.statusProvided ? normalizedPayload.data.status : null });
-
-  return info.changes > 0;
+  return withRuntime(runtime => {
+    const normalizedPayload = normalizePayload(payload);
+    const info = db()
+      .prepare(`
+        UPDATE ${runtime.table}
+           SET ${runtime.column('call_date')}     = @call_date,
+               ${runtime.column('call_time')}     = @call_time,
+               ${runtime.column('recipient')}     = @recipient,
+               ${runtime.column('sender_name')}   = @sender_name,
+               ${runtime.column('sender_phone')}  = @sender_phone,
+               ${runtime.column('sender_email')}  = @sender_email,
+               ${runtime.column('subject')}       = @subject,
+               ${runtime.column('message')}       = @message,
+               ${runtime.statusColumn}            = COALESCE(@status, ${runtime.statusColumn}),
+               ${runtime.column('callback_time')} = @callback_time,
+               ${runtime.column('notes')}         = @notes,
+               ${runtime.column('updated_at')}    = datetime('now')
+         WHERE ${runtime.idColumn} = @id
+      `)
+      .run({
+        id,
+        ...normalizedPayload.data,
+        status: normalizedPayload.statusProvided ? normalizedPayload.data.status : null,
+      });
+    return info.changes > 0;
+  });
 }
 
 function updateStatus(id, status) {
-  ensureColumnConfigUpToDate();
-  const normalized = ensureStatus(status);
-  const info = db().prepare(`
-    UPDATE ${TABLE}
-       SET ${STATUS_COLUMN}        = @status,
-           ${column('updated_at')} = datetime('now')
-     WHERE ${ID_COLUMN} = @id
-  `).run({ id, status: normalized });
-  return info.changes > 0;
+  return withRuntime(runtime => {
+    const normalized = ensureStatus(status);
+    const info = db()
+      .prepare(`
+        UPDATE ${runtime.table}
+           SET ${runtime.statusColumn}        = @status,
+               ${runtime.column('updated_at')} = datetime('now')
+         WHERE ${runtime.idColumn} = @id
+      `)
+      .run({ id, status: normalized });
+    return info.changes > 0;
+  });
 }
 
 function remove(id) {
-  ensureColumnConfigUpToDate();
-  const info = db().prepare(`DELETE FROM ${TABLE} WHERE ${ID_COLUMN} = @id`).run({ id });
-  return info.changes > 0;
+  return withRuntime(runtime => {
+    const info = db()
+      .prepare(`DELETE FROM ${runtime.table} WHERE ${runtime.idColumn} = @id`)
+      .run({ id });
+    return info.changes > 0;
+  });
 }
 
 function list({ limit = 10, offset = 0, status, start_date, end_date, recipient } = {}) {
-  ensureColumnConfigUpToDate();
-  const parsedLimit = Number(limit);
-  const parsedOffset = Number(offset);
-  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
-  const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
-  const statusFilter = translateStatusForQuery(status);
-
-  const startDate = trim(start_date);
-  const endDate = trim(end_date);
-  const recipientFilter = trim(recipient);
-  const effectiveDateColumn = `COALESCE(NULLIF(TRIM(${CALL_DATE_COLUMN}), ''), ${CREATED_AT_COLUMN})`;
-
-  const conditions = [];
-  const params = {
-    limit: sanitizedLimit,
-    offset: sanitizedOffset,
-  };
-
-  if (statusFilter) {
-    conditions.push(`${STATUS_COLUMN} IN (@status, @legacy)`);
-    params.status = statusFilter.current;
-    params.legacy = statusFilter.legacy;
-  }
-
-  if (startDate) {
-    conditions.push(`DATE(${effectiveDateColumn}) >= DATE(@start_date)`);
-    params.start_date = startDate;
-  }
-
-  if (endDate) {
-    conditions.push(`DATE(${effectiveDateColumn}) <= DATE(@end_date)`);
-    params.end_date = endDate;
-  }
-
-  if (recipientFilter) {
-    conditions.push(`LOWER(COALESCE(TRIM(${RECIPIENT_COLUMN}), '')) LIKE @recipient`);
-    params.recipient = `%${recipientFilter.toLowerCase()}%`;
-  }
-
-  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const query = selectBase(whereClause);
-  const rows = db().prepare(query).all(params);
-  return rows.map(mapRow);
+  return withRuntime(runtime => {
+    const parsedLimit = Number(limit);
+    const parsedOffset = Number(offset);
+    const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
+    const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+    const statusFilter = translateStatusForQuery(status);
+    const startDate = trim(start_date);
+    const endDate = trim(end_date);
+    const recipientFilter = trim(recipient);
+    const effectiveDateColumn = `COALESCE(NULLIF(TRIM(${runtime.callDateColumn}), ''), ${runtime.createdAtColumn})`;
+    const conditions = [];
+    const params = {
+      limit: sanitizedLimit,
+      offset: sanitizedOffset,
+    };
+    if (statusFilter) {
+      conditions.push(`${runtime.statusColumn} IN (@status, @legacy)`);
+      params.status = statusFilter.current;
+      params.legacy = statusFilter.legacy;
+    }
+    if (startDate) {
+      conditions.push(`DATE(${effectiveDateColumn}) >= DATE(@start_date)`);
+      params.start_date = startDate;
+    }
+    if (endDate) {
+      conditions.push(`DATE(${effectiveDateColumn}) <= DATE(@end_date)`);
+      params.end_date = endDate;
+    }
+    if (recipientFilter) {
+      conditions.push(`LOWER(COALESCE(TRIM(${runtime.recipientColumn}), '')) LIKE @recipient`);
+      params.recipient = `%${recipientFilter.toLowerCase()}%`;
+    }
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = selectBase(runtime, whereClause);
+    const rows = db().prepare(query).all(params);
+    return rows.map(mapRow);
+  });
 }
 
 function listRecent(limit = 10) {
@@ -505,29 +587,31 @@ function listRecent(limit = 10) {
 }
 
 function stats() {
-  ensureColumnConfigUpToDate();
-  const database = db();
-  const total = database.prepare(`SELECT COUNT(*) AS count FROM ${TABLE}`).get().count;
-
-  const counters = {};
-  for (const status of STATUS_VALUES) {
-    const legacy = STATUS_EN_TO_PT[status];
-    const row = database.prepare(`
-      SELECT COUNT(*) AS count
-        FROM ${TABLE}
-       WHERE ${STATUS_COLUMN} IN (@status, @legacy)
-    `).get({ status, legacy });
-    counters[status] = row.count;
-  }
-
-  return {
-    total,
-    pending: counters.pending || 0,
-    in_progress: counters.in_progress || 0,
-    resolved: counters.resolved || 0,
-  };
+  return withRuntime(runtime => {
+    const database = db();
+    const total = database.prepare(`SELECT COUNT(*) AS count FROM ${runtime.table}`).get().count;
+    const counters = {};
+    for (const status of STATUS_VALUES) {
+      const legacy = STATUS_EN_TO_PT[status];
+      const row = database
+        .prepare(`
+          SELECT COUNT(*) AS count
+            FROM ${runtime.table}
+           WHERE ${runtime.statusColumn} IN (@status, @legacy)
+        `)
+        .get({ status, legacy });
+      counters[status] = row.count;
+    }
+    return {
+      total,
+      pending: counters.pending || 0,
+      in_progress: counters.in_progress || 0,
+      resolved: counters.resolved || 0,
+    };
+  });
 }
 
+// Limita o número de linhas para estatísticas; utiliza fallback e máximo.
 function sanitizeLimit(limit, { fallback = 10, max = 100 } = {}) {
   const parsed = Number(limit);
   if (Number.isFinite(parsed) && parsed > 0) {
@@ -537,71 +621,84 @@ function sanitizeLimit(limit, { fallback = 10, max = 100 } = {}) {
 }
 
 function statsByRecipient({ limit = 10 } = {}) {
-  ensureColumnConfigUpToDate();
-  const sanitizedLimit = sanitizeLimit(limit, { fallback: 10, max: 100 });
-  const rows = db().prepare(`
-    SELECT
-      COALESCE(NULLIF(TRIM(${RECIPIENT_COLUMN}), ''), 'Não informado') AS recipient,
-      COUNT(*) AS count
-      FROM ${TABLE}
-  GROUP BY recipient
-  ORDER BY count DESC, recipient ASC
-     LIMIT @limit
-  `).all({ limit: sanitizedLimit });
-
-  return rows.map(row => ({ recipient: row.recipient, count: row.count }));
+  return withRuntime(runtime => {
+    const sanitizedLimit = sanitizeLimit(limit, { fallback: 10, max: 100 });
+    const rows = db()
+      .prepare(`
+        SELECT
+          COALESCE(NULLIF(TRIM(${runtime.recipientColumn}), ''), 'Não informado') AS recipient,
+          COUNT(*) AS count
+          FROM ${runtime.table}
+      GROUP BY recipient
+      ORDER BY count DESC, recipient ASC
+         LIMIT @limit
+      `)
+      .all({ limit: sanitizedLimit });
+    return rows.map(row => ({ recipient: row.recipient, count: row.count }));
+  });
 }
 
 function statsByStatus() {
-  ensureColumnConfigUpToDate();
-  const totals = STATUS_VALUES.reduce((acc, status) => {
-    acc[status] = 0;
-    return acc;
-  }, {});
-
-  const rows = db().prepare(`
-    SELECT
-      ${STATUS_COLUMN} AS raw_status,
-      COUNT(*)         AS count
-      FROM ${TABLE}
-  GROUP BY ${STATUS_COLUMN}
-  `).all();
-
-  for (const row of rows) {
-    const normalized = normalizeStatus(row.raw_status);
-    totals[normalized] = (totals[normalized] || 0) + (row.count || 0);
-  }
-
-  return STATUS_VALUES.map(status => ({
-    status,
-    label: STATUS_LABELS_PT[status] || status,
-    count: totals[status] || 0,
-  }));
+  return withRuntime(runtime => {
+    const totals = STATUS_VALUES.reduce((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, {});
+    const rows = db()
+      .prepare(`
+        SELECT
+          ${runtime.statusColumn} AS raw_status,
+          COUNT(*)         AS count
+          FROM ${runtime.table}
+      GROUP BY ${runtime.statusColumn}
+      `)
+      .all();
+    for (const row of rows) {
+      const normalized = normalizeStatus(row.raw_status);
+      totals[normalized] = (totals[normalized] || 0) + (row.count || 0);
+    }
+    return STATUS_VALUES.map(status => ({
+      status,
+      label: STATUS_LABELS_PT[status] || status,
+      count: totals[status] || 0,
+    }));
+  });
 }
 
 function statsByMonth({ limit = 12 } = {}) {
-  ensureColumnConfigUpToDate();
-  const sanitizedLimit = sanitizeLimit(limit, { fallback: 12, max: 120 });
-  const rows = db().prepare(`
-    WITH aggregated AS (
-      SELECT
-        strftime('%Y-%m', CASE
-          WHEN ${CALL_DATE_COLUMN} IS NOT NULL AND TRIM(${CALL_DATE_COLUMN}) != ''
-            THEN ${CALL_DATE_COLUMN}
-          ELSE ${CREATED_AT_COLUMN}
-        END) AS month,
-        COUNT(*) AS count
-        FROM ${TABLE}
-    GROUP BY month
-      HAVING month IS NOT NULL
-    )
-    SELECT month, count
-      FROM aggregated
-  ORDER BY month DESC
-     LIMIT @limit
-  `).all({ limit: sanitizedLimit });
+  return withRuntime(runtime => {
+    const sanitizedLimit = sanitizeLimit(limit, { fallback: 12, max: 120 });
+    const rows = db()
+      .prepare(`
+        WITH aggregated AS (
+          SELECT
+            strftime('%Y-%m', CASE
+              WHEN ${runtime.callDateColumn} IS NOT NULL AND TRIM(${runtime.callDateColumn}) != ''
+                THEN ${runtime.callDateColumn}
+              ELSE ${runtime.createdAtColumn}
+            END) AS month,
+            COUNT(*) AS count
+            FROM ${runtime.table}
+        GROUP BY month
+          HAVING month IS NOT NULL
+        )
+        SELECT month, count
+          FROM aggregated
+      ORDER BY month DESC
+         LIMIT @limit
+      `)
+      .all({ limit: sanitizedLimit });
+    return rows.reverse().map(row => ({ month: row.month, count: row.count }));
+  });
+}
 
-  return rows.reverse().map(row => ({ month: row.month, count: row.count }));
+// Dispara a migração de status legados ao carregar o módulo.
+function migrateLegacyStatuses() {
+  try {
+    withRuntime(() => {});
+  } catch (err) {
+    console.warn('[message:model] Falha ao executar migração inicial de status:', err.message);
+  }
 }
 
 migrateLegacyStatuses();
