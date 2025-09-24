@@ -64,6 +64,9 @@ router.delete(
 );
 
 router.get('/messages/stats', messageController.stats);
+router.get('/stats/by-recipient', messageController.statsByRecipient);
+router.get('/stats/by-status', messageController.statsByStatus);
+router.get('/stats/by-month', messageController.statsByMonth);
 
 // ---------------------------------------------------------------------------
 // Users

@@ -8,6 +8,39 @@ function formatMessage(message) {
   };
 }
 
+function toChartPayload(rows, { labelKey, valueKey, fallbackLabel = 'Não informado', transformLabel } = {}) {
+  const labels = [];
+  const data = [];
+
+  for (const row of rows || []) {
+    const rawLabel = labelKey ? row[labelKey] : row;
+    const baseLabel = rawLabel === undefined || rawLabel === null || rawLabel === '' ? fallbackLabel : rawLabel;
+    const finalLabel = transformLabel ? transformLabel(baseLabel, row) : baseLabel;
+
+    const rawValue = valueKey ? row[valueKey] : row;
+    const numericValue = Number(rawValue);
+    const finalValue = Number.isFinite(numericValue) ? numericValue : 0;
+
+    labels.push(String(finalLabel));
+    data.push(finalValue);
+  }
+
+  return { labels, data };
+}
+
+function formatMonthLabel(label) {
+  if (!label || typeof label !== 'string') {
+    return 'Não informado';
+  }
+
+  const [year, month] = label.split('-');
+  if (year && month) {
+    return `${month}/${year}`;
+  }
+
+  return label;
+}
+
 exports.list = (req, res) => {
   try {
     const { limit, offset, status } = req.query || {};
@@ -103,5 +136,60 @@ exports.stats = (_req, res) => {
   } catch (err) {
     console.error('[messages] erro nas estatísticas:', err);
     return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas.' });
+  }
+};
+
+exports.statsByRecipient = (req, res) => {
+  try {
+    const { limit } = req.query || {};
+    const rows = MessageModel.statsByRecipient({ limit });
+    const payload = toChartPayload(rows, {
+      labelKey: 'recipient',
+      valueKey: 'count',
+      fallbackLabel: 'Não informado',
+    });
+
+    return res.json({ success: true, data: payload });
+  } catch (err) {
+    console.error('[messages] erro ao obter estatísticas por destinatário:', err);
+    return res
+      .status(500)
+      .json({ success: false, error: 'Erro ao obter estatísticas por destinatário.' });
+  }
+};
+
+exports.statsByStatus = (_req, res) => {
+  try {
+    const rows = MessageModel.statsByStatus();
+    const payload = toChartPayload(rows, {
+      labelKey: 'label',
+      valueKey: 'count',
+      fallbackLabel: 'Status desconhecido',
+    });
+
+    return res.json({ success: true, data: payload });
+  } catch (err) {
+    console.error('[messages] erro ao obter estatísticas por status:', err);
+    return res
+      .status(500)
+      .json({ success: false, error: 'Erro ao obter estatísticas por status.' });
+  }
+};
+
+exports.statsByMonth = (req, res) => {
+  try {
+    const { limit } = req.query || {};
+    const rows = MessageModel.statsByMonth({ limit });
+    const payload = toChartPayload(rows, {
+      labelKey: 'month',
+      valueKey: 'count',
+      fallbackLabel: 'Não informado',
+      transformLabel: formatMonthLabel,
+    });
+
+    return res.json({ success: true, data: payload });
+  } catch (err) {
+    console.error('[messages] erro ao obter estatísticas por mês:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por mês.' });
   }
 };
