@@ -7,23 +7,21 @@ beforeEach(() => {
   dbManager.close();
   const db = dbManager.getDatabase();
   db.exec(`
-    CREATE TABLE recados (
+    CREATE TABLE messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      data_ligacao DATE NOT NULL,
-      hora_ligacao TIME NOT NULL,
-      destinatario VARCHAR(255) NOT NULL,
-      remetente_nome VARCHAR(255) NOT NULL,
-      remetente_telefone VARCHAR(20),
-      remetente_email VARCHAR(255),
-      horario_retorno VARCHAR(100),
-      assunto TEXT NOT NULL,
-      mensagem TEXT,
-      situacao VARCHAR(20) DEFAULT 'pendente',
-      observacoes TEXT,
-      criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
-      atualizado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
-      created_by INTEGER,
-      updated_by INTEGER
+      call_date TEXT NOT NULL,
+      call_time TEXT NOT NULL,
+      recipient TEXT NOT NULL,
+      sender_name TEXT NOT NULL,
+      sender_phone TEXT,
+      sender_email TEXT,
+      subject TEXT NOT NULL,
+      message TEXT,
+      status TEXT DEFAULT 'pending',
+      callback_time TEXT,
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
   delete require.cache[require.resolve('../models/message')];
@@ -34,7 +32,7 @@ afterEach(() => {
   dbManager.close();
 });
 
-test('CRUD operations work with legacy timestamp columns', () => {
+test('CRUD operations work with timestamp columns', () => {
   const id = MessageModel.create({
     call_date: '2024-03-01',
     call_time: '08:00',
@@ -68,12 +66,12 @@ test('CRUD operations work with legacy timestamp columns', () => {
   expect(MessageModel.findById(id)).toBeNull();
 });
 
-test('list keeps newest first even with legacy timestamps', () => {
+test('list keeps newest first with timestamps', () => {
   const db = dbManager.getDatabase();
   db.exec(`
-    INSERT INTO recados (data_ligacao, hora_ligacao, destinatario, remetente_nome, assunto, mensagem, situacao, criado_em, atualizado_em)
-    VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pendente','2024-01-01 10:00:00','2024-01-01 10:00:00'),
-           ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolvido','2024-01-02 11:00:00','2024-01-02 11:00:00');
+    INSERT INTO messages (call_date, call_time, recipient, sender_name, subject, message, status, created_at, updated_at)
+    VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pending','2024-01-01 10:00:00','2024-01-01 10:00:00'),
+           ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolved','2024-01-02 11:00:00','2024-01-02 11:00:00');
   `);
 
   const list = MessageModel.list({ limit: 5 });

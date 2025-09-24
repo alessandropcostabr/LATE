@@ -1,22 +1,6 @@
 const db = require('./_db');
 
-const TABLE = 'recados';
-
-const COLUMN_MAP = {
-  call_date: 'data_ligacao',
-  call_time: 'hora_ligacao',
-  recipient: 'destinatario',
-  sender_name: 'remetente_nome',
-  sender_phone: 'remetente_telefone',
-  sender_email: 'remetente_email',
-  subject: 'assunto',
-  message: 'mensagem',
-  status: 'situacao',
-  callback_time: 'horario_retorno',
-  notes: 'observacoes',
-  created_at: 'criado_em',
-  updated_at: 'atualizado_em',
-};
+const TABLE = 'messages';
 
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
@@ -103,22 +87,22 @@ function normalizePayload(payload = {}) {
 
 function mapRow(row) {
   if (!row) return null;
-  const status = normalizeStatus(row.status_raw || row.status || row.situacao);
+  const status = normalizeStatus(row.status);
   return {
     id: row.id,
-    call_date: row.call_date || row.data_ligacao || null,
-    call_time: row.call_time || row.hora_ligacao || null,
-    recipient: row.recipient || row.destinatario || null,
-    sender_name: row.sender_name || row.remetente_nome || null,
-    sender_phone: row.sender_phone ?? row.remetente_telefone ?? null,
-    sender_email: row.sender_email ?? row.remetente_email ?? null,
-    subject: row.subject || row.assunto || null,
-    message: row.message || row.mensagem || null,
+    call_date: row.call_date ?? null,
+    call_time: row.call_time ?? null,
+    recipient: row.recipient ?? null,
+    sender_name: row.sender_name ?? null,
+    sender_phone: row.sender_phone ?? null,
+    sender_email: row.sender_email ?? null,
+    subject: row.subject ?? null,
+    message: row.message ?? null,
     status,
-    callback_time: row.callback_time ?? row.horario_retorno ?? null,
-    notes: row.notes ?? row.observacoes ?? null,
-    created_at: row.created_at || row.criado_em || null,
-    updated_at: row.updated_at || row.atualizado_em || null,
+    callback_time: row.callback_time ?? null,
+    notes: row.notes ?? null,
+    created_at: row.created_at ?? null,
+    updated_at: row.updated_at ?? null,
   };
 }
 
@@ -137,8 +121,8 @@ function migrateLegacyStatuses() {
 
     const updateStmt = database.prepare(`
       UPDATE ${TABLE}
-         SET ${COLUMN_MAP.status} = @to
-       WHERE ${COLUMN_MAP.status} = @from
+         SET status = @to
+       WHERE status = @from
     `);
 
     for (const pair of updates) {
@@ -175,19 +159,19 @@ function selectBase(whereClause = '', orderClause = 'ORDER BY id DESC', limitCla
   return `
     SELECT
       id,
-      ${COLUMN_MAP.call_date}      AS call_date,
-      ${COLUMN_MAP.call_time}      AS call_time,
-      ${COLUMN_MAP.recipient}      AS recipient,
-      ${COLUMN_MAP.sender_name}    AS sender_name,
-      ${COLUMN_MAP.sender_phone}   AS sender_phone,
-      ${COLUMN_MAP.sender_email}   AS sender_email,
-      ${COLUMN_MAP.subject}        AS subject,
-      ${COLUMN_MAP.message}        AS message,
-      ${COLUMN_MAP.status}         AS status_raw,
-      ${COLUMN_MAP.callback_time}  AS callback_time,
-      ${COLUMN_MAP.notes}          AS notes,
-      ${COLUMN_MAP.created_at}     AS created_at,
-      ${COLUMN_MAP.updated_at}     AS updated_at
+      call_date,
+      call_time,
+      recipient,
+      sender_name,
+      sender_phone,
+      sender_email,
+      subject,
+      message,
+      status,
+      callback_time,
+      notes,
+      created_at,
+      updated_at
       FROM ${TABLE}
       ${whereClause}
       ${orderClause}
@@ -206,19 +190,19 @@ function create(payload) {
   };
   const info = db().prepare(`
     INSERT INTO ${TABLE} (
-      ${COLUMN_MAP.call_date},
-      ${COLUMN_MAP.call_time},
-      ${COLUMN_MAP.recipient},
-      ${COLUMN_MAP.sender_name},
-      ${COLUMN_MAP.sender_phone},
-      ${COLUMN_MAP.sender_email},
-      ${COLUMN_MAP.subject},
-      ${COLUMN_MAP.message},
-      ${COLUMN_MAP.status},
-      ${COLUMN_MAP.callback_time},
-      ${COLUMN_MAP.notes},
-      ${COLUMN_MAP.created_at},
-      ${COLUMN_MAP.updated_at}
+      call_date,
+      call_time,
+      recipient,
+      sender_name,
+      sender_phone,
+      sender_email,
+      subject,
+      message,
+      status,
+      callback_time,
+      notes,
+      created_at,
+      updated_at
     ) VALUES (
       @call_date,
       @call_time,
@@ -243,19 +227,19 @@ function findById(id) {
   const row = db().prepare(`
     SELECT
       id,
-      ${COLUMN_MAP.call_date}      AS call_date,
-      ${COLUMN_MAP.call_time}      AS call_time,
-      ${COLUMN_MAP.recipient}      AS recipient,
-      ${COLUMN_MAP.sender_name}    AS sender_name,
-      ${COLUMN_MAP.sender_phone}   AS sender_phone,
-      ${COLUMN_MAP.sender_email}   AS sender_email,
-      ${COLUMN_MAP.subject}        AS subject,
-      ${COLUMN_MAP.message}        AS message,
-      ${COLUMN_MAP.status}         AS status_raw,
-      ${COLUMN_MAP.callback_time}  AS callback_time,
-      ${COLUMN_MAP.notes}          AS notes,
-      ${COLUMN_MAP.created_at}     AS created_at,
-      ${COLUMN_MAP.updated_at}     AS updated_at
+      call_date,
+      call_time,
+      recipient,
+      sender_name,
+      sender_phone,
+      sender_email,
+      subject,
+      message,
+      status,
+      callback_time,
+      notes,
+      created_at,
+      updated_at
       FROM ${TABLE}
      WHERE id = @id
   `).get({ id });
@@ -266,18 +250,18 @@ function update(id, payload) {
   const normalizedPayload = normalizePayload(payload);
   const info = db().prepare(`
     UPDATE ${TABLE}
-       SET ${COLUMN_MAP.call_date}     = @call_date,
-           ${COLUMN_MAP.call_time}     = @call_time,
-           ${COLUMN_MAP.recipient}     = @recipient,
-           ${COLUMN_MAP.sender_name}   = @sender_name,
-           ${COLUMN_MAP.sender_phone}  = @sender_phone,
-           ${COLUMN_MAP.sender_email}  = @sender_email,
-           ${COLUMN_MAP.subject}       = @subject,
-           ${COLUMN_MAP.message}       = @message,
-           ${COLUMN_MAP.status}        = COALESCE(@status, ${COLUMN_MAP.status}),
-           ${COLUMN_MAP.callback_time} = @callback_time,
-           ${COLUMN_MAP.notes}         = @notes,
-           ${COLUMN_MAP.updated_at}    = datetime('now')
+       SET call_date     = @call_date,
+           call_time     = @call_time,
+           recipient     = @recipient,
+           sender_name   = @sender_name,
+           sender_phone  = @sender_phone,
+           sender_email  = @sender_email,
+           subject       = @subject,
+           message       = @message,
+           status        = COALESCE(@status, status),
+           callback_time = @callback_time,
+           notes         = @notes,
+           updated_at    = datetime('now')
      WHERE id = @id
   `).run({ id, ...normalizedPayload.data, status: normalizedPayload.statusProvided ? normalizedPayload.data.status : null });
 
@@ -288,8 +272,8 @@ function updateStatus(id, status) {
   const normalized = ensureStatus(status);
   const info = db().prepare(`
     UPDATE ${TABLE}
-       SET ${COLUMN_MAP.status} = @status,
-           ${COLUMN_MAP.updated_at} = datetime('now')
+       SET status = @status,
+           updated_at = datetime('now')
      WHERE id = @id
   `).run({ id, status: normalized });
   return info.changes > 0;
@@ -309,7 +293,7 @@ function list({ limit = 10, offset = 0, status } = {}) {
 
   let whereClause = '';
   if (statusFilter) {
-    whereClause = `WHERE ${COLUMN_MAP.status} IN (@status, @legacy)`;
+    whereClause = 'WHERE status IN (@status, @legacy)';
   }
 
   const query = selectBase(whereClause);
@@ -336,7 +320,7 @@ function stats() {
     const row = database.prepare(`
       SELECT COUNT(*) AS count
         FROM ${TABLE}
-       WHERE ${COLUMN_MAP.status} IN (@status, @legacy)
+       WHERE status IN (@status, @legacy)
     `).get({ status, legacy });
     counters[status] = row.count;
   }
