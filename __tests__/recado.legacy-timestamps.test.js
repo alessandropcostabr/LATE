@@ -167,4 +167,18 @@ describe.each(SCHEMAS)('$label', schema => {
     expect(list[0].status).toBe('resolved');
     expect(list[1].status).toBe('pending');
   });
+
+  test('stats aggregates counts per status across schemas', () => {
+    const db = dbManager.getDatabase();
+    db.exec(schema.insertRecentSql);
+
+    const summary = MessageModel.stats();
+
+    expect(summary).toEqual({
+      total: 2,
+      pending: 1,
+      in_progress: 0,
+      resolved: 1,
+    });
+  });
 });
