@@ -43,8 +43,8 @@ function formatMonthLabel(label) {
 
 exports.list = (req, res) => {
   try {
-    const { limit, offset, status } = req.query || {};
-    const messages = MessageModel.list({ limit, offset, status }).map(formatMessage);
+    const { limit, offset, status, start_date, end_date, recipient } = req.query || {};
+    const messages = MessageModel.list({ limit, offset, status, start_date, end_date, recipient }).map(formatMessage);
     return res.json({ success: true, data: messages });
   } catch (err) {
     console.error('[messages] erro ao listar:', err);
