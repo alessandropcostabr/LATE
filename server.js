@@ -61,7 +61,7 @@ if (isProd && validateOrigin) app.use(validateOrigin);
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: { sucesso: false, erro: 'Muitas requisições. Tente novamente em 15 minutos.' },
+  message: { success: false, error: 'Muitas requisições. Tente novamente em 15 minutos.' },
   skip: req => req.method !== 'POST'
 });
 
@@ -235,7 +235,7 @@ app.use((req, res, next) => {
 });
 
 // Healthcheck
-app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.status(200).json({ success: true, data: { status: 'ok' } }));
 
 // ─── Rotas ───────────────────────────────────────────────────────────────────
 app.use('/login', loginLimiter);
@@ -247,16 +247,16 @@ app.use('/', webRoutes);
 app.use((err, req, res, _next) => {
   console.error('Erro não tratado:', err);
   res.status(err.status || 500).json({
-    sucesso: false,
-    mensagem: err.message || 'Erro interno do servidor',
-    erro: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    success: false,
+    message: err.message || 'Erro interno do servidor',
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
 // 404 Handler
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    res.status(404).json({ sucesso: false, mensagem: 'Endpoint não encontrado' });
+    res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
   } else {
     res.status(404).render('404');
   }

@@ -1,5 +1,5 @@
 // controllers/userController.js
-// Users API – English payloads; pt-BR messages. Compatible with current views.
+// Users API – payloads em inglês e mensagens em pt-BR.
 
 const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
@@ -18,11 +18,10 @@ exports.list = (req, res) => {
 exports.create = async (req, res) => {
   const errors = validationResult(req);
 
-  // Inputs em inglês (+ compat temporária)
-  const name     = String(req.body.name || req.body.nome || '').trim();
+  const name     = String(req.body.name || '').trim();
   const email    = String(req.body.email || '').trim().toLowerCase();
-  const password = String(req.body.password || req.body.senha || '').trim();
-  const role     = String(req.body.role || req.body.papel || 'OPERADOR').trim().toUpperCase();
+  const password = String(req.body.password || '').trim();
+  const role     = String(req.body.role || 'OPERADOR').trim().toUpperCase();
 
   if (!errors.isEmpty()) {
     return res.status(400).json({ success: false, errors: errors.array() });
@@ -47,7 +46,8 @@ exports.create = async (req, res) => {
 // PATCH /api/users/:id/active
 exports.setActive = (req, res) => {
   const id = Number(req.params.id);
-  const active = Boolean(req.body.active ?? req.body.ativo ?? req.body.is_active ?? false);
+  const activeInput = req.body.active;
+  const active = activeInput === true || activeInput === 'true' || activeInput === 1 || activeInput === '1';
   const ok = UserModel.setActive(id, active);
   if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
   return res.json({ success: true, data: { id, active } });
