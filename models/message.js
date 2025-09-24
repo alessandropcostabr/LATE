@@ -1,4 +1,8 @@
-const db = require('./_db');
+const databaseManager = require('../config/database');
+
+function db() {
+  return databaseManager.getDatabase();
+}
 
 const TABLE = 'messages';
 

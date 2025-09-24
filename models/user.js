@@ -2,7 +2,11 @@
 // User model using DatabaseManager helper (SQLite / ready for PG adapter).
 // Table: users (id, name, email, password_hash, role, is_active, created_at, updated_at)
 
-const db = require('./_db');
+const databaseManager = require('../config/database');
+
+function db() {
+  return databaseManager.getDatabase();
+}
 
 class UserModel {
   constructor() {
