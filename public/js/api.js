@@ -27,12 +27,12 @@ const API = (() => {
     try {
       body = await res.json();
     } catch (_e) {
-      body = { sucesso: res.ok, erro: `Resposta inválida do servidor (${res.status})` };
+      body = { success: res.ok, error: `Resposta inválida do servidor (${res.status})` };
     }
 
     if (!res.ok) {
       // Propaga erro com mensagem do backend quando disponível
-      const msg = body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
+      const msg = body?.error || body?.message || body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
       const err = new Error(msg);
       err.status = res.status;
       err.body = body;
@@ -42,35 +42,71 @@ const API = (() => {
     return body;
   }
 
+  function buildQuery(params = {}) {
+    const search = new URLSearchParams();
+    Object.keys(params).forEach((key) => {
+      const value = params[key];
+      if (value === undefined || value === null || value === '') return;
+      search.append(key, value);
+    });
+    const qs = search.toString();
+    return qs ? `?${qs}` : '';
+  }
+
   // === Endpoints específicos ===
 
-  async function createRecado(recado) {
-    return request('/recados', { method: 'POST', data: recado });
+  async function createMessage(message) {
+    return request('/messages', { method: 'POST', data: message });
   }
 
-  async function listarRecados(params = {}) {
-    const qs = new URLSearchParams(params).toString();
-    return request('/recados' + (qs ? `?${qs}` : ''));
+  async function listMessages(params = {}) {
+    return request('/messages' + buildQuery(params));
   }
 
-  async function obterRecado(id) {
-    return request(`/recados/${encodeURIComponent(id)}`);
+  async function getMessage(id) {
+    return request(`/messages/${encodeURIComponent(id)}`);
   }
 
-  async function atualizarRecado(id, dados) {
-    return request(`/recados/${encodeURIComponent(id)}`, { method: 'PUT', data: dados });
+  async function updateMessage(id, data) {
+    return request(`/messages/${encodeURIComponent(id)}`, { method: 'PUT', data });
   }
 
-  async function excluirRecado(id) {
-    return request(`/recados/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  async function deleteMessage(id) {
+    return request(`/messages/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+
+  async function updateMessageStatus(id, status) {
+    const payload = typeof status === 'object' && status !== null ? status : { status };
+    return request(`/messages/${encodeURIComponent(id)}/status`, { method: 'PATCH', data: payload });
+  }
+
+  async function getMessageStats() {
+    return request('/messages/stats');
+  }
+
+  async function listRecentMessages(limit = 10) {
+    return listMessages({ limit });
   }
 
   return {
-    createRecado,
-    listarRecados,
-    obterRecado,
-    atualizarRecado,
-    excluirRecado
+    request,
+    createMessage,
+    listMessages,
+    getMessage,
+    updateMessage,
+    deleteMessage,
+    updateMessageStatus,
+    getMessageStats,
+    listRecentMessages,
+
+    // aliases temporários para compatibilidade
+    createRecado: createMessage,
+    listarRecados: listMessages,
+    obterRecado: getMessage,
+    atualizarRecado: updateMessage,
+    excluirRecado: deleteMessage,
+    getStats: getMessageStats,
+    getRecadosRecentes: listRecentMessages,
   };
 })();
 

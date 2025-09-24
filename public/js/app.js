@@ -74,13 +74,19 @@ const Modal = { /* … */ };
 /**
  * Retorna o rótulo legível para cada situação
  */
-function getSituacaoLabel(situacao) {
-  const labels = { pendente: 'Pendente', em_andamento: 'Em Andamento', resolvido: 'Resolvido' };
-  return labels[situacao] || situacao;
+function getStatusLabel(status) {
+  const labels = { pending: 'Pendente', in_progress: 'Em Andamento', resolved: 'Resolvido' };
+  if (typeof Normalizer !== 'undefined' && Normalizer && typeof Normalizer.normalizeStatus === 'function') {
+    const normalized = Normalizer.normalizeStatus(status);
+    if (labels[normalized]) return labels[normalized];
+  }
+  const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
+  return labels[key] || labels[status] || (status == null ? '-' : status);
 }
 
 // Expõe globalmente
-window.getSituacaoLabel = getSituacaoLabel;
+window.getStatusLabel = getStatusLabel;
+window.getSituacaoLabel = getStatusLabel;
 
 // ─── INICIALIZAÇÃO LAZY ──────────────────────────────────────────────────────
 

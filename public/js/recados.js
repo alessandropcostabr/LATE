@@ -8,12 +8,12 @@
 
   async function carregarRecados() {
     try {
-      const resp = await API.listarRecados();
-      if (!resp || resp.sucesso === false) {
-        throw new Error(resp?.erro || 'Falha ao listar recados.');
+      const resp = await API.listMessages();
+      if (!resp || resp.success === false) {
+        throw new Error(resp?.error || resp?.message || 'Falha ao listar recados.');
       }
 
-      const lista = Array.isArray(resp?.dados) ? resp.dados : resp; // compat: alguns backends retornam objeto
+      const lista = Array.isArray(resp?.data) ? resp.data : resp; // compat: alguns backends retornam objeto
       renderizarLista(lista);
     } catch (err) {
       console.error('❌ Erro ao carregar recados:', err?.message || err);
@@ -35,9 +35,13 @@
     }
 
     const rows = itens.map((r) => {
-      const assunto = escapeHtml(r.assunto || '(sem assunto)');
-      const mensagem = escapeHtml((r.mensagem || r.observacoes || '(sem mensagem)')).slice(0, 120);
-      const criado = escapeHtml(r.criado_em || '');
+      const assunto = escapeHtml(r.subject || '(sem assunto)');
+      const mensagem = escapeHtml((r.message || r.notes || '(sem mensagem)')).slice(0, 120);
+      const criadoRaw = r.created_at || (r.call_date ? `${r.call_date} ${r.call_time || ''}` : '');
+      const criadoFmt = criadoRaw && typeof Utils !== 'undefined' && Utils && typeof Utils.formatDateTime === 'function'
+        ? Utils.formatDateTime(criadoRaw)
+        : criadoRaw;
+      const criado = escapeHtml(criadoFmt || '');
       return `
         <tr>
           <td>${assunto}</td>

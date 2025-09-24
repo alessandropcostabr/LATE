@@ -1,6 +1,6 @@
 // public/js/novo-recado.js
 // Página "Novo Recado" — coleta do formulário, normalização e envio para a API.
-// Por quê: garantir JSON válido e presença de 'mensagem' (fallback de 'observacoes').
+// Por quê: garantir JSON válido e presença de 'message' (fallback de 'notes').
 
 (() => {
   console.log('✅ Novo Recado JS carregado');
@@ -13,34 +13,38 @@
   };
 
   function coletarDados() {
-    const data_ligacao = val('#data_ligacao');
-    const hora_ligacao = val('#hora_ligacao');
-    const destinatario = val('#destinatario');
-    const remetente_nome = val('#remetente_nome');
-    const remetente_telefone = val('#remetente_telefone');
-    const remetente_email = val('#remetente_email');
-    const assunto = val('#assunto');
-    const situacao = val('#situacao') || 'pendente';
-    const horario_retorno = val('#horario_retorno');
-    const observacoes = val('#observacoes');
+    const call_date = val('#call_date');
+    const call_time = val('#call_time');
+    const recipient = val('#recipient');
+    const sender_name = val('#sender_name');
+    const sender_phone = val('#sender_phone');
+    const sender_email = val('#sender_email');
+    const subject = val('#subject');
+    const status = val('#status') || 'pending';
+    const callback_time = val('#callback_time');
+    const notes = val('#notes');
 
-    // 'mensagem' pode não existir no template atual; tentamos capturar, senão criamos fallback
-    const mensagemRaw = val('#mensagem'); // se não existir, retorna ''
-    const mensagem = (mensagemRaw || observacoes || '(sem mensagem)');
+    // 'message' pode não existir no template atual; tentamos capturar, senão criamos fallback
+    const messageRaw = val('#message'); // se não existir, retorna ''
+    const message = (messageRaw || notes || '(sem mensagem)');
 
-    const payload = {
-      data_ligacao,
-      hora_ligacao,
-      destinatario,
-      remetente_nome,
-      remetente_telefone,
-      remetente_email,
-      assunto,
-      mensagem,            // <- obrigatório no banco; garantimos aqui
-      situacao,
-      horario_retorno,
-      observacoes
+    const basePayload = {
+      call_date,
+      call_time,
+      recipient,
+      sender_name,
+      sender_phone,
+      sender_email,
+      subject,
+      message,            // <- obrigatório no banco; garantimos aqui
+      status,
+      callback_time,
+      notes
     };
+
+    const payload = (typeof Form !== 'undefined' && Form && typeof Form.prepareMessagePayload === 'function')
+      ? Form.prepareMessagePayload(basePayload)
+      : basePayload;
 
     console.log('✅ Dados coletados:', payload);
     return payload;
@@ -53,23 +57,23 @@
 
       // Validação mínima no front para UX (backend também valida)
       const faltando = [];
-      if (!recado.data_ligacao) faltando.push('Data da ligação');
-      if (!recado.hora_ligacao) faltando.push('Hora da ligação');
-      if (!recado.destinatario) faltando.push('Destinatário');
-      if (!recado.remetente_nome) faltando.push('Remetente');
-      if (!recado.assunto) faltando.push('Assunto');
-      if (!recado.mensagem) faltando.push('Mensagem');
+      if (!recado.call_date) faltando.push('Data da ligação');
+      if (!recado.call_time) faltando.push('Hora da ligação');
+      if (!recado.recipient) faltando.push('Destinatário');
+      if (!recado.sender_name) faltando.push('Remetente');
+      if (!recado.subject) faltando.push('Assunto');
+      if (!recado.message) faltando.push('Mensagem');
 
       if (faltando.length) {
         alert(`Preencha os campos obrigatórios: ${faltando.join(', ')}`);
         return;
       }
 
-      const resp = await API.createRecado(recado);
+      const resp = await API.createMessage(recado);
       console.log('✅ Recado criado:', resp);
 
       // Redireciona para lista/detalhe após criar (ajuste conforme sua navegação)
-      if (resp?.sucesso) {
+      if (resp?.success) {
         window.location.href = '/recados';
       } else {
         alert('Não foi possível criar o recado.');
@@ -81,7 +85,7 @@
   }
 
   function iniciar() {
-    const form = document.querySelector('#form-novo-recado') || document.querySelector('form');
+    const form = document.querySelector('#formNovoRecado') || document.querySelector('#form-novo-recado') || document.querySelector('form');
     if (!form) {
       console.warn('⚠️ Formulário de novo recado não encontrado.');
       return;
