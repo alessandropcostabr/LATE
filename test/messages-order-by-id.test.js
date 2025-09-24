@@ -7,34 +7,34 @@ let app;
 beforeAll(() => {
   const db = dbManager.getDatabase();
   db.prepare(
-    `CREATE TABLE recados (
+    `CREATE TABLE messages (
       id INTEGER PRIMARY KEY,
-      data_ligacao TEXT,
-      hora_ligacao TEXT,
-      destinatario TEXT,
-      remetente_nome TEXT,
-      remetente_telefone TEXT,
-      remetente_email TEXT,
-      assunto TEXT,
-      mensagem TEXT,
-      situacao TEXT,
-      horario_retorno TEXT,
-      observacoes TEXT,
-      criado_em DATETIME,
-      atualizado_em DATETIME
+      call_date TEXT,
+      call_time TEXT,
+      recipient TEXT,
+      sender_name TEXT,
+      sender_phone TEXT,
+      sender_email TEXT,
+      subject TEXT,
+      message TEXT,
+      status TEXT,
+      callback_time TEXT,
+      notes TEXT,
+      created_at DATETIME,
+      updated_at DATETIME
     )`
   ).run();
 
   const insert = db.prepare(`
-    INSERT INTO recados (
-      data_ligacao, hora_ligacao, destinatario, remetente_nome,
-      remetente_telefone, remetente_email, assunto, mensagem,
-      situacao, horario_retorno, observacoes, criado_em, atualizado_em
+    INSERT INTO messages (
+      call_date, call_time, recipient, sender_name,
+      sender_phone, sender_email, subject, message,
+      status, callback_time, notes, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
   `);
 
-  insert.run('2025-01-01', '09:00', 'Equipe A', 'João', null, null, 'Aviso', 'Mensagem 1', 'pendente', null, null);
-  insert.run('2025-01-02', '10:30', 'Equipe B', 'Maria', null, null, 'Aviso', 'Mensagem 2', 'resolvido', null, null);
+  insert.run('2025-01-01', '09:00', 'Equipe A', 'João', null, null, 'Aviso', 'Mensagem 1', 'pending', null, null);
+  insert.run('2025-01-02', '10:30', 'Equipe B', 'Maria', null, null, 'Aviso', 'Mensagem 2', 'resolved', null, null);
 
   const apiRoutes = require('../routes/api');
   app = express();
