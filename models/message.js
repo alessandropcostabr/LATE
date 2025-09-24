@@ -91,8 +91,8 @@ function resolveColumnMap(tableName) {
   return { schema: 'modern', map: COLUMN_MAPS.modern };
 }
 
-const COLUMN_CONFIG = resolveColumnMap(TABLE);
-const COLUMN_MAP = COLUMN_CONFIG.map;
+let COLUMN_CONFIG = resolveColumnMap(TABLE);
+let COLUMN_MAP = COLUMN_CONFIG.map;
 
 function column(name) {
   return COLUMN_MAP[name] || name;
@@ -131,25 +131,85 @@ const INSERT_FIELDS = [
   'updated_at',
 ];
 
-const SELECT_COLUMNS = SELECTABLE_FIELDS.map(field => {
-  const mapped = column(field);
-  return mapped === field ? mapped : `${mapped} AS ${field}`;
-}).join(',\n      ');
+function buildSelectColumns() {
+  return SELECTABLE_FIELDS.map(field => {
+    const mapped = column(field);
+    return mapped === field ? mapped : `${mapped} AS ${field}`;
+  }).join(',\n      ');
+}
 
-const INSERT_COLUMNS = INSERT_FIELDS.map(field => column(field)).join(',\n      ');
+function buildInsertColumns() {
+  return INSERT_FIELDS.map(field => column(field)).join(',\n      ');
+}
 
-const INSERT_VALUES = INSERT_FIELDS.map(field => {
-  if (field === 'created_at' || field === 'updated_at') {
-    return `COALESCE(@${field}, datetime('now'))`;
+function buildInsertValues() {
+  return INSERT_FIELDS.map(field => {
+    if (field === 'created_at' || field === 'updated_at') {
+      return `COALESCE(@${field}, datetime('now'))`;
+    }
+    return `@${field}`;
+  }).join(',\n      ');
+}
+
+let SELECT_COLUMNS = buildSelectColumns();
+let INSERT_COLUMNS = buildInsertColumns();
+let INSERT_VALUES = buildInsertValues();
+let STATUS_COLUMN = column('status');
+let ID_COLUMN = column('id');
+let RECIPIENT_COLUMN = column('recipient');
+let CALL_DATE_COLUMN = column('call_date');
+let CREATED_AT_COLUMN = column('created_at');
+
+function refreshDerivedColumns() {
+  COLUMN_MAP = COLUMN_CONFIG.map;
+  SELECT_COLUMNS = buildSelectColumns();
+  INSERT_COLUMNS = buildInsertColumns();
+  INSERT_VALUES = buildInsertValues();
+  STATUS_COLUMN = column('status');
+  ID_COLUMN = column('id');
+  RECIPIENT_COLUMN = column('recipient');
+  CALL_DATE_COLUMN = column('call_date');
+  CREATED_AT_COLUMN = column('created_at');
+}
+
+function refreshColumnConfig() {
+  COLUMN_CONFIG = resolveColumnMap(TABLE);
+  refreshDerivedColumns();
+}
+
+const DETECTION_FIELDS = ['call_date', 'status', 'created_at'];
+
+function inspectTableColumns(tableName) {
+  try {
+    const pragmaStatement = db().prepare(`PRAGMA table_info(${JSON.stringify(tableName)})`);
+    return pragmaStatement.all();
+  } catch (err) {
+    console.warn(
+      `[message:model] Falha ao inspecionar colunas da tabela ${tableName}:`,
+      err.message
+    );
+    return [];
   }
-  return `@${field}`;
-}).join(',\n      ');
+}
 
-const STATUS_COLUMN = column('status');
-const ID_COLUMN = column('id');
-const RECIPIENT_COLUMN = column('recipient');
-const CALL_DATE_COLUMN = column('call_date');
-const CREATED_AT_COLUMN = column('created_at');
+function mappingMatchesColumns(currentMap, columnNames) {
+  return DETECTION_FIELDS.every(field => {
+    const mapped = currentMap[field] || field;
+    return columnNames.has(mapped);
+  });
+}
+
+function ensureColumnConfigUpToDate() {
+  const columnsInfo = inspectTableColumns(TABLE);
+  if (!columnsInfo.length) {
+    return;
+  }
+
+  const columnNames = new Set(columnsInfo.map(column => column.name));
+  if (!mappingMatchesColumns(COLUMN_MAP, columnNames)) {
+    refreshColumnConfig();
+  }
+}
 
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
@@ -320,6 +380,7 @@ function selectBase(
 }
 
 function create(payload) {
+  ensureColumnConfigUpToDate();
   const normalizedPayload = normalizePayload(payload);
   const timestamps = attachTimestamps({}, payload);
   const data = {
@@ -340,6 +401,7 @@ function create(payload) {
 }
 
 function findById(id) {
+  ensureColumnConfigUpToDate();
   const row = db().prepare(`
     SELECT
       ${SELECT_COLUMNS}
@@ -351,6 +413,7 @@ function findById(id) {
 }
 
 function update(id, payload) {
+  ensureColumnConfigUpToDate();
   const normalizedPayload = normalizePayload(payload);
   const info = db().prepare(`
     UPDATE ${TABLE}
@@ -373,6 +436,7 @@ function update(id, payload) {
 }
 
 function updateStatus(id, status) {
+  ensureColumnConfigUpToDate();
   const normalized = ensureStatus(status);
   const info = db().prepare(`
     UPDATE ${TABLE}
@@ -384,11 +448,13 @@ function updateStatus(id, status) {
 }
 
 function remove(id) {
+  ensureColumnConfigUpToDate();
   const info = db().prepare(`DELETE FROM ${TABLE} WHERE ${ID_COLUMN} = @id`).run({ id });
   return info.changes > 0;
 }
 
 function list({ limit = 10, offset = 0, status, start_date, end_date, recipient } = {}) {
+  ensureColumnConfigUpToDate();
   const parsedLimit = Number(limit);
   const parsedOffset = Number(offset);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
@@ -439,6 +505,7 @@ function listRecent(limit = 10) {
 }
 
 function stats() {
+  ensureColumnConfigUpToDate();
   const database = db();
   const total = database.prepare(`SELECT COUNT(*) AS count FROM ${TABLE}`).get().count;
 
@@ -470,6 +537,7 @@ function sanitizeLimit(limit, { fallback = 10, max = 100 } = {}) {
 }
 
 function statsByRecipient({ limit = 10 } = {}) {
+  ensureColumnConfigUpToDate();
   const sanitizedLimit = sanitizeLimit(limit, { fallback: 10, max: 100 });
   const rows = db().prepare(`
     SELECT
@@ -485,6 +553,7 @@ function statsByRecipient({ limit = 10 } = {}) {
 }
 
 function statsByStatus() {
+  ensureColumnConfigUpToDate();
   const totals = STATUS_VALUES.reduce((acc, status) => {
     acc[status] = 0;
     return acc;
@@ -511,6 +580,7 @@ function statsByStatus() {
 }
 
 function statsByMonth({ limit = 12 } = {}) {
+  ensureColumnConfigUpToDate();
   const sanitizedLimit = sanitizeLimit(limit, { fallback: 12, max: 120 });
   const rows = db().prepare(`
     WITH aggregated AS (
