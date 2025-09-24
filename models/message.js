@@ -4,7 +4,27 @@ function db() {
   return databaseManager.getDatabase();
 }
 
-const TABLE = 'messages';
+const MESSAGE_TABLE_CANDIDATES = ['messages', 'recados'];
+
+function resolveMessageTable() {
+  try {
+    const database = db();
+    const statement = database.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name=@table LIMIT 1"
+    );
+
+    for (const tableName of MESSAGE_TABLE_CANDIDATES) {
+      const found = statement.get({ table: tableName });
+      if (found && found.name) return found.name;
+    }
+  } catch (err) {
+    console.warn('[message:model] Falha ao resolver tabela de recados:', err.message);
+  }
+
+  return 'recados';
+}
+
+const TABLE = resolveMessageTable();
 
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
