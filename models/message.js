@@ -26,6 +26,128 @@ function resolveMessageTable() {
 
 const TABLE = resolveMessageTable();
 
+const COLUMN_MAPS = {
+  modern: {
+    id: 'id',
+    call_date: 'call_date',
+    call_time: 'call_time',
+    recipient: 'recipient',
+    sender_name: 'sender_name',
+    sender_phone: 'sender_phone',
+    sender_email: 'sender_email',
+    subject: 'subject',
+    message: 'message',
+    status: 'status',
+    callback_time: 'callback_time',
+    notes: 'notes',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  },
+  legacy: {
+    id: 'id',
+    call_date: 'data_ligacao',
+    call_time: 'hora_ligacao',
+    recipient: 'destinatario',
+    sender_name: 'remetente_nome',
+    sender_phone: 'remetente_telefone',
+    sender_email: 'remetente_email',
+    subject: 'assunto',
+    message: 'mensagem',
+    status: 'situacao',
+    callback_time: 'horario_retorno',
+    notes: 'observacoes',
+    created_at: 'criado_em',
+    updated_at: 'atualizado_em',
+  },
+};
+
+function resolveColumnMap(tableName) {
+  try {
+    const database = db();
+    const pragmaStatement = database.prepare(`PRAGMA table_info(${JSON.stringify(tableName)})`);
+    const columnsInfo = pragmaStatement.all();
+    const columnNames = new Set(columnsInfo.map(column => column.name));
+
+    const isLegacy = ['situacao', 'data_ligacao', 'mensagem'].some(name => columnNames.has(name));
+    if (isLegacy) {
+      return { schema: 'legacy', map: COLUMN_MAPS.legacy };
+    }
+
+    const looksModern = ['call_date', 'message', 'notes'].every(name => columnNames.has(name));
+    if (looksModern) {
+      return { schema: 'modern', map: COLUMN_MAPS.modern };
+    }
+
+    if (tableName === 'recados') {
+      return { schema: 'legacy', map: COLUMN_MAPS.legacy };
+    }
+  } catch (err) {
+    console.warn(
+      `[message:model] Falha ao inspecionar colunas da tabela ${tableName}:`,
+      err.message
+    );
+  }
+
+  return { schema: 'modern', map: COLUMN_MAPS.modern };
+}
+
+const COLUMN_CONFIG = resolveColumnMap(TABLE);
+const COLUMN_MAP = COLUMN_CONFIG.map;
+
+function column(name) {
+  return COLUMN_MAP[name] || name;
+}
+
+const SELECTABLE_FIELDS = [
+  'id',
+  'call_date',
+  'call_time',
+  'recipient',
+  'sender_name',
+  'sender_phone',
+  'sender_email',
+  'subject',
+  'message',
+  'status',
+  'callback_time',
+  'notes',
+  'created_at',
+  'updated_at',
+];
+
+const INSERT_FIELDS = [
+  'call_date',
+  'call_time',
+  'recipient',
+  'sender_name',
+  'sender_phone',
+  'sender_email',
+  'subject',
+  'message',
+  'status',
+  'callback_time',
+  'notes',
+  'created_at',
+  'updated_at',
+];
+
+const SELECT_COLUMNS = SELECTABLE_FIELDS.map(field => {
+  const mapped = column(field);
+  return mapped === field ? mapped : `${mapped} AS ${field}`;
+}).join(',\n      ');
+
+const INSERT_COLUMNS = INSERT_FIELDS.map(field => column(field)).join(',\n      ');
+
+const INSERT_VALUES = INSERT_FIELDS.map(field => {
+  if (field === 'created_at' || field === 'updated_at') {
+    return `COALESCE(@${field}, datetime('now'))`;
+  }
+  return `@${field}`;
+}).join(',\n      ');
+
+const STATUS_COLUMN = column('status');
+const ID_COLUMN = column('id');
+
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
   in_progress: 'em_andamento',
@@ -145,8 +267,8 @@ function migrateLegacyStatuses() {
 
     const updateStmt = database.prepare(`
       UPDATE ${TABLE}
-         SET status = @to
-       WHERE status = @from
+         SET ${STATUS_COLUMN} = @to
+       WHERE ${STATUS_COLUMN} = @from
     `);
 
     for (const pair of updates) {
@@ -179,23 +301,14 @@ function attachTimestamps(payload, source = {}) {
   return { ...payload, ...timestamps };
 }
 
-function selectBase(whereClause = '', orderClause = 'ORDER BY id DESC', limitClause = 'LIMIT @limit OFFSET @offset') {
+function selectBase(
+  whereClause = '',
+  orderClause = `ORDER BY ${ID_COLUMN} DESC`,
+  limitClause = 'LIMIT @limit OFFSET @offset'
+) {
   return `
     SELECT
-      id,
-      call_date,
-      call_time,
-      recipient,
-      sender_name,
-      sender_phone,
-      sender_email,
-      subject,
-      message,
-      status,
-      callback_time,
-      notes,
-      created_at,
-      updated_at
+      ${SELECT_COLUMNS}
       FROM ${TABLE}
       ${whereClause}
       ${orderClause}
@@ -214,33 +327,9 @@ function create(payload) {
   };
   const info = db().prepare(`
     INSERT INTO ${TABLE} (
-      call_date,
-      call_time,
-      recipient,
-      sender_name,
-      sender_phone,
-      sender_email,
-      subject,
-      message,
-      status,
-      callback_time,
-      notes,
-      created_at,
-      updated_at
+      ${INSERT_COLUMNS}
     ) VALUES (
-      @call_date,
-      @call_time,
-      @recipient,
-      @sender_name,
-      @sender_phone,
-      @sender_email,
-      @subject,
-      @message,
-      @status,
-      @callback_time,
-      @notes,
-      COALESCE(@created_at, datetime('now')),
-      COALESCE(@updated_at, datetime('now'))
+      ${INSERT_VALUES}
     )
   `).run({ ...data, ...timestamps });
 
@@ -250,22 +339,10 @@ function create(payload) {
 function findById(id) {
   const row = db().prepare(`
     SELECT
-      id,
-      call_date,
-      call_time,
-      recipient,
-      sender_name,
-      sender_phone,
-      sender_email,
-      subject,
-      message,
-      status,
-      callback_time,
-      notes,
-      created_at,
-      updated_at
+      ${SELECT_COLUMNS}
       FROM ${TABLE}
-     WHERE id = @id
+     WHERE ${ID_COLUMN} = @id
+     LIMIT 1
   `).get({ id });
   return mapRow(row);
 }
@@ -274,19 +351,19 @@ function update(id, payload) {
   const normalizedPayload = normalizePayload(payload);
   const info = db().prepare(`
     UPDATE ${TABLE}
-       SET call_date     = @call_date,
-           call_time     = @call_time,
-           recipient     = @recipient,
-           sender_name   = @sender_name,
-           sender_phone  = @sender_phone,
-           sender_email  = @sender_email,
-           subject       = @subject,
-           message       = @message,
-           status        = COALESCE(@status, status),
-           callback_time = @callback_time,
-           notes         = @notes,
-           updated_at    = datetime('now')
-     WHERE id = @id
+       SET ${column('call_date')}     = @call_date,
+           ${column('call_time')}     = @call_time,
+           ${column('recipient')}     = @recipient,
+           ${column('sender_name')}   = @sender_name,
+           ${column('sender_phone')}  = @sender_phone,
+           ${column('sender_email')}  = @sender_email,
+           ${column('subject')}       = @subject,
+           ${column('message')}       = @message,
+           ${STATUS_COLUMN}           = COALESCE(@status, ${STATUS_COLUMN}),
+           ${column('callback_time')} = @callback_time,
+           ${column('notes')}         = @notes,
+           ${column('updated_at')}    = datetime('now')
+     WHERE ${ID_COLUMN} = @id
   `).run({ id, ...normalizedPayload.data, status: normalizedPayload.statusProvided ? normalizedPayload.data.status : null });
 
   return info.changes > 0;
@@ -296,15 +373,15 @@ function updateStatus(id, status) {
   const normalized = ensureStatus(status);
   const info = db().prepare(`
     UPDATE ${TABLE}
-       SET status = @status,
-           updated_at = datetime('now')
-     WHERE id = @id
+       SET ${STATUS_COLUMN}        = @status,
+           ${column('updated_at')} = datetime('now')
+     WHERE ${ID_COLUMN} = @id
   `).run({ id, status: normalized });
   return info.changes > 0;
 }
 
 function remove(id) {
-  const info = db().prepare(`DELETE FROM ${TABLE} WHERE id = @id`).run({ id });
+  const info = db().prepare(`DELETE FROM ${TABLE} WHERE ${ID_COLUMN} = @id`).run({ id });
   return info.changes > 0;
 }
 
@@ -317,7 +394,7 @@ function list({ limit = 10, offset = 0, status } = {}) {
 
   let whereClause = '';
   if (statusFilter) {
-    whereClause = 'WHERE status IN (@status, @legacy)';
+    whereClause = `WHERE ${STATUS_COLUMN} IN (@status, @legacy)`;
   }
 
   const query = selectBase(whereClause);
@@ -344,7 +421,7 @@ function stats() {
     const row = database.prepare(`
       SELECT COUNT(*) AS count
         FROM ${TABLE}
-       WHERE status IN (@status, @legacy)
+       WHERE ${STATUS_COLUMN} IN (@status, @legacy)
     `).get({ status, legacy });
     counters[status] = row.count;
   }
