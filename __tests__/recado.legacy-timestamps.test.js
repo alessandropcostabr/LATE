@@ -57,6 +57,33 @@ const SCHEMAS = [
              ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolvido','Tarde','Obs B','2024-01-02 11:00:00','2024-01-02 11:00:00');
     `,
   },
+  {
+    label: 'modern recados schema created after import',
+    setupSql: `
+      CREATE TABLE recados (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        call_date TEXT NOT NULL,
+        call_time TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        sender_name TEXT NOT NULL,
+        sender_phone TEXT,
+        sender_email TEXT,
+        subject TEXT NOT NULL,
+        message TEXT,
+        status TEXT DEFAULT 'pending',
+        callback_time TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+    insertRecentSql: `
+      INSERT INTO recados (call_date, call_time, recipient, sender_name, subject, message, status, created_at, updated_at)
+      VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pending','2024-01-01 10:00:00','2024-01-01 10:00:00'),
+             ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolved','2024-01-02 11:00:00','2024-01-02 11:00:00');
+    `,
+    createAfterImport: true,
+  },
 ];
 
 describe.each(SCHEMAS)('$label', schema => {
@@ -69,8 +96,13 @@ describe.each(SCHEMAS)('$label', schema => {
       DROP TABLE IF EXISTS messages;
       DROP TABLE IF EXISTS recados;
     `);
-    db.exec(schema.setupSql);
+    if (!schema.createAfterImport) {
+      db.exec(schema.setupSql);
+    }
     MessageModel = require('../models/message');
+    if (schema.createAfterImport) {
+      db.exec(schema.setupSql);
+    }
   });
 
   afterEach(() => {
@@ -134,5 +166,19 @@ describe.each(SCHEMAS)('$label', schema => {
     expect(subjects).toEqual(['B', 'A']);
     expect(list[0].status).toBe('resolved');
     expect(list[1].status).toBe('pending');
+  });
+
+  test('stats aggregates counts per status across schemas', () => {
+    const db = dbManager.getDatabase();
+    db.exec(schema.insertRecentSql);
+
+    const summary = MessageModel.stats();
+
+    expect(summary).toEqual({
+      total: 2,
+      pending: 1,
+      in_progress: 0,
+      resolved: 1,
+    });
   });
 });
