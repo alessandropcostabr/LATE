@@ -1,6 +1,5 @@
 // controllers/authController.js
-// Auth: login/logout/register – inputs in English, user messages in pt-BR.
-// TEMP compat: accepts 'senha|password', 'nome|name', 'papel|role' (logs a warning).
+// Auth: login/logout/register – inputs em inglês, mensagens em pt-BR.
 
 const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
@@ -29,15 +28,8 @@ exports.login = async (req, res) => {
     });
   }
 
-  // Inputs em inglês (+ compat temporária)
   const email = String(req.body.email || '').trim().toLowerCase();
-  const password = String(
-    req.body.password || req.body.senha || ''
-  ).trim();
-
-  if (req.body.senha && !req.body.password) {
-    console.warn('[auth] compat: received "senha"; prefer "password"');
-  }
+  const password = String(req.body.password || '').trim();
 
   try {
     const user = UserModel.findByEmail(email);
@@ -79,13 +71,13 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Sessão (mantemos chaves em pt-BR no objeto da sessão; UI depende disso)
-    req.session.usuario = {
+    req.session.user = {
       id: user.id,
-      nome: user.name,
+      name: user.name,
       email: user.email,
-      papel: user.role,
+      role: user.role,
     };
+    if (req.session.usuario) delete req.session.usuario;
 
     return res.redirect('/');
   } catch (err) {
@@ -102,7 +94,7 @@ exports.login = async (req, res) => {
 };
 
 exports.showRegister = (req, res) => {
-  const roleSession = req.session.usuario?.papel;
+  const roleSession = req.session.user?.role;
   const visible = roleSession === 'ADMIN' ? ALLOWED_ROLES : ['OPERADOR'];
 
   return res.render('register', {
@@ -120,17 +112,12 @@ exports.showRegister = (req, res) => {
 exports.register = async (req, res) => {
   const errors = validationResult(req);
 
-  // Inputs em inglês (+ compat temporária)
-  const name = String(req.body.name || req.body.nome || '').trim();
+  const name = String(req.body.name || '').trim();
   const email = String(req.body.email || '').trim().toLowerCase();
-  const password = String(req.body.password || req.body.senha || '').trim();
-  let role = String(req.body.role || req.body.papel || 'OPERADOR').trim().toUpperCase();
+  const password = String(req.body.password || '').trim();
+  let role = String(req.body.role || 'OPERADOR').trim().toUpperCase();
 
-  if (req.body.nome && !req.body.name)  console.warn('[auth] compat: received "nome"; prefer "name"');
-  if (req.body.senha && !req.body.password) console.warn('[auth] compat: received "senha"; prefer "password"');
-  if (req.body.papel && !req.body.role) console.warn('[auth] compat: received "papel"; prefer "role"');
-
-  const roleSession = req.session.usuario?.papel;
+  const roleSession = req.session.user?.role;
   const visible = roleSession === 'ADMIN' ? ALLOWED_ROLES : ['OPERADOR'];
   if (roleSession !== 'ADMIN') role = 'OPERADOR';
   if (!ALLOWED_ROLES.includes(role)) role = 'OPERADOR';

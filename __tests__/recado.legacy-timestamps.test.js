@@ -1,7 +1,7 @@
 process.env.DB_PATH = '';
 
 const dbManager = require('../config/database');
-let RecadoModel;
+let MessageModel;
 
 beforeEach(() => {
   dbManager.close();
@@ -17,6 +17,7 @@ beforeEach(() => {
       remetente_email VARCHAR(255),
       horario_retorno VARCHAR(100),
       assunto TEXT NOT NULL,
+      mensagem TEXT,
       situacao VARCHAR(20) DEFAULT 'pendente',
       observacoes TEXT,
       criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -25,9 +26,8 @@ beforeEach(() => {
       updated_by INTEGER
     );
   `);
-  delete require.cache[require.resolve('../models/recado')];
-  RecadoModel = require('../models/recado');
-  RecadoModel.db = db;
+  delete require.cache[require.resolve('../models/message')];
+  MessageModel = require('../models/message');
 });
 
 afterEach(() => {
@@ -35,34 +35,50 @@ afterEach(() => {
 });
 
 test('CRUD operations work with legacy timestamp columns', () => {
-  const created = RecadoModel.create({
-    data_ligacao: '2024-03-01',
-    hora_ligacao: '08:00',
-    destinatario: 'Alice',
-    remetente_nome: 'Bob',
-    assunto: 'Teste'
+  const id = MessageModel.create({
+    call_date: '2024-03-01',
+    call_time: '08:00',
+    recipient: 'Alice',
+    sender_name: 'Bob',
+    subject: 'Teste',
+    message: 'Mensagem de teste'
   });
-  expect(created).toHaveProperty('id');
-  const fetched = RecadoModel.findById(created.id);
-  expect(fetched.destinatario).toBe('Alice');
+  expect(typeof id).toBe('number');
 
-  const updated = RecadoModel.update(created.id, { ...created, situacao: 'resolvido' });
-  expect(updated.situacao).toBe('resolvido');
+  const fetched = MessageModel.findById(id);
+  expect(fetched.recipient).toBe('Alice');
+  expect(fetched.status).toBe('pending');
 
-  const ok = RecadoModel.delete(created.id);
-  expect(ok).toBe(true);
-  expect(RecadoModel.findById(created.id)).toBeUndefined();
+  const updatedOk = MessageModel.update(id, {
+    call_date: '2024-03-01',
+    call_time: '09:15',
+    recipient: 'Alice',
+    sender_name: 'Bob',
+    subject: 'Teste',
+    message: 'Mensagem atualizada',
+    status: 'resolved'
+  });
+  expect(updatedOk).toBe(true);
+
+  const updated = MessageModel.findById(id);
+  expect(updated.status).toBe('resolved');
+
+  const removed = MessageModel.remove(id);
+  expect(removed).toBe(true);
+  expect(MessageModel.findById(id)).toBeNull();
 });
 
-test('ordering works with legacy timestamp columns', () => {
-  const db = RecadoModel.db;
+test('list keeps newest first even with legacy timestamps', () => {
+  const db = dbManager.getDatabase();
   db.exec(`
-    INSERT INTO recados (data_ligacao, hora_ligacao, destinatario, remetente_nome, assunto, criado_em, atualizado_em)
-    VALUES ('2024-01-01','09:00','Dest1','Rem1','A','2024-01-01 10:00:00','2024-01-01 10:00:00'),
-           ('2024-01-02','10:00','Dest2','Rem2','B','2024-01-02 11:00:00','2024-01-02 11:00:00');
+    INSERT INTO recados (data_ligacao, hora_ligacao, destinatario, remetente_nome, assunto, mensagem, situacao, criado_em, atualizado_em)
+    VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pendente','2024-01-01 10:00:00','2024-01-01 10:00:00'),
+           ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolvido','2024-01-02 11:00:00','2024-01-02 11:00:00');
   `);
-  const byCreated = RecadoModel.findAll({ orderBy: 'criado_em', orderDir: 'DESC' });
-  expect(byCreated[0].assunto).toBe('B');
-  const byUpdated = RecadoModel.findAll({ orderBy: 'atualizado_em', orderDir: 'ASC' });
-  expect(byUpdated[0].assunto).toBe('A');
+
+  const list = MessageModel.list({ limit: 5 });
+  const subjects = list.map(item => item.subject);
+  expect(subjects).toEqual(['B', 'A']);
+  expect(list[0].status).toBe('resolved');
+  expect(list[1].status).toBe('pending');
 });

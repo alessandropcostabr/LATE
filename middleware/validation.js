@@ -1,7 +1,7 @@
 'use strict';
 
 // middleware/validation.js — versão compatível (sem optional chaining / nullish coalescing)
-// - Normaliza campos do corpo e da query (situacao, e-mails vazios -> null, strings vazias -> null)
+// - Normaliza campos do corpo e da query (status, e-mails vazios -> null, strings vazias -> null)
 // - Validações usando express-validator (apenas APIs estáveis)
 
 var expressValidator = require('express-validator');
@@ -10,56 +10,28 @@ var param  = expressValidator.param;
 var query  = expressValidator.query;
 var validationResult = expressValidator.validationResult;
 
+var MessageModel = require('../models/message');
+
 // ---------------------------------------------------------------------------
 // Helpers de normalização
 // ---------------------------------------------------------------------------
-var ALLOWED_SITUACOES = ['pendente', 'em_andamento', 'resolvido'];
+var ALLOWED_STATUS = MessageModel.STATUS_VALUES;
 
 function toStr(v) { return (v === undefined || v === null) ? '' : String(v); }
 function isBlank(v) { return toStr(v).trim() === ''; }
 function emptyToNull(v) { return isBlank(v) ? null : v; }
 
-function normalizeSituacao(raw) {
-  var v = toStr(raw).trim().toLowerCase();
-  if (!v) return v; // vazio permanece vazio (será tratado em cada rota)
-  // unifica separadores
-  v = v.replace(/[\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-
-  // dicionário de sinônimos/labels humanos -> enum persistido
-  var map = {
-    'pendente': 'pendente',
-    'aberto': 'pendente',
-    'open': 'pendente',
-
-    'em andamento': 'em_andamento',
-    'andamento': 'em_andamento',
-
-    'em_andamento': 'em_andamento',
-
-    'resolvido': 'resolvido',
-    'fechado': 'resolvido',
-    'concluido': 'resolvido',
-    'concluído': 'resolvido',
-    'closed': 'resolvido'
-  };
-
-  // mapeia direto se já for válido
-  if (ALLOWED_SITUACOES.indexOf(v) !== -1) return v;
-  // tenta o dicionário
-  if (map[v]) return map[v];
-  // heurísticas simples
-  if (/andamento/.test(v)) return 'em_andamento';
-  if (/resolvid|fechad|conclu/i.test(v)) return 'resolvido';
-  if (/pend/i.test(v) || /abert/i.test(v)) return 'pendente';
-
-  return v; // devolve como veio; validação posterior decidirá
+function normalizeStatus(raw) {
+  var value = toStr(raw).trim();
+  if (!value) return '';
+  return MessageModel.normalizeStatus(value);
 }
 
 function applyBodyNormalizers(req, _res, next) {
   var b = req.body || (req.body = {});
 
   // Campos opcionais: string vazia -> null
-  var optFields = ['remetente_telefone', 'remetente_email', 'horario_retorno', 'observacoes'];
+  var optFields = ['sender_phone', 'sender_email', 'callback_time', 'notes'];
   for (var i = 0; i < optFields.length; i++) {
     var k = optFields[i];
     if (Object.prototype.hasOwnProperty.call(b, k)) {
@@ -67,17 +39,16 @@ function applyBodyNormalizers(req, _res, next) {
     }
   }
 
-  // Normaliza situacao (se vier)
-  if (Object.prototype.hasOwnProperty.call(b, 'situacao')) {
-    b.situacao = normalizeSituacao(b.situacao);
+  if (Object.prototype.hasOwnProperty.call(b, 'status')) {
+    var normalizedStatus = normalizeStatus(b.status);
+    b.status = normalizedStatus || '';
   }
 
-  // Datas/horas: remove espaços extras
-  if (Object.prototype.hasOwnProperty.call(b, 'data_ligacao') && typeof b.data_ligacao === 'string') {
-    b.data_ligacao = b.data_ligacao.trim();
+  if (Object.prototype.hasOwnProperty.call(b, 'call_date') && typeof b.call_date === 'string') {
+    b.call_date = b.call_date.trim();
   }
-  if (Object.prototype.hasOwnProperty.call(b, 'hora_ligacao') && typeof b.hora_ligacao === 'string') {
-    b.hora_ligacao = b.hora_ligacao.trim();
+  if (Object.prototype.hasOwnProperty.call(b, 'call_time') && typeof b.call_time === 'string') {
+    b.call_time = b.call_time.trim();
   }
 
   next();
@@ -85,12 +56,11 @@ function applyBodyNormalizers(req, _res, next) {
 
 function applyQueryNormalizers(req, _res, next) {
   var q = req.query || (req.query = {});
-  if (Object.prototype.hasOwnProperty.call(q, 'situacao')) {
-    // string vazia -> remove
-    if (isBlank(q.situacao)) {
-      delete q.situacao;
+  if (Object.prototype.hasOwnProperty.call(q, 'status')) {
+    if (isBlank(q.status)) {
+      delete q.status;
     } else {
-      q.situacao = normalizeSituacao(q.situacao);
+      q.status = normalizeStatus(q.status);
     }
   }
   if (Object.prototype.hasOwnProperty.call(q, 'limit'))  { q.limit  = String(q.limit).trim(); }
@@ -106,72 +76,86 @@ var timeRegex = /^\d{2}:\d{2}$/;       // HH:MM
 
 function commonCreateAndUpdateRules() {
   return [
-    body('data_ligacao')
+    body('call_date')
       .notEmpty().withMessage('Data da ligação é obrigatória')
       .bail()
       .matches(dateRegex).withMessage('Data deve estar no formato válido (YYYY-MM-DD)'),
 
-    body('hora_ligacao')
+    body('call_time')
       .notEmpty().withMessage('Hora da ligação é obrigatória')
       .bail()
       .matches(timeRegex).withMessage('Hora deve estar no formato HH:MM'),
 
-    body('destinatario').notEmpty().withMessage('Destinatário é obrigatório'),
-    body('remetente_nome').notEmpty().withMessage('Remetente é obrigatório'),
-    body('assunto').notEmpty().withMessage('Assunto é obrigatório'),
+    body('recipient').notEmpty().withMessage('Destinatário é obrigatório'),
+    body('sender_name').notEmpty().withMessage('Remetente é obrigatório'),
+    body('subject').notEmpty().withMessage('Assunto é obrigatório'),
 
-    // E-mail: permitir vazio, mas se vier valor, precisa ser válido
-    body('remetente_email')
+    body('sender_email')
       .optional({ checkFalsy: true })
       .isEmail().withMessage('E-mail deve ter formato válido'),
 
-    // Telefone e horário de retorno são opcionais
-    body('remetente_telefone').optional({ checkFalsy: true }).isLength({ max: 50 }),
-    body('horario_retorno').optional({ checkFalsy: true }).isLength({ max: 100 }),
+    body('sender_phone').optional({ checkFalsy: true }).isLength({ max: 50 }),
+    body('callback_time').optional({ checkFalsy: true }).isLength({ max: 100 }),
 
-    // Situação: opcional no create/update; se vier, precisa estar no enum
-    body('situacao')
+    body('status')
       .optional({ checkFalsy: true })
-      .isIn(ALLOWED_SITUACOES).withMessage('Situação deve ser: pendente, em_andamento ou resolvido')
+      .custom(function(value) {
+        var normalized = normalizeStatus(value);
+        if (normalized && ALLOWED_STATUS.indexOf(normalized) === -1) {
+          throw new Error('Status deve ser: pending, in_progress ou resolved');
+        }
+        return true;
+      })
+      .customSanitizer(function(value) {
+        return normalizeStatus(value);
+      }),
   ];
 }
 
 // ---------------------------------------------------------------------------
 // Validators exportados
 // ---------------------------------------------------------------------------
-var validateCreateRecado = [
+var validateCreateMessage = [
   applyBodyNormalizers
 ].concat(commonCreateAndUpdateRules());
 
-var validateUpdateRecado = [
+var validateUpdateMessage = [
   applyBodyNormalizers
 ].concat(commonCreateAndUpdateRules());
 
-var validateUpdateSituacao = [
+var validateUpdateStatus = [
   applyBodyNormalizers,
-  body('situacao')
-    .notEmpty().withMessage('Situação é obrigatória')
+  body('status')
+    .notEmpty().withMessage('Status é obrigatório')
     .bail()
     .custom(function(value) {
-      var v = normalizeSituacao(value);
-      if (ALLOWED_SITUACOES.indexOf(v) === -1) {
-        throw new Error('Situação deve ser: pendente, em_andamento ou resolvido');
+      var normalized = normalizeStatus(value);
+      if (!normalized || ALLOWED_STATUS.indexOf(normalized) === -1) {
+        throw new Error('Status deve ser: pending, in_progress ou resolved');
       }
-      // grava normalizado no body para a rota usar
-      // (sem optional chaining)
-      if (!reqLikeHasBody(this)) { /* noop: compat */ }
       return true;
+    })
+    .customSanitizer(function(value) {
+      return normalizeStatus(value);
     })
 ];
 
-// Helper para compatibilidade: alguns ambientes antigos do express-validator não expõem this.req
-function reqLikeHasBody(ctx) { return !!ctx; }
-
-var validateQueryRecados = [
+var validateQueryMessages = [
   applyQueryNormalizers,
   query('limit').optional({ checkFalsy: true }).toInt().isInt({ min: 1, max: 200 }).withMessage('limit inválido'),
   query('offset').optional({ checkFalsy: true }).toInt().isInt({ min: 0 }).withMessage('offset inválido'),
-  query('situacao').optional({ checkFalsy: true }).isIn(ALLOWED_SITUACOES).withMessage('Situação inválida')
+  query('status')
+    .optional({ checkFalsy: true })
+    .custom(function(value) {
+      var normalized = normalizeStatus(value);
+      if (!normalized || ALLOWED_STATUS.indexOf(normalized) === -1) {
+        throw new Error('Status inválido');
+      }
+      return true;
+    })
+    .customSanitizer(function(value) {
+      return normalizeStatus(value);
+    })
 ];
 
 var validateId = [
@@ -189,16 +173,22 @@ function handleValidationErrors(req, res, next) {
 }
 
 module.exports = {
-  validateCreateRecado: validateCreateRecado,
-  validateUpdateRecado: validateUpdateRecado,
-  validateUpdateSituacao: validateUpdateSituacao,
-  validateQueryRecados: validateQueryRecados,
+  validateCreateMessage: validateCreateMessage,
+  validateUpdateMessage: validateUpdateMessage,
+  validateUpdateStatus: validateUpdateStatus,
+  validateQueryMessages: validateQueryMessages,
   validateId: validateId,
   handleValidationErrors: handleValidationErrors,
 
   // helpers expostos para testes/unit
   _normalize: {
-    situacao: normalizeSituacao,
+    status: normalizeStatus,
     emptyToNull: emptyToNull
   }
 };
+
+// Compat aliases temporários
+module.exports.validateCreateRecado = module.exports.validateCreateMessage;
+module.exports.validateUpdateRecado = module.exports.validateUpdateMessage;
+module.exports.validateUpdateSituacao = module.exports.validateUpdateStatus;
+module.exports.validateQueryRecados = module.exports.validateQueryMessages;
