@@ -388,25 +388,49 @@ function remove(id) {
   return info.changes > 0;
 }
 
-function list({ limit = 10, offset = 0, status } = {}) {
+function list({ limit = 10, offset = 0, status, start_date, end_date, recipient } = {}) {
   const parsedLimit = Number(limit);
   const parsedOffset = Number(offset);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
   const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
   const statusFilter = translateStatusForQuery(status);
 
-  let whereClause = '';
-  if (statusFilter) {
-    whereClause = `WHERE ${STATUS_COLUMN} IN (@status, @legacy)`;
-  }
+  const startDate = trim(start_date);
+  const endDate = trim(end_date);
+  const recipientFilter = trim(recipient);
+  const effectiveDateColumn = `COALESCE(NULLIF(TRIM(${CALL_DATE_COLUMN}), ''), ${CREATED_AT_COLUMN})`;
 
-  const query = selectBase(whereClause);
-  const rows = db().prepare(query).all({
+  const conditions = [];
+  const params = {
     limit: sanitizedLimit,
     offset: sanitizedOffset,
-    status: statusFilter ? statusFilter.current : undefined,
-    legacy: statusFilter ? statusFilter.legacy : undefined,
-  });
+  };
+
+  if (statusFilter) {
+    conditions.push(`${STATUS_COLUMN} IN (@status, @legacy)`);
+    params.status = statusFilter.current;
+    params.legacy = statusFilter.legacy;
+  }
+
+  if (startDate) {
+    conditions.push(`DATE(${effectiveDateColumn}) >= DATE(@start_date)`);
+    params.start_date = startDate;
+  }
+
+  if (endDate) {
+    conditions.push(`DATE(${effectiveDateColumn}) <= DATE(@end_date)`);
+    params.end_date = endDate;
+  }
+
+  if (recipientFilter) {
+    conditions.push(`LOWER(COALESCE(TRIM(${RECIPIENT_COLUMN}), '')) LIKE @recipient`);
+    params.recipient = `%${recipientFilter.toLowerCase()}%`;
+  }
+
+  const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const query = selectBase(whereClause);
+  const rows = db().prepare(query).all(params);
   return rows.map(mapRow);
 }
 

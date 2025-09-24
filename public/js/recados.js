@@ -6,9 +6,18 @@
 
   const q = (sel) => document.querySelector(sel);
 
-  async function carregarRecados() {
+  async function carregarRecados(filtros = {}) {
     try {
-      const resp = await API.listMessages();
+      const params = filtros && typeof filtros === 'object' ? filtros : {};
+      const box = q('#listaRecados') || q('#recadosContainer');
+      if (box) {
+        box.innerHTML = `
+          <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
+            <span class="loading"></span> Carregando recados...
+          </div>`;
+      }
+
+      const resp = await API.listMessages(params);
       if (!resp || resp.success === false) {
         throw new Error(resp?.error || resp?.message || 'Falha ao listar recados.');
       }
@@ -76,6 +85,45 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  document.addEventListener('DOMContentLoaded', carregarRecados);
+  function serializeFiltros(form) {
+    if (!form) return {};
+
+    const data = new FormData(form);
+    const campos = ['start_date', 'end_date', 'recipient', 'status'];
+    const filtros = {};
+
+    campos.forEach((campo) => {
+      if (!data.has(campo)) return;
+      const valorBruto = data.get(campo);
+      const valor = typeof valorBruto === 'string' ? valorBruto.trim() : valorBruto;
+      if (valor) {
+        filtros[campo] = valor;
+      }
+    });
+
+    return filtros;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = q('#filtrosForm');
+
+    if (form) {
+      form.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const filtros = serializeFiltros(form);
+        carregarRecados(filtros);
+      });
+
+      form.addEventListener('reset', () => {
+        // Aguarda o reset padrão do navegador antes de recarregar sem filtros.
+        setTimeout(() => {
+          carregarRecados();
+        }, 0);
+      });
+    }
+
+    const filtrosIniciais = form ? serializeFiltros(form) : {};
+    carregarRecados(filtrosIniciais);
+  });
 })();
 

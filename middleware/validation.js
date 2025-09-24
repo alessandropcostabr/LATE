@@ -65,6 +65,18 @@ function applyQueryNormalizers(req, _res, next) {
   }
   if (Object.prototype.hasOwnProperty.call(q, 'limit'))  { q.limit  = String(q.limit).trim(); }
   if (Object.prototype.hasOwnProperty.call(q, 'offset')) { q.offset = String(q.offset).trim(); }
+  var optionalFields = ['start_date', 'end_date', 'recipient'];
+  for (var i = 0; i < optionalFields.length; i++) {
+    var field = optionalFields[i];
+    if (Object.prototype.hasOwnProperty.call(q, field)) {
+      var value = toStr(q[field]).trim();
+      if (!value) {
+        delete q[field];
+      } else {
+        q[field] = value;
+      }
+    }
+  }
   next();
 }
 
@@ -144,6 +156,22 @@ var validateQueryMessages = [
   applyQueryNormalizers,
   query('limit').optional({ checkFalsy: true }).toInt().isInt({ min: 1, max: 200 }).withMessage('limit inválido'),
   query('offset').optional({ checkFalsy: true }).toInt().isInt({ min: 0 }).withMessage('offset inválido'),
+  query('start_date')
+    .optional({ checkFalsy: true })
+    .matches(dateRegex).withMessage('start_date inválido'),
+  query('end_date')
+    .optional({ checkFalsy: true })
+    .matches(dateRegex).withMessage('end_date inválido')
+    .custom(function(value, meta) {
+      var req = meta.req || {};
+      if (value && req.query && req.query.start_date && value < req.query.start_date) {
+        throw new Error('end_date deve ser igual ou posterior a start_date');
+      }
+      return true;
+    }),
+  query('recipient')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 255 }).withMessage('recipient muito longo'),
   query('status')
     .optional({ checkFalsy: true })
     .custom(function(value) {
