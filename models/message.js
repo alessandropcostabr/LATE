@@ -192,6 +192,9 @@ function buildSqlCache(map) {
     }).join(',\n      '),
     statusColumn: column('status'),
     idColumn: column('id'),
+    recipientColumn: column('recipient'),
+    callDateColumn: column('call_date'),
+    createdAtColumn: column('created_at'),
   };
 }
 
@@ -215,6 +218,9 @@ function getRuntime() {
     insertValues: sqlCache.insertValues,
     statusColumn: sqlCache.statusColumn,
     idColumn: sqlCache.idColumn,
+    recipientColumn: sqlCache.recipientColumn,
+    callDateColumn: sqlCache.callDateColumn,
+    createdAtColumn: sqlCache.createdAtColumn,
   };
 }
 
@@ -510,7 +516,7 @@ function remove(id) {
   });
 }
 
-function list({ limit = 10, offset = 0, status } = {}) {
+function list({ limit = 10, offset = 0, status, start_date, end_date, recipient } = {}) {
   return withRuntime(runtime => {
     const parsedLimit = Number(limit);
     const parsedOffset = Number(offset);
@@ -518,18 +524,42 @@ function list({ limit = 10, offset = 0, status } = {}) {
     const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
     const statusFilter = translateStatusForQuery(status);
 
-    let whereClause = '';
-    if (statusFilter) {
-      whereClause = `WHERE ${runtime.statusColumn} IN (@status, @legacy)`;
-    }
+    const startDate = trim(start_date);
+    const endDate = trim(end_date);
+    const recipientFilter = trim(recipient);
+    const effectiveDateColumn = `COALESCE(NULLIF(TRIM(${runtime.callDateColumn}), ''), ${runtime.createdAtColumn})`;
 
-    const query = selectBase(runtime, whereClause);
-    const rows = db().prepare(query).all({
+    const conditions = [];
+    const params = {
       limit: sanitizedLimit,
       offset: sanitizedOffset,
-      status: statusFilter ? statusFilter.current : undefined,
-      legacy: statusFilter ? statusFilter.legacy : undefined,
-    });
+    };
+
+    if (statusFilter) {
+      conditions.push(`${runtime.statusColumn} IN (@status, @legacy)`);
+      params.status = statusFilter.current;
+      params.legacy = statusFilter.legacy;
+    }
+
+    if (startDate) {
+      conditions.push(`DATE(${effectiveDateColumn}) >= DATE(@start_date)`);
+      params.start_date = startDate;
+    }
+
+    if (endDate) {
+      conditions.push(`DATE(${effectiveDateColumn}) <= DATE(@end_date)`);
+      params.end_date = endDate;
+    }
+
+    if (recipientFilter) {
+      conditions.push(`LOWER(COALESCE(TRIM(${runtime.recipientColumn}), '')) LIKE @recipient`);
+      params.recipient = `%${recipientFilter.toLowerCase()}%`;
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const query = selectBase(runtime, whereClause);
+    const rows = db().prepare(query).all(params);
 
     return rows.map(mapRow);
   });
@@ -568,6 +598,85 @@ function migrateLegacyStatuses() {
   withRuntime(() => {});
 }
 
+function sanitizeLimit(limit, { fallback = 10, max = 100 } = {}) {
+  const parsed = Number(limit);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.min(Math.floor(parsed), max);
+  }
+  return fallback;
+}
+
+function statsByRecipient({ limit = 10 } = {}) {
+  return withRuntime(runtime => {
+    const sanitizedLimit = sanitizeLimit(limit, { fallback: 10, max: 100 });
+    const rows = db().prepare(`
+      SELECT
+        COALESCE(NULLIF(TRIM(${runtime.recipientColumn}), ''), 'Não informado') AS recipient,
+        COUNT(*) AS count
+        FROM ${runtime.table}
+    GROUP BY recipient
+    ORDER BY count DESC, recipient ASC
+       LIMIT @limit
+    `).all({ limit: sanitizedLimit });
+
+    return rows.map(row => ({ recipient: row.recipient, count: row.count }));
+  });
+}
+
+function statsByStatus() {
+  return withRuntime(runtime => {
+    const totals = STATUS_VALUES.reduce((acc, status) => {
+      acc[status] = 0;
+      return acc;
+    }, {});
+
+    const rows = db().prepare(`
+      SELECT
+        ${runtime.statusColumn} AS raw_status,
+        COUNT(*)         AS count
+        FROM ${runtime.table}
+    GROUP BY ${runtime.statusColumn}
+    `).all();
+
+    for (const row of rows) {
+      const normalized = normalizeStatus(row.raw_status);
+      totals[normalized] = (totals[normalized] || 0) + (row.count || 0);
+    }
+
+    return STATUS_VALUES.map(status => ({
+      status,
+      label: STATUS_LABELS_PT[status] || status,
+      count: totals[status] || 0,
+    }));
+  });
+}
+
+function statsByMonth({ limit = 12 } = {}) {
+  return withRuntime(runtime => {
+    const sanitizedLimit = sanitizeLimit(limit, { fallback: 12, max: 120 });
+    const rows = db().prepare(`
+      WITH aggregated AS (
+        SELECT
+          strftime('%Y-%m', CASE
+            WHEN ${runtime.callDateColumn} IS NOT NULL AND TRIM(${runtime.callDateColumn}) != ''
+              THEN ${runtime.callDateColumn}
+            ELSE ${runtime.createdAtColumn}
+          END) AS month,
+          COUNT(*) AS count
+          FROM ${runtime.table}
+      GROUP BY month
+        HAVING month IS NOT NULL
+      )
+      SELECT month, count
+        FROM aggregated
+    ORDER BY month DESC
+       LIMIT @limit
+    `).all({ limit: sanitizedLimit });
+
+    return rows.reverse().map(row => ({ month: row.month, count: row.count }));
+  });
+}
+
 migrateLegacyStatuses();
 
 module.exports = {
@@ -579,6 +688,9 @@ module.exports = {
   list,
   listRecent,
   stats,
+  statsByRecipient,
+  statsByStatus,
+  statsByMonth,
   normalizeStatus,
   STATUS_VALUES,
   STATUS_LABELS_PT,
