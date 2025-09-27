@@ -7,6 +7,18 @@ const UserModel = require('../models/user');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
 
+function isEmailUniqueViolation(err) {
+  if (!err) return false;
+  const message = String(err.message || '').toLowerCase();
+  if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
+  if (err.code === 'SQLITE_CONSTRAINT' && message.includes('users.email')) return true;
+  if (err.code === '23505') {
+    const constraint = String(err.constraint || '').toLowerCase();
+    return constraint.includes('users_email') || message.includes('users_email');
+  }
+  return false;
+}
+
 exports.showLogin = (req, res) => {
   return res.render('login', {
     title: 'Login',
@@ -32,7 +44,7 @@ exports.login = async (req, res) => {
   const password = String(req.body.password || '').trim();
 
   try {
-    const user = UserModel.findByEmail(email);
+    const user = await UserModel.findByEmail(email);
 
     if (!user || Number(user.is_active) !== 1) {
       if (req.accepts('json')) {
@@ -146,11 +158,7 @@ exports.register = async (req, res) => {
 
     return res.redirect('/login');
   } catch (err) {
-    const isEmailUnique =
-      err?.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-      (err?.code === 'SQLITE_CONSTRAINT' && String(err?.message || '').includes('users.email'));
-
-    if (isEmailUnique) {
+    if (isEmailUniqueViolation(err)) {
       return res.status(409).render('register', {
         title: 'Registrar',
         csrfToken: req.csrfToken(),

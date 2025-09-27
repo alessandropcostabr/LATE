@@ -41,10 +41,10 @@ function formatMonthLabel(label) {
   return label;
 }
 
-exports.list = (req, res) => {
+exports.list = async (req, res) => {
   try {
     const { limit, offset, status, start_date, end_date, recipient } = req.query || {};
-    const messages = MessageModel.list({ limit, offset, status, start_date, end_date, recipient }).map(formatMessage);
+    const messages = (await MessageModel.list({ limit, offset, status, start_date, end_date, recipient })).map(formatMessage);
     return res.json({ success: true, data: messages });
   } catch (err) {
     console.error('[messages] erro ao listar:', err);
@@ -52,10 +52,10 @@ exports.list = (req, res) => {
   }
 };
 
-exports.getById = (req, res) => {
+exports.getById = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const message = MessageModel.findById(id);
+    const message = await MessageModel.findById(id);
     if (!message) {
       return res.status(404).json({ success: false, error: 'Mensagem não encontrada.' });
     }
@@ -66,10 +66,10 @@ exports.getById = (req, res) => {
   }
 };
 
-exports.create = (req, res) => {
+exports.create = async (req, res) => {
   try {
-    const id = MessageModel.create(req.body || {});
-    const message = MessageModel.findById(id);
+    const id = await MessageModel.create(req.body || {});
+    const message = id ? await MessageModel.findById(id) : null;
     const formatted = message ? formatMessage(message) : { id };
     return res.status(201).json({ success: true, data: formatted });
   } catch (err) {
@@ -78,14 +78,14 @@ exports.create = (req, res) => {
   }
 };
 
-exports.update = (req, res) => {
+exports.update = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const updated = MessageModel.update(id, req.body || {});
+    const updated = await MessageModel.update(id, req.body || {});
     if (!updated) {
       return res.status(404).json({ success: false, error: 'Mensagem não encontrada para atualização.' });
     }
-    const message = MessageModel.findById(id);
+    const message = await MessageModel.findById(id);
     return res.json({ success: true, data: formatMessage(message) });
   } catch (err) {
     console.error('[messages] erro ao atualizar mensagem:', err);
@@ -93,15 +93,15 @@ exports.update = (req, res) => {
   }
 };
 
-exports.updateStatus = (req, res) => {
+exports.updateStatus = async (req, res) => {
   try {
     const id = Number(req.params.id);
     const status = req.body?.status;
-    const updated = MessageModel.updateStatus(id, status);
+    const updated = await MessageModel.updateStatus(id, status);
     if (!updated) {
       return res.status(404).json({ success: false, error: 'Mensagem não encontrada para atualização de status.' });
     }
-    const message = MessageModel.findById(id);
+    const message = await MessageModel.findById(id);
     return res.json({ success: true, data: formatMessage(message) });
   } catch (err) {
     console.error('[messages] erro ao atualizar status:', err);
@@ -109,10 +109,10 @@ exports.updateStatus = (req, res) => {
   }
 };
 
-exports.remove = (req, res) => {
+exports.remove = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const removed = MessageModel.remove(id);
+    const removed = await MessageModel.remove(id);
     if (!removed) {
       return res.status(404).json({ success: false, error: 'Mensagem não encontrada para exclusão.' });
     }
@@ -123,9 +123,9 @@ exports.remove = (req, res) => {
   }
 };
 
-exports.stats = (_req, res) => {
+exports.stats = async (_req, res) => {
   try {
-    const stats = MessageModel.stats();
+    const stats = await MessageModel.stats();
     return res.json({
       success: true,
       data: {
@@ -139,10 +139,10 @@ exports.stats = (_req, res) => {
   }
 };
 
-exports.statsByRecipient = (req, res) => {
+exports.statsByRecipient = async (req, res) => {
   try {
     const { limit } = req.query || {};
-    const rows = MessageModel.statsByRecipient({ limit });
+    const rows = await MessageModel.statsByRecipient({ limit });
     const payload = toChartPayload(rows, {
       labelKey: 'recipient',
       valueKey: 'count',
@@ -158,9 +158,9 @@ exports.statsByRecipient = (req, res) => {
   }
 };
 
-exports.statsByStatus = (_req, res) => {
+exports.statsByStatus = async (_req, res) => {
   try {
-    const rows = MessageModel.statsByStatus();
+    const rows = await MessageModel.statsByStatus();
     const payload = toChartPayload(rows, {
       labelKey: 'label',
       valueKey: 'count',
@@ -176,10 +176,10 @@ exports.statsByStatus = (_req, res) => {
   }
 };
 
-exports.statsByMonth = (req, res) => {
+exports.statsByMonth = async (req, res) => {
   try {
     const { limit } = req.query || {};
-    const rows = MessageModel.statsByMonth({ limit });
+    const rows = await MessageModel.statsByMonth({ limit });
     const payload = toChartPayload(rows, {
       labelKey: 'month',
       valueKey: 'count',
