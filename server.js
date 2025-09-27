@@ -88,6 +88,7 @@ app.use(session({
   name: 'connect.sid',
   secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
   resave: false,
+  rolling: true,
   saveUninitialized: false,
   store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.join(__dirname, 'data') }),
   cookie: {
