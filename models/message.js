@@ -1,314 +1,13 @@
-//models/message.js
+const database = require('../config/database');
 
-const databaseManager = require('../config/database');
-
-// Função auxiliar para obter a instância do banco de dados.
 function db() {
-  return databaseManager.getDatabase();
+  return database.db();
 }
 
-// Possíveis nomes de tabela para armazenar os recados.
-const MESSAGE_TABLE_CANDIDATES = ['messages', 'recados'];
-
-/**
- * Tenta resolver o nome real da tabela de recados. Retorna um
- * objeto com o nome e um indicador de confirmação: confirmed = true
- * significa que a tabela existe no banco de dados; false indica
- * fallback para 'recados'.
- */
-function resolveMessageTable() {
-  try {
-    const database = db();
-    const statement = database.prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name=@table LIMIT 1"
-    );
-    for (const tableName of MESSAGE_TABLE_CANDIDATES) {
-      const found = statement.get({ table: tableName });
-      if (found && found.name) {
-        return { name: found.name, confirmed: true };
-      }
-    }
-  } catch (err) {
-    console.warn('[message:model] Falha ao resolver tabela de recados:', err.message);
-  }
-  return { name: 'recados', confirmed: false };
+function ph(index) {
+  return database.placeholder(index);
 }
 
-// Mapeamentos de colunas para as versões de schema moderno e legado.
-const COLUMN_MAPS = {
-  modern: {
-    id: 'id',
-    call_date: 'call_date',
-    call_time: 'call_time',
-    recipient: 'recipient',
-    sender_name: 'sender_name',
-    sender_phone: 'sender_phone',
-    sender_email: 'sender_email',
-    subject: 'subject',
-    message: 'message',
-    status: 'status',
-    callback_time: 'callback_time',
-    notes: 'notes',
-    created_at: 'created_at',
-    updated_at: 'updated_at',
-  },
-  legacy: {
-    id: 'id',
-    call_date: 'data_ligacao',
-    call_time: 'hora_ligacao',
-    recipient: 'destinatario',
-    sender_name: 'remetente_nome',
-    sender_phone: 'remetente_telefone',
-    sender_email: 'remetente_email',
-    subject: 'assunto',
-    message: 'mensagem',
-    status: 'situacao',
-    callback_time: 'horario_retorno',
-    notes: 'observacoes',
-    created_at: 'criado_em',
-    updated_at: 'atualizado_em',
-  },
-};
-
-/**
- * Inspeciona o schema da tabela e devolve o mapeamento de colunas
- * adequado (modern ou legacy). Inclui a indicação de confirmação.
- */
-function resolveColumnMap(tableName) {
-  const fallbackSchema = tableName === 'recados' ? 'legacy' : 'modern';
-  try {
-    const database = db();
-    const pragmaStatement = database.prepare(
-      `PRAGMA table_info(${JSON.stringify(tableName)})`
-    );
-    const columnsInfo = pragmaStatement.all();
-    // Se não encontrou colunas, volta ao fallback.
-    if (!columnsInfo || columnsInfo.length === 0) {
-      return { schema: fallbackSchema, map: COLUMN_MAPS[fallbackSchema], confirmed: false };
-    }
-    const columnNames = new Set(columnsInfo.map(column => column.name));
-    // Verifica indícios de schema legado.
-    const isLegacy = ['situacao', 'data_ligacao', 'mensagem'].some(name => columnNames.has(name));
-    if (isLegacy) {
-      return { schema: 'legacy', map: COLUMN_MAPS.legacy, confirmed: true };
-    }
-    // Verifica indícios de schema moderno.
-    const looksModern = ['call_date', 'message', 'notes'].every(name => columnNames.has(name));
-    if (looksModern) {
-      return { schema: 'modern', map: COLUMN_MAPS.modern, confirmed: true };
-    }
-    // Caso nenhum padrão seja reconhecido, utiliza o schema de fallback.
-    return { schema: fallbackSchema, map: COLUMN_MAPS[fallbackSchema], confirmed: false };
-  } catch (err) {
-    console.warn(
-      `[message:model] Falha ao inspecionar colunas da tabela ${tableName}:`,
-      err.message
-    );
-  }
-  return { schema: fallbackSchema, map: COLUMN_MAPS[fallbackSchema], confirmed: false };
-}
-
-// Campos utilizáveis em SELECT e INSERT.
-const SELECTABLE_FIELDS = [
-  'id',
-  'call_date',
-  'call_time',
-  'recipient',
-  'sender_name',
-  'sender_phone',
-  'sender_email',
-  'subject',
-  'message',
-  'status',
-  'callback_time',
-  'notes',
-  'created_at',
-  'updated_at',
-];
-
-const INSERT_FIELDS = [
-  'call_date',
-  'call_time',
-  'recipient',
-  'sender_name',
-  'sender_phone',
-  'sender_email',
-  'subject',
-  'message',
-  'status',
-  'callback_time',
-  'notes',
-  'created_at',
-  'updated_at',
-];
-
-// Estado padrão quando ainda não há confirmação de tabela ou colunas.
-function defaultTableState() {
-  return { name: 'recados', confirmed: false };
-}
-
-function defaultColumnState() {
-  return { schema: 'modern', map: COLUMN_MAPS.modern, confirmed: false };
-}
-
-// Estado dinâmico para tabela/colunas, cache de SQL e marca de migração.
-let tableState = defaultTableState();
-let columnState = defaultColumnState();
-let sqlCache = null;
-let legacyMigrationPending = true;
-
-// Reseta o runtime para o estado inicial.
-function resetRuntime() {
-  tableState = defaultTableState();
-  columnState = defaultColumnState();
-  sqlCache = null;
-  legacyMigrationPending = true;
-}
-
-// Garante que a tabela correta está resolvida.
-function ensureTable() {
-  if (!tableState.confirmed) {
-    const resolved = resolveMessageTable();
-    const tableChanged = tableState.name !== resolved.name;
-    tableState = resolved;
-    if (tableChanged) {
-      columnState = defaultColumnState();
-      sqlCache = null;
-    }
-  }
-  return tableState;
-}
-
-// Garante que o mapeamento de colunas está resolvido.
-function ensureColumnConfig() {
-  const { name: tableName } = ensureTable();
-  if (!columnState.confirmed) {
-    const resolved = resolveColumnMap(tableName);
-    const mapChanged = columnState.map !== resolved.map;
-    columnState = resolved;
-    if (mapChanged) {
-      sqlCache = null;
-    }
-  }
-  return columnState;
-}
-
-// Constrói e cacheia trechos SQL derivados do mapeamento de colunas.
-function buildSqlCache(map) {
-  const column = name => map[name] || name;
-  return {
-    map,
-    selectColumns: SELECTABLE_FIELDS.map(field => {
-      const mapped = column(field);
-      return mapped === field ? mapped : `${mapped} AS ${field}`;
-    }).join(',\n      '),
-    insertColumns: INSERT_FIELDS.map(column).join(',\n      '),
-    insertValues: INSERT_FIELDS.map(field => {
-      if (field === 'created_at' || field === 'updated_at') {
-        return `COALESCE(@${field}, datetime('now'))`;
-      }
-      return `@${field}`;
-    }).join(',\n      '),
-    statusColumn: column('status'),
-    idColumn: column('id'),
-    recipientColumn: column('recipient'),
-    callDateColumn: column('call_date'),
-    createdAtColumn: column('created_at'),
-  };
-}
-
-/**
- * Obtém a configuração atual de runtime: nome de tabela, mapeamento de
- * colunas, sentenças SQL cacheadas e indicadores de confirmação.
- */
-function getRuntime() {
-  const tableInfo = ensureTable();
-  const columnInfo = ensureColumnConfig();
-  if (!sqlCache || sqlCache.map !== columnInfo.map) {
-    sqlCache = buildSqlCache(columnInfo.map);
-  }
-  const column = name => columnInfo.map[name] || name;
-  return {
-    table: tableInfo.name,
-    schema: columnInfo.schema,
-    confirmed: tableInfo.confirmed && columnInfo.confirmed,
-    column,
-    selectColumns: sqlCache.selectColumns,
-    insertColumns: sqlCache.insertColumns,
-    insertValues: sqlCache.insertValues,
-    statusColumn: sqlCache.statusColumn,
-    idColumn: sqlCache.idColumn,
-    recipientColumn: sqlCache.recipientColumn,
-    callDateColumn: sqlCache.callDateColumn,
-    createdAtColumn: sqlCache.createdAtColumn,
-  };
-}
-
-// Verifica se um erro indica a necessidade de tentar novamente após reset.
-function shouldRetryError(err) {
-  if (!err || typeof err.message !== 'string') return false;
-  return /no such table/i.test(err.message) || /no column/i.test(err.message);
-}
-
-// Faz uma migração simples de status legados para inglês. Executa
-// apenas uma vez por inicialização.
-function attemptLegacyMigration(runtime) {
-  if (!legacyMigrationPending || !runtime.confirmed) return;
-  try {
-    const database = db();
-    const exists = database
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=@table LIMIT 1")
-      .get({ table: runtime.table });
-    if (!exists) {
-      return;
-    }
-    const updates = [
-      { from: 'pendente', to: 'pending' },
-      { from: 'em_andamento', to: 'in_progress' },
-      { from: 'resolvido', to: 'resolved' },
-    ];
-    const updateStmt = database.prepare(`
-      UPDATE ${runtime.table}
-         SET ${runtime.statusColumn} = @to
-       WHERE ${runtime.statusColumn} = @from
-    `);
-    for (const pair of updates) {
-      updateStmt.run(pair);
-    }
-  } catch (err) {
-    console.warn('[message:model] Falha ao migrar status legados:', err.message);
-  } finally {
-    legacyMigrationPending = false;
-  }
-}
-
-/**
- * Envolve a chamada com carregamento de runtime e tentativas de correção
- * automática em caso de erros de tabela/coluna inexistente.
- */
-function withRuntime(callback) {
-  let lastError;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    if (attempt === 1) {
-      // Reinicializa runtime antes da segunda tentativa.
-      resetRuntime();
-    }
-    const runtime = getRuntime();
-    attemptLegacyMigration(runtime);
-    try {
-      return callback(runtime);
-    } catch (err) {
-      lastError = err;
-      if (attempt === 0 && shouldRetryError(err)) {
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw lastError;
-}
-
-// Traduções de status para português/inglês.
 const STATUS_EN_TO_PT = {
   pending: 'pendente',
   in_progress: 'em_andamento',
@@ -342,7 +41,6 @@ const LEGACY_STATUS_ALIASES = {
   closed: 'resolved',
 };
 
-// Utilidades de normalização e tratamento de campos.
 function toString(value) {
   if (value === undefined || value === null) return '';
   return String(value);
@@ -371,53 +69,6 @@ function normalizeStatus(raw) {
   return 'pending';
 }
 
-/**
- * Normaliza o payload recebido no API, garantindo campos obrigatórios e
- * convertendo campos vazios para null.
- */
-function normalizePayload(payload = {}) {
-  const messageContent = trim(payload.message || payload.notes || '');
-  const statusProvided = Object.prototype.hasOwnProperty.call(payload, 'status');
-  return {
-    data: {
-      call_date: trim(payload.call_date),
-      call_time: trim(payload.call_time),
-      recipient: trim(payload.recipient),
-      sender_name: trim(payload.sender_name),
-      sender_phone: emptyToNull(payload.sender_phone),
-      sender_email: emptyToNull(payload.sender_email),
-      subject: trim(payload.subject),
-      message: messageContent || '(sem mensagem)',
-      status: statusProvided ? normalizeStatus(payload.status) : null,
-      callback_time: emptyToNull(payload.callback_time),
-      notes: emptyToNull(payload.notes),
-    },
-    statusProvided,
-  };
-}
-
-// Transforma uma linha do banco em objeto padronizado.
-function mapRow(row) {
-  if (!row) return null;
-  const status = normalizeStatus(row.status);
-  return {
-    id: row.id,
-    call_date: row.call_date ?? null,
-    call_time: row.call_time ?? null,
-    recipient: row.recipient ?? null,
-    sender_name: row.sender_name ?? null,
-    sender_phone: row.sender_phone ?? null,
-    sender_email: row.sender_email ?? null,
-    subject: row.subject ?? null,
-    message: row.message ?? null,
-    status,
-    callback_time: row.callback_time ?? null,
-    notes: row.notes ?? null,
-    created_at: row.created_at ?? null,
-    updated_at: row.updated_at ?? null,
-  };
-}
-
 function ensureStatus(value) {
   const normalized = normalizeStatus(value);
   return STATUS_VALUES.includes(normalized) ? normalized : 'pending';
@@ -432,276 +83,327 @@ function translateStatusForQuery(status) {
   };
 }
 
+function normalizePayload(payload = {}) {
+  const messageContent = trim(payload.message || payload.notes || '');
+  const statusProvided = Object.prototype.hasOwnProperty.call(payload, 'status');
+  return {
+    data: {
+      call_date: emptyToNull(payload.call_date),
+      call_time: emptyToNull(payload.call_time),
+      recipient: emptyToNull(payload.recipient),
+      sender_name: emptyToNull(payload.sender_name),
+      sender_phone: emptyToNull(payload.sender_phone),
+      sender_email: emptyToNull(payload.sender_email),
+      subject: emptyToNull(payload.subject),
+      message: messageContent || '(sem mensagem)',
+      status: statusProvided ? ensureStatus(payload.status) : null,
+      callback_time: emptyToNull(payload.callback_time),
+      notes: emptyToNull(payload.notes),
+    },
+    statusProvided,
+  };
+}
+
 function attachTimestamps(payload, source = {}) {
-  const timestamps = {
+  return {
+    ...payload,
     created_at: emptyToNull(source.created_at),
     updated_at: emptyToNull(source.updated_at),
   };
-  return { ...payload, ...timestamps };
 }
 
-/**
- * Constrói a consulta base para listagem. A ordem padrão é por ID
- * decrescente. Permite customizar ordem e limites.
- */
-function selectBase(runtime, whereClause = '', orderClause, limitClause = 'LIMIT @limit OFFSET @offset') {
-  const orderSegment = orderClause || `ORDER BY ${runtime.idColumn} DESC`;
-  return `\n    SELECT\n      ${runtime.selectColumns}\n      FROM ${runtime.table}\n      ${whereClause}\n      ${orderSegment}\n      ${limitClause}\n  `;
+const SELECT_COLUMNS = `
+  id,
+  call_date,
+  call_time,
+  recipient,
+  sender_name,
+  sender_phone,
+  sender_email,
+  subject,
+  message,
+  status,
+  callback_time,
+  notes,
+  created_at,
+  updated_at
+`;
+
+function mapRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    call_date: row.call_date ?? null,
+    call_time: row.call_time ?? null,
+    recipient: row.recipient ?? null,
+    sender_name: row.sender_name ?? null,
+    sender_phone: row.sender_phone ?? null,
+    sender_email: row.sender_email ?? null,
+    subject: row.subject ?? null,
+    message: row.message ?? null,
+    status: ensureStatus(row.status),
+    callback_time: row.callback_time ?? null,
+    notes: row.notes ?? null,
+    created_at: row.created_at ?? null,
+    updated_at: row.updated_at ?? null,
+  };
 }
 
-// Funções CRUD expostas utilizando o runtime.
-function create(payload) {
-  return withRuntime(runtime => {
-    const normalizedPayload = normalizePayload(payload);
-    const timestamps = attachTimestamps({}, payload);
-    const data = {
-      ...normalizedPayload.data,
-      status:
-        normalizedPayload.statusProvided && normalizedPayload.data.status
-          ? normalizedPayload.data.status
-          : 'pending',
-    };
-    const info = db()
-      .prepare(`
-        INSERT INTO ${runtime.table} (
-          ${runtime.insertColumns}
-        ) VALUES (
-          ${runtime.insertValues}
-        )
-      `)
-      .run({ ...data, ...timestamps });
-    return info.lastInsertRowid;
+function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1) {
+  let index = startIndex;
+  const clauses = [];
+  const params = [];
+
+  if (status) {
+    clauses.push(`status IN (${ph(index)}, ${ph(index + 1)})`);
+    params.push(status.current, status.legacy);
+    index += 2;
+  }
+
+  if (startDate) {
+    clauses.push(`DATE(COALESCE(NULLIF(TRIM(call_date), ''), CAST(created_at AS TEXT))) >= DATE(${ph(index)})`);
+    params.push(startDate);
+    index += 1;
+  }
+
+  if (endDate) {
+    clauses.push(`DATE(COALESCE(NULLIF(TRIM(call_date), ''), CAST(created_at AS TEXT))) <= DATE(${ph(index)})`);
+    params.push(endDate);
+    index += 1;
+  }
+
+  if (recipient) {
+    clauses.push(`LOWER(COALESCE(TRIM(recipient), '')) LIKE ${ph(index)}`);
+    params.push(`%${recipient.toLowerCase()}%`);
+    index += 1;
+  }
+
+  return {
+    clause: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
+    params,
+    nextIndex: index,
+  };
+}
+
+async function create(payload) {
+  const normalized = normalizePayload(payload);
+  const timestamps = attachTimestamps({}, payload);
+  const data = {
+    ...normalized.data,
+    status: normalized.statusProvided && normalized.data.status ? normalized.data.status : 'pending',
+  };
+  const baseFields = [
+    'call_date',
+    'call_time',
+    'recipient',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'subject',
+    'message',
+    'status',
+    'callback_time',
+    'notes',
+  ];
+  const fields = [...baseFields];
+  const values = baseFields.map((field) => data[field]);
+  if (timestamps.created_at) {
+    fields.push('created_at');
+    values.push(timestamps.created_at);
+  }
+  if (timestamps.updated_at) {
+    fields.push('updated_at');
+    values.push(timestamps.updated_at);
+  }
+  const stmt = db().prepare(`
+    INSERT INTO messages (
+      ${fields.join(',\n      ')}
+    ) VALUES (
+      ${fields.map((_, index) => ph(index + 1)).join(', ')}
+    )
+    RETURNING ${SELECT_COLUMNS}
+  `);
+  const row = await stmt.get(values);
+  return row?.id || null;
+}
+
+async function findById(id) {
+  const stmt = db().prepare(`
+    SELECT ${SELECT_COLUMNS}
+      FROM messages
+     WHERE id = ${ph(1)}
+     LIMIT 1
+  `);
+  const row = await stmt.get([id]);
+  return mapRow(row);
+}
+
+async function update(id, payload) {
+  const normalized = normalizePayload(payload);
+  const fields = [
+    'call_date',
+    'call_time',
+    'recipient',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'subject',
+    'message',
+    'callback_time',
+    'notes',
+  ];
+  const values = fields.map((field) => normalized.data[field]);
+  const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
+  const statusIndex = assignments.length + 1;
+  assignments.push(`status = COALESCE(${ph(statusIndex)}, status)`);
+  assignments.push('updated_at = CURRENT_TIMESTAMP');
+  const stmt = db().prepare(`
+    UPDATE messages
+       SET ${assignments.join(', ')}
+     WHERE id = ${ph(statusIndex + 1)}
+  `);
+  const params = [...values, normalized.statusProvided ? normalized.data.status : null, id];
+  const result = await stmt.run(params);
+  return result.changes > 0;
+}
+
+async function updateStatus(id, status) {
+  const stmt = db().prepare(`
+    UPDATE messages
+       SET status = ${ph(1)},
+           updated_at = CURRENT_TIMESTAMP
+     WHERE id = ${ph(2)}
+  `);
+  const result = await stmt.run([ensureStatus(status), id]);
+  return result.changes > 0;
+}
+
+async function remove(id) {
+  const stmt = db().prepare(`DELETE FROM messages WHERE id = ${ph(1)}`);
+  const result = await stmt.run([id]);
+  return result.changes > 0;
+}
+
+async function list({ limit = 10, offset = 0, status, start_date, end_date, recipient } = {}) {
+  const parsedLimit = Number(limit);
+  const parsedOffset = Number(offset);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
+  const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+  const statusFilter = translateStatusForQuery(status);
+  const startDate = trim(start_date);
+  const endDate = trim(end_date);
+  const recipientFilter = trim(recipient);
+
+  const filters = buildFilters({
+    status: statusFilter,
+    startDate: startDate || null,
+    endDate: endDate || null,
+    recipient: recipientFilter || null,
   });
-}
 
-function findById(id) {
-  return withRuntime(runtime => {
-    const row = db()
-      .prepare(`
-        SELECT
-          ${runtime.selectColumns}
-          FROM ${runtime.table}
-         WHERE ${runtime.idColumn} = @id
-         LIMIT 1
-      `)
-      .get({ id });
-    return mapRow(row);
+  const rowsStmt = db().prepare(`
+    SELECT ${SELECT_COLUMNS}
+      FROM messages
+      ${filters.clause}
+  ORDER BY id DESC
+     LIMIT ${ph(filters.nextIndex)} OFFSET ${ph(filters.nextIndex + 1)}
+  `);
+  const rows = await rowsStmt.all([...filters.params, sanitizedLimit, sanitizedOffset]);
+
+  const countFilters = buildFilters({
+    status: statusFilter,
+    startDate: startDate || null,
+    endDate: endDate || null,
+    recipient: recipientFilter || null,
   });
+  const countStmt = db().prepare(`SELECT COUNT(*) AS total FROM messages ${countFilters.clause}`);
+  const countRow = await countStmt.get(countFilters.params);
+  const total = Number(countRow?.total || 0);
+
+  return rows.map(mapRow);
 }
 
-function update(id, payload) {
-  return withRuntime(runtime => {
-    const normalizedPayload = normalizePayload(payload);
-    const info = db()
-      .prepare(`
-        UPDATE ${runtime.table}
-           SET ${runtime.column('call_date')}     = @call_date,
-               ${runtime.column('call_time')}     = @call_time,
-               ${runtime.column('recipient')}     = @recipient,
-               ${runtime.column('sender_name')}   = @sender_name,
-               ${runtime.column('sender_phone')}  = @sender_phone,
-               ${runtime.column('sender_email')}  = @sender_email,
-               ${runtime.column('subject')}       = @subject,
-               ${runtime.column('message')}       = @message,
-               ${runtime.statusColumn}            = COALESCE(@status, ${runtime.statusColumn}),
-               ${runtime.column('callback_time')} = @callback_time,
-               ${runtime.column('notes')}         = @notes,
-               ${runtime.column('updated_at')}    = datetime('now')
-         WHERE ${runtime.idColumn} = @id
-      `)
-      .run({
-        id,
-        ...normalizedPayload.data,
-        status: normalizedPayload.statusProvided ? normalizedPayload.data.status : null,
-      });
-    return info.changes > 0;
-  });
-}
-
-function updateStatus(id, status) {
-  return withRuntime(runtime => {
-    const normalized = ensureStatus(status);
-    const info = db()
-      .prepare(`
-        UPDATE ${runtime.table}
-           SET ${runtime.statusColumn}        = @status,
-               ${runtime.column('updated_at')} = datetime('now')
-         WHERE ${runtime.idColumn} = @id
-      `)
-      .run({ id, status: normalized });
-    return info.changes > 0;
-  });
-}
-
-function remove(id) {
-  return withRuntime(runtime => {
-    const info = db()
-      .prepare(`DELETE FROM ${runtime.table} WHERE ${runtime.idColumn} = @id`)
-      .run({ id });
-    return info.changes > 0;
-  });
-}
-
-function list({ limit = 10, offset = 0, status, start_date, end_date, recipient } = {}) {
-  return withRuntime(runtime => {
-    const parsedLimit = Number(limit);
-    const parsedOffset = Number(offset);
-    const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
-    const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
-    const statusFilter = translateStatusForQuery(status);
-    const startDate = trim(start_date);
-    const endDate = trim(end_date);
-    const recipientFilter = trim(recipient);
-    const effectiveDateColumn = `COALESCE(NULLIF(TRIM(${runtime.callDateColumn}), ''), ${runtime.createdAtColumn})`;
-    const conditions = [];
-    const params = {
-      limit: sanitizedLimit,
-      offset: sanitizedOffset,
-    };
-    if (statusFilter) {
-      conditions.push(`${runtime.statusColumn} IN (@status, @legacy)`);
-      params.status = statusFilter.current;
-      params.legacy = statusFilter.legacy;
-    }
-    if (startDate) {
-      conditions.push(`DATE(${effectiveDateColumn}) >= DATE(@start_date)`);
-      params.start_date = startDate;
-    }
-    if (endDate) {
-      conditions.push(`DATE(${effectiveDateColumn}) <= DATE(@end_date)`);
-      params.end_date = endDate;
-    }
-    if (recipientFilter) {
-      conditions.push(`LOWER(COALESCE(TRIM(${runtime.recipientColumn}), '')) LIKE @recipient`);
-      params.recipient = `%${recipientFilter.toLowerCase()}%`;
-    }
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const query = selectBase(runtime, whereClause);
-    const rows = db().prepare(query).all(params);
-    return rows.map(mapRow);
-  });
-}
-
-function listRecent(limit = 10) {
+async function listRecent(limit = 10) {
   return list({ limit });
 }
 
-function stats() {
-  return withRuntime(runtime => {
-    const database = db();
-    const total = database.prepare(`SELECT COUNT(*) AS count FROM ${runtime.table}`).get().count;
-    const counters = {};
-    for (const status of STATUS_VALUES) {
-      const legacy = STATUS_EN_TO_PT[status];
-      const row = database
-        .prepare(`
-          SELECT COUNT(*) AS count
-            FROM ${runtime.table}
-           WHERE ${runtime.statusColumn} IN (@status, @legacy)
-        `)
-        .get({ status, legacy });
-      counters[status] = row.count;
-    }
-    return {
-      total,
-      pending: counters.pending || 0,
-      in_progress: counters.in_progress || 0,
-      resolved: counters.resolved || 0,
-    };
-  });
+async function stats() {
+  const totalRow = await db().prepare('SELECT COUNT(*) AS count FROM messages').get();
+  const rows = await db().prepare('SELECT status, COUNT(*) AS count FROM messages GROUP BY status').all();
+  const counters = rows.reduce((acc, row) => {
+    const normalized = ensureStatus(row.status);
+    acc[normalized] = (acc[normalized] || 0) + Number(row.count || 0);
+    return acc;
+  }, {});
+
+  return {
+    total: Number(totalRow?.count || 0),
+    pending: counters.pending || 0,
+    in_progress: counters.in_progress || 0,
+    resolved: counters.resolved || 0,
+  };
 }
 
-// Limita o número de linhas para estatísticas; utiliza fallback e máximo.
-function sanitizeLimit(limit, { fallback = 10, max = 100 } = {}) {
-  const parsed = Number(limit);
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return Math.min(Math.floor(parsed), max);
+async function statsByRecipient({ limit = 10 } = {}) {
+  const parsedLimit = Number(limit);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
+  const stmt = db().prepare(`
+    SELECT
+      COALESCE(NULLIF(TRIM(recipient), ''), 'Não informado') AS recipient,
+      COUNT(*) AS count
+      FROM messages
+  GROUP BY recipient
+  ORDER BY count DESC, recipient ASC
+     LIMIT ${ph(1)}
+  `);
+  const rows = await stmt.all([sanitizedLimit]);
+  return rows.map(row => ({ recipient: row.recipient, count: Number(row.count || 0) }));
+}
+
+async function statsByStatus() {
+  const rows = await db().prepare(`
+    SELECT status, COUNT(*) AS count
+      FROM messages
+  GROUP BY status
+  `).all();
+  const totals = STATUS_VALUES.reduce((acc, status) => {
+    acc[status] = 0;
+    return acc;
+  }, {});
+  for (const row of rows) {
+    const normalized = ensureStatus(row.status);
+    totals[normalized] = (totals[normalized] || 0) + Number(row.count || 0);
   }
-  return fallback;
+  return STATUS_VALUES.map(status => ({
+    status,
+    label: STATUS_LABELS_PT[status] || status,
+    count: totals[status] || 0,
+  }));
 }
 
-function statsByRecipient({ limit = 10 } = {}) {
-  return withRuntime(runtime => {
-    const sanitizedLimit = sanitizeLimit(limit, { fallback: 10, max: 100 });
-    const rows = db()
-      .prepare(`
-        SELECT
-          COALESCE(NULLIF(TRIM(${runtime.recipientColumn}), ''), 'Não informado') AS recipient,
-          COUNT(*) AS count
-          FROM ${runtime.table}
-      GROUP BY recipient
-      ORDER BY count DESC, recipient ASC
-         LIMIT @limit
-      `)
-      .all({ limit: sanitizedLimit });
-    return rows.map(row => ({ recipient: row.recipient, count: row.count }));
-  });
+async function statsByMonth({ limit = 12 } = {}) {
+  const parsedLimit = Number(limit);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 120) : 12;
+  const stmt = db().prepare(`
+    SELECT
+      SUBSTR(
+        COALESCE(
+          NULLIF(TRIM(call_date), ''),
+          CAST(created_at AS TEXT)
+        ),
+        1,
+        7
+      ) AS month,
+      COUNT(*) AS count
+      FROM messages
+  GROUP BY month
+    HAVING month IS NOT NULL AND month <> ''
+  ORDER BY month DESC
+     LIMIT ${ph(1)}
+  `);
+  const rows = await stmt.all([sanitizedLimit]);
+  return rows.reverse().map(row => ({ month: row.month, count: Number(row.count || 0) }));
 }
-
-function statsByStatus() {
-  return withRuntime(runtime => {
-    const totals = STATUS_VALUES.reduce((acc, status) => {
-      acc[status] = 0;
-      return acc;
-    }, {});
-    const rows = db()
-      .prepare(`
-        SELECT
-          ${runtime.statusColumn} AS raw_status,
-          COUNT(*)         AS count
-          FROM ${runtime.table}
-      GROUP BY ${runtime.statusColumn}
-      `)
-      .all();
-    for (const row of rows) {
-      const normalized = normalizeStatus(row.raw_status);
-      totals[normalized] = (totals[normalized] || 0) + (row.count || 0);
-    }
-    return STATUS_VALUES.map(status => ({
-      status,
-      label: STATUS_LABELS_PT[status] || status,
-      count: totals[status] || 0,
-    }));
-  });
-}
-
-function statsByMonth({ limit = 12 } = {}) {
-  return withRuntime(runtime => {
-    const sanitizedLimit = sanitizeLimit(limit, { fallback: 12, max: 120 });
-    const rows = db()
-      .prepare(`
-        WITH aggregated AS (
-          SELECT
-            strftime('%Y-%m', CASE
-              WHEN ${runtime.callDateColumn} IS NOT NULL AND TRIM(${runtime.callDateColumn}) != ''
-                THEN ${runtime.callDateColumn}
-              ELSE ${runtime.createdAtColumn}
-            END) AS month,
-            COUNT(*) AS count
-            FROM ${runtime.table}
-        GROUP BY month
-          HAVING month IS NOT NULL
-        )
-        SELECT month, count
-          FROM aggregated
-      ORDER BY month DESC
-         LIMIT @limit
-      `)
-      .all({ limit: sanitizedLimit });
-    return rows.reverse().map(row => ({ month: row.month, count: row.count }));
-  });
-}
-
-// Dispara a migração de status legados ao carregar o módulo.
-function migrateLegacyStatuses() {
-  try {
-    withRuntime(() => {});
-  } catch (err) {
-    console.warn('[message:model] Falha ao executar migração inicial de status:', err.message);
-  }
-}
-
-migrateLegacyStatuses();
 
 module.exports = {
   create,
