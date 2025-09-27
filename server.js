@@ -52,7 +52,11 @@ app.set('views', path.join(__dirname, 'views'));
 // ─── CORS / Pré-flight ───────────────────────────────────────────────────────
 app.use(corsMw);
 // Express 5 + path-to-regexp v7: use regex para OPTIONS global
-app.options(/.*/, corsMw);
+app.options(/.*/, corsMw, (req, res) => {
+  res.setHeader('Access-Control-Allow-Methods', corsMw.ALLOWED_METHODS);
+  res.setHeader('Access-Control-Allow-Headers', corsMw.ALLOWED_HEADERS);
+  res.sendStatus(204);
+});
 
 // Validação de origem (se fornecida) apenas em produção
 if (isProd && validateOrigin) app.use(validateOrigin);

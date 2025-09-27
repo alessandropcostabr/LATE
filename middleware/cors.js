@@ -1,27 +1,48 @@
 // middleware/cors.js
-const cors = require('cors');
 
-// Lê CORS_ORIGINS da env (separadas por vírgula) ou usa defaults para DEV
+const REQUIRED_ORIGINS = [
+  'http://late.miahchat.com',
+  'https://late.miahchat.com'
+];
+
+const FALLBACK_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost'
+];
+
+const METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
+const ALLOWED_HEADERS = 'Content-Type,X-CSRF-Token,X-Requested-With';
+
 const fromEnv = (process.env.CORS_ORIGINS || '')
   .split(',')
-  .map(s => s.trim())
+  .map(origin => origin.trim())
   .filter(Boolean);
 
-const defaultOrigins = fromEnv.length > 0
-  ? fromEnv
-  : ['http://localhost:3000', 'http://localhost'];
+const baseOrigins = fromEnv.length > 0 ? fromEnv : FALLBACK_ORIGINS;
+const allowedOrigins = new Set([...baseOrigins, ...REQUIRED_ORIGINS]);
 
-// Opções de CORS com guarda para requests sem Origin (curl, devtools, health, etc.)
-const corsOptions = {
-  origin(origin, cb) {
-    if (!origin) return cb(null, true); // sem Origin → permite (curl/localhost)
-    const allowed = defaultOrigins.includes(origin);
-    return cb(allowed ? null : new Error(`Origem não permitida pelo CORS: ${origin}`), allowed);
-  },
-  credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
-  allowedHeaders: ['Content-Type','X-CSRF-Token','X-Requested-With'],
+const corsMiddleware = (req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (!origin) {
+    return next();
+  }
+
+  if (!allowedOrigins.has(origin)) {
+    console.warn(`[CORS] Origem não permitida: ${origin}`);
+    return res.status(403).json({ success: false, error: `Origem não permitida: ${origin}` });
+  }
+
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', METHODS);
+  res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
+  res.setHeader('Vary', 'Origin');
+
+  return next();
 };
 
-// Exporta o middleware configurado
-module.exports = cors(corsOptions);
+corsMiddleware.ALLOWED_METHODS = METHODS;
+corsMiddleware.ALLOWED_HEADERS = ALLOWED_HEADERS;
+
+module.exports = corsMiddleware;
