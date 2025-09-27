@@ -29,8 +29,9 @@ exports.showLogin = (req, res) => {
 
 exports.login = async (req, res) => {
   const errors = validationResult(req);
+  const wantsJson = Boolean(req.accepts('json'));
   if (!errors.isEmpty()) {
-    if (req.accepts('json')) {
+    if (wantsJson) {
       return res.status(400).json({ success: false, error: 'Dados inválidos' });
     }
     return res.status(400).render('login', {
@@ -47,7 +48,7 @@ exports.login = async (req, res) => {
     const user = await UserModel.findByEmail(email);
 
     if (!user || Number(user.is_active) !== 1) {
-      if (req.accepts('json')) {
+      if (wantsJson) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
       return res.status(401).render('login', {
@@ -61,7 +62,7 @@ exports.login = async (req, res) => {
     const hash = user.password_hash;
     if (!hash || typeof hash !== 'string' || hash.trim() === '') {
       console.warn('[auth] login falhou', { email, reason: 'password_hash ausente' });
-      if (req.accepts('json')) {
+      if (wantsJson) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
       return res.status(401).render('login', {
@@ -73,7 +74,7 @@ exports.login = async (req, res) => {
 
     const ok = await argon2.verify(hash, password);
     if (!ok) {
-      if (req.accepts('json')) {
+      if (wantsJson) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
       return res.status(401).render('login', {
@@ -83,18 +84,35 @@ exports.login = async (req, res) => {
       });
     }
 
-    req.session.user = {
+    const sessionUser = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
     };
-    if (req.session.usuario) delete req.session.usuario;
+
+    await new Promise((resolve, reject) => {
+      req.session.regenerate(err => {
+        if (err) return reject(err);
+
+        req.session.user = sessionUser;
+        if (req.session.usuario) delete req.session.usuario;
+
+        req.session.save(saveErr => {
+          if (saveErr) return reject(saveErr);
+          resolve();
+        });
+      });
+    });
+
+    if (wantsJson) {
+      return res.json({ success: true, data: { user: sessionUser } });
+    }
 
     return res.redirect('/');
   } catch (err) {
     console.error('[auth] erro ao autenticar:', err);
-    if (req.accepts('json')) {
+    if (wantsJson) {
       return res.status(500).json({ success: false, error: 'Erro interno' });
     }
     return res.status(500).render('login', {
