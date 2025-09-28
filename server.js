@@ -12,6 +12,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
+require('dotenv').config(); // carrega .env
 
 // Importar middlewares e rotas
 const dbManager = require('./config/database');

@@ -1,3 +1,6 @@
+// config/adapters/pg.js
+// Adapter PostgreSQL (pg/Pool) com helpers de placeholder, transação e wrapper homogêneo.
+
 const { Pool } = require('pg');
 
 class PostgresAdapter {
@@ -9,12 +12,18 @@ class PostgresAdapter {
 
   configure(config = {}) {
     this.config = { ...config };
+    // Dica: se existir PG_CONNECTION_STRING nas envs, você pode preferir connectionString.
+    if (!this.config.connectionString && process.env.PG_CONNECTION_STRING) {
+      this.config.connectionString = process.env.PG_CONNECTION_STRING;
+    }
   }
 
+  // Placeholder parametrizado por índice ($1, $2, ...)
   placeholder(index) {
     return `$${index}`;
   }
 
+  // Gera N placeholders a partir de 'start' para composições (INSERT multi-coluna, etc.).
   formatPlaceholders(count, start = 1) {
     return Array.from({ length: count }, (_, i) => `$${i + start}`).join(', ');
   }
@@ -26,16 +35,13 @@ class PostgresAdapter {
     return this.pool;
   }
 
+  // Cria um statement com coletor de parâmetros flexível (array, objeto simples, lista).
   createStatement(executor, sql) {
     const collectParams = (args) => {
-      if (!args || args.length === 0) {
-        return [];
-      }
+      if (!args || args.length === 0) return [];
       if (args.length === 1) {
         const [first] = args;
-        if (Array.isArray(first)) {
-          return first;
-        }
+        if (Array.isArray(first)) return first;
         if (first && typeof first === 'object' && !(first instanceof Date)) {
           return Object.values(first);
         }
