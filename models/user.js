@@ -1,3 +1,5 @@
+// models/user.js
+
 const database = require('../config/database');
 
 function db() {
@@ -22,6 +24,7 @@ function mapRow(row) {
   if (!row) return null;
   return {
     ...row,
+    // Garante boolean em ambos drivers (SQLite pode retornar 1/0)
     is_active: row.is_active === true || row.is_active === 1,
   };
 }
@@ -65,7 +68,7 @@ class UserModel {
         LOWER(${ph(2)}),
         ${ph(3)},
         ${ph(4)},
-        TRUE
+        TRUE -- neutro: SQLite trata como 1; PG como boolean true
       )
       RETURNING id, name, email, role, is_active, created_at, updated_at
     `);
@@ -90,13 +93,15 @@ class UserModel {
   }
 
   async setActive(id, active) {
+    // Por quê: PG espera boolean; SQLite aceita 1/0, mas padronizamos como boolean.
+    const value = !!active;
+
     const stmt = db().prepare(`
       UPDATE users
          SET is_active = ${ph(1)},
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(2)}
     `);
-    const value = active ? 1 : 0;
     const result = await stmt.run([value, id]);
     return result.changes > 0;
   }
