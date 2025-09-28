@@ -6,6 +6,7 @@ const router = express.Router();
 
 const messageController = require('../controllers/messageController');
 const userController = require('../controllers/userController');
+const database = require('../config/database'); // <— adicionado para health/db
 
 const {
   validateCreateMessage,
@@ -79,6 +80,36 @@ router.patch('/users/:id/active', userController.setActive);
 // Healthcheck e utilitários
 // ---------------------------------------------------------------------------
 router.get('/healthz', (_req, res) => res.json({ success: true, data: { ok: true } }));
+
+// Novo: health do DB (mostra driver e versão do banco em execução no processo)
+router.get('/health/db', async (_req, res) => {
+  try {
+    const db = database.db();
+    const driver = database.adapter().name; // 'pg' | 'sqlite'
+
+    let version = 'desconhecida';
+    if (driver === 'pg') {
+      // PostgreSQL
+      const row = await db.prepare('SELECT version() AS v').get();
+      version = row?.v || version;
+    } else {
+      // SQLite
+      const row = await db.prepare('SELECT sqlite_version() AS v').get();
+      version = row?.v ? `SQLite ${row.v}` : 'SQLite (versão desconhecida)';
+    }
+
+    return res.json({
+      success: true,
+      data: { driver, version },
+    });
+  } catch (err) {
+    console.error('[health/db] erro:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Falha ao consultar saúde do banco',
+    });
+  }
+});
 
 if (process.env.NODE_ENV === 'development') {
   router.get('/whoami', (req, res) => {

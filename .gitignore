@@ -70,3 +70,8 @@ logs/
 *.sh
 
 __tests__/
+
+# local only
+.env*
+data/*.db
+migrations/99999999_noop.sql
