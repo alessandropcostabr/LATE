@@ -7,6 +7,7 @@ const router = express.Router();
 const messageController = require('../controllers/messageController');
 const userController = require('../controllers/userController');
 const database = require('../config/database'); // <— adicionado para health/db
+const csrfProtection = require('../middleware/csrf');
 
 const {
   validateCreateMessage,
@@ -80,6 +81,11 @@ router.patch('/users/:id/active', userController.setActive);
 // Healthcheck e utilitários
 // ---------------------------------------------------------------------------
 router.get('/healthz', (_req, res) => res.json({ success: true, data: { ok: true } }));
+
+router.get('/csrf-token', csrfProtection, (req, res) => {
+  const token = req.csrfToken();
+  res.json({ success: true, data: { token } });
+});
 
 // Novo: health do DB (mostra driver e versão do banco em execução no processo)
 router.get('/health/db', async (_req, res) => {

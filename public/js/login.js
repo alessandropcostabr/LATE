@@ -6,22 +6,59 @@
     const form = document.querySelector('form[action="/login"]');
     if (!form) return;
 
+    const hiddenCsrfInput = form.querySelector('input[name="_csrf"]');
+    let csrfToken = hiddenCsrfInput ? hiddenCsrfInput.value : '';
+
+    async function loadCsrfToken() {
+      try {
+        const response = await fetch('/api/csrf-token', {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error(`Falha ao obter token CSRF: ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const token = payload && payload.data ? payload.data.token : undefined;
+
+        if (typeof token === 'string' && token) {
+          csrfToken = token;
+          if (hiddenCsrfInput) {
+            hiddenCsrfInput.value = token;
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao buscar token CSRF:', err);
+      }
+    }
+
+    loadCsrfToken();
+
     form.addEventListener('submit', async event => {
       event.preventDefault();
       const formData = Object.fromEntries(new FormData(form));
+      const token = csrfToken || formData._csrf || '';
       const data = {
         email: formData.email,
         password: formData.password,
-        _csrf: formData._csrf // se existir, envia; POST /login está isento no backend
+        _csrf: token
       };
+
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      };
+      if (token) {
+        headers['CSRF-Token'] = token;
+      }
 
       try {
         const response = await fetch('/login', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
+          headers,
           credentials: 'include',
           body: JSON.stringify(data)
         });
@@ -44,5 +81,4 @@
       }
     });
   });
-
 })();

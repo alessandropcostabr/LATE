@@ -1,25 +1,22 @@
 // routes/web.js
-// Rotas de páginas (EJS). Mantemos CSRF em formulários renderizados,
-// mas isentamos o POST /login para evitar EBADCSRFTOKEN enquanto o frontend
-// não envia o token corretamente (sem alterar layout).
+// Rotas de páginas (EJS). Mantemos CSRF em formulários renderizados e o
+// frontend busca o token para submissões assíncronas.
 
 const express = require('express');
 const { body } = require('express-validator');
-const csrf = require('csurf');
-
 const { requireAuth, requireRole } = require('../middleware/auth');
+const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 
 const router = express.Router();
-const csrfProtection = csrf();
 
 // ------------------------------ Auth ---------------------------------------
 // GET /login: protegido para gerar e renderizar token no formulário
 router.get('/login', csrfProtection, authController.showLogin);
 
-// POST /login: **NÃO** aplicar csrfProtection aqui
 router.post(
   '/login',
+  csrfProtection,
   body('email').isEmail(),
   body('password').notEmpty(),
   authController.login
