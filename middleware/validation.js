@@ -195,8 +195,8 @@ function handleValidationErrors(req, res, next) {
   if (result.isEmpty()) return next();
   return res.status(400).json({
     success: false,
-    message: 'Dados inválidos',
-    errors: result.array()
+    error: 'Dados inválidos',
+    details: result.array(),
   });
 }
 
