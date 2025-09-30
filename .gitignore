@@ -75,3 +75,6 @@ __tests__/
 .env*
 data/*.db
 migrations/99999999_noop.sql
+
+# ignore SQLite
+data/*.db
