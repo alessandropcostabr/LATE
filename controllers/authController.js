@@ -36,15 +36,16 @@ exports.showLogin = (req, res) => {
 exports.login = async (req, res) => {
   const errors = validationResult(req);
   const wants = wantsJson(req);
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  const buildViewData = extra => (csrfToken !== undefined ? { ...extra, csrfToken } : extra);
   if (!errors.isEmpty()) {
     if (wants) {
       return res.status(400).json({ success: false, error: 'Dados inválidos' });
     }
-    return res.status(400).render('login', {
+    return res.status(400).render('login', buildViewData({
       title: 'Login',
-      csrfToken: req.csrfToken(),
       errors: errors.array(),
-    });
+    }));
   }
 
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -60,11 +61,10 @@ exports.login = async (req, res) => {
       if (wants) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
-      return res.status(401).render('login', {
+      return res.status(401).render('login', buildViewData({
         title: 'Login',
-        csrfToken: req.csrfToken(),
         error: 'Credenciais inválidas',
-      });
+      }));
     }
 
     const hash = user.password_hash;
@@ -73,11 +73,10 @@ exports.login = async (req, res) => {
       if (wants) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
-      return res.status(401).render('login', {
+      return res.status(401).render('login', buildViewData({
         title: 'Login',
-        csrfToken: req.csrfToken(),
         error: 'Credenciais inválidas',
-      });
+      }));
     }
 
     const ok = await argon2.verify(hash, password);
@@ -85,11 +84,10 @@ exports.login = async (req, res) => {
       if (wants) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
-      return res.status(401).render('login', {
+      return res.status(401).render('login', buildViewData({
         title: 'Login',
-        csrfToken: req.csrfToken(),
         error: 'Credenciais inválidas',
-      });
+      }));
     }
 
     const sessionUser = {
@@ -123,11 +121,10 @@ exports.login = async (req, res) => {
     if (wants) {
       return res.status(500).json({ success: false, error: 'Erro interno' });
     }
-    return res.status(500).render('login', {
+    return res.status(500).render('login', buildViewData({
       title: 'Login',
-      csrfToken: req.csrfToken(),
       error: 'Erro interno',
-    });
+    }));
   }
 };
 
