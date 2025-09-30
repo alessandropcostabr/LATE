@@ -12,7 +12,7 @@
       const data = {
         email: formData.email,
         password: formData.password,
-        _csrf: formData._csrf
+        _csrf: formData._csrf // se existir, envia; POST /login está isento no backend
       };
 
       try {
@@ -46,4 +46,3 @@
   });
 
 })();
-

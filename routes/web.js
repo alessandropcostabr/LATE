@@ -1,3 +1,8 @@
+// routes/web.js
+// Rotas de páginas (EJS). Mantemos CSRF em formulários renderizados,
+// mas isentamos o POST /login para evitar EBADCSRFTOKEN enquanto o frontend
+// não envia o token corretamente (sem alterar layout).
+
 const express = require('express');
 const { body } = require('express-validator');
 const csrf = require('csurf');
@@ -8,11 +13,13 @@ const authController = require('../controllers/authController');
 const router = express.Router();
 const csrfProtection = csrf();
 
-// Autenticação
+// ------------------------------ Auth ---------------------------------------
+// GET /login: protegido para gerar e renderizar token no formulário
 router.get('/login', csrfProtection, authController.showLogin);
+
+// POST /login: **NÃO** aplicar csrfProtection aqui
 router.post(
   '/login',
-  csrfProtection,
   body('email').isEmail(),
   body('password').notEmpty(),
   authController.login
@@ -20,7 +27,7 @@ router.post(
 
 router.get('/logout', requireAuth, authController.logout);
 
-// Registro de usuários
+// --------------------------- Registro de usuários --------------------------
 router.get(
   '/register',
   requireAuth,
@@ -41,45 +48,40 @@ router.post(
   authController.register
 );
 
-// Dashboard
+// ------------------------------- Páginas ----------------------------------
 router.get('/', requireAuth, (req, res) => {
   res.render('index', { title: 'Dashboard', user: req.session.user || null });
 });
 
-// Lista de recados
 router.get('/recados', requireAuth, (req, res) => {
   res.render('recados', { title: 'Recados', user: req.session.user || null });
 });
 
-// Novo recado
 router.get('/novo-recado', requireAuth, (req, res) => {
   res.render('novo-recado', { title: 'Novo Recado', user: req.session.user || null });
 });
 
-// Editar recado
 router.get('/editar-recado/:id', requireAuth, (req, res) => {
   res.render('editar-recado', {
-      title: 'Editar Recado',
-      id: req.params.id,
-      user: req.session.user || null
-    });
+    title: 'Editar Recado',
+    id: req.params.id,
+    user: req.session.user || null
+  });
 });
 
-// Visualizar recado
 router.get('/visualizar-recado/:id', requireAuth, (req, res) => {
   res.render('visualizar-recado', {
-      title: 'Visualizar Recado',
-      id: req.params.id,
-      user: req.session.user || null
-    });
+    title: 'Visualizar Recado',
+    id: req.params.id,
+    user: req.session.user || null
+  });
 });
 
-// Relatórios
 router.get('/relatorios', requireAuth, requireRole('ADMIN'), (req, res) => {
   res.render('relatorios', { title: 'Relatórios', user: req.session.user || null });
 });
 
-// 404
+// 404 handler para rotas web
 router.use((req, res) => {
   res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
 });

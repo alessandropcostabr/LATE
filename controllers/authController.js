@@ -19,6 +19,12 @@ function isEmailUniqueViolation(err) {
   return false;
 }
 
+function wantsJson(req) {
+  const accept = String(req.headers.accept || '');
+  const ctype = String(req.headers['content-type'] || '');
+  return accept.includes('application/json') || ctype.includes('application/json') || req.xhr === true;
+}
+
 exports.showLogin = (req, res) => {
   return res.render('login', {
     title: 'Login',
@@ -29,9 +35,9 @@ exports.showLogin = (req, res) => {
 
 exports.login = async (req, res) => {
   const errors = validationResult(req);
-  const wantsJson = Boolean(req.accepts('json'));
+  const wants = wantsJson(req);
   if (!errors.isEmpty()) {
-    if (wantsJson) {
+    if (wants) {
       return res.status(400).json({ success: false, error: 'Dados inválidos' });
     }
     return res.status(400).render('login', {
@@ -47,8 +53,11 @@ exports.login = async (req, res) => {
   try {
     const user = await UserModel.findByEmail(email);
 
-    if (!user || Number(user.is_active) !== 1) {
-      if (wantsJson) {
+    const isActive =
+      user && (user.is_active === true || user.is_active === 1 || user.is_active === '1');
+
+    if (!user || !isActive) {
+      if (wants) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
       return res.status(401).render('login', {
@@ -58,11 +67,10 @@ exports.login = async (req, res) => {
       });
     }
 
-    // password_hash is canonical; keep fallback from any legacy column name if needed.
     const hash = user.password_hash;
     if (!hash || typeof hash !== 'string' || hash.trim() === '') {
       console.warn('[auth] login falhou', { email, reason: 'password_hash ausente' });
-      if (wantsJson) {
+      if (wants) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
       return res.status(401).render('login', {
@@ -74,7 +82,7 @@ exports.login = async (req, res) => {
 
     const ok = await argon2.verify(hash, password);
     if (!ok) {
-      if (wantsJson) {
+      if (wants) {
         return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
       }
       return res.status(401).render('login', {
@@ -105,14 +113,14 @@ exports.login = async (req, res) => {
       });
     });
 
-    if (wantsJson) {
+    if (wants) {
       return res.json({ success: true, data: { user: sessionUser } });
     }
 
     return res.redirect('/');
   } catch (err) {
     console.error('[auth] erro ao autenticar:', err);
-    if (wantsJson) {
+    if (wants) {
       return res.status(500).json({ success: false, error: 'Erro interno' });
     }
     return res.status(500).render('login', {
@@ -204,4 +212,3 @@ exports.register = async (req, res) => {
 exports.logout = (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 };
-

@@ -1,7 +1,6 @@
 // server.js — foco DEV estável
 // Arquitetura: Express 5 + EJS + SQLite (better-sqlite3) + sessions
 
-// ─── Imports base ────────────────────────────────────────────────────────────
 const express = require('express');
 const corsMw = require('./middleware/cors');
 const helmet = require('helmet');
@@ -14,77 +13,62 @@ const fs = require('fs');
 const compression = require('compression');
 require('dotenv').config(); // carrega .env
 
-// Importar middlewares e rotas
 const dbManager = require('./config/database');
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 
-// Middleware opcional para validar origem (carrega só se existir)
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
 
-// ─── Flags/Ambiente ─────────────────────────────────────────────────────────
 const isProd = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || 3000;
-
-// Em ambiente atrás de proxy (ex.: Nginx), confiar no proxy somente em produção.
-// Em DEV, manter 0 para não bagunçar req.secure e flags de cookie.
 const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? (isProd ? 1 : 0));
 
-// ─── App Express ─────────────────────────────────────────────────────────────
 const app = express();
-
-// Evita ETag/304 para simplificar debug no DEV
 app.set('etag', false);
 app.set('trust proxy', TRUST_PROXY);
-
-// Helmet compatível em DEV (CSP endurecida entra na Sprint 5 com nonce/hash)
 app.use(helmet({ contentSecurityPolicy: false }));
 
 console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV || 'undefined'}`);
 
-// Define o caminho do CSS baseado no ambiente
+// caminho do CSS nas views
 app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
 
-// ─── View Engine ─────────────────────────────────────────────────────────────
+// EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ─── CORS / Pré-flight ───────────────────────────────────────────────────────
+// CORS e OPTIONS
 app.use(corsMw);
-// Express 5 + path-to-regexp v7: use regex para OPTIONS global
 app.options(/.*/, corsMw, (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', corsMw.ALLOWED_METHODS);
   res.setHeader('Access-Control-Allow-Headers', corsMw.ALLOWED_HEADERS);
   res.sendStatus(204);
 });
 
-// Validação de origem (se fornecida) apenas em produção
 if (isProd && validateOrigin) app.use(validateOrigin);
 
-// ─── Rate Limiters ──────────────────────────────────────────────────────────
+// Rate limits
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, error: 'Muitas requisições. Tente novamente em 15 minutos.' },
   skip: req => req.method !== 'POST'
 });
-
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   skip: req => req.method === 'OPTIONS'
 });
 
-// ─── Estáticos / Logs / Body Parsers / Compressão ───────────────────────────
+// Estáticos / logs / parsers
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use(morgan('combined'));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ─── Sessão (ÚNICA) ─────────────────────────────────────────────────────────
-// Por quê: estabilidade em DEV (HTTP), segurança em PROD (HTTPS)
+// Sessão
 app.use(session({
   name: 'connect.sid',
   secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
@@ -94,19 +78,21 @@ app.use(session({
   store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.join(__dirname, 'data') }),
   cookie: {
     httpOnly: true,
-    secure: isProd,       // true somente atrás de HTTPS real (PROD)
+    secure: isProd,
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 4 // 4h
   }
 }));
 
-// Disponibiliza o usuário logado nas views
+// ⚠️ Importante: sem csurf global aqui. Proteção CSRF fica por rota no routes/web.js.
+
+// user nas views
 app.use((req, res, next) => {
   res.locals.user = req.session.user;
   next();
 });
 
-// ─── Cache-control básico ────────────────────────────────────────────────────
+// Cache-control básico
 app.use((req, res, next) => {
   if (req.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/)) {
     if (req.url.match(/\.[0-9a-fA-F]{8,}\./)) {
@@ -120,7 +106,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ─── Bundlers leves p/ JS público (mantidos) ────────────────────────────────
+// Bundles leves (inalterado)
 const jsDir = path.join(__dirname, 'public', 'js');
 const shouldBypassCache = !isProd && process.env.BYPASS_BUNDLE_CACHE === 'true';
 
@@ -176,7 +162,6 @@ const sendAppBundle = (req, res) => {
   if (shouldBypassCache || !appBundle) appBundle = buildAppBundle();
   res.type('application/javascript').send(appBundle);
 };
-
 const sendRecadosBundle = (req, res) => {
   if (shouldBypassCache || !recadosBundle) recadosBundle = buildRecadosBundle();
   res.type('application/javascript').send(recadosBundle);
@@ -186,6 +171,7 @@ app.get('/js/app.js', sendAppBundle);
 app.get('/js/utils.js', sendAppBundle);
 app.get('/js/recados.js', sendRecadosBundle);
 
+// Toast util (inalterado)
 app.get('/js/toast.js', (_req, res) => {
   res
     .type('application/javascript')
@@ -231,25 +217,34 @@ app.get('/js/toast.js', (_req, res) => {
 }));`);
 });
 
+// Favicon: servir logo existente ou 204 (sem ruído)
+app.get('/favicon.ico', (req, res) => {
+  const logoPath = path.join(__dirname, 'public', 'assets', 'logo.png');
+  res.set('Cache-Control', 'public, max-age=86400');
+  return res.sendFile(logoPath, (err) => {
+    if (err) return res.status(204).end();
+  });
+});
+
 // Estáticos raiz
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Safety default para templates EJS
+// defaults para views
 app.use((req, res, next) => {
   if (!Array.isArray(res.locals.errors)) res.locals.errors = [];
   next();
 });
 
-// Healthcheck
+// Health
 app.get('/health', (_req, res) => res.status(200).json({ success: true, data: { status: 'ok' } }));
 
-// ─── Rotas ───────────────────────────────────────────────────────────────────
+// Rotas
 app.use('/login', loginLimiter);
 app.use('/api', apiLimiter);
 app.use('/api', apiRoutes);
 app.use('/', webRoutes);
 
-// ─── Tratamento de erros ─────────────────────────────────────────────────────
+// Erros genéricos
 app.use((err, req, res, _next) => {
   console.error('Erro não tratado:', err);
   res.status(err.status || 500).json({
@@ -259,7 +254,7 @@ app.use((err, req, res, _next) => {
   });
 });
 
-// 404 Handler
+// 404
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
     res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
@@ -268,8 +263,7 @@ app.use((req, res) => {
   }
 });
 
-// ─── Inicialização / Shutdown ────────────────────────────────────────────────
-// Em Cloudflare Tunnel, mantenha o app só em loopback:
+// Boot
 const HOST = process.env.HOST || '127.0.0.1';
 const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'})`);
