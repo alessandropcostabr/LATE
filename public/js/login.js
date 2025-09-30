@@ -52,7 +52,7 @@
         Accept: 'application/json'
       };
       if (token) {
-        headers['CSRF-Token'] = token;
+        headers['X-CSRF-Token'] = token;
       }
 
       try {
