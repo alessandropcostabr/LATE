@@ -247,10 +247,12 @@ app.use('/', webRoutes);
 // Erros genéricos
 app.use((err, req, res, _next) => {
   console.error('Erro não tratado:', err);
-  res.status(err.status || 500).json({
+  const status = err.status || 500;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  res.status(status).json({
     success: false,
-    message: err.message || 'Erro interno do servidor',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    error: isDevelopment && err.message ? err.message : 'Erro interno'
   });
 });
 
