@@ -11,7 +11,8 @@ const FALLBACK_ORIGINS = [
 ];
 
 const METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
-const ALLOWED_HEADERS = 'Content-Type,X-CSRF-Token,X-Requested-With';
+const ALLOWED_HEADERS_LIST = ['Content-Type', 'X-CSRF-Token', 'X-Requested-With'];
+const ALLOWED_HEADERS = ALLOWED_HEADERS_LIST.join(',');
 
 const fromEnv = (process.env.CORS_ORIGINS || '')
   .split(',')
@@ -44,5 +45,6 @@ const corsMiddleware = (req, res, next) => {
 
 corsMiddleware.ALLOWED_METHODS = METHODS;
 corsMiddleware.ALLOWED_HEADERS = ALLOWED_HEADERS;
+corsMiddleware.ALLOWED_HEADERS_LIST = ALLOWED_HEADERS_LIST;
 
 module.exports = corsMiddleware;
