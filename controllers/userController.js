@@ -41,7 +41,11 @@ exports.create = async (req, res) => {
   const role     = String(req.body.role || 'OPERADOR').trim().toUpperCase();
 
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
+    return res.status(400).json({
+      success: false,
+      error: 'Dados inválidos',
+      details: errors.array(),
+    });
   }
 
   try {

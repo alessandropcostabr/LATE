@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       Toast.success('Recado atualizado com sucesso!');
       setTimeout(() => (window.location.href = `/visualizar-recado/${id}`), 1000);
     } catch (err) {
-      const validationError = err.body?.errors?.[0] || err.errors?.[0];
+      const validationError = err.body?.details?.[0] || err.details?.[0] || err.body?.errors?.[0] || err.errors?.[0];
       const msg = validationError?.msg || validationError?.message || err.message || 'Erro ao atualizar recado';
       Toast.error(msg);
     } finally {
