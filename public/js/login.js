@@ -11,7 +11,7 @@
 
     async function loadCsrfToken() {
       try {
-        const response = await fetch('/api/csrf-token', {
+        const response = await fetch('/api/csrf', {
           method: 'GET',
           headers: { Accept: 'application/json' },
           credentials: 'include'

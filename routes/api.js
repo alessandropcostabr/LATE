@@ -82,7 +82,7 @@ router.patch('/users/:id/active', userController.setActive);
 // ---------------------------------------------------------------------------
 router.get('/healthz', (_req, res) => res.json({ success: true, data: { ok: true } }));
 
-router.get('/csrf-token', csrfProtection, (req, res) => {
+router.get('/csrf', csrfProtection, (req, res) => {
   const token = req.csrfToken();
   res.json({ success: true, data: { token } });
 });
