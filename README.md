@@ -119,6 +119,11 @@ git clone <repo>
 cd late
 npm install
 node scripts/migrate.js # aplica migrations de data/migrations
+# (Opcional, mas recomendado) defina variáveis para o usuário administrador inicial
+# export ADMIN_NAME="Administrador"
+# export ADMIN_EMAIL="admin@example.com"
+# export ADMIN_PASSWORD="altere-esta-senha"
+node scripts/seed-admin.js # cria o usuário administrador padrão (evita duplicados)
 # Defina os domínios permitidos no CORS via CORS_ORIGINS
 # (ALLOWED_ORIGINS ainda é suportada, mas será descontinuada futuramente)
 # Separe por vírgula **ou** espaço. Quando não definido, utiliza os domínios padrão
