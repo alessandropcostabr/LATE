@@ -69,6 +69,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Sessão
+const secureCookie = isProd ? 'auto' : false;
+
 app.use(session({
   name: 'connect.sid',
   secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
@@ -78,7 +80,7 @@ app.use(session({
   store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.join(__dirname, 'data') }),
   cookie: {
     httpOnly: true,
-    secure: isProd,
+    secure: secureCookie,
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 4 // 4h
   }
