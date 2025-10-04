@@ -1,6 +1,6 @@
 // config/database.js
-// DB Manager que seleciona o adapter via DB_DRIVER (pg|sqlite) e expõe helpers neutros.
-// Comentários em pt-BR para logs/erros visíveis; identificadores em inglês.
+// Database Manager — seleciona adapter por DB_DRIVER (pg|sqlite) e expõe helpers neutros.
+// Comentários em pt-BR; identificadores em inglês.
 
 const path = require('path');
 const sqliteAdapter = require('./adapters/sqlite');
@@ -8,22 +8,25 @@ const pgAdapter = require('./adapters/pg');
 
 let activeAdapter = null;
 
+// Lê a primeira env não-vazia dentre as fornecidas.
+function pick(...keys) {
+  for (const k of keys) {
+    const v = process.env[k];
+    if (v !== undefined && String(v).trim() !== '') return v;
+  }
+  return undefined;
+}
+
 // Normaliza configuração de SSL do PG a partir de env (PG_SSL).
 function parsePgSsl(value) {
   if (value === undefined || value === null) return undefined;
   const trimmed = String(value).trim();
   if (!trimmed) return undefined;
   const normalized = trimmed.toLowerCase();
-  if (['0', 'false', 'off', 'no', 'disable'].includes(normalized)) {
-    return undefined;
-  }
-  if (normalized === 'strict' || normalized === 'verify') {
-    return { rejectUnauthorized: true };
-  }
+  if (['0', 'false', 'off', 'no', 'disable'].includes(normalized)) return undefined;
+  if (normalized === 'strict' || normalized === 'verify') return { rejectUnauthorized: true };
   if (normalized.startsWith('{')) {
-    try {
-      return JSON.parse(trimmed);
-    } catch (err) {
+    try { return JSON.parse(trimmed); } catch (_e) {
       console.warn('[database] Falha ao parsear PG_SSL como JSON. Caindo para modo não-estrito.');
       return { rejectUnauthorized: false };
     }
@@ -31,29 +34,27 @@ function parsePgSsl(value) {
   return { rejectUnauthorized: false };
 }
 
-// Configuração padrão do SQLite (arquivo em data/ ou :memory: em testes).
+// SQLite (arquivo em data/ ou :memory: em testes).
 function configureSqliteAdapter(adapter) {
   const isTest = process.env.NODE_ENV === 'test';
   const defaultPath = isTest ? ':memory:' : path.join(__dirname, '..', 'data', 'recados.db');
-  const filename = process.env.DB_PATH && process.env.DB_PATH.trim() !== ''
-    ? process.env.DB_PATH
-    : defaultPath;
+  const filename = pick('DB_PATH') || defaultPath;
   adapter.configure({ filename });
   return adapter;
 }
 
-// Configuração do PostgreSQL a partir de variáveis PG_*.
+// PostgreSQL (lê ambos formatos PG_* / PG* para robustez).
 function configurePgAdapter(adapter) {
   const config = {
-    host: process.env.PG_HOST || undefined,
-    port: process.env.PG_PORT ? Number(process.env.PG_PORT) : undefined,
-    user: process.env.PG_USER || undefined,
-    password: process.env.PG_PASSWORD || undefined,
-    database: process.env.PG_DATABASE || undefined,
+    host: pick('PG_HOST', 'PGHOST'),
+    port: pick('PG_PORT', 'PGPORT') ? Number(pick('PG_PORT', 'PGPORT')) : undefined,
+    user: pick('PG_USER', 'PGUSER'),
+    password: pick('PG_PASSWORD', 'PGPASSWORD'),
+    database: pick('PG_DATABASE', 'PGDATABASE'),
   };
   const ssl = parsePgSsl(process.env.PG_SSL);
   if (ssl) config.ssl = ssl;
-  // Se existir connection string completa, o adapter de PG irá considerar no configure().
+  // Se existir connection string completa, o adapter de PG deve respeitá-la internamente.
   adapter.configure(config);
   return adapter;
 }
@@ -61,13 +62,9 @@ function configurePgAdapter(adapter) {
 // Seleciona e memoriza o adapter ativo com base no DB_DRIVER.
 function selectAdapter() {
   if (activeAdapter) return activeAdapter;
-
   const driver = (process.env.DB_DRIVER || 'sqlite').trim().toLowerCase();
-  if (driver === 'pg') {
-    activeAdapter = configurePgAdapter(pgAdapter);
-  } else {
-    activeAdapter = configureSqliteAdapter(sqliteAdapter);
-  }
+  if (driver === 'pg') activeAdapter = configurePgAdapter(pgAdapter);
+  else                 activeAdapter = configureSqliteAdapter(sqliteAdapter);
   return activeAdapter;
 }
 
@@ -83,14 +80,12 @@ function placeholder(index = 1) {
   return selectAdapter().placeholder(index);
 }
 
-// Helper para gerar N placeholders. Em PG respeita 'start'.
-// Em SQLite ignora 'start' (mas preserva a assinatura).
+// Gera N placeholders. Em PG respeita 'start'; em SQLite ignora.
 function formatPlaceholders(count, start = 1) {
   const adapter = selectAdapter();
   if (typeof adapter.formatPlaceholders === 'function') {
     return adapter.formatPlaceholders(count, start);
   }
-  // Fallback teórico (todos adapters atuais implementam formatPlaceholders).
   return Array.from({ length: count }, (_, i) => adapter.placeholder(i + start)).join(', ');
 }
 
@@ -120,7 +115,7 @@ function adapter() {
 
 module.exports = {
   db,
-  getDatabase: db,       // alias para compatibilidade retro
+  getDatabase: db, // alias para compatibilidade
   placeholder,
   formatPlaceholders,
   transaction,
