@@ -8,6 +8,7 @@
 require('dotenv').config(); // opcional: carrega .env se existir
 const { Pool } = require('pg');
 const argon2 = require('argon2');
+const crypto = require('crypto');
 
 // Lê ambos formatos de env para compatibilidade (PG_HOST/PGHOST etc.)
 function pick(...keys) {
@@ -21,7 +22,8 @@ function pick(...keys) {
   // --- Entrada obrigatória ---
   const email = String(process.env.ADMIN_EMAIL || '').toLowerCase().trim();
   const name  = (process.env.ADMIN_NAME || 'Administrador').trim();
-  const pwd   = String(process.env.ADMIN_PASSWORD || '').trim();
+  let pwd     = String(process.env.ADMIN_PASSWORD || '').trim();
+  const allowRandom = String(process.env.SEED_ALLOW_RANDOM || '').trim() === '1';
 
   if (!email) {
     console.error('ADMIN_EMAIL é obrigatório.');
@@ -32,6 +34,30 @@ function pick(...keys) {
   if (process.env.DB_DRIVER && String(process.env.DB_DRIVER).toLowerCase() !== 'pg') {
     console.error('[seed-admin] DB_DRIVER não é "pg". Aborte ou defina DB_DRIVER=pg.');
     process.exit(2);
+  }
+
+  // --- Política de senha do seed ---
+  // Não usar senha fixa quando ADMIN_PASSWORD estiver ausente.
+  // Padrão: falhar rápido. Para gerar aleatória, defina SEED_ALLOW_RANDOM=1.
+  if (!pwd) {
+    if (!allowRandom) {
+      console.error('[seed-admin] ADMIN_PASSWORD é obrigatório. Para gerar aleatória, use SEED_ALLOW_RANDOM=1.');
+      console.error('[seed-admin] Ex.: SEED_ALLOW_RANDOM=1 ADMIN_EMAIL=admin@local.test node scripts/seed-admin.js');
+      process.exit(1);
+    }
+    try {
+      // 24 bytes -> base64url ~32 chars; forte e fácil de colar
+      const generated = crypto.randomBytes(24).toString('base64url');
+      pwd = generated;
+      console.warn('────────────────────────────────────────────────────────');
+      console.warn('[seed-admin] ADMIN_PASSWORD ausente. Senha TEMPORÁRIA gerada:');
+      console.warn(`[seed-admin] ${generated}`);
+      console.warn('[seed-admin] Troque a senha após o primeiro login.');
+      console.warn('────────────────────────────────────────────────────────');
+    } catch (err) {
+      console.error(`[seed-admin] Falha ao gerar senha aleatória: ${err.message}`);
+      process.exit(1);
+    }
   }
 
   // --- Conexão PG ---
@@ -46,7 +72,7 @@ function pick(...keys) {
 
   const client = await pool.connect();
   try {
-    const password_hash = await argon2.hash(pwd || 'Troque123!A', { type: argon2.argon2id });
+    const password_hash = await argon2.hash(pwd, { type: argon2.argon2id });
 
     await client.query('BEGIN');
 
@@ -78,7 +104,6 @@ function pick(...keys) {
 
     await client.query('COMMIT');
     console.info(`[seed-admin] ADMIN garantido no PostgreSQL: ${email}`);
-    if (!pwd) console.info('[seed-admin] Senha padrão usada: Troque123!A (recomenda-se definir ADMIN_PASSWORD).');
   } catch (e) {
     await client.query('ROLLBACK');
     console.error('[seed-admin] falhou:', e);
