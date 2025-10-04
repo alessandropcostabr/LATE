@@ -1,9 +1,11 @@
 // routes/api.js
 // Rotas de API em inglês (payloads/keys) com mensagens ao usuário em pt-BR.
 
+
 const express = require('express');
 const router = express.Router();
 
+const statsController = require('../controllers/statsController');
 const messageController = require('../controllers/messageController');
 const userController = require('../controllers/userController');
 const database = require('../config/database'); // <— adicionado para health/db
@@ -18,6 +20,11 @@ const {
   handleValidationErrors,
 } = require('../middleware/validation');
 
+
+// ----------------------------------------
+// Estatísticas para dashboard/relatórios
+// ----------------------------------------
+
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------
@@ -29,7 +36,7 @@ router.get(
 );
 
 router.get(
-  '/messages/:id',
+  '/messages/:id(\d+)',
   ...validateId,
   handleValidationErrors,
   messageController.getById
@@ -43,7 +50,7 @@ router.post(
 );
 
 router.put(
-  '/messages/:id',
+  '/messages/:id(\d+)',
   ...validateId,
   ...validateUpdateMessage,
   handleValidationErrors,
@@ -51,7 +58,7 @@ router.put(
 );
 
 router.patch(
-  '/messages/:id/status',
+  '/messages/:id(\d+)/status',
   ...validateId,
   ...validateUpdateStatus,
   handleValidationErrors,
@@ -59,16 +66,12 @@ router.patch(
 );
 
 router.delete(
-  '/messages/:id',
+  '/messages/:id(\d+)',
   ...validateId,
   handleValidationErrors,
   messageController.remove
 );
 
-router.get('/messages/stats', messageController.stats);
-router.get('/stats/by-recipient', messageController.statsByRecipient);
-router.get('/stats/by-status', messageController.statsByStatus);
-router.get('/stats/by-month', messageController.statsByMonth);
 
 // ---------------------------------------------------------------------------
 // Users
@@ -76,6 +79,7 @@ router.get('/stats/by-month', messageController.statsByMonth);
 router.get('/users', userController.list);
 router.post('/users', userController.create);
 router.patch('/users/:id/active', userController.setActive);
+
 
 // ---------------------------------------------------------------------------
 // Healthcheck e utilitários
@@ -87,7 +91,7 @@ router.get('/csrf', csrfProtection, (req, res) => {
   res.json({ success: true, data: { token } });
 });
 
-// Novo: health do DB (mostra driver e versão do banco em execução no processo)
+// Novo: h  ealth do DB (mostra driver e versão do banco em execução no processo)
 router.get('/health/db', async (_req, res) => {
   try {
     const db = database.db();
