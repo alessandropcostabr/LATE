@@ -152,38 +152,65 @@ var validateUpdateStatus = [
     })
 ];
 
-var validateQueryMessages = [
-  applyQueryNormalizers,
-  query('limit').optional({ checkFalsy: true }).toInt().isInt({ min: 1, max: 200 }).withMessage('limit inválido'),
-  query('offset').optional({ checkFalsy: true }).toInt().isInt({ min: 0 }).withMessage('offset inválido'),
+// middleware/validation.js
+// ...
+const { query, param, body, validationResult } = require('express-validator');
+
+// Validação permissiva para listagem de recados (suporta filtros opcionais)
+// Defaults: limit=10, offset=0, order_by=created_at, order=desc
+exports.validateQueryMessages = [
+  // paginação
+  query('limit')
+    .optional({ checkFalsy: true, nullable: true })
+    .isInt({ min: 1, max: 50 }).withMessage('limit inválido')
+    .toInt()
+    .customSanitizer(v => (v && v >= 1 && v <= 50) ? v : 10),
+
+  query('offset')
+    .optional({ checkFalsy: true, nullable: true })
+    .isInt({ min: 0 }).withMessage('offset inválido')
+    .toInt()
+    .customSanitizer(v => (typeof v === 'number' && v >= 0) ? v : 0),
+
+  // filtros (todos opcionais)
+  query('status')
+    .optional({ checkFalsy: true, nullable: true })
+    .customSanitizer(v => String(v || '').toLowerCase().trim())
+    .isIn(['pending', 'in_progress', 'resolved']).withMessage('Status inválido'),
+
+  query('recipient')
+    .optional({ checkFalsy: true, nullable: true })
+    .isString().trim().isLength({ max: 255 }).withMessage('recipient muito longo'),
+
+  query('q')
+    .optional({ checkFalsy: true, nullable: true })
+    .isString().trim().isLength({ max: 200 }).withMessage('q inválido'),
+
+  // datas (opcionais no formato YYYY-MM-DD)
   query('start_date')
-    .optional({ checkFalsy: true })
-    .matches(dateRegex).withMessage('start_date inválido'),
+    .optional({ checkFalsy: true, nullable: true })
+    .matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('start_date inválida'),
+
   query('end_date')
-    .optional({ checkFalsy: true })
-    .matches(dateRegex).withMessage('end_date inválido')
-    .custom(function(value, meta) {
-      var req = meta.req || {};
-      if (value && req.query && req.query.start_date && value < req.query.start_date) {
+    .optional({ checkFalsy: true, nullable: true })
+    .matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('end_date inválida')
+    .custom((value, { req }) => {
+      const start = req?.query?.start_date;
+      if (value && start && value < start) {
         throw new Error('end_date deve ser igual ou posterior a start_date');
       }
       return true;
     }),
-  query('recipient')
-    .optional({ checkFalsy: true })
-    .isLength({ max: 255 }).withMessage('recipient muito longo'),
-  query('status')
-    .optional({ checkFalsy: true })
-    .custom(function(value) {
-      var normalized = normalizeStatus(value);
-      if (!normalized || ALLOWED_STATUS.indexOf(normalized) === -1) {
-        throw new Error('Status inválido');
-      }
-      return true;
-    })
-    .customSanitizer(function(value) {
-      return normalizeStatus(value);
-    })
+
+  // ordenação (opcional, com defaults)
+  query('order_by')
+    .optional({ checkFalsy: true, nullable: true })
+    .isIn(['created_at', 'updated_at', 'status']).withMessage('order_by inválido')
+    .customSanitizer(v => v || 'created_at'),
+
+  query('order')
+    .optional({ checkFalsy: true, nullable: true })
+    .customSanitizer(v => (String(v || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc')),
 ];
 
 var validateId = [
