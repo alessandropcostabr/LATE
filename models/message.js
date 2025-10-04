@@ -381,29 +381,24 @@ async function statsByStatus() {
   }));
 }
 
-async function statsByMonth({ limit = 12 } = {}) {
-  const parsedLimit = Number(limit);
-  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 120) : 12;
-  const stmt = db().prepare(`
+// Últimos 12 meses por created_at (compatível com PostgreSQL)
+exports.statsByMonth = async () => {
+  const sql = `
+    WITH months AS (
+      SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, 11)) AS m
+    )
     SELECT
-      SUBSTR(
-        COALESCE(
-          NULLIF(TRIM(call_date), ''),
-          CAST(created_at AS TEXT)
-        ),
-        1,
-        7
-      ) AS month,
-      COUNT(*) AS count
-      FROM messages
-  GROUP BY month
-    HAVING month IS NOT NULL AND month <> ''
-  ORDER BY month DESC
-     LIMIT ${ph(1)}
-  `);
-  const rows = await stmt.all([sanitizedLimit]);
-  return rows.reverse().map(row => ({ month: row.month, count: Number(row.count || 0) }));
-}
+      to_char(m, 'YYYY-MM') AS month,
+      COALESCE(COUNT(ms.id), 0)::int AS total
+    FROM months
+    LEFT JOIN messages AS ms
+      ON date_trunc('month', ms.created_at) = date_trunc('month', m)
+    GROUP BY m
+    ORDER BY m;
+  `;
+  const rows = await db().prepare(sql).all(); // sem parâmetros
+  return rows.map(r => ({ month: r.month, total: Number(r.total || 0) }));
+};
 
 module.exports = {
   create,
