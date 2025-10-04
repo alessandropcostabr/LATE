@@ -3,14 +3,39 @@
 
 const MessageModel = require('../models/message');
 
-// Converte snake_case → camelCase para datas, preservando os campos originais.
+// ---------------------------------------------------------------------------
+// Helpers de formatação
+// ---------------------------------------------------------------------------
+
+function toISO(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+// Converte snake_case → camelCase e saneia datas.
+// Mantém campos originais e adiciona os normalizados.
 function formatMessage(message) {
   if (!message) return null;
+
+  // saneia datas com fallback (created_at → updated_at → agora)
+  const createdISO = toISO(message.created_at) || toISO(message.updated_at) || new Date().toISOString();
+  const updatedISO = toISO(message.updated_at) || createdISO;
+
   return {
     ...message,
-    status_label: MessageModel.STATUS_LABELS_PT?.[message.status] || message.status,
-    createdAt: message.created_at ? new Date(message.created_at).toISOString() : null,
-    updatedAt: message.updated_at ? new Date(message.updated_at).toISOString() : null,
+
+    // labels em pt-BR
+    status_label: (MessageModel.STATUS_LABELS_PT && MessageModel.STATUS_LABELS_PT[message.status]) || message.status,
+
+    // mantém snake_case, porém normalizado para ISO (para o front que usa created_at diretamente)
+    created_at: createdISO,
+    updated_at: updatedISO,
+
+    // adiciona camelCase
+    createdAt: createdISO,
+    updatedAt: updatedISO,
   };
 }
 
@@ -49,13 +74,12 @@ function formatMonthLabel(label) {
 
 // ---------------------------------------------------------------------------
 // Listagem
-// Retorna também `items[]` e `meta` para compatibilidade com o front.
+// Retorna `data: { items, total, limit, offset }` para compatibilidade.
 // ---------------------------------------------------------------------------
 exports.list = async (req, res) => {
   try {
     const q = req.query || {};
 
-    // Defaults defensivos
     const limit = Math.min(Math.max(parseInt(q.limit, 10) || 10, 1), 50);
     const offset = Math.max(parseInt(q.offset, 10) || 0, 0);
 
@@ -78,11 +102,13 @@ exports.list = async (req, res) => {
 
     const items = rawItems.map(formatMessage);
 
+    // shape esperado pelo front: data: { items, total, limit, offset }
     return res.json({
       success: true,
-      data: items,             // legado (alguns pontos do front ainda leem 'data' diretamente)
-      items,                   // formato novo e explícito
-      meta: { total, limit, offset }
+      data: { items, total, limit, offset },
+      // mantemos compat extra (se algum ponto ainda lê diretamente):
+      items,
+      meta: { total, limit, offset },
     });
   } catch (err) {
     console.error('[messages] list error:', err);
@@ -98,8 +124,7 @@ exports.getById = async (req, res) => {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ success: false, error: 'ID inválido' });
 
-    // Alguns repos têm findById; outros getById — mantemos findById que já era usado aqui
-    const message = await MessageModel.findById ? MessageModel.findById(id) : MessageModel.getById(id);
+    const message = MessageModel.findById ? await MessageModel.findById(id) : await MessageModel.getById(id);
     if (!message) {
       return res.status(404).json({ success: false, error: 'Mensagem não encontrada.' });
     }
