@@ -1,6 +1,5 @@
 // routes/web.js
-// Rotas de páginas (EJS). Mantemos CSRF em formulários renderizados e o
-// frontend busca o token para submissões assíncronas.
+// Rotas Web (EJS). Não alterar layout/estilos; apenas ligar fluxos.
 
 const express = require('express');
 const { body } = require('express-validator');
@@ -8,10 +7,11 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 
+const MessageModel = require('../models/message'); // para /recados/:id
+
 const router = express.Router();
 
 // ------------------------------ Auth ---------------------------------------
-// GET /login: protegido para gerar e renderizar token no formulário
 router.get('/login', csrfProtection, authController.showLogin);
 
 router.post(
@@ -74,13 +74,38 @@ router.get('/visualizar-recado/:id', requireAuth, (req, res) => {
   });
 });
 
+// Atende também /recados/:id (o front chama este caminho)
+router.get('/recados/:id', requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
+
+    const recado = await (MessageModel.findById ? MessageModel.findById(id) : MessageModel.getById(id));
+    if (!recado) return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
+
+    // Renderiza a mesma view de visualização (sem alterar layout)
+    return res.render('visualizar-recado', {
+      title: 'Visualizar Recado',
+      id,
+      recado,
+      user: req.session.user || null
+    });
+  } catch (e) {
+    console.error('[web] erro ao carregar recado:', e);
+    return res.status(500).render('500', { title: 'Erro interno', user: req.session.user || null });
+  }
+});
+
 router.get('/relatorios', requireAuth, requireRole('ADMIN'), (req, res) => {
   res.render('relatorios', { title: 'Relatórios', user: req.session.user || null });
 });
 
 // 404 handler para rotas web
 router.use((req, res) => {
-  res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
+  res
+    .status(404)
+    .render('404', { title: 'Página não encontrada', user: req.session.user || null });
 });
 
 module.exports = router;
+
