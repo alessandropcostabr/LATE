@@ -381,13 +381,11 @@ async function statsByStatus() {
   }));
 }
 
-// dentro do module.exports = { ... }  (mantenha vírgula ao final)
-statsByMonth: async () => {
-  // Garante helper de DB
-  const database = require('../config/database');
-  const db = () => database.db();
-
-  // Série dos últimos 12 meses por created_at (compatível com PostgreSQL)
+// ============================================================================
+// Estatísticas: série mensal dos últimos 12 meses (compatível com PostgreSQL)
+// Comentários em pt-BR; identificadores em inglês.
+// ----------------------------------------------------------------------------
+async function statsByMonth() {
   const sql = `
     WITH months AS (
       SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, 11)) AS m
@@ -401,10 +399,10 @@ statsByMonth: async () => {
     GROUP BY m
     ORDER BY m;
   `;
-
   const rows = await db().prepare(sql).all();
   return rows.map(r => ({ month: r.month, total: Number(r.total || 0) }));
-},
+}
+// ============================================================================
 
 module.exports = {
   create,
