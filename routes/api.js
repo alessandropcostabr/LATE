@@ -21,12 +21,23 @@ const {
 // --- Helper defensivo para middlewares vindos de fontes diversas ---
 function flatFns(...mws) {
   const result = [];
+  const warnings = [];
+
+  function pushWarning(message) {
+    warnings.push(message);
+    console.warn(message);
+  }
 
   function visit(node, path) {
-    if (!node) return; // ignora falsy sem logar
+    const location = path || '<root>';
+
+    if (node == null) {
+      pushWarning(`[router] Middleware ausente em ${location} (valor=${node})`);
+      return;
+    }
 
     if (Array.isArray(node)) {
-      node.forEach((child, index) => visit(child, `${path}[${index}]`));
+      node.forEach((child, index) => visit(child, path ? `${path}[${index}]` : `[${index}]`));
       return;
     }
 
@@ -36,11 +47,26 @@ function flatFns(...mws) {
     }
 
     const type = Object.prototype.toString.call(node);
-    const location = path || '<root>';
-    console.warn(`[router] Ignorando middleware inválido em ${location} (tipo=${type})`);
+    pushWarning(`[router] Ignorando middleware inválido em ${location} (tipo=${type})`);
   }
 
   mws.forEach((mw, index) => visit(mw, `arg#${index + 1}`));
+
+  if (result.length === 0) {
+    const fallbackMessages = warnings.length
+      ? warnings.slice()
+      : [
+          `[router] Nenhum middleware válido fornecido (origens: ${
+            mws.length ? mws.map((_, index) => `arg#${index + 1}`).join(', ') : '<nenhuma>'
+          })`
+        ];
+
+    result.push((req, res, next) => {
+      fallbackMessages.forEach((message) => console.warn(message));
+      next();
+    });
+  }
+
   return result;
 }
 
