@@ -274,11 +274,16 @@ var validateQueryMessages = [
 // Exports
 // -------------------------------------------------------------
 module.exports = {
+  // exports “oficiais”
   handleValidationErrors,
   validateCreateMessage,
   validateUpdateMessage,
   validateUpdateStatus,
   validateId,
-  validateQueryMessages
-};
+  validateQueryMessages,
 
+  // ✅ aliases de compatibilidade (evitam undefined no router)
+  handleValidation: handleValidationErrors,
+  validateListMessages: validateQueryMessages,
+  validateIdParam: validateId,
+};
