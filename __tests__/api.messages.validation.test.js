@@ -9,6 +9,7 @@ jest.mock('../controllers/messageController', () => {
   return {
     list: createResponder(),
     show: createResponder(),
+    getById: createResponder(),
     create: createResponder(201),
     update: createResponder(),
     updateStatus: createResponder(),
