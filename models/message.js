@@ -7,6 +7,7 @@ function db() {
   return database.db();
 }
 
+// placeholder compat (pg: $1, sqlite: ?)
 function ph(index) {
   return database.placeholder(index);
 }
@@ -204,5 +205,247 @@ async function create(payload) {
   const timestamps = attachTimestamps({}, payload);
   const data = {
     ...normalized.data,
-    status
+    status: normalized.statusProvided && normalized.data.status ? normalized.data.status : 'pending',
+  };
+
+  const baseFields = [
+    'call_date',
+    'call_time',
+    'recipient',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'subject',
+    'message',
+    'status',
+    'callback_time',
+    'notes',
+  ];
+  const fields = [...baseFields];
+  const values = baseFields.map((field) => data[field]);
+
+  if (timestamps.created_at) {
+    fields.push('created_at');
+    values.push(timestamps.created_at);
+  }
+  if (timestamps.updated_at) {
+    fields.push('updated_at');
+    values.push(timestamps.updated_at);
+  }
+
+  const row = await db().prepare(`
+    INSERT INTO messages (
+      ${fields.join(',\n      ')}
+    ) VALUES (
+      ${fields.map((_, index) => ph(index + 1)).join(', ')}
+    )
+    RETURNING ${SELECT_COLUMNS}
+  `).get(values);
+
+  return row?.id || null;
+}
+
+async function findById(id) {
+  const row = await db().prepare(`
+    SELECT ${SELECT_COLUMNS}
+      FROM messages
+     WHERE id = ${ph(1)}
+     LIMIT 1
+  `).get([id]);
+  return mapRow(row);
+}
+
+async function update(id, payload) {
+  const normalized = normalizePayload(payload);
+  const fields = [
+    'call_date',
+    'call_time',
+    'recipient',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'subject',
+    'message',
+    'callback_time',
+    'notes',
+  ];
+  const values = fields.map((field) => normalized.data[field]);
+  const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
+
+  // status opcional
+  const statusIndex = assignments.length + 1;
+  assignments.push(`status = COALESCE(${ph(statusIndex)}, status)`);
+  assignments.push('updated_at = CURRENT_TIMESTAMP');
+
+  const result = await db().prepare(`
+    UPDATE messages
+       SET ${assignments.join(', ')}
+     WHERE id = ${ph(statusIndex + 1)}
+  `).run([...values, normalized.statusProvided ? normalized.data.status : null, id]);
+
+  return result.changes > 0;
+}
+
+async function updateStatus(id, status) {
+  const result = await db().prepare(`
+    UPDATE messages
+       SET status = ${ph(1)},
+           updated_at = CURRENT_TIMESTAMP
+     WHERE id = ${ph(2)}
+  `).run([ensureStatus(status), id]);
+  return result.changes > 0;
+}
+
+async function remove(id) {
+  const result = await db().prepare(`DELETE FROM messages WHERE id = ${ph(1)}`).run([id]);
+  return result.changes > 0;
+}
+
+async function list({
+  limit = 10,
+  offset = 0,
+  status,
+  start_date,
+  end_date,
+  recipient,
+  order_by = 'created_at',
+  order = 'desc'
+} = {}) {
+  // limites
+  const parsedLimit = Number(limit);
+  const parsedOffset = Number(offset);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
+  const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+
+  // ordenação segura
+  const orderByAllowed = ['created_at', 'updated_at', 'id', 'status'];
+  const orderBy = orderByAllowed.includes(String(order_by)) ? String(order_by) : 'created_at';
+  const sort = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+  const statusFilter = translateStatusForQuery(status);
+  const startDate = trim(start_date);
+  const endDate = trim(end_date);
+  const recipientFilter = trim(recipient);
+
+  const filters = buildFilters({
+    status: statusFilter,
+    startDate: startDate || null,
+    endDate: endDate || null,
+    recipient: recipientFilter || null,
+  });
+
+  const rows = await db().prepare(`
+    SELECT ${SELECT_COLUMNS}
+      FROM messages
+      ${filters.clause}
+  ORDER BY ${orderBy} ${sort}, id DESC
+     LIMIT ${ph(filters.nextIndex)} OFFSET ${ph(filters.nextIndex + 1)}
+  `).all([...filters.params, sanitizedLimit, sanitizedOffset]);
+
+  return rows.map(mapRow);
+}
+
+async function listRecent(limit = 10) {
+  return list({ limit, order_by: 'created_at', order: 'desc' });
+}
+
+// ---------------------------- Estatísticas ---------------------------------
+async function stats() {
+  const totalRow = await db().prepare('SELECT COUNT(*) AS count FROM messages').get();
+  const rows = await db().prepare('SELECT status, COUNT(*) AS count FROM messages GROUP BY status').all();
+
+  const counters = rows.reduce((acc, row) => {
+    const normalized = ensureStatus(row.status);
+    acc[normalized] = (acc[normalized] || 0) + Number(row.count || 0);
+    return acc;
+  }, {});
+
+  return {
+    total: Number(totalRow?.count || 0),
+    pending: counters.pending || 0,
+    in_progress: counters.in_progress || 0,
+    resolved: counters.resolved || 0,
+  };
+}
+
+async function statsByRecipient({ limit = 10 } = {}) {
+  const parsedLimit = Number(limit);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
+
+  const rows = await db().prepare(`
+    SELECT
+      COALESCE(NULLIF(TRIM(recipient), ''), 'Não informado') AS recipient,
+      COUNT(*) AS count
+      FROM messages
+  GROUP BY recipient
+  ORDER BY count DESC, recipient ASC
+     LIMIT ${ph(1)}
+  `).all([sanitizedLimit]);
+
+  return rows.map(r => ({ recipient: r.recipient, count: Number(r.count || 0) }));
+}
+
+async function statsByStatus() {
+  const rows = await db().prepare(`
+    SELECT status, COUNT(*) AS count
+      FROM messages
+  GROUP BY status
+  `).all();
+
+  const totals = STATUS_VALUES.reduce((acc, status) => {
+    acc[status] = 0;
+    return acc;
+  }, {});
+  for (const row of rows) {
+    const normalized = ensureStatus(row.status);
+    totals[normalized] = (totals[normalized] || 0) + Number(row.count || 0);
+  }
+  return STATUS_VALUES.map(status => ({
+    status,
+    label: STATUS_LABELS_PT[status] || status,
+    count: totals[status] || 0,
+  }));
+}
+
+// Série mensal (últimos 12 meses) por created_at — PostgreSQL
+async function statsByMonth() {
+  const rows = await db().prepare(`
+    WITH months AS (
+      SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, 11)) AS m
+    )
+    SELECT
+      to_char(m, 'YYYY-MM') AS month,
+      COALESCE(COUNT(ms.id), 0)::int AS count
+    FROM months
+    LEFT JOIN messages AS ms
+      ON date_trunc('month', ms.created_at) = date_trunc('month', m)
+    GROUP BY m
+    ORDER BY m;
+  `).all();
+
+  return rows.map(r => ({ month: r.month, count: Number(r.count || 0) }));
+}
+
+// ---------------------------- Exports --------------------------------------
+module.exports = {
+  create,
+  findById,
+  update,
+  updateStatus,
+  remove,
+  list,
+  listRecent,
+  stats,
+  statsByRecipient,
+  statsByStatus,
+  statsByMonth,
+  normalizeStatus,
+  STATUS_VALUES,
+  STATUS_LABELS_PT,
+  STATUS_TRANSLATIONS: {
+    enToPt: { ...STATUS_EN_TO_PT },
+    ptToEn: { ...STATUS_PT_TO_EN },
+    labelsPt: { ...STATUS_LABELS_PT },
+  },
+};
 
