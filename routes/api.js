@@ -18,14 +18,30 @@ const {
   validateQueryMessages
 } = require('../middleware/validation');
 
-// --- Guards defensivos: evitam crash se algum middleware vier undefined ---
-function ensure(fn, name) {
-  if (typeof fn === 'function') return fn;
-  console.error(`[router] middleware '${name}' inválido (tipo=${Object.prototype.toString.call(fn)}) — usando no-op`);
-  return (req, res, next) => next();
-}
-function chain(...fns) {
-  return fns.map((fn, i) => ensure(fn, `mw#${i + 1}`));
+// --- Helper defensivo para middlewares vindos de fontes diversas ---
+function flatFns(...mws) {
+  const result = [];
+
+  function visit(node, path) {
+    if (!node) return; // ignora falsy sem logar
+
+    if (Array.isArray(node)) {
+      node.forEach((child, index) => visit(child, `${path}[${index}]`));
+      return;
+    }
+
+    if (typeof node === 'function') {
+      result.push(node);
+      return;
+    }
+
+    const type = Object.prototype.toString.call(node);
+    const location = path || '<root>';
+    console.warn(`[router] Ignorando middleware inválido em ${location} (tipo=${type})`);
+  }
+
+  mws.forEach((mw, index) => visit(mw, `arg#${index + 1}`));
+  return result;
 }
 
 // ========== Messages ==========
@@ -33,52 +49,52 @@ function chain(...fns) {
 // Listar (com querystring: limit/offset/status/recipient/start_date/end_date)
 router.get(
   '/messages',
-  ...chain(validateQueryMessages, handleValidationErrors),
+  ...flatFns(validateQueryMessages, handleValidationErrors),
   messageController.list
 );
 
 // KPIs de cards (total/pending/in_progress/resolved)
-router.get('/messages/stats', ensure(statsController.messagesStats, 'messagesStats'));
+router.get('/messages/stats', ...flatFns(statsController.messagesStats));
 
 // Obter 1
 router.get(
   '/messages/:id',
-  ...chain(validateId, handleValidationErrors),
+  ...flatFns(validateId, handleValidationErrors),
   messageController.show
 );
 
 // Criar
 router.post(
   '/messages',
-  ...chain(validateCreateMessage, handleValidationErrors),
+  ...flatFns(validateCreateMessage, handleValidationErrors),
   messageController.create
 );
 
 // Atualizar
 router.put(
   '/messages/:id',
-  ...chain(validateId, validateUpdateMessage, handleValidationErrors),
+  ...flatFns(validateId, validateUpdateMessage, handleValidationErrors),
   messageController.update
 );
 
 // Atualizar status
 router.patch(
   '/messages/:id/status',
-  ...chain(validateId, validateUpdateStatus, handleValidationErrors),
+  ...flatFns(validateId, validateUpdateStatus, handleValidationErrors),
   messageController.updateStatus
 );
 
 // Remover
 router.delete(
   '/messages/:id',
-  ...chain(validateId, handleValidationErrors),
+  ...flatFns(validateId, handleValidationErrors),
   messageController.remove
 );
 
 // ========== Stats (Relatórios) ==========
-router.get('/stats/by-status',    ensure(statsController.byStatus, 'byStatus'));
-router.get('/stats/by-recipient', ensure(statsController.byRecipient, 'byRecipient'));
-router.get('/stats/by-month',     ensure(statsController.byMonth, 'byMonth'));
+router.get('/stats/by-status',    ...flatFns(statsController.byStatus));
+router.get('/stats/by-recipient', ...flatFns(statsController.byRecipient));
+router.get('/stats/by-month',     ...flatFns(statsController.byMonth));
 
 // Export
 module.exports = router;
