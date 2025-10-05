@@ -1,222 +1,284 @@
-'use strict';
+// middleware/validation.js
+// Comentários em pt-BR; identificadores em inglês.
+// Regras de validação/sanitização centralizadas (express-validator).
 
-// middleware/validation.js — versão compatível (sem optional chaining / nullish coalescing)
-// - Normaliza campos do corpo e da query (status, e-mails vazios -> null, strings vazias -> null)
-// - Validações usando express-validator (apenas APIs estáveis)
-
-var expressValidator = require('express-validator');
+const expressValidator = require('express-validator');
 var body   = expressValidator.body;
 var param  = expressValidator.param;
 var query  = expressValidator.query;
 var validationResult = expressValidator.validationResult;
 
-var MessageModel = require('../models/message');
+// -------------------------------------------------------------
+// Helpers comuns
+// -------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Helpers de normalização
-// ---------------------------------------------------------------------------
-var ALLOWED_STATUS = MessageModel.STATUS_VALUES;
+// Status permitidos no back-end
+var ALLOWED_STATUS = ['pending', 'in_progress', 'resolved'];
 
-function toStr(v) { return (v === undefined || v === null) ? '' : String(v); }
-function isBlank(v) { return toStr(v).trim() === ''; }
-function emptyToNull(v) { return isBlank(v) ? null : v; }
-
-function normalizeStatus(raw) {
-  var value = toStr(raw).trim();
-  if (!value) return '';
-  return MessageModel.normalizeStatus(value);
+/**
+ * Normaliza valores de status vindos do usuário.
+ * Suporta apelidos em pt-BR para conveniência.
+ */
+function normalizeStatus(s) {
+  if (!s) return '';
+  var v = String(s).trim().toLowerCase();
+  // variações em pt-BR
+  if (v === 'pendente' || v === 'pendentes') return 'pending';
+  if (v === 'em andamento' || v === 'andamento' || v === 'em_andamento') return 'in_progress';
+  if (v === 'resolvido' || v === 'resolvidos') return 'resolved';
+  // inglês já padronizado
+  if (ALLOWED_STATUS.indexOf(v) !== -1) return v;
+  return '';
 }
 
+// normaliza campos de body para strings e aplica trim
 function applyBodyNormalizers(req, _res, next) {
-  var b = req.body || (req.body = {});
-
-  // Campos opcionais: string vazia -> null
-  var optFields = ['sender_phone', 'sender_email', 'callback_time', 'notes'];
-  for (var i = 0; i < optFields.length; i++) {
-    var k = optFields[i];
-    if (Object.prototype.hasOwnProperty.call(b, k)) {
-      b[k] = emptyToNull(b[k]);
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(b, 'status')) {
-    var normalizedStatus = normalizeStatus(b.status);
-    b.status = normalizedStatus || '';
-  }
-
-  if (Object.prototype.hasOwnProperty.call(b, 'call_date') && typeof b.call_date === 'string') {
-    b.call_date = b.call_date.trim();
-  }
-  if (Object.prototype.hasOwnProperty.call(b, 'call_time') && typeof b.call_time === 'string') {
-    b.call_time = b.call_time.trim();
-  }
-
+  var b = req.body || {};
+  [
+    'recipient',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'subject',
+    'message',
+    'status',
+    'call_date',
+    'call_time',
+    'callback_time',
+    'notes'
+  ].forEach(function (k) {
+    if (b[k] === undefined || b[k] === null) return;
+    if (typeof b[k] !== 'string') b[k] = String(b[k]);
+    b[k] = b[k].trim();
+  });
+  // normaliza status, se presente
+  if (b.status) b.status = normalizeStatus(b.status);
   next();
 }
 
+// normaliza query strings
 function applyQueryNormalizers(req, _res, next) {
-  var q = req.query || (req.query = {});
-  if (Object.prototype.hasOwnProperty.call(q, 'status')) {
-    if (isBlank(q.status)) {
-      delete q.status;
-    } else {
-      q.status = normalizeStatus(q.status);
-    }
-  }
-  if (Object.prototype.hasOwnProperty.call(q, 'limit'))  { q.limit  = String(q.limit).trim(); }
-  if (Object.prototype.hasOwnProperty.call(q, 'offset')) { q.offset = String(q.offset).trim(); }
-  var optionalFields = ['start_date', 'end_date', 'recipient'];
-  for (var i = 0; i < optionalFields.length; i++) {
-    var field = optionalFields[i];
-    if (Object.prototype.hasOwnProperty.call(q, field)) {
-      var value = toStr(q[field]).trim();
-      if (!value) {
-        delete q[field];
-      } else {
-        q[field] = value;
-      }
-    }
+  var q = req.query || {};
+  Object.keys(q).forEach(function (k) {
+    if (typeof q[k] === 'string') q[k] = q[k].trim();
+  });
+  if (q.status) q.status = normalizeStatus(q.status);
+  next();
+}
+
+// regex simples para data YYYY-MM-DD
+var dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+// -------------------------------------------------------------
+// Tratamento padrão de erros de validação
+// -------------------------------------------------------------
+function handleValidationErrors(req, res, next) {
+  var errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Dados inválidos',
+      details: errors.array()
+    });
   }
   next();
 }
 
-// ---------------------------------------------------------------------------
-// Regras básicas reutilizáveis
-// ---------------------------------------------------------------------------
-var dateRegex = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD (validação simples)
-var timeRegex = /^\d{2}:\d{2}$/;       // HH:MM
+// -------------------------------------------------------------
+// Validators de Messages
+// -------------------------------------------------------------
 
-function commonCreateAndUpdateRules() {
-  return [
-    body('call_date')
-      .notEmpty().withMessage('Data da ligação é obrigatória')
-      .bail()
-      .matches(dateRegex).withMessage('Data deve estar no formato válido (YYYY-MM-DD)'),
-
-    body('call_time')
-      .notEmpty().withMessage('Hora da ligação é obrigatória')
-      .bail()
-      .matches(timeRegex).withMessage('Hora deve estar no formato HH:MM'),
-
-    body('recipient').notEmpty().withMessage('Destinatário é obrigatório'),
-    body('sender_name').notEmpty().withMessage('Remetente é obrigatório'),
-    body('subject').notEmpty().withMessage('Assunto é obrigatório'),
-
-    body('sender_email')
-      .optional({ checkFalsy: true })
-      .isEmail().withMessage('E-mail deve ter formato válido'),
-
-    body('sender_phone').optional({ checkFalsy: true }).isLength({ max: 50 }),
-    body('callback_time').optional({ checkFalsy: true }).isLength({ max: 100 }),
-
-    body('status')
-      .optional({ checkFalsy: true })
-      .custom(function(value) {
-        var normalized = normalizeStatus(value);
-        if (normalized && ALLOWED_STATUS.indexOf(normalized) === -1) {
-          throw new Error('Status deve ser: pending, in_progress ou resolved');
-        }
-        return true;
-      })
-      .customSanitizer(function(value) {
-        return normalizeStatus(value);
-      }),
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// Validators exportados
-// ---------------------------------------------------------------------------
+// Criação de recado
 var validateCreateMessage = [
-  applyBodyNormalizers
-].concat(commonCreateAndUpdateRules());
+  applyBodyNormalizers,
 
+  body('message')
+    .notEmpty().withMessage('Mensagem é obrigatória')
+    .bail()
+    .isLength({ max: 5000 }).withMessage('Mensagem muito longa'),
+
+  body('status')
+    .optional({ checkFalsy: true })
+    .custom(function (value) {
+      var v = normalizeStatus(value);
+      if (!v || ALLOWED_STATUS.indexOf(v) === -1) throw new Error('Status inválido');
+      return true;
+    })
+    .customSanitizer(function (value) { return normalizeStatus(value); }),
+
+  body('recipient')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 255 }).withMessage('Destinatário muito longo'),
+
+  body('sender_email')
+    .optional({ checkFalsy: true })
+    .isEmail().withMessage('Email inválido')
+    .normalizeEmail(),
+
+  body('sender_phone')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 60 }).withMessage('Telefone inválido'),
+
+  body('subject')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 255 }).withMessage('Assunto muito longo'),
+
+  body('call_date')
+    .optional({ checkFalsy: true })
+    .matches(dateRegex).withMessage('Data da chamada inválida (YYYY-MM-DD)'),
+
+  body('call_time')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 10 }).withMessage('Horário inválido'),
+
+  body('callback_time')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 30 }).withMessage('Horário de retorno inválido')
+];
+
+// Atualização completa
 var validateUpdateMessage = [
-  applyBodyNormalizers
-].concat(commonCreateAndUpdateRules());
+  applyBodyNormalizers,
 
+  body('message')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 5000 }).withMessage('Mensagem muito longa'),
+
+  body('status')
+    .optional({ checkFalsy: true })
+    .custom(function (value) {
+      var v = normalizeStatus(value);
+      if (v && ALLOWED_STATUS.indexOf(v) === -1) throw new Error('Status inválido');
+      return true;
+    })
+    .customSanitizer(function (value) { return normalizeStatus(value); }),
+
+  body('recipient')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 255 }).withMessage('Destinatário muito longo'),
+
+  body('sender_email')
+    .optional({ checkFalsy: true })
+    .isEmail().withMessage('Email inválido')
+    .normalizeEmail(),
+
+  body('sender_phone')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 60 }).withMessage('Telefone inválido'),
+
+  body('subject')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 255 }).withMessage('Assunto muito longo'),
+
+  body('call_date')
+    .optional({ checkFalsy: true })
+    .matches(dateRegex).withMessage('Data da chamada inválida (YYYY-MM-DD)'),
+
+  body('call_time')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 10 }).withMessage('Horário inválido'),
+
+  body('callback_time')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 30 }).withMessage('Horário de retorno inválido')
+];
+
+// Atualização apenas de status
 var validateUpdateStatus = [
   applyBodyNormalizers,
   body('status')
     .notEmpty().withMessage('Status é obrigatório')
     .bail()
-    .custom(function(value) {
-      var normalized = normalizeStatus(value);
-      if (!normalized || ALLOWED_STATUS.indexOf(normalized) === -1) {
-        throw new Error('Status deve ser: pending, in_progress ou resolved');
-      }
+    .custom(function (value) {
+      var v = normalizeStatus(value);
+      if (!v || ALLOWED_STATUS.indexOf(v) === -1) throw new Error('Status inválido');
       return true;
     })
-    .customSanitizer(function(value) {
-      return normalizeStatus(value);
-    })
+    .customSanitizer(function (value) { return normalizeStatus(value); })
 ];
 
+// ID de rota /:id
+var validateId = [
+  param('id')
+    .notEmpty().withMessage('ID é obrigatório')
+    .bail()
+    .isInt({ min: 1 }).withMessage('ID inválido')
+    .toInt()
+];
+
+// -------------------------------------------------------------
+// Listagem: validação PERMISSIVA com defaults
+// (evita 400 no Dashboard para "Recados Recentes")
+// -------------------------------------------------------------
 var validateQueryMessages = [
   applyQueryNormalizers,
-  query('limit').optional({ checkFalsy: true }).toInt().isInt({ min: 1, max: 200 }).withMessage('limit inválido'),
-  query('offset').optional({ checkFalsy: true }).toInt().isInt({ min: 0 }).withMessage('offset inválido'),
-  query('start_date')
-    .optional({ checkFalsy: true })
-    .matches(dateRegex).withMessage('start_date inválido'),
-  query('end_date')
-    .optional({ checkFalsy: true })
-    .matches(dateRegex).withMessage('end_date inválido')
-    .custom(function(value, meta) {
-      var req = meta.req || {};
-      if (value && req.query && req.query.start_date && value < req.query.start_date) {
-        throw new Error('end_date deve ser igual ou posterior a start_date');
-      }
+
+  // paginação
+  query('limit')
+    .optional({ checkFalsy: true, nullable: true })
+    .isInt({ min: 1, max: 50 }).withMessage('limit inválido')
+    .toInt()
+    .customSanitizer(function (v) { return (v && v >= 1 && v <= 50) ? v : 10; }),
+
+  query('offset')
+    .optional({ checkFalsy: true, nullable: true })
+    .isInt({ min: 0 }).withMessage('offset inválido')
+    .toInt()
+    .customSanitizer(function (v) { return (typeof v === 'number' && v >= 0) ? v : 0; }),
+
+  // filtros
+  query('status')
+    .optional({ checkFalsy: true, nullable: true })
+    .customSanitizer(function (v) { return normalizeStatus(v); })
+    .custom(function (v) {
+      if (!v) return true; // opcional
+      if (ALLOWED_STATUS.indexOf(v) === -1) throw new Error('Status inválido');
       return true;
     }),
+
   query('recipient')
-    .optional({ checkFalsy: true })
-    .isLength({ max: 255 }).withMessage('recipient muito longo'),
-  query('status')
-    .optional({ checkFalsy: true })
-    .custom(function(value) {
-      var normalized = normalizeStatus(value);
-      if (!normalized || ALLOWED_STATUS.indexOf(normalized) === -1) {
-        throw new Error('Status inválido');
-      }
+    .optional({ checkFalsy: true, nullable: true })
+    .isString().trim().isLength({ max: 255 }).withMessage('recipient muito longo'),
+
+  query('q')
+    .optional({ checkFalsy: true, nullable: true })
+    .isString().trim().isLength({ max: 200 }).withMessage('q inválido'),
+
+  // datas (opcionais no formato YYYY-MM-DD)
+  query('start_date')
+    .optional({ checkFalsy: true, nullable: true })
+    .matches(dateRegex).withMessage('start_date inválida'),
+
+  query('end_date')
+    .optional({ checkFalsy: true, nullable: true })
+    .matches(dateRegex).withMessage('end_date inválida')
+    .custom(function (value, meta) {
+      var req = (meta && meta.req) ? meta.req : {};
+      var start = (req.query && req.query.start_date) ? req.query.start_date : null;
+      if (value && start && value < start) throw new Error('end_date deve ser igual ou posterior a start_date');
       return true;
-    })
-    .customSanitizer(function(value) {
-      return normalizeStatus(value);
-    })
+    }),
+
+  // ordenação
+  query('order_by')
+    .optional({ checkFalsy: true, nullable: true })
+    .isIn(['created_at', 'updated_at', 'status']).withMessage('order_by inválido')
+    .customSanitizer(function (v) { return v || 'created_at'; }),
+
+  query('order')
+    .optional({ checkFalsy: true, nullable: true })
+    .customSanitizer(function (v) { return (String(v || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'); })
 ];
 
-var validateId = [
-  param('id').isInt({ min: 1 }).withMessage('ID inválido')
-];
-
-function handleValidationErrors(req, res, next) {
-  var result = validationResult(req);
-  if (result.isEmpty()) return next();
-  return res.status(400).json({
-    success: false,
-    error: 'Dados inválidos',
-    details: result.array(),
-  });
-}
-
+// -------------------------------------------------------------
+// Exports
+// -------------------------------------------------------------
 module.exports = {
-  validateCreateMessage: validateCreateMessage,
-  validateUpdateMessage: validateUpdateMessage,
-  validateUpdateStatus: validateUpdateStatus,
-  validateQueryMessages: validateQueryMessages,
-  validateId: validateId,
-  handleValidationErrors: handleValidationErrors,
-
-  // helpers expostos para testes/unit
-  _normalize: {
-    status: normalizeStatus,
-    emptyToNull: emptyToNull
-  }
+  handleValidationErrors,
+  validateCreateMessage,
+  validateUpdateMessage,
+  validateUpdateStatus,
+  validateId,
+  validateQueryMessages
 };
 
-// Compat aliases temporários
-module.exports.validateCreateRecado = module.exports.validateCreateMessage;
-module.exports.validateUpdateRecado = module.exports.validateUpdateMessage;
-module.exports.validateUpdateSituacao = module.exports.validateUpdateStatus;
-module.exports.validateQueryRecados = module.exports.validateQueryMessages;

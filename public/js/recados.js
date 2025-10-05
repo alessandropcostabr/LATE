@@ -1,129 +1,159 @@
 // public/js/recados.js
-// Página de listagem de recados — uso resiliente da API e atualização da UI.
+// Comentários em pt-BR; identificadores em inglês.
+// Lista de recados com filtros; tolera formatos de payload da API.
 
-(() => {
-  console.log('✅ Recados JS carregado');
+// Helpers (iguais ao app.js — duplicados localmente para evitar dependências implícitas)
+async function request(url, opts = {}) {
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: { 'Accept': 'application/json' },
+    ...opts
+  });
+  let json;
+  try { json = await res.json(); } catch (_e) {
+    throw new Error('Resposta inválida do servidor');
+  }
+  if (!res.ok || (json && json.success === false)) {
+    throw new Error((json && json.error) || 'Falha ao listar recados');
+  }
+  return json;
+}
 
-  const q = (sel) => document.querySelector(sel);
+function asItems(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  return [];
+}
 
-  async function carregarRecados(filtros = {}) {
-    try {
-      const params = filtros && typeof filtros === 'object' ? filtros : {};
-      const box = q('#listaRecados') || q('#recadosContainer');
-      if (box) {
-        box.innerHTML = `
-          <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
-            <span class="loading"></span> Carregando recados...
-          </div>`;
-      }
+function formatDateTimeBR(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'America/Sao_Paulo'
+    }).format(d);
+  } catch (_e) {
+    return d.toLocaleString('pt-BR');
+  }
+}
 
-      const resp = await API.listMessages(params);
-      if (!resp || resp.success === false) {
-        throw new Error(resp?.error || resp?.message || 'Falha ao listar recados.');
-      }
+// Constrói query string a partir do formulário de filtros
+function buildQueryFromForm(form) {
+  const p = new URLSearchParams();
+  const start = form.start_date?.value?.trim();
+  const end   = form.end_date?.value?.trim();
+  const rec   = form.recipient?.value?.trim();
+  const st    = form.status?.value?.trim();
 
-      const lista = Array.isArray(resp?.data) ? resp.data : resp; // compat: alguns backends retornam objeto
-      renderizarLista(lista);
-    } catch (err) {
-      console.error('❌ Erro ao carregar recados:', err?.message || err);
-      const box = q('#listaRecados') || q('#recadosContainer');
-      if (box) box.innerHTML = `<div class="alert alert-danger">${err?.message || 'Erro ao carregar recados.'}</div>`;
-    }
+  if (start) p.set('start_date', start);
+  if (end)   p.set('end_date', end);
+  if (rec)   p.set('recipient', rec);
+  if (st)    p.set('status', st);
+  p.set('limit', '10');
+  return p.toString();
+}
+
+async function carregarRecados() {
+  const container = document.getElementById('listaRecados');
+  const totalEl   = document.getElementById('totalResultados');
+  const form      = document.getElementById('filtrosForm');
+
+  if (container) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
+        <span class="loading"></span> Carregando recados...
+      </div>`;
   }
 
-  function renderizarLista(itens) {
-    const box = q('#listaRecados') || q('#recadosContainer');
-    const totalEl = q('#totalResultados') || q('#totalRecados');
+  try {
+    // Pega filtros da URL ou do form
+    const url = new URL(window.location.href);
+    const qs  = url.searchParams;
+    // Se houver form, reinicializa a partir dele (usuario pode ter alterado)
+    const query = form ? buildQueryFromForm(form) : qs.toString();
 
-    if (!box) return;
+    const resp = await request(`/api/messages${query ? `?${query}` : ''}`);
+    const list = asItems(resp);
 
-    if (!Array.isArray(itens) || itens.length === 0) {
-      box.innerHTML = `<div class="alert alert-info">Nenhum recado encontrado.</div>`;
-      if (totalEl) totalEl.textContent = '0';
+    if (totalEl) totalEl.textContent = `${list.length} resultado(s)`;
+
+    if (!list.length) {
+      if (container) container.innerHTML = `
+        <div style="text-align:center;padding:1.5rem;color:var(--text-secondary);">
+          Nenhum recado encontrado.
+        </div>`;
       return;
     }
 
-    const rows = itens.map((r) => {
-      const assunto = escapeHtml(r.subject || '(sem assunto)');
-      const mensagem = escapeHtml((r.message || r.notes || '(sem mensagem)')).slice(0, 120);
-      const criadoRaw = r.created_at || (r.call_date ? `${r.call_date} ${r.call_time || ''}` : '');
-      const criadoFmt = criadoRaw && typeof Utils !== 'undefined' && Utils && typeof Utils.formatDateTime === 'function'
-        ? Utils.formatDateTime(criadoRaw)
-        : criadoRaw;
-      const criado = escapeHtml(criadoFmt || '');
+    const html = list.map((m) => {
+      const created = m.created_label || formatDateTimeBR(m.createdAt || m.created_at);
+      const statusLabel = m.status_label || ({
+        pending: 'Pendente',
+        in_progress: 'Em andamento',
+        resolved: 'Resolvido'
+      }[m.status] || m.status || '—');
+
+      const subject = m.subject || '(Sem assunto)';
+      const sender  = m.sender_name || m.sender_email || '—';
+      const recipient = m.recipient || 'Não informado';
+
       return `
-        <tr>
-          <td>${assunto}</td>
-          <td>${mensagem}</td>
-          <td>${criado}</td>
-          <td>
-            <a href="/recados/${r.id}" class="btn btn-sm btn-primary">Abrir</a>
-          </td>
-        </tr>`;
+        <div class="list-item" style="display:grid;grid-template-columns:1fr auto;gap:0.5rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subject}</div>
+            <div style="font-size:0.9rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              De: ${sender} • Para: ${recipient}
+            </div>
+            <div style="font-size:0.85rem;color:var(--text-secondary);">Criado em: ${created}</div>
+          </div>
+          <div style="text-align:right;align-self:center;">
+            <div style="margin-bottom:0.5rem;"><span class="badge">${statusLabel}</span></div>
+            <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>
+          </div>
+        </div>
+      `;
     }).join('');
 
-    box.innerHTML = `
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th>Assunto</th>
-            <th>Mensagem</th>
-            <th>Criado em</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-
-    if (totalEl) totalEl.textContent = String(itens.length);
+    if (container) container.innerHTML = html;
+  } catch (err) {
+    console.error('❌ Erro ao carregar recados:', err);
+    if (container) {
+      container.innerHTML = `
+        <div class="alert alert-danger" role="alert">
+          Falha ao listar recados
+        </div>`;
+    }
   }
+}
 
-  function escapeHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+document.addEventListener('DOMContentLoaded', () => {
+  // Só roda na página /recados
+  if (!document.getElementById('listaRecados')) return;
 
-  function serializeFiltros(form) {
-    if (!form) return {};
+  // Inicial
+  carregarRecados();
 
-    const data = new FormData(form);
-    const campos = ['start_date', 'end_date', 'recipient', 'status'];
-    const filtros = {};
-
-    campos.forEach((campo) => {
-      if (!data.has(campo)) return;
-      const valorBruto = data.get(campo);
-      const valor = typeof valorBruto === 'string' ? valorBruto.trim() : valorBruto;
-      if (valor) {
-        filtros[campo] = valor;
-      }
+  // Filtros
+  const form = document.getElementById('filtrosForm');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      carregarRecados();
     });
-
-    return filtros;
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const form = q('#filtrosForm');
-
-    if (form) {
-      form.addEventListener('submit', (ev) => {
-        ev.preventDefault();
-        const filtros = serializeFiltros(form);
-        carregarRecados(filtros);
-      });
-
-      form.addEventListener('reset', () => {
-        // Aguarda o reset padrão do navegador antes de recarregar sem filtros.
-        setTimeout(() => {
-          carregarRecados();
-        }, 0);
+    const btnLimpar = document.getElementById('btnLimpar');
+    if (btnLimpar) {
+      btnLimpar.addEventListener('click', (e) => {
+        e.preventDefault();
+        form.reset();
+        history.replaceState({}, '', '/recados'); // limpa query da URL
+        carregarRecados();
       });
     }
-
-    const filtrosIniciais = form ? serializeFiltros(form) : {};
-    carregarRecados(filtrosIniciais);
-  });
-})();
+  }
+});
 

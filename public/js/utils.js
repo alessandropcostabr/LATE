@@ -1,177 +1,72 @@
 // public/js/utils.js
+// Comentários em pt-BR; identificadores em inglês.
+// - Busca estatísticas uma única vez por carregamento (cache com TTL curto).
+// - Preenche os cards do Dashboard se os elementos existirem.
 
-/** Helpers de normalização */
-const Normalizer = {
-  stripAccents(s) {
-    return (s || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  },
-  simplify(s) {
-    return Normalizer.stripAccents(String(s || ""))
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, ""); // remove espaços, _, -, etc
-  },
-  normalizeStatus(value) {
-    const key = Normalizer.simplify(value);
+(() => {
+  if (window.__lateStatsInit) return;
+  window.__lateStatsInit = true;
 
-    // mapeia variações e sinônimos
-    switch (key) {
-      // pendente
-      case "pendente":
-      case "pend":
-      case "novo":
-      case "aberto":
-      case "open":
-      case "todo":
-      case "pending":
-        return "pending";
+  const CARD_IDS = {
+    total: 'totalRecados',
+    pending: 'totalPendentes',
+    in_progress: 'totalAndamento',
+    resolved: 'totalResolvidos',
+  };
 
-      // em andamento
-      case "emandamento":
-      case "andamento":
-      case "inprogress":
-      case "progress":
-      case "ongoing":
-      case "working":
-      case "in_progress":
-        return "in_progress";
+  // Cache simples para evitar chamadas duplicadas (evita 429)
+  const STATS_TTL_MS = 5000; // 5s de vida
+  let statsCache = { ts: 0, data: null };
 
-      // resolvido
-      case "resolvido":
-      case "resolvida":
-      case "concluido":
-      case "concluida":
-      case "finalizado":
-      case "finalizada":
-      case "fechado":
-      case "done":
-      case "ok":
-      case "resolved":
-        return "resolved";
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(val);
+  };
+
+  const setAllCards = (d) => {
+    setText(CARD_IDS.total, d?.total ?? '-');
+    setText(CARD_IDS.pending, d?.pending ?? '-');
+    setText(CARD_IDS.in_progress, d?.in_progress ?? '-');
+    setText(CARD_IDS.resolved, d?.resolved ?? '-');
+  };
+
+  async function fetchStatsOnce() {
+    const now = Date.now();
+    if (statsCache.data && (now - statsCache.ts) < STATS_TTL_MS) {
+      return statsCache.data;
     }
-
-    // Se já veio em formato canônico, preserva
-    if (value === "pending" || value === "in_progress" || value === "resolved") {
-      return value;
+    const resp = await fetch('/api/messages/stats', { credentials: 'include' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+    if (!json || json.success !== true || !json.data) {
+      throw new Error('JSON inválido de /api/messages/stats');
     }
-
-    // Sem valor => não altera
-    if (!value) return value;
-
-    // Valor desconhecido: mantém original (deixa o back validar)
-    return value;
-  },
-  toNullIfEmpty(v) {
-    if (v === undefined || v === null) return null;
-    const s = String(v).trim();
-    return s === "" ? null : s;
+    statsCache = { ts: now, data: json.data };
+    return json.data;
   }
-};
 
-/** Form utility */
-const Form = {
-  getData(form) {
-    const data = {};
-    new FormData(form).forEach((value, key) => {
-      data[key] = typeof value === 'string' ? value.trim() : value;
-    });
-    return data;
-  },
-
-  /** Normaliza payload antes de enviar ao back */
-  prepareRecadoPayload(data) {
-    const out = { ...data };
-
-    // Campos opcionais: vazio -> null
-    out.sender_email    = Normalizer.toNullIfEmpty(out.sender_email);
-    out.sender_phone   = Normalizer.toNullIfEmpty(out.sender_phone);
-    out.callback_time  = Normalizer.toNullIfEmpty(out.callback_time);
-    out.notes          = Normalizer.toNullIfEmpty(out.notes);
-
-    // Situação: aceita rótulos e sinônimos
-    if (out.status !== undefined) {
-      out.status = Normalizer.normalizeStatus(out.status);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(out, 'message')) {
-      const msg = typeof out.message === 'string' ? out.message.trim() : out.message;
-      out.message = msg ? msg : '(sem mensagem)';
-    }
-
-    return out;
-  },
-
-  prepareMessagePayload(data) {
-    return Form.prepareRecadoPayload(data);
-  },
-
-  validate(form) {
-    const errors = [];
-    form.querySelectorAll('[required]').forEach(field => {
-      if (!String(field.value || '').trim()) {
-        const label = field.dataset.label || field.name || 'Campo';
-        errors.push(`${label} é obrigatório`);
-      }
-    });
-    form.querySelectorAll('input[type="email"]').forEach(field => {
-      const val = String(field.value || '').trim();
-      // e-mail vazio passa (opcional); se tiver valor, valida formato
-      if (val && !Form.isValidEmail(val)) {
-        const label = field.dataset.label || field.name || 'E-mail';
-        errors.push(`${label} inválido`);
-      }
-    });
-    return errors;
-  },
-
-  populate(form, data) {
-    Object.keys(data || {}).forEach(key => {
-      const field = form.querySelector(`[name="${key}"]`);
-      if (!field) return;
-      const val = data[key];
-      // Se vier null/undefined do back, coloca string vazia para evitar "null" na UI
-      field.value = val == null ? "" : val;
-    });
-  },
-
-  isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
-  }
-};
-
-/** Loading utility */
-const Loading = {
-  _resolveTarget(target) {
-    return typeof target === 'string'
-      ? document.getElementById(target)
-      : target instanceof HTMLElement
-        ? target
-        : null;
-  },
-  show(target) {
-    const btn = Loading._resolveTarget(target);
-    if (!btn) return;
-    if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = `<span class="loading"></span> ${btn.textContent.trim()}`;
-  },
-  hide(target) {
-    const btn = Loading._resolveTarget(target);
-    if (!btn) return;
-    btn.disabled = false;
-    if (btn.dataset.originalText) {
-      btn.innerHTML = btn.dataset.originalText;
-      delete btn.dataset.originalText;
+  async function carregarEstatisticasDashboard() {
+    try {
+      const data = await fetchStatsOnce();
+      setAllCards(data);
+    } catch (err) {
+      console.error('[dashboard] erro ao carregar estatísticas:', err);
+      setAllCards({ total: '-', pending: '-', in_progress: '-', resolved: '-' });
     }
   }
-};
 
-// Aliases de compatibilidade
-Normalizer.normalizeSituacao = Normalizer.normalizeStatus;
-Form.prepareMessagePayload = Form.prepareRecadoPayload;
+  // Dispara automaticamente no Dashboard (se os elementos existirem)
+  document.addEventListener('DOMContentLoaded', () => {
+    const hasCards =
+      document.getElementById(CARD_IDS.total) ||
+      document.getElementById(CARD_IDS.pending) ||
+      document.getElementById(CARD_IDS.in_progress) ||
+      document.getElementById(CARD_IDS.resolved);
 
-// Expose globally
-window.Form = Form;
-window.Loading = Loading;
-window.Normalizer = Normalizer;
+    if (hasCards) carregarEstatisticasDashboard();
+  });
+
+  // Expor para debug manual no console
+  window.carregarEstatisticasDashboard = carregarEstatisticasDashboard;
+})();
+

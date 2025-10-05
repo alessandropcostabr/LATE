@@ -1,100 +1,144 @@
 // public/js/app.js
+// Comentários em pt-BR; identificadores em inglês.
+// Este arquivo agora cuida APENAS de "Recados Recentes" no Dashboard.
+// As estatísticas de cards ficam a cargo do utils.js para evitar chamadas duplicadas.
 
-// Utilitários
-const Utils = {
-  /**
-   * Constrói um objeto Date no fuso local a partir de 'YYYY-MM-DD'.
-   */
-  _parseDate(dateString = '') {
-    const [y, m, d] = dateString.split('-').map(Number);
-    return new Date(y, (m || 1) - 1, d || 1);
-  },
-
-  /**
-   * Constrói um objeto Date no fuso local a partir de 'YYYY-MM-DDTHH:mm:ss'.
-   */
-  _parseDateTime(dateString = '') {
-    const [datePart, timePart = ''] = dateString.split(/T| /);
-    const [y, m, d] = datePart.split('-').map(Number);
-    const [h = 0, min = 0, s = 0] = timePart.split(':').map(Number);
-    return new Date(y, (m || 1) - 1, d || 1, h, min, s);
-  },
-
-  formatDate(dateString) {
-    const date = this._parseDate(dateString);
-    return date.toLocaleDateString('pt-BR');
-  },
-  formatDateTime(dateString) {
-    const date = this._parseDateTime(dateString);
-    return date.toLocaleString('pt-BR');
-  },
-  formatDateForInput(dateString) {
-    const date = this._parseDate(dateString);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  },
-  formatTimeForInput(timeString) {
-    return timeString.substring(0, 5);
-  },
-  getCurrentDate() {
-    return new Date().toISOString().split('T')[0];
-  },
-  getCurrentTime() {
-    const now = new Date();
-    return now.toTimeString().substring(0, 5);
-  },
-  truncateText(text, maxLength = 50) {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  },
-  debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  },
-  escapeHTML(str) {
-    if (typeof str !== 'string') return str;
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+// Helpers de requisição (compatível com a API atual)
+async function request(url, opts = {}) {
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: { 'Accept': 'application/json' },
+    ...opts
+  });
+  let json;
+  try { json = await res.json(); } catch (_e) {
+    throw new Error('Resposta inválida do servidor');
   }
-};
-
-// Notificações e modais (mantidos conforme original)
-const Modal = { /* … */ };
-
-
-/**
- * Retorna o rótulo legível para cada situação
- */
-function getStatusLabel(status) {
-  const labels = { pending: 'Pendente', in_progress: 'Em Andamento', resolved: 'Resolvido' };
-  if (typeof Normalizer !== 'undefined' && Normalizer && typeof Normalizer.normalizeStatus === 'function') {
-    const normalized = Normalizer.normalizeStatus(status);
-    if (labels[normalized]) return labels[normalized];
+  if (!res.ok || (json && json.success === false)) {
+    throw new Error((json && json.error) || 'Falha na requisição');
   }
-  const key = String(status || '').toLowerCase().replace(/\s+/g, '_');
-  return labels[key] || labels[status] || (status == null ? '-' : status);
+  return json;
 }
 
-// Expõe globalmente
-window.getStatusLabel = getStatusLabel;
-window.getSituacaoLabel = getStatusLabel;
+// Normaliza vetor de itens aceitando { data: [...] } OU { items: [...], total }
+function asItems(payload) {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.items)) return payload.items;
+  if (Array.isArray(payload.data)) return payload.data;
+  return [];
+}
 
-// ─── INICIALIZAÇÃO LAZY ──────────────────────────────────────────────────────
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.getElementById("recadosRecentes")) {
-    import("/js/dashboard.js")
-      .then(mod => mod.initDashboard())
-      .catch(err => console.error("Erro ao carregar módulo do dashboard", err));
+function formatDateTimeBR(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: 'America/Sao_Paulo'
+    }).format(d);
+  } catch (_e) {
+    return d.toLocaleString('pt-BR');
   }
+}
+
+// ---- Recados Recentes (somente) ----
+async function carregarRecadosRecentes() {
+  const container = document.getElementById('recadosRecentes');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+      <div class="loading" style="margin: 0 auto 1rem;"></div>
+      Carregando recados...
+    </div>
+  `;
+
+  try {
+    // Busca últimos 10 (o back já ordena por created_at desc)
+    const resp = await request('/api/messages?limit=10');
+    const list = asItems(resp);
+
+    if (!list.length) {
+      container.innerHTML = `
+        <div style="text-align:center; padding: 1.5rem; color: var(--text-secondary);">
+          Nenhum recado encontrado.
+        </div>`;
+      return;
+    }
+
+    const html = list.map((m) => {
+      const created = m.created_label || formatDateTimeBR(m.createdAt || m.created_at);
+      const statusLabel = m.status_label || ({
+        pending: 'Pendente',
+        in_progress: 'Em andamento',
+        resolved: 'Resolvido'
+      }[m.status] || m.status || '—');
+
+      const subject = m.subject || '(Sem assunto)';
+      const sender  = m.sender_name || m.sender_email || '—';
+      const recipient = m.recipient || 'Não informado';
+
+      return `
+        <div class="list-item" style="display:flex;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
+          <div style="min-width:0;">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subject}</div>
+            <div style="font-size:0.9rem; color:var(--text-secondary);">
+              De: ${sender} • Para: ${recipient}
+            </div>
+            <div style="font-size:0.85rem; color:var(--text-secondary);">Criado em: ${created}</div>
+          </div>
+          <div style="white-space:nowrap;align-self:center;">
+            <span class="badge">${statusLabel}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  } catch (err) {
+    console.error('Erro ao carregar recados recentes:', err);
+    container.innerHTML = `
+      <div class="alert alert-danger" role="alert">
+        Erro ao carregar recados recentes
+      </div>`;
+  }
+}
+
+function initDashboard() {
+  // ⚠️ NÃO chamar estatísticas aqui para evitar duplicidade com utils.js
+  carregarRecadosRecentes();
+
+  // Links rápidos "Hoje / Semana" (mantidos)
+  const btnHoje   = document.getElementById('btnHoje');
+  const btnSemana = document.getElementById('btnSemana');
+  try {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm   = String(now.getMonth() + 1).padStart(2, '0');
+    const dd   = String(now.getDate()).padStart(2, '0');
+    const today = `${yyyy}-${mm}-${dd}`;
+
+    if (btnHoje)   btnHoje.href   = `/recados?start_date=${today}&end_date=${today}`;
+
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay(); // 0 dom - 6 sáb
+    const diff = (day + 6) % 7;       // segunda como início
+    startOfWeek.setDate(now.getDate() - diff);
+    const y2 = startOfWeek.getFullYear();
+    const m2 = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+    const d2 = String(startOfWeek.getDate()).padStart(2, '0');
+    if (btnSemana) btnSemana.href = `/recados?start_date=${y2}-${m2}-${d2}&end_date=${today}`;
+  } catch (_e) {/* noop */}
+}
+
+// Bootstrap
+document.addEventListener('DOMContentLoaded', () => {
+  // Executa apenas no Dashboard
+  const h1 = document.querySelector('main h1, h1');
+  const isDashboard = h1 && /dashboard/i.test(h1.textContent || '');
+  if (isDashboard) initDashboard();
 });
 

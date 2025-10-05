@@ -4,32 +4,40 @@
 
   <main class="container mt-5" style="max-width:500px;">
     <h1 class="mb-4">Registrar</h1>
-    <form method="POST" action="/register">
+
+    <form method="POST" action="/register" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
       <div class="mb-3">
         <label for="name" class="form-label">Nome</label>
-        <input type="text" class="form-control" id="name" name="name" value="<%= typeof name !== 'undefined' ? name : '' %>">
+        <input type="text" class="form-control" id="name" name="name"
+               value="<%= typeof name === 'string' ? name : '' %>">
       </div>
+
       <div class="mb-3">
         <label for="email" class="form-label">E-mail</label>
-        <input type="email" class="form-control" id="email" name="email" value="<%= typeof email !== 'undefined' ? email : '' %>">
+        <input type="email" class="form-control" id="email" name="email"
+               value="<%= typeof email === 'string' ? email : '' %>">
       </div>
+
       <div class="mb-3">
         <label for="password" class="form-label">Senha</label>
         <input type="password" class="form-control" id="password" name="password">
       </div>
+
       <div class="mb-3">
         <label for="role" class="form-label">Perfil</label>
-        <select id="role" name="role" class="form-select">
-          <% if (Array.isArray(roles)) { %>
-            <% roles.forEach(r => { %>
-              <option value="<%= r %>" <%= (selectedRole ? selectedRole === r : r === 'OPERADOR') ? 'selected' : '' %>><%= r %></option>
-            <% }) %>
-          <% } %>
+        <select id="role" name="role" class="form-control">
+          <% const r = (typeof role === 'string' ? role : 'OPERADOR'); %>
+          <option value="ADMIN" <%= r === 'ADMIN' ? 'selected' : '' %>>ADMIN</option>
+          <option value="SUPERVISOR" <%= r === 'SUPERVISOR' ? 'selected' : '' %>>SUPERVISOR</option>
+          <option value="OPERADOR" <%= r === 'OPERADOR' ? 'selected' : '' %>>OPERADOR</option>
+          <option value="LEITOR" <%= r === 'LEITOR' ? 'selected' : '' %>>LEITOR</option>
         </select>
       </div>
-      <% if (typeof errors !== 'undefined' && Array.isArray(errors)) { %>
-        <div class="alert alert-danger">
+
+      <% if (Array.isArray(errors) && errors.length) { %>
+        <div class="alert alert-danger" role="alert">
           <ul class="mb-0">
             <% errors.forEach(e => { %>
               <li><%= e.msg %></li>
@@ -37,11 +45,14 @@
           </ul>
         </div>
       <% } %>
-      <% if (typeof error !== 'undefined') { %>
-        <div class="alert alert-danger"><%= error %></div>
+
+      <% if (typeof error === 'string' && error.trim().length > 0) { %>
+        <div class="alert alert-danger" role="alert"><%= error %></div>
       <% } %>
+
       <button type="submit" class="btn btn-primary">Registrar</button>
     </form>
   </main>
 
   <%- include('partials/footer') %>
+

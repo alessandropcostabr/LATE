@@ -1,63 +1,83 @@
 // middleware/cors.js
-// CORS centralizado — identificadores em inglês, mensagens em pt-BR.
-// Regra: origens definidas por env (CORS_ORIGINS, separadas por vírgula),
-// mais fallbacks locais e domínios obrigatórios do projeto.
+// Comentários em pt-BR; identificadores em inglês.
+//
+// Regras:
+// - Aplica CORS somente para requisições da API (/api/*).
+// - Se não houver Origin: NÃO é CORS -> permite (forms same-origin, curl, server-side).
+// - Permite múltiplas origens via env CORS_ORIGINS (separadas por vírgula).
+// - Preflight (OPTIONS) retorna 204.
+// - Origin "null" (file://, extensões) é bloqueado por padrão — libere com CORS_ALLOW_NULL=1.
 
-const REQUIRED_ORIGINS = [
-  'http://late.miahchat.com',
+const DEFAULT_ALLOWLIST = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'https://late.miahchat.com',
 ];
 
-const FALLBACK_ORIGINS = [
-  'http://127.0.0.1:3000',
-  'http://localhost:3000',
-  'http://localhost',
-];
+// Concatena allowlist padrão + valores vindos do env (sem duplicatas)
+function parseAllowlist() {
+  const extra = String(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
 
-const ENV_ORIGINS = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+  return Array.from(new Set([...DEFAULT_ALLOWLIST, ...extra]));
+}
 
-const allowedOrigins = new Set([
-  ...REQUIRED_ORIGINS,
-  ...FALLBACK_ORIGINS,
-  ...ENV_ORIGINS,
-]);
+// Detecta se a requisição é para a API independente de como foi montado o middleware
+function isApiRequest(req) {
+  const url = req.originalUrl || req.url || '';
+  const base = req.baseUrl || '';
+  const path = req.path || '';
 
-const METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
-const ALLOWED_HEADERS_LIST = ['Content-Type', 'X-CSRF-Token', 'X-Requested-With'];
-const ALLOWED_HEADERS = ALLOWED_HEADERS_LIST.join(',');
+  return (
+    url.startsWith('/api/') ||
+    base.startsWith('/api') ||
+    path.startsWith('/api/')
+  );
+}
 
-const corsMiddleware = (req, res, next) => {
+module.exports = function corsMiddleware(req, res, next) {
+  // ✅ Só aplicar CORS na API
+  if (!isApiRequest(req)) return next();
+
   const origin = req.headers.origin;
+  const allowlist = parseAllowlist();
 
-  // Requisições sem Origin (curl/health checks) passam direto
+  // Sem Origin => não é uma requisição CORS (ex.: form same-origin)
   if (!origin) return next();
 
-  if (!allowedOrigins.has(origin)) {
-    console.warn(`[CORS] Origem não permitida: ${origin}`);
+  // Origin "null" (file://, sandbox). Bloqueado por padrão por segurança.
+  if (origin === 'null') {
+    if (process.env.CORS_ALLOW_NULL === '1') {
+      // Em null origin não usamos credenciais; devolvemos '*' apenas para leitura pública.
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Vary', 'Origin');
+      if (req.method === 'OPTIONS') {
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-CSRF-Token,X-Requested-With');
+        res.setHeader('Access-Control-Max-Age', '600');
+        return res.status(204).end();
+      }
+      return next();
+    }
+    return res.status(403).json({ success: false, error: 'Origem não permitida: null' });
+  }
+
+  // Origin presente: precisa estar na allowlist
+  if (allowlist.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    return res.status(403).json({ success: false, error: `Origem não permitida: ${origin}` });
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-CSRF-Token,X-Requested-With');
+    res.setHeader('Access-Control-Max-Age', '600');
+
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    return next();
   }
 
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', METHODS);
-  res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
-  res.setHeader('Vary', 'Origin');
-
-  // Responder preflight imediatamente
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Max-Age', '600'); // 10 min
-    return res.sendStatus(204);
-  }
-
-  return next();
+  // Origin não permitido
+  return res.status(403).json({ success: false, error: `Origem não permitida: ${origin}` });
 };
 
-corsMiddleware.ALLOWED_METHODS = METHODS;
-corsMiddleware.ALLOWED_HEADERS = ALLOWED_HEADERS;
-corsMiddleware.ALLOWED_HEADERS_LIST = ALLOWED_HEADERS_LIST;
-
-module.exports = corsMiddleware;
