@@ -1,187 +1,85 @@
 // routes/api.js
 // Comentários em pt-BR; identificadores em inglês.
-// Rotas REST (/api/*) — CRUD de messages, estatísticas e health do DB.
 
-const express = require('express');
-const router = express.Router();
+const Router = require('router');
+const router = Router();
 
 // Controllers
 const messageController = require('../controllers/messageController');
-const userController    = require('../controllers/userController'); // opcional
+const statsController   = require('../controllers/statsController');
 
-// Handlers de stats com require tardio (evita cache quebrado e garante função)
-const statsHandlers = {
-  messagesStats: (req, res, next) => {
-    try {
-      const c = require('../controllers/statsController');
-      return (typeof c.messagesStats === 'function')
-        ? c.messagesStats(req, res, next)
-        : next(new Error('statsController.messagesStats não é função'));
-    } catch (e) { return next(e); }
-  },
-  byStatus: (req, res, next) => {
-    try {
-      const c = require('../controllers/statsController');
-      return (typeof c.byStatus === 'function')
-        ? c.byStatus(req, res, next)
-        : next(new Error('statsController.byStatus não é função'));
-    } catch (e) { return next(e); }
-  },
-  byRecipient: (req, res, next) => {
-    try {
-      const c = require('../controllers/statsController');
-      return (typeof c.byRecipient === 'function')
-        ? c.byRecipient(req, res, next)
-        : next(new Error('statsController.byRecipient não é função'));
-    } catch (e) { return next(e); }
-  },
-  byMonth: (req, res, next) => {
-    try {
-      const c = require('../controllers/statsController');
-      return (typeof c.byMonth === 'function')
-        ? c.byMonth(req, res, next)
-        : next(new Error('statsController.byMonth não é função'));
-    } catch (e) { return next(e); }
-  }
-};
-
-// Infra
-const database       = require('../config/database'); // /health/db
-const csrfProtection = require('../middleware/csrf');
-
-// Validações
+// Validation (NOMES DEVEM BATER com middleware/validation.js)
 const {
+  handleValidationErrors,
   validateCreateMessage,
   validateUpdateMessage,
   validateUpdateStatus,
-  validateListMessages,
-  validateIdParam,
-  handleValidation
+  validateId,
+  validateQueryMessages
 } = require('../middleware/validation');
 
-/* -------------------------------------------------------------------- *
- * Helpers defensivos para registro de rotas
- * - Achata arrays de middlewares e garante que todo item seja função
- * - Se não for função, registra um middleware que loga erro e chama next(err)
- * -------------------------------------------------------------------- */
-function normalizeHandlers(handlers, label) {
-  const flat = handlers.flatMap(h => Array.isArray(h) ? h : [h]);
-  return flat.map((mw, i) => {
-    if (typeof mw === 'function') return mw;
-    const type = Object.prototype.toString.call(mw);
-    return (req, res, next) => {
-      const msg = `[router] ${label}: middleware #${i} inválido (tipo=${type})`;
-      console.error(msg);
-      next(new Error(msg));
-    };
-  });
+// --- Guards defensivos: evitam crash se algum middleware vier undefined ---
+function ensure(fn, name) {
+  if (typeof fn === 'function') return fn;
+  console.error(`[router] middleware '${name}' inválido (tipo=${Object.prototype.toString.call(fn)}) — usando no-op`);
+  return (req, res, next) => next();
+}
+function chain(...fns) {
+  return fns.map((fn, i) => ensure(fn, `mw#${i + 1}`));
 }
 
-function add(method, path, ...handlers) {
-  const label = `${method.toUpperCase()} ${path}`;
-  const fns = normalizeHandlers(handlers, label);
-  router[method](path, ...fns);
-}
+// ========== Messages ==========
 
-const GET    = (...args) => add('get',    ...args);
-const POST   = (...args) => add('post',   ...args);
-const PUT    = (...args) => add('put',    ...args);
-const PATCH  = (...args) => add('patch',  ...args);
-const DELETE = (...args) => add('delete', ...args);
-
-/* ======================================================================
- * Health do banco
- * ====================================================================*/
-GET('/health/db', async (_req, res) => {
-  try {
-    const row = await database.db().one('SELECT version() AS version');
-    return res.json({
-      success: true,
-      data: {
-        driver: database.driver || process.env.DB_DRIVER || 'pg',
-        version: row.version
-      }
-    });
-  } catch (err) {
-    console.error('[health/db] erro:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao consultar saúde do banco' });
-  }
-});
-
-/* ======================================================================
- * Estatísticas (dashboard/relatórios) — antes de rotas com :id
- * ====================================================================*/
-GET('/messages/stats',     statsHandlers.messagesStats);
-GET('/stats/by-status',    statsHandlers.byStatus);
-GET('/stats/by-recipient', statsHandlers.byRecipient);
-GET('/stats/by-month',     statsHandlers.byMonth);
-
-/* ======================================================================
- * Messages (CRUD)
- * ====================================================================*/
-GET(
+// Listar (com querystring: limit/offset/status/recipient/start_date/end_date)
+router.get(
   '/messages',
-  validateListMessages,
-  handleValidation,
+  ...chain(validateQueryMessages, handleValidationErrors),
   messageController.list
 );
 
-GET(
+// KPIs de cards (total/pending/in_progress/resolved)
+router.get('/messages/stats', ensure(statsController.messagesStats, 'messagesStats'));
+
+// Obter 1
+router.get(
   '/messages/:id',
-  validateIdParam,
-  handleValidation,
-  messageController.getById
+  ...chain(validateId, handleValidationErrors),
+  messageController.show
 );
 
-POST(
+// Criar
+router.post(
   '/messages',
-  csrfProtection,
-  validateCreateMessage,
-  handleValidation,
+  ...chain(validateCreateMessage, handleValidationErrors),
   messageController.create
 );
 
-PUT(
+// Atualizar
+router.put(
   '/messages/:id',
-  csrfProtection,
-  validateIdParam,
-  validateUpdateMessage,
-  handleValidation,
+  ...chain(validateId, validateUpdateMessage, handleValidationErrors),
   messageController.update
 );
 
-PATCH(
-  '/messages/:id',
-  csrfProtection,
-  validateIdParam,
-  validateUpdateMessage,
-  handleValidation,
-  messageController.update
-);
-
-PATCH(
+// Atualizar status
+router.patch(
   '/messages/:id/status',
-  csrfProtection,
-  validateIdParam,
-  validateUpdateStatus,
-  handleValidation,
+  ...chain(validateId, validateUpdateStatus, handleValidationErrors),
   messageController.updateStatus
 );
 
-DELETE(
+// Remover
+router.delete(
   '/messages/:id',
-  csrfProtection,
-  validateIdParam,
-  handleValidation,
+  ...chain(validateId, handleValidationErrors),
   messageController.remove
 );
 
-/* ======================================================================
- * Users (opcional)
- * ====================================================================*/
-if (userController && typeof userController.me === 'function') {
-  GET('/users/me', userController.me);
-}
+// ========== Stats (Relatórios) ==========
+router.get('/stats/by-status',    ensure(statsController.byStatus, 'byStatus'));
+router.get('/stats/by-recipient', ensure(statsController.byRecipient, 'byRecipient'));
+router.get('/stats/by-month',     ensure(statsController.byMonth, 'byMonth'));
 
+// Export
 module.exports = router;
 
