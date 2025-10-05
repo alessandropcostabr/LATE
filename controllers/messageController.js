@@ -1,285 +1,214 @@
 // controllers/messageController.js
 // Comentários em pt-BR; identificadores em inglês.
 
-const MessageModel = require('../models/message');
+const Message = require('../models/message');
 
-// ---------------------------------------------------------------------------
-// Helpers de formatação
-// ---------------------------------------------------------------------------
+// Mapeia status -> rótulo pt-BR (mantém contrato do projeto)
+const STATUS_LABELS_PT = {
+  pending: 'Pendente',
+  in_progress: 'Em andamento',
+  resolved: 'Resolvido',
+};
 
-function toISO(value) {
-  if (!value) return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
-// Converte snake_case → camelCase e saneia datas.
-// Mantém campos originais e adiciona os normalizados.
-function formatMessage(message) {
-  if (!message) return null;
-
-  // saneia datas com fallback (created_at → updated_at → agora)
-  const createdISO = toISO(message.created_at) || toISO(message.updated_at) || new Date().toISOString();
-  const updatedISO = toISO(message.updated_at) || createdISO;
-
+// Função para padronizar o objeto enviado ao cliente (mantém snake_case e adiciona camelCase)
+function toClient(row) {
+  if (!row) return null;
   return {
-    ...message,
-
-    // labels em pt-BR
-    status_label: (MessageModel.STATUS_LABELS_PT && MessageModel.STATUS_LABELS_PT[message.status]) || message.status,
-
-    // mantém snake_case, porém normalizado para ISO (para o front que usa created_at diretamente)
-    created_at: createdISO,
-    updated_at: updatedISO,
-
-    // adiciona camelCase
-    createdAt: createdISO,
-    updatedAt: updatedISO,
+    ...row,
+    // alias em camelCase para compatibilidade com JS do front
+    createdAt: row.created_at ?? null,
+    updatedAt: row.updated_at ?? null,
+    // rótulo amigável
+    status_label: STATUS_LABELS_PT[row.status] || row.status,
   };
 }
 
-// Utilitário para montar payload de gráficos (labels/data) com fallback seguro.
-function toChartPayload(rows, { labelKey, valueKey, fallbackLabel = 'Não informado', transformLabel } = {}) {
-  const labels = [];
-  const data = [];
-
-  for (const row of rows || []) {
-    const rawLabel = labelKey ? row[labelKey] : row;
-    const baseLabel = (rawLabel === undefined || rawLabel === null || rawLabel === '')
-      ? fallbackLabel
-      : rawLabel;
-    const finalLabel = transformLabel ? transformLabel(baseLabel, row) : baseLabel;
-
-    const rawValue = valueKey ? row[valueKey] : row;
-    const numericValue = Number(rawValue);
-    const finalValue = Number.isFinite(numericValue) ? numericValue : 0;
-
-    labels.push(String(finalLabel));
-    data.push(finalValue);
-  }
-
-  return { labels, data };
-}
-
-function formatMonthLabel(label) {
-  if (!label || typeof label !== 'string') return 'Não informado';
-  const parts = label.split('-'); // 'YYYY-MM'
-  if (parts.length === 2) {
-    const [year, month] = parts;
-    return `${month}/${year}`;
-  }
-  return label;
-}
-
-// ---------------------------------------------------------------------------
-// Listagem
-// Retorna `data: { items, total, limit, offset }` para compatibilidade.
-// ---------------------------------------------------------------------------
+// GET /api/messages?limit&offset&start_date&end_date&status&recipient&order_by&order
 exports.list = async (req, res) => {
   try {
-    const q = req.query || {};
-
-    const limit = Math.min(Math.max(parseInt(q.limit, 10) || 10, 1), 50);
-    const offset = Math.max(parseInt(q.offset, 10) || 0, 0);
-
-    const filters = {
-      status: q.status || null,
-      recipient: q.recipient || null,
-      q: q.q || null,
-      start_date: q.start_date || null,
-      end_date: q.end_date || null,
-      order_by: q.order_by || 'created_at',
-      order: (q.order || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc',
+    const {
       limit,
       offset,
-    };
+      start_date,
+      end_date,
+      status,
+      recipient,
+      order_by,
+      order,
+    } = req.query;
 
-    // O model pode retornar array puro ou { items, total }
-    const rowsOrObj = await MessageModel.list(filters);
-    const rawItems = Array.isArray(rowsOrObj) ? rowsOrObj : (rowsOrObj.items || []);
-    const total = Array.isArray(rowsOrObj) ? rawItems.length : (rowsOrObj.total ?? rawItems.length);
-
-    const items = rawItems.map(formatMessage);
-
-    // shape esperado pelo front: data: { items, total, limit, offset }
-    return res.json({
-      success: true,
-      data: { items, total, limit, offset },
-      // mantemos compat extra (se algum ponto ainda lê diretamente):
-      items,
-      meta: { total, limit, offset },
+    const rows = await Message.list({
+      limit,
+      offset,
+      start_date,
+      end_date,
+      status,
+      recipient,
+      order_by,
+      order,
     });
+
+    return res.json({ success: true, data: rows.map(toClient) });
   } catch (err) {
-    console.error('[messages] list error:', err);
+    console.error('[messages] erro ao listar:', err);
     return res.status(500).json({ success: false, error: 'Falha ao listar recados' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Obter por ID
-// ---------------------------------------------------------------------------
+// GET /api/messages/:id
 exports.getById = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ success: false, error: 'ID inválido' });
-
-    const message = MessageModel.findById ? await MessageModel.findById(id) : await MessageModel.getById(id);
-    if (!message) {
-      return res.status(404).json({ success: false, error: 'Mensagem não encontrada.' });
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    return res.json({ success: true, data: formatMessage(message) });
+    const row = await Message.findById(id);
+    if (!row) {
+      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+    }
+    return res.json({ success: true, data: toClient(row) });
   } catch (err) {
-    console.error('[messages] erro ao obter mensagem:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao obter mensagem.' });
+    console.error('[messages] erro ao obter por id:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao obter recado' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Criar
-// ---------------------------------------------------------------------------
+// POST /api/messages
 exports.create = async (req, res) => {
   try {
-    const id = await MessageModel.create(req.body || {});
-    const message = id
-      ? (MessageModel.findById ? await MessageModel.findById(id) : await MessageModel.getById(id))
-      : null;
-    const formatted = message ? formatMessage(message) : { id };
-    return res.status(201).json({ success: true, data: formatted });
+    const id = await Message.create(req.body || {});
+    const created = await Message.findById(id);
+    return res.status(201).json({ success: true, data: toClient(created) });
   } catch (err) {
-    console.error('[messages] erro ao criar mensagem:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao criar mensagem.' });
+    console.error('[messages] erro ao criar:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao criar recado' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Atualizar
-// ---------------------------------------------------------------------------
+// PUT /api/messages/:id
 exports.update = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const ok = await MessageModel.update(id, req.body || {});
-    if (!ok) {
-      return res.status(404).json({ success: false, error: 'Mensagem não encontrada para atualização.' });
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const message = MessageModel.findById ? await MessageModel.findById(id) : await MessageModel.getById(id);
-    return res.json({ success: true, data: formatMessage(message) });
+    const ok = await Message.update(id, req.body || {});
+    if (!ok) {
+      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+    }
+    const updated = await Message.findById(id);
+    return res.json({ success: true, data: toClient(updated) });
   } catch (err) {
-    console.error('[messages] erro ao atualizar mensagem:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao atualizar mensagem.' });
+    console.error('[messages] erro ao atualizar:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao atualizar recado' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Atualizar status
-// ---------------------------------------------------------------------------
+// PATCH /api/messages/:id/status
 exports.updateStatus = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const status = req.body && req.body.status;
-    const ok = await MessageModel.updateStatus(id, status);
-    if (!ok) {
-      return res.status(404).json({ success: false, error: 'Mensagem não encontrada para atualização de status.' });
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const message = MessageModel.findById ? await MessageModel.findById(id) : await MessageModel.getById(id);
-    return res.json({ success: true, data: formatMessage(message) });
+    const { status } = req.body || {};
+    const ok = await Message.updateStatus(id, status);
+    if (!ok) {
+      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+    }
+    const updated = await Message.findById(id);
+    return res.json({ success: true, data: toClient(updated) });
   } catch (err) {
     console.error('[messages] erro ao atualizar status:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao atualizar status da mensagem.' });
+    return res.status(500).json({ success: false, error: 'Falha ao atualizar status' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Remover
-// ---------------------------------------------------------------------------
+// DELETE /api/messages/:id
 exports.remove = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const ok = await MessageModel.remove(id);
-    if (!ok) {
-      return res.status(404).json({ success: false, error: 'Mensagem não encontrada para exclusão.' });
+    if (!Number.isFinite(id) || id <= 0) {
+      return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    return res.json({ success: true, data: { id, deleted: true } });
+    const ok = await Message.remove(id);
+    if (!ok) {
+      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+    }
+    return res.json({ success: true, data: 'Recado removido com sucesso' });
   } catch (err) {
-    console.error('[messages] erro ao excluir mensagem:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao excluir mensagem.' });
+    console.error('[messages] erro ao remover:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao remover recado' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Estatísticas (cards/dashboard)
-// ---------------------------------------------------------------------------
+// GET /api/messages/stats (cards do dashboard)
 exports.stats = async (_req, res) => {
   try {
-    const stats = await MessageModel.stats();
+    const s = await Message.stats();
     return res.json({
       success: true,
       data: {
-        ...stats,
-        labels: MessageModel.STATUS_LABELS_PT || {
-          pending: 'Pendente',
-          in_progress: 'Em andamento',
-          resolved: 'Resolvido'
-        }
-      }
+        ...s,
+        labels: STATUS_LABELS_PT,
+      },
     });
   } catch (err) {
-    console.error('[messages] erro nas estatísticas:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas.' });
+    console.error('[messages] erro em /stats:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao obter estatísticas' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Estatísticas por destinatário
-// ---------------------------------------------------------------------------
-exports.statsByRecipient = async (req, res) => {
-  try {
-    const { limit } = req.query || {};
-    const rows = await MessageModel.statsByRecipient({ limit });
-    const payload = toChartPayload(rows, {
-      labelKey: 'recipient',
-      valueKey: 'count',
-      fallbackLabel: 'Não informado'
-    });
-    return res.json({ success: true, data: payload });
-  } catch (err) {
-    console.error('[messages] erro ao obter estatísticas por destinatário:', err);
-    return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por destinatário.' });
-  }
-};
-
-// ---------------------------------------------------------------------------
-// Estatísticas por status
-// ---------------------------------------------------------------------------
+// GET /api/stats/by-status (pizza)
 exports.statsByStatus = async (_req, res) => {
   try {
-    const rows = await MessageModel.statsByStatus();
-    const payload = toChartPayload(rows, {
-      labelKey: 'label',
-      valueKey: 'count',
-      fallbackLabel: 'Status desconhecido'
+    const rows = await Message.statsByStatus();
+    return res.json({
+      success: true,
+      data: {
+        labels: rows.map(r => STATUS_LABELS_PT[r.status] || r.status),
+        data: rows.map(r => r.count),
+      },
     });
-    return res.json({ success: true, data: payload });
   } catch (err) {
-    console.error('[messages] erro ao obter estatísticas por status:', err);
+    console.error('[messages] erro em /stats/by-status:', err);
     return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por status.' });
   }
 };
 
-// ---------------------------------------------------------------------------
-// Estatísticas por mês
-// ---------------------------------------------------------------------------
-exports.statsByMonth = async (req, res) => {
+// GET /api/stats/by-recipient (barras)
+exports.statsByRecipient = async (_req, res) => {
   try {
-    const { limit } = req.query || {};
-    const rows = await MessageModel.statsByMonth({ limit }); // ok se o model ignorar params
-    const payload = toChartPayload(rows, {
-      labelKey: 'month',
-      valueKey: 'count',
-      fallbackLabel: 'Não informado',
-      transformLabel: formatMonthLabel
+    const rows = await Message.statsByRecipient({ limit: 10 });
+    return res.json({
+      success: true,
+      data: {
+        labels: rows.map(r => r.recipient),
+        data: rows.map(r => r.count),
+      },
     });
-    return res.json({ success: true, data: payload });
+  } catch (err) {
+    console.error('[messages] erro em /stats/by-recipient:', err);
+    return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por destinatário.' });
+  }
+};
+
+// GET /api/stats/by-month (linha)
+exports.statsByMonth = async (_req, res) => {
+  try {
+    const rows = await Message.statsByMonth();
+    // formata MM/YYYY no controller (UI espera rótulo pt-BR)
+    const labels = rows.map(r => {
+      const [yy, mm] = r.month.split('-');
+      return `${mm}/${yy}`;
+    });
+    return res.json({
+      success: true,
+      data: {
+        labels,
+        data: rows.map(r => r.count),
+      },
+    });
   } catch (err) {
     console.error('[messages] erro ao obter estatísticas por mês:', err);
     return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por mês.' });
