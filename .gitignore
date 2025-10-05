@@ -69,7 +69,6 @@ logs/
 #Scripts
 *.sh
 
-__tests__/
 
 # local only
 .env*

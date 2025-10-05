@@ -60,7 +60,7 @@ router.get('/messages/stats', ...flatFns(statsController.messagesStats));
 router.get(
   '/messages/:id',
   ...flatFns(validateId, handleValidationErrors),
-  messageController.show
+  messageController.getById
 );
 
 // Criar
