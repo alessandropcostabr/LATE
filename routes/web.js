@@ -11,6 +11,16 @@ const MessageModel = require('../models/message'); // para /recados/:id
 
 const router = express.Router();
 
+// Admin → Usuários (apenas ADMIN)
+router.get('/admin/users', requireAuth, requireRole('ADMIN'), (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  return res.render('admin-users', {
+    title: 'Admin · Usuários',
+    csrfToken,
+    scripts: ['/js/admin-users.js'], // novo JS do painel admin
+  });
+});
+
 // ------------------------------ Auth ---------------------------------------
 router.get('/login', csrfProtection, authController.showLogin);
 

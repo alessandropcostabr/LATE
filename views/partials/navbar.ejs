@@ -8,21 +8,36 @@
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link<%= title === 'Dashboard' ? ' active' : '' %>" href="/">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link<%= title === 'Recados' ? ' active' : '' %>" href="/recados">Recados</a></li>
-        <li class="nav-item"><a class="nav-link<%= title === 'Novo Recado' ? ' active' : '' %>" href="/novo-recado">Novo Recado</a></li>
+        <li class="nav-item">
+          <a class="nav-link<%= title === 'Dashboard' ? ' active' : '' %>" href="/">Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link<%= title === 'Recados' ? ' active' : '' %>" href="/recados">Recados</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link<%= title === 'Novo Recado' ? ' active' : '' %>" href="/novo-recado">Novo Recado</a>
+        </li>
+
         <% if (typeof user !== 'undefined' && user && user.role === 'ADMIN') { %>
-          <li class="nav-item"><a class="nav-link<%= title === 'Relatórios' ? ' active' : '' %>" href="/relatorios">Relatórios</a></li>
-          <li class="nav-item"><a class="nav-link<%= title === 'Registrar Usuário' ? ' active' : '' %>" href="/register">Registrar</a></li>
+          <li class="nav-item">
+            <a class="nav-link<%= title === 'Relatórios' ? ' active' : '' %>" href="/relatorios">Relatórios</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link<%= title === 'Admin · Usuários' ? ' active' : '' %>" href="/admin/users">Usuários</a>
+          </li>
         <% } %>
       </ul>
+
       <ul class="navbar-nav mb-2 mb-lg-0">
         <% if (typeof user !== 'undefined' && user) { %>
           <li class="nav-item"><a class="nav-link" href="/logout">Sair</a></li>
         <% } else { %>
-          <li class="nav-item"><a class="nav-link<%= title === 'Login' ? ' active' : '' %>" href="/login">Login</a></li>
+          <li class="nav-item">
+            <a class="nav-link<%= title === 'Login' ? ' active' : '' %>" href="/login">Login</a>
+          </li>
         <% } %>
       </ul>
     </div>
   </div>
 </nav>
+

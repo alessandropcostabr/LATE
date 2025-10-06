@@ -2,97 +2,109 @@
 <body>
   <%- include('partials/navbar') %>
 
-  <main class="main">
-      <div class="container">
-          <div style="margin-bottom: 2rem;">
-              <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Novo Recado</h1>
-              <p style="color: var(--text-secondary);">Registre uma nova ligação ou recado</p>
-          </div>
-          <div style="max-width: 800px;">
-              <form id="formNovoRecado" class="card">
-                  <div class="card-header">
-                      <h2 class="card-title">Informações do Recado</h2>
-                      <p class="card-subtitle">Preencha todos os campos obrigatórios</p>
-                  </div>
-                  <div class="card-body">
-                      <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
-                          <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📞 Dados da Ligação</legend>
-                          <div class="form-grid-2">
-                              <div class="form-group">
-                                  <label for="call_date" class="form-label required">Data da Ligação</label>
-                                  <input id="call_date" name="call_date" type="date" class="form-input" required data-label="Data da ligação" autocomplete="bday" />
-                              </div>
-                              <div class="form-group">
-                                  <label for="call_time" class="form-label required">Hora da Ligação</label>
-                                  <input id="call_time" name="call_time" type="time" class="form-input" required data-label="Hora da ligação" autocomplete="off" />
-                              </div>
-                          </div>
-                          <div class="form-group">
-                              <label for="recipient" class="form-label required">Destinatário</label>
-                              <input id="recipient" name="recipient" type="text" class="form-input" placeholder="Nome da pessoa ou setor que deve receber o recado" required data-label="Destinatário" autocomplete="organization" />
-                              <div class="form-help">Pessoa ou setor responsável por receber esta mensagem</div>
-                          </div>
-                      </fieldset>
+  <main class="main" role="main">
+    <div class="container">
 
-                      <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
-                          <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">👤 Dados do Remetente</legend>
-                          <div class="form-group">
-                              <label for="sender_name" class="form-label required">Nome do Remetente</label>
-                              <input id="sender_name" name="sender_name" type="text" class="form-input" placeholder="Nome completo de quem ligou" required data-label="Nome do remetente" autocomplete="name" />
-                          </div>
-                          <div class="form-grid-2">
-                              <div class="form-group">
-                                  <label for="sender_phone" class="form-label">Telefone</label>
-                                  <input id="sender_phone" name="sender_phone" type="tel" class="form-input" placeholder="(11) 99999-9999" autocomplete="tel" />
-                                  <div class="form-help">Telefone para retorno (opcional)</div>
-                              </div>
-                              <div class="form-group">
-                                  <label for="sender_email" class="form-label">E-mail</label>
-                                  <input id="sender_email" name="sender_email" type="email" class="form-input" placeholder="email@exemplo.com" autocomplete="email" />
-                                  <div class="form-help">E-mail para contato (opcional)</div>
-                              </div>
-                          </div>
-                          <div class="form-group">
-                              <label for="callback_time" class="form-label">Horário para Retorno</label>
-                              <input id="callback_time" name="callback_time" type="text" class="form-input" placeholder="Ex: Das 9h às 17h, Após 14h, etc." autocomplete="off" />
-                              <div class="form-help">Melhor horário para retornar a ligação (opcional)</div>
-                          </div>
-                      </fieldset>
+      <!-- token CSRF disponível para o JS (se a rota fornecer csrfToken) -->
+      <% if (typeof csrfToken !== 'undefined') { %>
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
 
-                      <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
-                          <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Recado</legend>
-                          <div class="form-group">
-                              <label for="subject" class="form-label required">Assunto</label>
-                              <input id="subject" name="subject" type="text" class="form-input" placeholder="Resumo do motivo da ligação" required data-label="Assunto" autocomplete="off" />
-                              <div class="form-help">Descreva brevemente o motivo da ligação</div>
-                          </div>
-                          <div class="form-group">
-                              <label for="notes" class="form-label">Observações</label>
-                              <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="Detalhes adicionais, contexto ou informações importantes sobre o recado..." autocomplete="off"></textarea>
-                              <div class="form-help">Informações adicionais que possam ser úteis (opcional)</div>
-                          </div>
-                          <div class="form-group">
-                              <label for="status" class="form-label">Situação Inicial</label>
-                              <select id="status" name="status" class="form-select" autocomplete="off">
-                                  <option value="pending">Pendente</option>
-                                  <option value="in_progress">Em Andamento</option>
-                                  <option value="resolved">Resolvido</option>
-                              </select>
-                              <div class="form-help">Status atual do recado</div>
-                          </div>
-                      </fieldset>
-                  </div>
-                  <div class="card-footer">
-                      <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                          <a href="/recados" class="btn btn-outline">Cancelar</a>
-                          <button type="submit" class="btn btn-primary" id="btnSalvar">
-                              💾 Salvar Recado
-                          </button>
-                      </div>
-                  </div>
-              </form>
-          </div>
+      <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Novo Recado</h1>
+        <p style="color: var(--text-secondary);">Registre uma nova ligação ou recado</p>
       </div>
+
+      <div style="max-width: 800px;">
+        <form id="formNovoRecado" class="card">
+          <div class="card-header">
+            <h2 class="card-title">Informações do Recado</h2>
+            <p class="card-subtitle">Preencha todos os campos obrigatórios</p>
+          </div>
+
+          <div class="card-body">
+            <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
+              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📞 Dados da Ligação</legend>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="call_date" class="form-label required">Data da Ligação</label>
+                  <input id="call_date" name="call_date" type="date" class="form-input" required data-label="Data da ligação" autocomplete="bday" />
+                </div>
+                <div class="form-group">
+                  <label for="call_time" class="form-label required">Hora da Ligação</label>
+                  <input id="call_time" name="call_time" type="time" class="form-input" required data-label="Hora da ligação" autocomplete="off" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="recipient" class="form-label required">Destinatário</label>
+                <input id="recipient" name="recipient" type="text" class="form-input" placeholder="Nome da pessoa ou setor que deve receber o recado" required data-label="Destinatário" autocomplete="organization" />
+                <div class="form-help">Pessoa ou setor responsável por receber esta mensagem</div>
+              </div>
+            </fieldset>
+
+            <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
+              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">👤 Dados do Remetente</legend>
+              <div class="form-group">
+                <label for="sender_name" class="form-label required">Nome do Remetente</label>
+                <input id="sender_name" name="sender_name" type="text" class="form-input" placeholder="Nome completo de quem ligou" required data-label="Nome do remetente" autocomplete="name" />
+              </div>
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="sender_phone" class="form-label">Telefone</label>
+                  <input id="sender_phone" name="sender_phone" type="tel" class="form-input" placeholder="(11) 99999-9999" autocomplete="tel" />
+                  <div class="form-help">Telefone para retorno (opcional)</div>
+                </div>
+                <div class="form-group">
+                  <label for="sender_email" class="form-label">E-mail</label>
+                  <input id="sender_email" name="sender_email" type="email" class="form-input" placeholder="email@exemplo.com" autocomplete="email" />
+                  <div class="form-help">E-mail para contato (opcional)</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="callback_time" class="form-label">Horário para Retorno</label>
+                <input id="callback_time" name="callback_time" type="text" class="form-input" placeholder="Ex: Das 9h às 17h, Após 14h, etc." autocomplete="off" />
+                <div class="form-help">Melhor horário para retornar a ligação (opcional)</div>
+              </div>
+            </fieldset>
+
+            <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
+              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Recado</legend>
+              <div class="form-group">
+                <label for="subject" class="form-label required">Assunto</label>
+                <input id="subject" name="subject" type="text" class="form-input" placeholder="Resumo do motivo da ligação" required data-label="Assunto" autocomplete="off" />
+                <div class="form-help">Descreva brevemente o motivo da ligação</div>
+              </div>
+              <div class="form-group">
+                <label for="notes" class="form-label">Observações</label>
+                <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="Detalhes adicionais, contexto ou informações importantes sobre o recado..." autocomplete="off"></textarea>
+                <div class="form-help">Informações adicionais que possam ser úteis (opcional)</div>
+              </div>
+              <div class="form-group">
+                <label for="status" class="form-label">Situação Inicial</label>
+                <select id="status" name="status" class="form-select" autocomplete="off">
+                  <option value="pending">Pendente</option>
+                  <option value="in_progress">Em Andamento</option>
+                  <option value="resolved">Resolvido</option>
+                </select>
+                <div class="form-help">Status atual do recado</div>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="card-footer">
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+              <a href="/recados" class="btn btn-outline">Cancelar</a>
+              <button type="submit" class="btn btn-primary" id="btnSalvar">
+                💾 Salvar Recado
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+    </div>
   </main>
 
   <%- include('partials/footer', { scripts: ['/js/novo-recado.js'] }) %>
+

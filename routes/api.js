@@ -18,6 +18,64 @@ const {
   validateQueryMessages
 } = require('../middleware/validation');
 
+// Painel ADMIN de Usuarios
+const { requireRole } = require('../middleware/auth');
+const UserController = require('../controllers/userController');
+const {
+  validateUserCreate,
+  validateUserUpdate,
+  validateIdParam
+} = require('../middleware/validation'); // <- não redeclara handleValidationErrors
+
+// Admin - Users (somente ADMIN)
+router.get('/users',
+  requireRole('ADMIN'),
+  UserController.list
+);
+
+router.get('/users/:id',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.getById
+);
+
+router.post('/users',
+  requireRole('ADMIN'),
+  validateUserCreate,
+  handleValidationErrors,
+  UserController.create
+);
+
+router.put('/users/:id',
+  requireRole('ADMIN'),
+  validateIdParam,
+  validateUserUpdate,
+  handleValidationErrors,
+  UserController.update
+);
+
+router.patch('/users/:id/active',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.setActive
+);
+
+router.patch('/users/:id/password',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.resetPassword
+);
+
+router.delete('/users/:id',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.remove
+);
+
 // --- Helper defensivo para middlewares vindos de fontes diversas ---
 function flatFns(...mws) {
   const result = [];
