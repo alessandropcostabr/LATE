@@ -1,14 +1,11 @@
 // models/user.js
+// Camada de acesso a dados (neutra para driver SQLite/PG).
+// Comentários em pt-BR; identificadores em inglês.
 
 const database = require('../config/database');
 
-function db() {
-  return database.db();
-}
-
-function ph(index) {
-  return database.placeholder(index);
-}
+function db() { return database.db(); }
+function ph(index) { return database.placeholder(index); }
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -68,7 +65,7 @@ class UserModel {
         LOWER(${ph(2)}),
         ${ph(3)},
         ${ph(4)},
-        TRUE -- neutro: SQLite trata como 1; PG como boolean true
+        TRUE
       )
       RETURNING id, name, email, role, is_active, created_at, updated_at
     `);
@@ -92,10 +89,38 @@ class UserModel {
     return result.changes > 0;
   }
 
-  async setActive(id, active) {
-    // Por quê: PG espera boolean; SQLite aceita 1/0, mas padronizamos como boolean.
-    const value = !!active;
+  // Alias para compatibilidade com o controller
+  async resetPassword(id, password_hash) {
+    return this.updatePassword(id, password_hash);
+  }
 
+  async update(id, { name, email, role }) {
+    const stmt = db().prepare(`
+      UPDATE users
+         SET name = ${ph(1)},
+             email = LOWER(${ph(2)}),
+             role = ${ph(3)},
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = ${ph(4)}
+    `);
+    const result = await stmt.run([
+      String(name || '').trim(),
+      normalizeEmail(email),
+      normalizeRole(role),
+      id
+    ]);
+    return result.changes > 0;
+  }
+
+  async remove(id) {
+    const stmt = db().prepare(`DELETE FROM users WHERE id = ${ph(1)}`);
+    const result = await stmt.run([id]);
+    return result.changes > 0;
+  }
+
+  async setActive(id, active) {
+    // PG espera boolean; SQLite aceita 1/0, padronizamos como boolean
+    const value = !!active;
     const stmt = db().prepare(`
       UPDATE users
          SET is_active = ${ph(1)},
@@ -150,3 +175,4 @@ class UserModel {
 }
 
 module.exports = new UserModel();
+

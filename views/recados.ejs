@@ -3,66 +3,80 @@
   <%- include('partials/navbar') %>
 
   <main class="main" role="main">
-      <div class="container">
+    <div class="container">
 
-          <!-- Filtros e Ações -->
-          <div class="card" style="margin-bottom: 2rem;">
-              <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-                  <h2 class="card-title">Filtros</h2>
-                  <a href="/novo-recado" class="btn btn-primary btn-sm">➕ Novo Recado</a>
-              </div>
-              <div class="card-body">
-                  <form id="filtrosForm">
-                      <div class="filters-grid">
-                          <div class="form-group">
-                              <label for="start_date" class="form-label">Data Início</label>
-                              <input id="start_date" name="start_date" type="date" class="form-input">
-                          </div>
-                          <div class="form-group">
-                              <label for="end_date" class="form-label">Data Fim</label>
-                              <input id="end_date" name="end_date" type="date" class="form-input">
-                          </div>
-                          <div class="form-group">
-                              <label for="recipient" class="form-label">Destinatário</label>
-                              <input id="recipient" name="recipient" type="text" class="form-input" placeholder="Nome do destinatário">
-                          </div>
-                          <div class="form-group">
-                              <label for="status" class="form-label">Situação</label>
-                              <select id="status" name="status" class="form-input">
-                                  <option value="">Todas</option>
-                                  <option value="pending">Pendente</option>
-                                  <option value="in_progress">Em Andamento</option>
-                                  <option value="resolved">Resolvido</option>
-                              </select>
-                          </div>
-                      </div>
-                      <div class="form-actions" style="margin-top:1rem; display:flex; gap:1rem;">
-                          <button type="submit" class="btn btn-primary">Filtrar</button>
-                          <button type="reset" id="btnLimpar" class="btn btn-outline">Limpar</button>
-                      </div>
-                  </form>
-              </div>
-          </div>
-
-          <!-- Resultados -->
-          <div class="card">
-              <div class="card-header">
-                  <h2 class="card-title">Resultados</h2>
-                  <p class="card-subtitle" id="totalResultados">Carregando...</p>
-              </div>
-              <div class="card-body">
-                  <div id="listaRecados" role="region" aria-live="polite">
-                      <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
-                          <span class="loading"></span> Carregando recados...
-                      </div>
-                  </div>
-              </div>
-              <div class="card-footer">
-                  <nav id="paginacao" class="pagination" aria-label="Paginação"></nav>
-              </div>
-          </div>
-
+      <!-- Cabeçalho da página -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
+        <div>
+          <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;"><%= title || 'Recados' %></h1>
+          <p style="color:var(--text-secondary);margin:0;">Filtre, visualize e gerencie os recados</p>
+        </div>
+        <a href="/novo-recado" class="btn btn-primary btn-lg">➕ Novo Recado</a>
       </div>
+
+      <!-- Filtros -->
+      <div class="card" style="margin-bottom:2rem;">
+        <div class="card-header">
+          <h2 class="card-title">Filtros</h2>
+          <p class="card-subtitle">Refine a busca por período, destinatário e situação</p>
+        </div>
+        <div class="card-body">
+          <form id="filtrosForm">
+            <div class="filters-grid">
+              <div class="form-group">
+                <label for="start_date" class="form-label">Data Início</label>
+                <input id="start_date" name="start_date" type="date" class="form-input">
+              </div>
+
+              <div class="form-group">
+                <label for="end_date" class="form-label">Data Fim</label>
+                <input id="end_date" name="end_date" type="date" class="form-input">
+              </div>
+
+              <div class="form-group">
+                <label for="recipient" class="form-label">Destinatário</label>
+                <input id="recipient" name="recipient" type="text" class="form-input" placeholder="Nome do destinatário">
+              </div>
+
+              <div class="form-group">
+                <label for="status" class="form-label">Situação</label>
+                <select id="status" name="status" class="form-input">
+                  <option value="">Todas</option>
+                  <option value="pending">Pendente</option>
+                  <option value="in_progress">Em Andamento</option>
+                  <option value="resolved">Resolvido</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-actions" style="margin-top:1rem;display:flex;gap:1rem;">
+              <button type="submit" class="btn btn-primary">Filtrar</button>
+              <button type="reset" id="btnLimpar" class="btn btn-outline">Limpar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Resultados -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Resultados</h2>
+          <p class="card-subtitle" id="totalResultados">Carregando...</p>
+        </div>
+        <div class="card-body">
+          <div id="listaRecados" role="region" aria-live="polite">
+            <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
+              <span class="loading"></span> Carregando recados...
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <nav id="paginacao" class="pagination" aria-label="Paginação"></nav>
+        </div>
+      </div>
+
+    </div>
   </main>
 
   <%- include('partials/footer', { scripts: ['/js/recados.js'] }) %>
+

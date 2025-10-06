@@ -76,3 +76,67 @@ exports.setActive = async (req, res) => {
   }
 };
 
+// GET /api/users/:id
+exports.getById = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const user = await UserModel.findById(id);
+    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    return res.json({ success: true, data: user });
+  } catch (err) {
+    console.error('[users] getById error:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno ao obter usuário.' });
+  }
+};
+
+// PUT /api/users/:id
+exports.update = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const changes = {
+      name: String(req.body.name || '').trim(),
+      email: String(req.body.email || '').trim().toLowerCase(),
+      role: String(req.body.role || '').trim().toUpperCase(),
+    };
+    const ok = await UserModel.update(id, changes);
+    if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    const user = await UserModel.findById(id);
+    return res.json({ success: true, data: user });
+  } catch (err) {
+    if (err && (err.code === '23505' || String(err.message || '').includes('users_email'))) {
+      return res.status(409).json({ success: false, error: 'E-mail já cadastrado' });
+    }
+    console.error('[users] update error:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno ao atualizar usuário.' });
+  }
+};
+
+// PATCH /api/users/:id/password
+exports.resetPassword = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const newPassword = String(req.body.password || '').trim();
+    if (!newPassword) return res.status(400).json({ success: false, error: 'Senha inválida' });
+    const password_hash = await argon2.hash(newPassword, { type: argon2.argon2id });
+    const ok = await UserModel.resetPassword(id, password_hash);
+    if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    return res.json({ success: true, data: { id } });
+  } catch (err) {
+    console.error('[users] resetPassword error:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno ao redefinir senha.' });
+  }
+};
+
+// DELETE /api/users/:id
+exports.remove = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const ok = await UserModel.remove(id);
+    if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    return res.json({ success: true, data: 'Usuário removido com sucesso' });
+  } catch (err) {
+    console.error('[users] remove error:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno ao remover usuário.' });
+  }
+};
+

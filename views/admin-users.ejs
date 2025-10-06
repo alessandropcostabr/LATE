@@ -1,0 +1,103 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container">
+      <!-- Cabeçalho da página -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+          <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;"><%= title %></h1>
+          <p style="color: var(--text-secondary);">Gerencie os operadores do sistema</p>
+        </div>
+        <button id="btn-new" class="btn btn-primary btn-lg">
+          <span aria-hidden="true">➕</span> Novo usuário
+        </button>
+      </div>
+
+      <% if (typeof csrfToken !== 'undefined') { %>
+        <!-- CSRF disponível ao JS via meta -->
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
+
+      <!-- Filtro de busca -->
+      <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header">
+          <h2 class="card-title">Pesquisar</h2>
+          <p class="card-subtitle">Busque por nome ou e-mail</p>
+        </div>
+        <div class="card-body">
+          <input id="search" class="form-control" placeholder="Pesquisar por nome ou e-mail" style="max-width: 320px;">
+        </div>
+      </div>
+
+      <!-- Tabela de usuários -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Usuários</h2>
+          <p class="card-subtitle">Lista de operadores cadastrados</p>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" id="tbl-users">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Perfil</th>
+                  <th>Ativo</th>
+                  <th class="text-end">Ações</th>
+                </tr>
+              </thead>
+              <tbody><!-- renderizado via JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Create/Update -->
+      <div class="modal" tabindex="-1" id="user-modal">
+        <div class="modal-dialog">
+          <form class="modal-content" id="user-form">
+            <div class="modal-header">
+              <h5 class="modal-title" id="user-modal-title">Usuário</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="user-id">
+              <div class="mb-2">
+                <label class="form-label">Nome</label>
+                <input class="form-control" id="user-name" required maxlength="255">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">E-mail</label>
+                <input type="email" class="form-control" id="user-email" required>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Perfil</label>
+                <select class="form-select" id="user-role" required>
+                  <option>ADMIN</option>
+                  <option>SUPERVISOR</option>
+                  <option selected>OPERADOR</option>
+                  <option>LEITOR</option>
+                </select>
+              </div>
+              <div class="mb-2" id="password-wrap">
+                <label class="form-label">Senha</label>
+                <input type="password" class="form-control" id="user-password" minlength="6" maxlength="255">
+                <small class="text-muted">Defina a senha ao criar. Para trocar depois, use “Redefinir senha”.</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+              <button class="btn btn-primary" type="submit">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+

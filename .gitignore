@@ -77,3 +77,6 @@ migrations/99999999_noop.sql
 
 # ignore SQLite
 data/*.db
+
+# local deploy marker
+.last_deploy_commit
