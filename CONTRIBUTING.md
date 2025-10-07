@@ -10,3 +10,21 @@ A política de **Content Security Policy** é gerenciada centralmente no arquivo
 
 Execute `npm test` para garantir que todos os testes estejam passando antes de abrir um pull request.
 
+## Banco de Dados
+
+- **Somente PostgreSQL** para execução e deploy.
+- O repositório ainda contém código de compatibilidade com SQLite; **não usar em produção**.
+
+## Padrão de Idiomas
+
+- Conteúdo visível ao usuário: **pt-BR** (views e mensagens).
+- Identificadores: **inglês** (arquivos, funções, colunas).
+- API: chaves `success`, `data`, `error` em inglês; valores/erros em **pt-BR**.
+
+## Checklist para PRs (DB/DAL)
+
+- [ ] Placeholders PostgreSQL `$1..$n` e timestamps `NOW()`/`CURRENT_TIMESTAMP`.
+- [ ] SQL **apenas** nos models; controllers/rotas sem SQL.
+- [ ] Migrations transacionais atualizadas.
+- [ ] `GET /health` com `SELECT 1`.
+- [ ] Nenhuma referência a SQLite em código novo ou docs.

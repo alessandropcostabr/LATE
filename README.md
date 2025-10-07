@@ -4,7 +4,7 @@ Sistema web moderno para automatizar o registro e gerenciamento de recados de li
 
 ## 📋 Sobre o Projeto
 
-Este sistema foi desenvolvido para digitalizar o processo de anotações de recados de ligações, anteriormente feito manualmente. Utiliza tecnologias modernas de backend e frontend, com foco em usabilidade, segurança e escalabilidade em ambiente Linux (Ubuntu AWS EC2).
+Este sistema foi desenvolvido para digitalizar o processo de anotações de recados de ligações, anteriormente feito manualmente. Utiliza tecnologias modernas de backend e frontend, com foco em usabilidade, segurança e escalabilidade em ambiente Linux Mint 21.3.
 
 ## ✨ Funcionalidades
 
@@ -17,12 +17,12 @@ Este sistema foi desenvolvido para digitalizar o processo de anotações de reca
 - Interface baseada em templates EJS (com header unificado)
 - Logs e backups automáticos
 
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Tecnologias Utilizadas (validadas em 2025-10-06)
 
 ### Backend
-- **Node.js v22.15.1**
+- **Node.js v22.19.0**
 - **Express.js v5.1.0**
-- **PostgreSQL 16+** via **pg** (Pool) e **connect-pg-simple** para sessões
+- **PostgreSQL 14+** via **pg** (Pool) e **connect-pg-simple** para sessões
 - **Helmet.js**, **express-rate-limit**, **CORS**
 - **express-validator v7.0.1** (validação robusta)
 - **morgan v1.10.0** (logging de requisições)
@@ -33,10 +33,10 @@ Este sistema foi desenvolvido para digitalizar o processo de anotações de reca
 - **Interface com Design Responsivo**
 
 ### Dev / Build
-- **PM2 v6.0.5** - Gerenciador de processos
+- **PM2 v6.0.10** - Gerenciador de processos
 - **TypeScript v5.8.3** (em desenvolvimento)
 - **ts-node v10.9.2** (local)
-- **Ubuntu 24.04.2 LTS (EC2)**
+- **Linux Mint 21.3**
 
 ## 📁 Estrutura do Projeto
 
@@ -45,12 +45,8 @@ Este sistema foi desenvolvido para digitalizar o processo de anotações de reca
 - `controllers/`: regras de negócio (auth, usuários, mensagens, health-check).
 - `middleware/`: CORS, validações, autenticação e integrações de segurança.
 - `models/`: acesso a dados usando pg.Pool.
-- `migrations/`: arquivos `.sql` aplicados via `node scripts/migrate.js`.
-- `scripts/`: utilitários CLI (migrate/seed-admin).
 - `routes/`: definição das rotas API e web.
 - `public/` e `views/`: ativos estáticos e templates EJS.
-
-As migrações ficam em `migrations/` e devem ser aplicadas com `node scripts/migrate.js` após configurar as variáveis `PG_*`.
 
 ## 🗣️ Convenções de idioma
 
@@ -109,7 +105,9 @@ export PGPORT="5432"
 export PGUSER="late_app"
 export PGPASSWORD="senha"
 export PGDATABASE="late_dev"
-export PG_SSL="0" # use "1" ou JSON quando o provedor exigir SSL
+export PG_SSL="0"
+
+export DB_DRIVER="pg" # use "1" ou JSON quando o provedor exigir SSL
 
 node scripts/migrate.js # aplica migrations em migrations/
 # Defina as variáveis do usuário administrador inicial **antes** de executar o seed
@@ -245,8 +243,19 @@ CREATE INDEX idx_destinatario ON recados(destinatario);
 CREATE INDEX idx_situacao ON recados(situacao);
 🗄️ Backup e Logs
 
-# Backup manual
-cp data/recados.db backup/recados_$(date +%Y%m%d).db
+# Backup manual (PostgreSQL)
+pg_dump \
+  --no-owner \
+  --format=custom \
+  --host="$PGHOST" --port="$PGPORT" \
+  --username="$PGUSER" "$PGDATABASE" \
+  --file "backup/late_$(date +%Y%m%d).dump"
+
+# Restore (exemplo)
+pg_restore --clean --if-exists --no-owner \
+  --host="$PGHOST" --port="$PGPORT" \
+  --username="$PGUSER" --dbname="$PGDATABASE" \
+  "backup/late_YYYYMMDD.dump"
 
 # Logs PM2
 pm2 logs late

@@ -3,17 +3,35 @@
 ## Arquitetura Geral
 
 ### Stack Tecnológica:
-- **Backend:** Node.js v22.15.0 + Express.js v5.1.0
+- **Backend:** Node.js v22.19.0 + Express.js v5.1.0
 - **Banco de Dados:** PostgreSQL (pg Pool compartilhado)
-- **Frontend:** HTML5 + CSS3 + JavaScript (Vanilla)
-- **Gerenciamento:** PM2 v6.0.5
+- **Frontend:** HTML5 + CSS3 + JavaScript (Vanilla) + Chart.js
+- **Gerenciamento:** PM2 v6.0.10
 - **Hospedagem:** AWS EC2 (Ubuntu 22.04.5 LTS)
 
 ## Estrutura do Banco de Dados
 
-### Tabela: `recados`
+### Tabela: `messages` (PostgreSQL)
 ```sql
-CREATE TABLE recados (
+CREATE TABLE IF NOT EXISTS messages (
+  id            BIGSERIAL PRIMARY KEY,
+  call_date     DATE,
+  call_time     TEXT,
+  recipient     TEXT NOT NULL,
+  sender_name   TEXT NOT NULL,
+  sender_phone  TEXT,
+  sender_email  TEXT,
+  subject       TEXT NOT NULL,
+  message       TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending',
+  callback_time TEXT,
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages (created_at DESC);
+```sql
+CREATE TABLE messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     data_ligacao DATE NOT NULL,
     hora_ligacao TIME NOT NULL,
@@ -34,31 +52,35 @@ CREATE TABLE recados (
 
 ### Índices para Performance:
 ```sql
-CREATE INDEX idx_data_ligacao ON recados(data_ligacao);
-CREATE INDEX idx_destinatario ON recados(destinatario);
-CREATE INDEX idx_situacao ON recados(situacao);
-CREATE INDEX idx_remetente_nome ON recados(remetente_nome);
-CREATE INDEX idx_created_at ON recados(created_at);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient);
+CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
+```sql
+CREATE INDEX idx_data_ligacao ON messages(data_ligacao);
+CREATE INDEX idx_destinatario ON messages(destinatario);
+CREATE INDEX idx_situacao ON messages(situacao);
+CREATE INDEX idx_remetente_nome ON messages(remetente_nome);
+CREATE INDEX idx_created_at ON messages(created_at);
 ```
 
 ## API Endpoints
 
-### 1. Gestão de Recados
-- `GET /api/recados` - Listar todos os recados (com filtros)
-- `GET /api/recados/:id` - Obter recado específico
-- `POST /api/recados` - Criar novo recado
-- `PUT /api/recados/:id` - Atualizar recado
-- `DELETE /api/recados/:id` - Excluir recado
+### 1. Gestão de Mensagens
+- `GET /api/messages` - Listar todos os messages (com filtros)
+- `GET /api/messages/:id` - Obter recado específico
+- `POST /api/messages` - Criar novo recado
+- `PUT /api/messages/:id` - Atualizar recado
+- `DELETE /api/messages/:id` - Excluir recado
 
 ### 2. Filtros e Consultas
-- `GET /api/recados?data_inicio=YYYY-MM-DD&data_fim=YYYY-MM-DD`
-- `GET /api/recados?destinatario=nome`
-- `GET /api/recados?situacao=pendente|em_andamento|resolvido`
-- `GET /api/recados?remetente=nome`
+- `GET /api/messages?data_inicio=YYYY-MM-DD&data_fim=YYYY-MM-DD`
+- `GET /api/messages?destinatario=nome`
+- `GET /api/messages?situacao=pendente|em_andamento|resolvido`
+- `GET /api/messages?remetente=nome`
 
 ### 3. Estatísticas
 - `GET /api/stats` - Estatísticas gerais
-- `GET /api/stats/por-destinatario` - Recados por destinatário
+- `GET /api/stats/por-destinatario` - Mensagens por destinatário
 - `GET /api/stats/por-situacao` - Distribuição por situação
 
 ## Interface do Usuário
@@ -66,14 +88,14 @@ CREATE INDEX idx_created_at ON recados(created_at);
 ### 1. Página Principal (Dashboard)
 - **Header:** Título do sistema + navegação
 - **Cards de Estatísticas:**
-  - Total de recados
+  - Total de messages
   - Pendentes
   - Em andamento
   - Resolvidos hoje
 - **Ações Rápidas:**
   - Botão "Novo Recado"
   - Filtros rápidos
-- **Lista de Recados Recentes**
+- **Lista de Mensagens Recentes**
 
 ### 2. Formulário de Novo Recado
 - **Campos Obrigatórios:**
@@ -90,7 +112,7 @@ CREATE INDEX idx_created_at ON recados(created_at);
 - **Validações em tempo real**
 - **Botões:** Salvar, Cancelar
 
-### 3. Lista de Recados
+### 3. Lista de Mensagens
 - **Filtros:**
   - Por data (período)
   - Por destinatário
@@ -190,7 +212,7 @@ late/
 │   └── assets/           # Imagens, ícones
 └── views/
     ├── index.html        # Página principal
-    ├── recados.html      # Lista de recados
+    ├── messages.html      # Lista de messages
     └── components/       # Componentes HTML
 ```
 

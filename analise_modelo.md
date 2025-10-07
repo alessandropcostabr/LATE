@@ -59,3 +59,18 @@ O arquivo "CadernodeRecados.xlsx" é um modelo estático para registro interno d
 - **Frontend:** HTML5 + CSS3 + JavaScript vanilla
 - **Deploy:** AWS EC2 (já disponível)
 
+
+
+## Atualização técnica — 2025-10-07
+### Ambiente validado
+- Node.js **v22.19.0**, npm **10.9.3**, PM2 **6.0.10**, psql **14.19 (Ubuntu 14.19-0ubuntu0.22.04.1)**.
+### Frontend
+- Uso de **Bootstrap (bundle)** e **Chart.js** nos dashboards/relatórios.
+### Backend / DB
+- Operação **PostgreSQL** com tabela canônica `messages` e migrations transacionais.
+- Camada de compatibilidade SQLite ainda presente no código; **não usar** em produção.
+### Ações recomendadas
+1) Remover referências a SQLite em scripts e docs remanescentes; manter `DB_DRIVER=pg` como padrão.
+2) Cobertura de testes para controllers/models de messages com banco de testes PG dedicado.
+3) Documentar backup com `pg_dump` / `pg_restore` (README/DEPLOY atualizados).
+4) PR de limpeza: alterar default do adapter para `pg` e remover `config/adapters/sqlite` quando possível.

@@ -3,7 +3,7 @@
 ## 🎯 Deploy no Seu Ambiente AWS EC2
 
 Estas instruções são específicas para o seu ambiente já configurado:
-- **Servidor**: AWS EC2 (Ubuntu 22.04.5 LTS, t2.micro)
+- **Servidor**: AWS EC2 (Ubuntu 22.04/24.04 LTS)
 - **Node.js**: v22.15.0 já instalado
 - **Express.js**: v5.1.0
 - **PM2**: v6.0.5 já configurado
@@ -11,8 +11,8 @@ Estas instruções são específicas para o seu ambiente já configurado:
 
 ## 📋 Pré-requisitos Verificados
 
-✅ Node.js v22.15.0 instalado  
-✅ PM2 v6.0.5 configurado  
+✅ Node.js v22.19.0 instalado  
+✅ PM2 v6.0.10 configurado  
 ✅ Servidor AWS EC2 ativo  
 ✅ Acesso SSH ao servidor  
 
@@ -54,6 +54,8 @@ export PGUSER=late_app
 export PGPASSWORD='senha-segura'
 export PGDATABASE=late_prod
 export PG_SSL=1 # use 0 apenas em ambientes locais sem TLS
+
+export DB_DRIVER=pg
 
 node scripts/migrate.js
 ```
