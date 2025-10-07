@@ -1,15 +1,11 @@
 // models/message.js
-// Comentários em pt-BR; identificadores em inglês.
+// Comentários em pt-BR; identificadores em inglês. PG-only (node-postgres).
 
-const database = require('../config/database');
+const db = require('../config/database'); // Pool do pg
 
-function db() {
-  return database.db();
-}
-
-// placeholder compat (PG usa $1, $2, ...)
-function ph(index) {
-  return database.placeholder(index);
+// Helper de placeholder para PG ($1, $2, ...)
+function ph(i) {
+  return `$${i}`;
 }
 
 // ---------------------------- Status e labels -------------------------------
@@ -180,7 +176,6 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1)
   }
 
   if (endDate) {
-    // inclusivo no dia final
     clauses.push(`${DATE_REF_SQL} <= ${ph(index)}::date`);
     params.push(endDate);
     index += 1;
@@ -233,26 +228,28 @@ async function create(payload) {
     values.push(timestamps.updated_at);
   }
 
-  const row = await db().prepare(`
+  const sql = `
     INSERT INTO messages (
       ${fields.join(',\n      ')}
     ) VALUES (
       ${fields.map((_, index) => ph(index + 1)).join(', ')}
     )
     RETURNING ${SELECT_COLUMNS}
-  `).get(values);
+  `;
 
-  return row?.id || null;
+  const { rows } = await db.query(sql, values);
+  return rows?.[0]?.id || null;
 }
 
 async function findById(id) {
-  const row = await db().prepare(`
+  const sql = `
     SELECT ${SELECT_COLUMNS}
       FROM messages
      WHERE id = ${ph(1)}
      LIMIT 1
-  `).get([id]);
-  return mapRow(row);
+  `;
+  const { rows } = await db.query(sql, [id]);
+  return mapRow(rows?.[0]);
 }
 
 async function update(id, payload) {
@@ -277,28 +274,29 @@ async function update(id, payload) {
   assignments.push(`status = COALESCE(${ph(statusIndex)}, status)`);
   assignments.push('updated_at = CURRENT_TIMESTAMP');
 
-  const result = await db().prepare(`
+  const sql = `
     UPDATE messages
        SET ${assignments.join(', ')}
      WHERE id = ${ph(statusIndex + 1)}
-  `).run([...values, normalized.statusProvided ? normalized.data.status : null, id]);
-
-  return result.changes > 0;
+  `;
+  const { rowCount } = await db.query(sql, [...values, normalized.statusProvided ? normalized.data.status : null, id]);
+  return rowCount > 0;
 }
 
 async function updateStatus(id, status) {
-  const result = await db().prepare(`
+  const sql = `
     UPDATE messages
        SET status = ${ph(1)},
            updated_at = CURRENT_TIMESTAMP
      WHERE id = ${ph(2)}
-  `).run([ensureStatus(status), id]);
-  return result.changes > 0;
+  `;
+  const { rowCount } = await db.query(sql, [ensureStatus(status), id]);
+  return rowCount > 0;
 }
 
 async function remove(id) {
-  const result = await db().prepare(`DELETE FROM messages WHERE id = ${ph(1)}`).run([id]);
-  return result.changes > 0;
+  const { rowCount } = await db.query(`DELETE FROM messages WHERE id = ${ph(1)}`, [id]);
+  return rowCount > 0;
 }
 
 async function list({
@@ -334,14 +332,15 @@ async function list({
     recipient: recipientFilter || null,
   });
 
-  const rows = await db().prepare(`
+  const sql = `
     SELECT ${SELECT_COLUMNS}
       FROM messages
       ${filters.clause}
   ORDER BY ${orderBy} ${sort}, id DESC
      LIMIT ${ph(filters.nextIndex)} OFFSET ${ph(filters.nextIndex + 1)}
-  `).all([...filters.params, sanitizedLimit, sanitizedOffset]);
+  `;
 
+  const { rows } = await db.query(sql, [...filters.params, sanitizedLimit, sanitizedOffset]);
   return rows.map(mapRow);
 }
 
@@ -351,17 +350,17 @@ async function listRecent(limit = 10) {
 
 // ---------------------------- Estatísticas ---------------------------------
 async function stats() {
-  const totalRow = await db().prepare('SELECT COUNT(*) AS count FROM messages').get();
-  const rows = await db().prepare('SELECT status, COUNT(*) AS count FROM messages GROUP BY status').all();
+  const total = await db.query('SELECT COUNT(*)::int AS count FROM messages');
+  const byStatus = await db.query('SELECT status, COUNT(*)::int AS count FROM messages GROUP BY status');
 
-  const counters = rows.reduce((acc, row) => {
+  const counters = byStatus.rows.reduce((acc, row) => {
     const normalized = ensureStatus(row.status);
     acc[normalized] = (acc[normalized] || 0) + Number(row.count || 0);
     return acc;
   }, {});
 
   return {
-    total: Number(totalRow?.count || 0),
+    total: Number(total.rows?.[0]?.count || 0),
     pending: counters.pending || 0,
     in_progress: counters.in_progress || 0,
     resolved: counters.resolved || 0,
@@ -372,30 +371,28 @@ async function statsByRecipient({ limit = 10 } = {}) {
   const parsedLimit = Number(limit);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
 
-  const rows = await db().prepare(`
+  const sql = `
     SELECT
       COALESCE(NULLIF(TRIM(recipient), ''), 'Não informado') AS recipient,
-      COUNT(*) AS count
+      COUNT(*)::int AS count
       FROM messages
   GROUP BY recipient
   ORDER BY count DESC, recipient ASC
      LIMIT ${ph(1)}
-  `).all([sanitizedLimit]);
+  `;
 
+  const { rows } = await db.query(sql, [sanitizedLimit]);
   return rows.map(r => ({ recipient: r.recipient, count: Number(r.count || 0) }));
 }
 
 async function statsByStatus() {
-  const rows = await db().prepare(`
-    SELECT status, COUNT(*) AS count
+  const sql = `
+    SELECT status, COUNT(*)::int AS count
       FROM messages
   GROUP BY status
-  `).all();
-
-  const totals = STATUS_VALUES.reduce((acc, status) => {
-    acc[status] = 0;
-    return acc;
-  }, {});
+  `;
+  const { rows } = await db.query(sql);
+  const totals = STATUS_VALUES.reduce((acc, status) => ({ ...acc, [status]: 0 }), {});
   for (const row of rows) {
     const normalized = ensureStatus(row.status);
     totals[normalized] = (totals[normalized] || 0) + Number(row.count || 0);
@@ -409,7 +406,7 @@ async function statsByStatus() {
 
 // Série mensal (últimos 12 meses) por created_at — PostgreSQL
 async function statsByMonth() {
-  const rows = await db().prepare(`
+  const sql = `
     WITH months AS (
       SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, 11)) AS m
     )
@@ -421,8 +418,8 @@ async function statsByMonth() {
       ON date_trunc('month', ms.created_at) = date_trunc('month', m)
     GROUP BY m
     ORDER BY m;
-  `).all();
-
+  `;
+  const { rows } = await db.query(sql);
   return rows.map(r => ({ month: r.month, count: Number(r.count || 0) }));
 }
 

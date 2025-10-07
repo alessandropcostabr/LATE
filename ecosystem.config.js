@@ -21,6 +21,7 @@ module.exports = {
 
       // Ambiente único (produz cookie `secure: 'auto'` e respeita X-Forwarded-* do Cloudflare)
       env: {
+        DB_DRIVER: "pg",
         NODE_ENV: "production",
         HOST: "127.0.0.1",
         PORT: 3000,
