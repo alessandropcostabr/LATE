@@ -7,7 +7,7 @@ function db() {
   return database.db();
 }
 
-// placeholder compat (pg: $1, sqlite: ?)
+// placeholder compat (PG usa $1, $2, ...)
 function ph(index) {
   return database.placeholder(index);
 }

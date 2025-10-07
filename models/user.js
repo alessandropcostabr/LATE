@@ -1,5 +1,5 @@
 // models/user.js
-// Camada de acesso a dados (neutra para driver SQLite/PG).
+// Camada de acesso a dados especializada para PostgreSQL.
 // Comentários em pt-BR; identificadores em inglês.
 
 const database = require('../config/database');
@@ -21,7 +21,7 @@ function mapRow(row) {
   if (!row) return null;
   return {
     ...row,
-    // Garante boolean em ambos drivers (SQLite pode retornar 1/0)
+    // Garante boolean consistente mesmo que o driver retorne 0/1
     is_active: row.is_active === true || row.is_active === 1,
   };
 }
@@ -119,7 +119,7 @@ class UserModel {
   }
 
   async setActive(id, active) {
-    // PG espera boolean; SQLite aceita 1/0, padronizamos como boolean
+    // PG espera boolean; padronizamos para evitar valores truthy/falsey inesperados
     const value = !!active;
     const stmt = db().prepare(`
       UPDATE users

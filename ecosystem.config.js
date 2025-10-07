@@ -4,7 +4,7 @@
 //
 // Regras do projeto:
 // - Comentários em pt-BR; identificadores em inglês.
-// - Banco: PostgreSQL via env `PG_*` (incluímos ambos formatos: PG_HOST/PGHOST etc.).
+// - Banco: PostgreSQL via env `PG_*`.
 // - Segurança padrão: sem atalhos de login em produção (AUTH_TEST_MODE=0, DISABLE_CSRF_LOGIN=0).
 
 module.exports = {
@@ -31,23 +31,12 @@ module.exports = {
         // Sessões — troque por uma chave forte e única (32+ chars)
         SESSION_SECRET: "0b9ba50e4a2a7efb6525cd2db22d49dd0b7d9be9be9f04ce4fd0c224bde30bf38a118ab82bd3c5dbddc344cff9f5826c",
 
-        // Banco: PostgreSQL (inclui ambos formatos por compatibilidade)
-        DB_DRIVER: "pg",
-
+        // Banco: PostgreSQL
         PG_HOST: "127.0.0.1",
-        PGHOST: "127.0.0.1",
-
         PG_PORT: "5432",
-        PGPORT: "5432",
-
         PG_USER: "late_app",
-        PGUSER: "late_app",
-
         PG_PASSWORD: "LATE@123",
-        PGPASSWORD: "LATE@123",
-
         PG_DATABASE: "late_prod",
-        PGDATABASE: "late_prod",
 
         // SSL desligado localmente; use "1" se o provedor exigir (ex.: RDS com SSL)
         PG_SSL: "0",

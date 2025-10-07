@@ -18,10 +18,8 @@ function parseBooleanFlag(value) {
 
 function isEmailUniqueViolation(err) {
   if (!err) return false;
-  const message = String(err.message || '').toLowerCase();
-  if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
-  if (err.code === 'SQLITE_CONSTRAINT' && message.includes('users.email')) return true;
   if (err.code === '23505') {
+    const message = String(err.message || '').toLowerCase();
     const constraint = String(err.constraint || '').toLowerCase();
     return constraint.includes('users_email') || message.includes('users_email');
   }

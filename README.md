@@ -22,7 +22,7 @@ Este sistema foi desenvolvido para digitalizar o processo de anotações de reca
 ### Backend
 - **Node.js v22.15.1**
 - **Express.js v5.1.0**
-- **SQLite** com **better-sqlite3 v11.9.1**
+- **PostgreSQL 16+** via **pg** (Pool) e **connect-pg-simple** para sessões
 - **Helmet.js**, **express-rate-limit**, **CORS**
 - **express-validator v7.0.1** (validação robusta)
 - **morgan v1.10.0** (logging de requisições)
@@ -40,45 +40,30 @@ Este sistema foi desenvolvido para digitalizar o processo de anotações de reca
 
 ## 📁 Estrutura do Projeto
 
-late/
-├── server.js
-├── package.json
-├── config/
-│ └── database.js
-├── routes/
-│ ├── api.js
-│ └── web.js
-├── models/
-│ └── recado.js
-├── middleware/
-│ ├── cors.js
-│ └── validation.js
-├── public/
-│ ├── css/
-│ ├── js/
-│ └── assets/
-├── views/
-│ ├── partials/
-│ │ └── header.ejs
-│ ├── index.ejs
-│ ├── recados.ejs
-│ ├── novo-recado.ejs
-│ ├── editar-recado.ejs
-│ └── visualizar-recado.ejs
-├── data/
-│ ├── recados.db
-│ └── migrations/
-├── backup/
-│ └── recados_YYYYMMDD.db
-└── resultados_testes.md
+- `server.js`: bootstrap do Express com Helmet, sessões em PostgreSQL e rotas web/API.
+- `config/`: adapters de banco e helpers de conexão (PostgreSQL-only).
+- `controllers/`: regras de negócio (auth, usuários, mensagens, health-check).
+- `middleware/`: CORS, validações, autenticação e integrações de segurança.
+- `models/`: acesso a dados usando pg.Pool.
+- `migrations/`: arquivos `.sql` aplicados via `node scripts/migrate.js`.
+- `scripts/`: utilitários CLI (migrate/seed-admin).
+- `routes/`: definição das rotas API e web.
+- `public/` e `views/`: ativos estáticos e templates EJS.
 
-Todas as migrações do banco de dados devem estar em `data/migrations/` e ser aplicadas com `node scripts/migrate.js`.
+As migrações ficam em `migrations/` e devem ser aplicadas com `node scripts/migrate.js` após configurar as variáveis `PG_*`.
+
+## 🗣️ Convenções de idioma
+
+- Conteúdos exibidos ao usuário (views, mensagens de erro/sucesso) sempre em português brasileiro.
+- Comentários no código e documentação interna também em português para explicar regras de negócio.
+- Identificadores técnicos (nomes de arquivos, funções, colunas) permanecem em inglês.
+- Contrato JSON das APIs usa chaves em inglês (`success`, `data`, `error`) com mensagens em português.
 
 ## 🔐 Segurança
 
 - **CSP ativa** (sem `unsafe-inline`)
 - **Helmet.js** configurado
-- **Prepared Statements** via better-sqlite3
+- **Prepared Statements** via pg.Pool (parametrização `$1`, `$2`)
 - **Validações por Schema** (express-validator)
 - **Rate Limiting ativo**
 
@@ -118,7 +103,15 @@ O parâmetro `-i` exibe os cabeçalhos para que você confira os valores de `Rat
 git clone <repo>
 cd late
 npm install
-node scripts/migrate.js # aplica migrations de data/migrations
+# Configurar variáveis de conexão do PostgreSQL (exemplo local)
+export PGHOST="127.0.0.1"
+export PGPORT="5432"
+export PGUSER="late_app"
+export PGPASSWORD="senha"
+export PGDATABASE="late_dev"
+export PG_SSL="0" # use "1" ou JSON quando o provedor exigir SSL
+
+node scripts/migrate.js # aplica migrations em migrations/
 # Defina as variáveis do usuário administrador inicial **antes** de executar o seed
 export ADMIN_NAME="Administrador" # opcional, altera o nome exibido
 export ADMIN_EMAIL="admin@example.com" # obrigatório
@@ -184,13 +177,13 @@ Headers esperados:
 Se o cabeçalho `Accept` incluir `application/json`, respostas de erro do `/login` serão retornadas em JSON no formato:
 
 ```json
-{ "error": "Usuário não encontrado ou inativo" }
+{ "success": false, "error": "Usuário não encontrado ou inativo" }
 ```
 
 ou
 
 ```json
-{ "error": "Senha incorreta" }
+{ "success": false, "error": "Senha incorreta" }
 ```
 
 ### Ping autenticado

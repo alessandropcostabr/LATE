@@ -1,9 +1,7 @@
 // config/database.js
-// Database Manager — seleciona adapter por DB_DRIVER (pg|sqlite) e expõe helpers neutros.
+// Database Manager — gerencia o adapter PostgreSQL e expõe helpers neutros.
 // Comentários em pt-BR; identificadores em inglês.
 
-const path = require('path');
-const sqliteAdapter = require('./adapters/sqlite');
 const pgAdapter = require('./adapters/pg');
 
 let activeAdapter = null;
@@ -34,15 +32,6 @@ function parsePgSsl(value) {
   return { rejectUnauthorized: false };
 }
 
-// SQLite (arquivo em data/ ou :memory: em testes).
-function configureSqliteAdapter(adapter) {
-  const isTest = process.env.NODE_ENV === 'test';
-  const defaultPath = isTest ? ':memory:' : path.join(__dirname, '..', 'data', 'recados.db');
-  const filename = pick('DB_PATH') || defaultPath;
-  adapter.configure({ filename });
-  return adapter;
-}
-
 // PostgreSQL (lê ambos formatos PG_* / PG* para robustez).
 function configurePgAdapter(adapter) {
   const config = {
@@ -54,17 +43,19 @@ function configurePgAdapter(adapter) {
   };
   const ssl = parsePgSsl(process.env.PG_SSL);
   if (ssl) config.ssl = ssl;
+  if (global.__LATE_POOL_FACTORY) {
+    // Testes podem definir uma fábrica customizada (ex.: pg-mem) para evitar dependência externa.
+    config.poolFactory = global.__LATE_POOL_FACTORY;
+  }
   // Se existir connection string completa, o adapter de PG deve respeitá-la internamente.
   adapter.configure(config);
   return adapter;
 }
 
-// Seleciona e memoriza o adapter ativo com base no DB_DRIVER.
+// Seleciona e memoriza o adapter ativo.
 function selectAdapter() {
   if (activeAdapter) return activeAdapter;
-  const driver = (process.env.DB_DRIVER || 'sqlite').trim().toLowerCase();
-  if (driver === 'pg') activeAdapter = configurePgAdapter(pgAdapter);
-  else                 activeAdapter = configureSqliteAdapter(sqliteAdapter);
+  activeAdapter = configurePgAdapter(pgAdapter);
   return activeAdapter;
 }
 
@@ -75,12 +66,12 @@ function db() {
   return selectAdapter().getDatabase();
 }
 
-// Helper de placeholder único: PG -> $n ; SQLite -> ?
+// Helper de placeholder único: PG -> $n.
 function placeholder(index = 1) {
   return selectAdapter().placeholder(index);
 }
 
-// Gera N placeholders. Em PG respeita 'start'; em SQLite ignora.
+// Gera N placeholders respeitando o índice inicial.
 function formatPlaceholders(count, start = 1) {
   const adapter = selectAdapter();
   if (typeof adapter.formatPlaceholders === 'function') {
@@ -89,7 +80,7 @@ function formatPlaceholders(count, start = 1) {
   return Array.from({ length: count }, (_, i) => adapter.placeholder(i + start)).join(', ');
 }
 
-// Executa função dentro de transação (PG assíncrono, SQLite síncrono).
+// Executa função dentro de transação (PG assíncrono).
 function transaction(callback) {
   const adapter = selectAdapter();
   if (typeof adapter.transaction !== 'function') {
@@ -105,6 +96,10 @@ async function close() {
   activeAdapter = null;
   if (typeof adapter.close === 'function') {
     await adapter.close();
+  }
+  // Limpa fábrica customizada para o próximo teste (se houver).
+  if (global.__LATE_POOL_FACTORY) {
+    delete global.__LATE_POOL_FACTORY;
   }
 }
 

@@ -1,5 +1,5 @@
 // scripts/seed-admin.js
-// Seed de administrador **somente PostgreSQL** (ignora SQLite)
+// Seed de administrador para PostgreSQL
 // Comentários em pt-BR; identificadores em inglês.
 // Uso:
 //   ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD='SenhaForte!1' node scripts/seed-admin.js
@@ -28,12 +28,6 @@ function pick(...keys) {
   if (!email) {
     console.error('ADMIN_EMAIL é obrigatório.');
     process.exit(1);
-  }
-
-  // --- Guard-rail: garante PG ---
-  if (process.env.DB_DRIVER && String(process.env.DB_DRIVER).toLowerCase() !== 'pg') {
-    console.error('[seed-admin] DB_DRIVER não é "pg". Aborte ou defina DB_DRIVER=pg.');
-    process.exit(2);
   }
 
   // --- Política de senha do seed ---

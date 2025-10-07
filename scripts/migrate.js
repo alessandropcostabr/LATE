@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /**
- * Runner de migrações neutro (SQLite/PG) para o projeto LATE.
+ * Runner de migrações PostgreSQL para o projeto LATE.
  * - Identificadores em inglês; comentários/erros em pt-BR.
  * - Aplica arquivos .sql em migrations/ por ordem, registrando em schema_migrations.
- * - PG: transação por arquivo, exceto quando o .sql já contém BEGIN/COMMIT.
- * - SQLite: exec direto; adapta "GENERATED ... AS IDENTITY" -> "INTEGER PRIMARY KEY".
+ * - Transação por arquivo, exceto quando o .sql já contém BEGIN/COMMIT.
  */
 
 const fs = require('fs');
@@ -43,34 +42,13 @@ function hasOwnTransaction(sqlText) {
   return hasBegin && hasCommit;
 }
 
-function transformSqlForDriver(sqlText, driver) {
-  if (driver !== 'sqlite') return sqlText;
-
-  // SQLite não entende IDENTIDADE estilo PG; trocar por INTEGER PRIMARY KEY.
-  const identityRegex =
-    /\bid\s+INTEGER\s+PRIMARY\s+KEY\s+GENERATED\s+(?:BY\s+DEFAULT|ALWAYS)\s+AS\s+IDENTITY\b/gi;
-
-  let out = sqlText.replace(identityRegex, 'id INTEGER PRIMARY KEY');
-
-  // TIMESTAMP/DEFAULT CURRENT_TIMESTAMP são aceitos no SQLite atual; manter.
-  return out;
-}
-
-async function ensureMigrationsTable(db, driver) {
-  const sql =
-    driver === 'pg'
-      ? `
-        CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
-          filename TEXT PRIMARY KEY,
-          applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `
-      : `
-        CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
-          filename TEXT PRIMARY KEY,
-          applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `;
+async function ensureMigrationsTable(db) {
+  const sql = `
+    CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
+      filename TEXT PRIMARY KEY,
+      applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
   await db.exec(sql);
 }
 
@@ -89,31 +67,24 @@ async function markApplied(db, filename) {
   await stmt.run([filename]);
 }
 
-async function applyFileTransactional(adapter, filename, sqlText) {
-  const driver = adapter.name;
-  const transformed = transformSqlForDriver(sqlText, driver);
+async function applyFileTransactional(filename, sqlText) {
+  const transformed = sqlText;
 
-  // Se o arquivo já tem BEGIN/COMMIT, não envolver em outra transação no PG.
-  if (driver === 'pg') {
-    if (hasOwnTransaction(transformed)) {
-      const db = dbManager.getDatabase();
-      await db.exec(transformed);
-      return;
-    }
-    // Caso contrário, executa em uma transação por arquivo.
-    return dbManager.transaction(async (db) => {
-      await db.exec(transformed);
-    });
+  // Se o arquivo já tem BEGIN/COMMIT, não envolver em outra transação.
+  if (hasOwnTransaction(transformed)) {
+    const db = dbManager.getDatabase();
+    await db.exec(transformed);
+    return;
   }
 
-  // SQLite: exec direto (o driver lida com múltiplos statements)
-  const db = dbManager.getDatabase();
-  await db.exec(transformed);
+  // Caso contrário, executa em uma transação por arquivo.
+  return dbManager.transaction(async (db) => {
+    await db.exec(transformed);
+  });
 }
 
 (async function main() {
-  const adapter = dbManager.adapter(); // seleciona via DB_DRIVER
-  const driver = adapter.name;
+  dbManager.adapter();
   const db = dbManager.getDatabase();
 
   const files = listSqlFiles(MIGRATIONS_DIR);
@@ -124,7 +95,7 @@ async function applyFileTransactional(adapter, filename, sqlText) {
   }
 
   try {
-    await ensureMigrationsTable(db, driver);
+    await ensureMigrationsTable(db);
   } catch (e) {
     console.error('[migrate] ERRO ao garantir tabela de migrações:', e.message);
     await dbManager.close();
@@ -140,7 +111,7 @@ async function applyFileTransactional(adapter, filename, sqlText) {
     process.exit(0);
   }
 
-  console.info(`[migrate] Driver ativo: ${driver}`);
+  console.info('[migrate] Driver ativo: pg');
   console.info('[migrate] Arquivos pendentes:', pendentes);
 
   if (isDryRun) {
@@ -154,7 +125,7 @@ async function applyFileTransactional(adapter, filename, sqlText) {
     const sqlText = fs.readFileSync(full, 'utf8');
     console.info(`[migrate] Aplicando: ${fname} ...`);
     try {
-      await applyFileTransactional(adapter, fname, sqlText);
+      await applyFileTransactional(fname, sqlText);
       await markApplied(db, fname);
       console.info(`[migrate] OK: ${fname}`);
     } catch (err) {
