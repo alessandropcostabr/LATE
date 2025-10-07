@@ -1,5 +1,5 @@
-// server.js — foco DEV estável
-// Arquitetura: Express 5 + EJS + PostgreSQL + sessions
+// server.js — Express 5 + EJS + PostgreSQL + sessions (PG-only)
+// Comentários em pt-BR; identificadores em inglês.
 
 const express = require('express');
 const corsMw = require('./middleware/cors');
@@ -11,9 +11,9 @@ const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
-require('dotenv').config(); // carrega .env
+require('dotenv').config(); // carrega .env (silencioso o suficiente para runtime)
 
-const dbManager = require('./config/database');
+const db = require('./config/database'); // Pool do pg (PG-only)
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 const healthController = require('./controllers/healthController');
@@ -32,7 +32,7 @@ app.use(helmet({ contentSecurityPolicy: false }));
 
 console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV || 'undefined'}`);
 
-// caminho do CSS nas views
+// caminho do CSS nas views (não altera layout, apenas escolhe o arquivo já existente)
 app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
 
 // EJS
@@ -69,12 +69,9 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Sessão
+// Sessão (connect-pg-simple usando o mesmo Pool)
 const secureCookie = isProd ? 'auto' : false;
-
-const pgAdapter = dbManager.adapter();
-// Reutiliza o pool configurado pelo adapter PG para compartilhar conexões entre app e sessões.
-const sessionPool = pgAdapter.ensurePool();
+const sessionPool = db;
 
 app.use(session({
   name: 'connect.sid',
@@ -86,7 +83,7 @@ app.use(session({
     pool: sessionPool,
     tableName: process.env.SESSION_TABLE || 'sessions',
     schemaName: process.env.SESSION_SCHEMA || 'public',
-    createTableIfMissing: true,
+    createTableIfMissing: true, // cria tabela se não existir
   }),
   cookie: {
     httpOnly: true,
@@ -285,24 +282,27 @@ const server = app.listen(PORT, HOST, () => {
 
 process.on('SIGTERM', () => {
   console.log('🛑 Recebido SIGTERM. Encerrando servidor...');
-  dbManager.close();
-  server.close(() => process.exit(0));
+  server.close(async () => {
+    try { await db.end(); } catch {}
+    process.exit(0);
+  });
 });
 process.on('SIGINT', () => {
   console.log('🛑 Recebido SIGINT. Encerrando servidor...');
-  dbManager.close();
-  server.close(() => process.exit(0));
+  server.close(async () => {
+    try { await db.end(); } catch {}
+    process.exit(0);
+  });
 });
 
 process.on('uncaughtException', err => {
   console.error('❌ Exceção não capturada:', err);
-  dbManager.close();
-  process.exit(1);
+  db.end().finally(() => process.exit(1));
 });
 process.on('unhandledRejection', reason => {
   console.error('❌ Promise rejeitada não tratada:', reason);
-  dbManager.close();
-  process.exit(1);
+  db.end().finally(() => process.exit(1));
 });
 
 module.exports = app;
+
