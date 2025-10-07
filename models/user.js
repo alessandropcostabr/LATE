@@ -131,6 +131,23 @@ class UserModel {
     return result.changes > 0;
   }
 
+  async countActiveAdmins({ excludeId } = {}) {
+    let sql = "SELECT COUNT(*) AS total FROM users WHERE role = 'ADMIN' AND is_active = TRUE";
+    const params = [];
+    let index = 1;
+
+    const parsedExclude = Number(excludeId);
+    if (Number.isFinite(parsedExclude)) {
+      sql += ` AND id <> ${ph(index)}`;
+      params.push(parsedExclude);
+      index += 1;
+    }
+
+    const stmt = db().prepare(sql);
+    const row = await stmt.get(params);
+    return Number(row?.total || 0);
+  }
+
   async list({ q = '', page = 1, limit = 10 } = {}) {
     const parsedLimit = Number(limit);
     const parsedPage = Number(page);
