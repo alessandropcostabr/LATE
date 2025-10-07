@@ -1,28 +1,27 @@
 // models/user.js
-// Camada de acesso a dados especializada para PostgreSQL.
+// Camada de acesso a dados para PostgreSQL (PG-only).
 // Comentários em pt-BR; identificadores em inglês.
 
-const database = require('../config/database');
+const db = require('../config/database'); // Pool do pg
 
-function db() { return database.db(); }
-function ph(index) { return database.placeholder(index); }
+// Helper de placeholder ($1, $2, ...)
+function ph(i) { return `$${i}`; }
 
+// Normalizadores
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
-
 function normalizeRole(role) {
   const allowed = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
   const value = String(role || 'OPERADOR').trim().toUpperCase();
   return allowed.includes(value) ? value : 'OPERADOR';
 }
-
 function mapRow(row) {
   if (!row) return null;
   return {
     ...row,
-    // Garante boolean consistente mesmo que o driver retorne 0/1
-    is_active: row.is_active === true || row.is_active === 1,
+    // Garante boolean consistente mesmo se vier 0/1
+    is_active: row.is_active === true || row.is_active === 1 || row.is_active === 't',
   };
 }
 
@@ -40,20 +39,22 @@ const BASE_SELECT = `
 `;
 
 class UserModel {
+  // Busca por e-mail (case-insensitive)
   async findByEmail(email) {
-    const stmt = db().prepare(`${BASE_SELECT} WHERE LOWER(email) = LOWER(${ph(1)}) LIMIT 1`);
-    const row = await stmt.get([normalizeEmail(email)]);
-    return mapRow(row);
+    const sql = `${BASE_SELECT} WHERE LOWER(email) = LOWER(${ph(1)}) LIMIT 1`;
+    const { rows } = await db.query(sql, [normalizeEmail(email)]);
+    return mapRow(rows?.[0]);
   }
 
   async findById(id) {
-    const stmt = db().prepare(`${BASE_SELECT} WHERE id = ${ph(1)} LIMIT 1`);
-    const row = await stmt.get([id]);
-    return mapRow(row);
+    const sql = `${BASE_SELECT} WHERE id = ${ph(1)} LIMIT 1`;
+    const { rows } = await db.query(sql, [id]);
+    return mapRow(rows?.[0]);
   }
 
+  // Cria usuário; retorna os campos principais (id, name, email, role, is_active, created_at, updated_at)
   async create({ name, email, password_hash, role = 'OPERADOR' }) {
-    const stmt = db().prepare(`
+    const sql = `
       INSERT INTO users (
         name,
         email,
@@ -68,84 +69,100 @@ class UserModel {
         TRUE
       )
       RETURNING id, name, email, role, is_active, created_at, updated_at
-    `);
-    const row = await stmt.get([
-      String(name || '').trim(),
-      normalizeEmail(email),
-      password_hash,
-      normalizeRole(role),
-    ]);
-    return mapRow(row);
+    `;
+    try {
+      const { rows } = await db.query(sql, [
+        String(name || '').trim(),
+        normalizeEmail(email),
+        password_hash,
+        normalizeRole(role),
+      ]);
+      return mapRow(rows?.[0]);
+    } catch (err) {
+      // 23505 = unique_violation (esperado p/ índice único em LOWER(email))
+      if (err && err.code === '23505') {
+        const e = new Error('E-mail já cadastrado');
+        e.code = 'EMAIL_EXISTS';
+        throw e;
+      }
+      throw err;
+    }
   }
 
   async updatePassword(id, password_hash) {
-    const stmt = db().prepare(`
+    const sql = `
       UPDATE users
          SET password_hash = ${ph(1)},
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(2)}
-    `);
-    const result = await stmt.run([password_hash, id]);
-    return result.changes > 0;
+    `;
+    const { rowCount } = await db.query(sql, [password_hash, id]);
+    return rowCount > 0;
   }
 
-  // Alias para compatibilidade com o controller
+  // Alias compatível com controller
   async resetPassword(id, password_hash) {
     return this.updatePassword(id, password_hash);
   }
 
   async update(id, { name, email, role }) {
-    const stmt = db().prepare(`
+    const sql = `
       UPDATE users
          SET name = ${ph(1)},
              email = LOWER(${ph(2)}),
              role = ${ph(3)},
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(4)}
-    `);
-    const result = await stmt.run([
-      String(name || '').trim(),
-      normalizeEmail(email),
-      normalizeRole(role),
-      id
-    ]);
-    return result.changes > 0;
+    `;
+    try {
+      const { rowCount } = await db.query(sql, [
+        String(name || '').trim(),
+        normalizeEmail(email),
+        normalizeRole(role),
+        id
+      ]);
+      return rowCount > 0;
+    } catch (err) {
+      if (err && err.code === '23505') {
+        const e = new Error('E-mail já cadastrado');
+        e.code = 'EMAIL_EXISTS';
+        throw e;
+      }
+      throw err;
+    }
   }
 
   async remove(id) {
-    const stmt = db().prepare(`DELETE FROM users WHERE id = ${ph(1)}`);
-    const result = await stmt.run([id]);
-    return result.changes > 0;
+    const { rowCount } = await db.query(`DELETE FROM users WHERE id = ${ph(1)}`, [id]);
+    return rowCount > 0;
   }
 
   async setActive(id, active) {
-    // PG espera boolean; padronizamos para evitar valores truthy/falsey inesperados
-    const value = !!active;
-    const stmt = db().prepare(`
+    const value = !!active; // garante boolean
+    const sql = `
       UPDATE users
          SET is_active = ${ph(1)},
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(2)}
-    `);
-    const result = await stmt.run([value, id]);
-    return result.changes > 0;
+    `;
+    const { rowCount } = await db.query(sql, [value, id]);
+    return rowCount > 0;
   }
 
   async countActiveAdmins({ excludeId } = {}) {
-    let sql = "SELECT COUNT(*) AS total FROM users WHERE role = 'ADMIN' AND is_active = TRUE";
+    let sql = `SELECT COUNT(*)::int AS total FROM users WHERE role = 'ADMIN' AND is_active = TRUE`;
     const params = [];
-    let index = 1;
+    let idx = 1;
 
     const parsedExclude = Number(excludeId);
     if (Number.isFinite(parsedExclude)) {
-      sql += ` AND id <> ${ph(index)}`;
+      sql += ` AND id <> ${ph(idx)}`;
       params.push(parsedExclude);
-      index += 1;
+      idx += 1;
     }
 
-    const stmt = db().prepare(sql);
-    const row = await stmt.get(params);
-    return Number(row?.total || 0);
+    const { rows } = await db.query(sql, params);
+    return Number(rows?.[0]?.total || 0);
   }
 
   async list({ q = '', page = 1, limit = 10 } = {}) {
@@ -157,27 +174,28 @@ class UserModel {
 
     const filters = [];
     const params = [];
-    let index = 1;
+    let idx = 1;
 
     if (q) {
-      filters.push(`(LOWER(name) LIKE ${ph(index)} OR LOWER(email) LIKE ${ph(index + 1)})`);
+      filters.push(`(LOWER(name) LIKE ${ph(idx)} OR LOWER(email) LIKE ${ph(idx + 1)})`);
       const term = `%${String(q).trim().toLowerCase()}%`;
       params.push(term, term);
-      index += 2;
+      idx += 2;
     }
 
     const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-    const rowsStmt = db().prepare(`
+
+    const rowsSql = `
       ${BASE_SELECT}
       ${whereClause}
       ORDER BY name ASC
-      LIMIT ${ph(index)} OFFSET ${ph(index + 1)}
-    `);
-    const rows = await rowsStmt.all([...params, sanitizedLimit, offset]);
+      LIMIT ${ph(idx)} OFFSET ${ph(idx + 1)}
+    `;
+    const { rows } = await db.query(rowsSql, [...params, sanitizedLimit, offset]);
 
-    const countStmt = db().prepare(`SELECT COUNT(*) AS total FROM users ${whereClause}`);
-    const countRow = await countStmt.get(params);
-    const total = Number(countRow?.total || 0);
+    const countSql = `SELECT COUNT(*)::int AS total FROM users ${whereClause}`;
+    const { rows: countRows } = await db.query(countSql, params);
+    const total = Number(countRows?.[0]?.total || 0);
 
     return {
       data: rows.map(mapRow),

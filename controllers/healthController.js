@@ -1,15 +1,15 @@
 // controllers/healthController.js
-// Health-check simples consultando o PostgreSQL.
+// Health-check simples consultando o PostgreSQL (PG-only).
 
-const dbManager = require('../config/database');
+const db = require('../config/database'); // Pool do pg
 
 exports.check = async (_req, res) => {
   try {
-    const db = dbManager.getDatabase();
-    await db.exec('SELECT 1');
+    await db.query('SELECT 1');
     return res.status(200).json({ success: true, data: { status: 'ok' } });
   } catch (err) {
     console.error('[health] Falha ao consultar o banco:', err);
     return res.status(500).json({ success: false, error: 'Banco de dados indisponível' });
   }
 };
+

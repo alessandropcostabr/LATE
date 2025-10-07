@@ -1,145 +1,137 @@
 #!/usr/bin/env node
-/**
- * Runner de migrações PostgreSQL para o projeto LATE.
- * - Identificadores em inglês; comentários/erros em pt-BR.
- * - Aplica arquivos .sql em migrations/ por ordem, registrando em schema_migrations.
- * - Transação por arquivo, exceto quando o .sql já contém BEGIN/COMMIT.
- */
+
+// scripts/migrate.js
+// Migrador simples para arquivos .sql em migrations/ (ordem alfanumérica).
+// - Respeita DB_DRIVER=pg (falha se diferente)
+// - Carrega .env.production -> .env (fallback)
+// - Usa tabela schema_migrations para controle de arquivos aplicados
+// - --dry-run lista o que seria aplicado
+// Comentários em pt-BR; identificadores em inglês.
 
 const fs = require('fs');
 const path = require('path');
-const dbManager = require('../config/database');
+const dotenv = require('dotenv');
+
+// Barrar drivers não suportados
+const driver = String(process.env.DB_DRIVER || 'pg').toLowerCase();
+if (driver !== 'pg') {
+  console.error('[migrate] DB_DRIVER inválido:', process.env.DB_DRIVER, '→ use "pg".');
+  process.exit(1);
+}
+
+const pool = require('../config/database');
 
 const MIGRATIONS_DIR = path.join(__dirname, '..', 'migrations');
-const MIGRATIONS_TABLE = 'schema_migrations';
-const isDryRun = process.argv.includes('--dry-run');
+const TABLE = 'schema_migrations';
 
-function listSqlFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter(f => f.toLowerCase().endsWith('.sql'))
-    .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+// Detecta se o arquivo .sql já tem controle de transação próprio
+function hasOwnTransaction(sql) {
+  // Ignora comentários simples e procura padrões BEGIN/COMMIT
+  const cleaned = sql
+    .replace(/--.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .toUpperCase();
+  return cleaned.includes('BEGIN;') && cleaned.includes('COMMIT;');
 }
 
-/**
- * Detecta se o SQL já possui controle explícito de transação.
- * Cobre padrões comuns:
- *  - BEGIN;
- *  - BEGIN TRANSACTION;
- *  - COMMIT;
- *  - (ignora comentários -- e /* *\/)
- */
-function hasOwnTransaction(sqlText) {
-  // Remove comentários de linha e bloco para evitar falsos positivos
-  const withoutLineComments = sqlText.replace(/--.*$/gm, '');
-  const withoutBlockComments = withoutLineComments.replace(/\/\*[\s\S]*?\*\//g, '');
-  const normalized = withoutBlockComments.toUpperCase();
-
-  const hasBegin = /\bBEGIN(?:\s+TRANSACTION)?\s*;/.test(normalized);
-  const hasCommit = /\bCOMMIT\s*;/.test(normalized);
-
-  return hasBegin && hasCommit;
-}
-
-async function ensureMigrationsTable(db) {
-  const sql = `
-    CREATE TABLE IF NOT EXISTS ${MIGRATIONS_TABLE} (
-      filename TEXT PRIMARY KEY,
-      applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+async function ensureMigrationsTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS ${TABLE} (
+      id SERIAL PRIMARY KEY,
+      filename TEXT NOT NULL UNIQUE,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-  `;
-  await db.exec(sql);
+  `);
 }
 
-async function getApplied(db) {
-  try {
-    const stmt = db.prepare(`SELECT filename FROM ${MIGRATIONS_TABLE} ORDER BY filename ASC`);
-    const rows = await stmt.all();
-    return new Set((rows || []).map(r => r.filename));
-  } catch (e) {
-    return new Set();
-  }
+async function getAppliedMigrations(client) {
+  const { rows } = await client.query(`SELECT filename FROM ${TABLE}`);
+  return new Set(rows.map(r => r.filename));
 }
 
-async function markApplied(db, filename) {
-  const stmt = db.prepare(`INSERT INTO ${MIGRATIONS_TABLE} (filename) VALUES (${dbManager.placeholder(1)})`);
-  await stmt.run([filename]);
+function listMigrationFiles() {
+  if (!fs.existsSync(MIGRATIONS_DIR)) return [];
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter(f => f.endsWith('.sql'))
+    .sort((a, b) => a.localeCompare(b));
 }
 
-async function applyFileTransactional(filename, sqlText) {
-  const transformed = sqlText;
+async function applyMigration(client, filename, dryRun = false) {
+  const fullpath = path.join(MIGRATIONS_DIR, filename);
+  const sql = fs.readFileSync(fullpath, 'utf8');
 
-  // Se o arquivo já tem BEGIN/COMMIT, não envolver em outra transação.
-  if (hasOwnTransaction(transformed)) {
-    const db = dbManager.getDatabase();
-    await db.exec(transformed);
+  if (dryRun) {
+    console.log(`[dry-run] aplicaria: ${filename}`);
     return;
   }
 
-  // Caso contrário, executa em uma transação por arquivo.
-  return dbManager.transaction(async (db) => {
-    await db.exec(transformed);
-  });
-}
+  console.log(`[migrate] aplicando: ${filename}`);
 
-(async function main() {
-  dbManager.adapter();
-  const db = dbManager.getDatabase();
-
-  const files = listSqlFiles(MIGRATIONS_DIR);
-  if (files.length === 0) {
-    console.info('[migrate] Nenhum arquivo .sql encontrado em migrations/.');
-    await dbManager.close();
-    process.exit(0);
-  }
-
-  try {
-    await ensureMigrationsTable(db);
-  } catch (e) {
-    console.error('[migrate] ERRO ao garantir tabela de migrações:', e.message);
-    await dbManager.close();
-    process.exit(1);
-  }
-
-  const applied = await getApplied(db);
-  const pendentes = files.filter(f => !applied.has(f));
-
-  if (pendentes.length === 0) {
-    console.info('[migrate] Não há migrações pendentes.');
-    await dbManager.close();
-    process.exit(0);
-  }
-
-  console.info('[migrate] Driver ativo: pg');
-  console.info('[migrate] Arquivos pendentes:', pendentes);
-
-  if (isDryRun) {
-    console.info('[migrate] Modo --dry-run: nenhuma migração será aplicada.');
-    await dbManager.close();
-    process.exit(0);
-  }
-
-  for (const fname of pendentes) {
-    const full = path.join(MIGRATIONS_DIR, fname);
-    const sqlText = fs.readFileSync(full, 'utf8');
-    console.info(`[migrate] Aplicando: ${fname} ...`);
+  if (hasOwnTransaction(sql)) {
+    // Arquivo já controla BEGIN/COMMIT
+    await client.query(sql);
+  } else {
+    // Enrola em transação
+    await client.query('BEGIN');
     try {
-      await applyFileTransactional(fname, sqlText);
-      await markApplied(db, fname);
-      console.info(`[migrate] OK: ${fname}`);
+      await client.query(sql);
+      await client.query('COMMIT');
     } catch (err) {
-      console.error(`[migrate] ERRO ao aplicar ${fname}:`, err.message);
-      await dbManager.close();
-      process.exit(1);
+      await client.query('ROLLBACK');
+      throw err;
     }
   }
 
-  await dbManager.close();
-  console.info('[migrate] Concluído com sucesso.');
-  process.exit(0);
-})().catch(async (e) => {
-  console.error('[migrate] Falha inesperada:', e);
-  try { await dbManager.close(); } catch {}
-  process.exit(1);
-});
+  await client.query(
+    `INSERT INTO ${TABLE} (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING`,
+    [filename]
+  );
+
+  console.log(`[migrate] ok: ${filename}`);
+}
+
+async function main() {
+  const dryRun = process.argv.includes('--dry-run');
+
+  const client = await pool.connect();
+  try {
+    // Garante tabela de controle
+    await ensureMigrationsTable(client);
+
+    const applied = await getAppliedMigrations(client);
+    const files = listMigrationFiles();
+
+    if (files.length === 0) {
+      console.log('[migrate] Nenhum arquivo .sql encontrado em migrations/');
+      return;
+    }
+
+    const pending = files.filter(f => !applied.has(f));
+
+    if (pending.length === 0) {
+      console.log('[migrate] Nenhuma migração pendente.');
+      return;
+    }
+
+    console.log(`[migrate] Pendentes: ${pending.length}`);
+    for (const f of pending) {
+      await applyMigration(client, f, dryRun);
+    }
+
+    if (dryRun) {
+      console.log('[migrate] DRY RUN concluído (nenhuma alteração aplicada).');
+    } else {
+      console.log('[migrate] Todas as migrações pendentes foram aplicadas.');
+    }
+  } catch (err) {
+    console.error('[migrate] ERRO:', err.message || err);
+    process.exitCode = 1;
+  } finally {
+    client.release();
+    await pool.end().catch(() => {});
+  }
+}
+
+main();
+
