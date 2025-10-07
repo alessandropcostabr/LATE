@@ -5,6 +5,17 @@ const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
 
+const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
+
+function normalizeRole(role) {
+  const value = String(role || 'OPERADOR').trim().toUpperCase();
+  return ALLOWED_ROLES.includes(value) ? value : 'OPERADOR';
+}
+
+function parseBooleanFlag(value) {
+  return value === true || value === 'true' || value === 1 || value === '1';
+}
+
 function isEmailUniqueViolation(err) {
   if (!err) return false;
   const message = String(err.message || '').toLowerCase();
@@ -38,7 +49,7 @@ exports.create = async (req, res) => {
   const name     = String(req.body.name || '').trim();
   const email    = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '').trim();
-  const role     = String(req.body.role || 'OPERADOR').trim().toUpperCase();
+  const role     = normalizeRole(req.body.role);
 
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -65,8 +76,25 @@ exports.create = async (req, res) => {
 exports.setActive = async (req, res) => {
   const id = Number(req.params.id);
   const activeInput = req.body.active;
-  const active = activeInput === true || activeInput === 'true' || activeInput === 1 || activeInput === '1';
+  const active = parseBooleanFlag(activeInput);
   try {
+    const sessionUserId = Number(req.session?.user?.id);
+    const targetUser = await UserModel.findById(id);
+    if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    if (!active) {
+      if (sessionUserId === id) {
+        return res.status(400).json({ success: false, error: 'Não é possível desativar o próprio usuário.' });
+      }
+
+      if (targetUser.role === 'ADMIN' && targetUser.is_active) {
+        const remainingAdmins = await UserModel.countActiveAdmins({ excludeId: id });
+        if (remainingAdmins === 0) {
+          return res.status(400).json({ success: false, error: 'É necessário manter ao menos um administrador ativo no sistema.' });
+        }
+      }
+    }
+
     const ok = await UserModel.setActive(id, active);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
     return res.json({ success: true, data: { id, active } });
@@ -93,17 +121,32 @@ exports.getById = async (req, res) => {
 exports.update = async (req, res) => {
   try {
     const id = Number(req.params.id);
+    const sessionUserId = Number(req.session?.user?.id);
     const changes = {
       name: String(req.body.name || '').trim(),
       email: String(req.body.email || '').trim().toLowerCase(),
-      role: String(req.body.role || '').trim().toUpperCase(),
+      role: normalizeRole(req.body.role),
     };
+    const targetUser = await UserModel.findById(id);
+    if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    if (sessionUserId === id && changes.role !== 'ADMIN') {
+      return res.status(400).json({ success: false, error: 'Não é possível remover o próprio acesso de administrador.' });
+    }
+
+    if (targetUser.role === 'ADMIN' && targetUser.is_active && changes.role !== 'ADMIN') {
+      const remainingAdmins = await UserModel.countActiveAdmins({ excludeId: id });
+      if (remainingAdmins === 0) {
+        return res.status(400).json({ success: false, error: 'É necessário manter ao menos um administrador ativo no sistema.' });
+      }
+    }
+
     const ok = await UserModel.update(id, changes);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
     const user = await UserModel.findById(id);
     return res.json({ success: true, data: user });
   } catch (err) {
-    if (err && (err.code === '23505' || String(err.message || '').includes('users_email'))) {
+    if (isEmailUniqueViolation(err)) {
       return res.status(409).json({ success: false, error: 'E-mail já cadastrado' });
     }
     console.error('[users] update error:', err);
@@ -131,6 +174,22 @@ exports.resetPassword = async (req, res) => {
 exports.remove = async (req, res) => {
   try {
     const id = Number(req.params.id);
+    const sessionUserId = Number(req.session?.user?.id);
+
+    if (sessionUserId === id) {
+      return res.status(400).json({ success: false, error: 'Não é possível remover o próprio usuário.' });
+    }
+
+    const targetUser = await UserModel.findById(id);
+    if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    if (targetUser.role === 'ADMIN' && targetUser.is_active) {
+      const remainingAdmins = await UserModel.countActiveAdmins({ excludeId: id });
+      if (remainingAdmins === 0) {
+        return res.status(400).json({ success: false, error: 'É necessário manter ao menos um administrador ativo no sistema.' });
+      }
+    }
+
     const ok = await UserModel.remove(id);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
     return res.json({ success: true, data: 'Usuário removido com sucesso' });
