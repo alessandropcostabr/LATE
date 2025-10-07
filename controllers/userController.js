@@ -130,7 +130,7 @@ exports.update = async (req, res) => {
     const targetUser = await UserModel.findById(id);
     if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
-    if (sessionUserId === id && changes.role !== 'ADMIN') {
+    if (sessionUserId === id && targetUser.role === 'ADMIN' && changes.role !== 'ADMIN') {
       return res.status(400).json({ success: false, error: 'Não é possível remover o próprio acesso de administrador.' });
     }
 
