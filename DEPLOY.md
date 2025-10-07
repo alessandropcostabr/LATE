@@ -7,7 +7,7 @@ Estas instruções são específicas para o seu ambiente já configurado:
 - **Node.js**: v22.15.0 já instalado
 - **Express.js**: v5.1.0
 - **PM2**: v6.0.5 já configurado
-- **SQLite**: better-sqlite3 v11.9.1
+- **PostgreSQL**: conexão via `pg` (Pool) e `connect-pg-simple`
 
 ## 📋 Pré-requisitos Verificados
 
@@ -45,9 +45,16 @@ npm install
 
 ### 3. Executar Migrações
 
-As migrações do banco devem estar em `data/migrations`.
+Configure as variáveis `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` e `PG_SSL` antes de aplicar as migrações em `migrations/`.
 
 ```bash
+export PGHOST=127.0.0.1
+export PGPORT=5432
+export PGUSER=late_app
+export PGPASSWORD='senha-segura'
+export PGDATABASE=late_prod
+export PG_SSL=1 # use 0 apenas em ambientes locais sem TLS
+
 node scripts/migrate.js
 ```
 
@@ -188,7 +195,7 @@ netstat -tlnp | grep :3000
 
 ```bash
 # 1. Fazer backup do banco de dados
-cp data/recados.db backup/recados_$(date +%Y%m%d_%H%M%S).db
+pg_dump "$PGDATABASE" -h "$PGHOST" -U "$PGUSER" -F c -f backup/late_$(date +%Y%m%d_%H%M%S).dump
 
 # 2. Parar aplicação
 pm2 stop late
@@ -212,7 +219,7 @@ pm2 start late
 crontab -e
 
 # Adicionar linha para backup diário às 2h da manhã:
-0 2 * * * cp /caminho/para/late/data/recados.db /backup/recados_$(date +\%Y\%m\%d).db
+0 2 * * * pg_dump "$PGDATABASE" -h "$PGHOST" -U "$PGUSER" -F c -f /backup/late_$(date +\%Y\%m\%d).dump
 ```
 
 ## 🔒 Segurança
@@ -261,11 +268,11 @@ crontab -e
 
 3. **Banco de Dados não Criado**:
    ```bash
-   # Verificar se a pasta data existe
-   ls -la late/data/
-   
-   # Criar manualmente se necessário
-   mkdir -p late/data
+   # Confirmar variáveis PG_* carregadas
+   env | grep '^PG'
+
+   # Rodar migrações novamente
+   node scripts/migrate.js
    ```
 
 4. **Dependências não Instaladas**:

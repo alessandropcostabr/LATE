@@ -1,5 +1,5 @@
 // server.js — foco DEV estável
-// Arquitetura: Express 5 + EJS + SQLite (better-sqlite3) + sessions
+// Arquitetura: Express 5 + EJS + PostgreSQL + sessions
 
 const express = require('express');
 const corsMw = require('./middleware/cors');
@@ -7,7 +7,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
+const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
@@ -16,6 +16,7 @@ require('dotenv').config(); // carrega .env
 const dbManager = require('./config/database');
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
+const healthController = require('./controllers/healthController');
 
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
@@ -71,13 +72,22 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Sessão
 const secureCookie = isProd ? 'auto' : false;
 
+const pgAdapter = dbManager.adapter();
+// Reutiliza o pool configurado pelo adapter PG para compartilhar conexões entre app e sessões.
+const sessionPool = pgAdapter.ensurePool();
+
 app.use(session({
   name: 'connect.sid',
   secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
   resave: false,
   rolling: true,
   saveUninitialized: false,
-  store: new SQLiteStore({ db: 'sessions.sqlite', dir: path.join(__dirname, 'data') }),
+  store: new PgSession({
+    pool: sessionPool,
+    tableName: process.env.SESSION_TABLE || 'sessions',
+    schemaName: process.env.SESSION_SCHEMA || 'public',
+    createTableIfMissing: true,
+  }),
   cookie: {
     httpOnly: true,
     secure: secureCookie,
@@ -238,7 +248,7 @@ app.use((req, res, next) => {
 });
 
 // Health
-app.get('/health', (_req, res) => res.status(200).json({ success: true, data: { status: 'ok' } }));
+app.get('/health', healthController.check);
 
 // Rotas
 app.use('/login', loginLimiter);

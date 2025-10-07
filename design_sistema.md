@@ -4,7 +4,7 @@
 
 ### Stack Tecnológica:
 - **Backend:** Node.js v22.15.0 + Express.js v5.1.0
-- **Banco de Dados:** SQLite (better-sqlite3 v11.9.1)
+- **Banco de Dados:** PostgreSQL (pg Pool compartilhado)
 - **Frontend:** HTML5 + CSS3 + JavaScript (Vanilla)
 - **Gerenciamento:** PM2 v6.0.5
 - **Hospedagem:** AWS EC2 (Ubuntu 22.04.5 LTS)
@@ -161,7 +161,7 @@ CREATE INDEX idx_created_at ON recados(created_at);
 - **Impressão:** Formatação otimizada
 
 ### 4. Backup e Segurança
-- **Backup automático** do SQLite
+- **Backup automático** com `pg_dump`
 - **Logs de auditoria**
 - **Validação de entrada**
 
@@ -172,7 +172,7 @@ late/
 ├── server.js              # Servidor principal
 ├── package.json           # Dependências
 ├── config/
-│   └── database.js        # Configuração do SQLite
+│   └── database.js        # Configuração do PostgreSQL
 ├── routes/
 │   ├── api.js            # Rotas da API
 │   └── web.js            # Rotas web

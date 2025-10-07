@@ -55,7 +55,7 @@ O arquivo "CadernodeRecados.xlsx" é um modelo estático para registro interno d
 
 ### Tecnologias a Utilizar:
 - **Backend:** Node.js + Express.js (já disponível)
-- **Banco:** SQLite (já disponível)
+- **Banco:** PostgreSQL (Pool gerenciado pelo pg)
 - **Frontend:** HTML5 + CSS3 + JavaScript vanilla
 - **Deploy:** AWS EC2 (já disponível)
 

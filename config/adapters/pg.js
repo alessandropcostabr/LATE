@@ -8,10 +8,14 @@ class PostgresAdapter {
     this.pool = null;
     this.config = {};
     this.name = 'pg';
+    this.poolFactory = null;
   }
 
   configure(config = {}) {
-    this.config = { ...config };
+    const { poolFactory, ...rest } = config;
+    this.config = { ...rest };
+    // Permite que testes injetem uma fábrica de Pool (ex.: pg-mem) sem afetar produção.
+    this.poolFactory = typeof poolFactory === 'function' ? poolFactory : null;
     // Dica: se existir PG_CONNECTION_STRING nas envs, você pode preferir connectionString.
     if (!this.config.connectionString && process.env.PG_CONNECTION_STRING) {
       this.config.connectionString = process.env.PG_CONNECTION_STRING;
@@ -30,7 +34,8 @@ class PostgresAdapter {
 
   ensurePool() {
     if (!this.pool) {
-      this.pool = new Pool(this.config);
+      const factory = this.poolFactory || ((cfg) => new Pool(cfg));
+      this.pool = factory(this.config);
     }
     return this.pool;
   }
