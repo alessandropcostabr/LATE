@@ -1,97 +1,63 @@
 // middleware/cors.js
 // Comentários em pt-BR; identificadores em inglês.
 // Regras:
-// - Aplica CORS apenas para /api/*
-// - Allowlist por env CORS_ORIGINS (csv). Em DEV permite localhost/127.0.0.1.
-// - Origin "null" bloqueado por padrão; libere com CORS_ALLOW_NULL=1 (apenas DEV recomendado).
-// - Exporta ALLOWED_METHODS/ALLOWED_HEADERS pois server.js usa nos preflights.
+// - Aplica CORS para a API (usa mesmas regras em qualquer caminho, o server.js decide onde montar).
+// - Allowlist via CORS_ORIGINS (CSV). Permite same-origin e requisições sem Origin.
+// - Exporta ALLOWED_METHODS/ALLOWED_HEADERS para uso no preflight do server.js.
+// - Mensagens em pt-BR; chaves JSON em inglês.
 
-const ALLOWED_METHODS = 'GET,POST,PUT,DELETE,PATCH,OPTIONS';
-const ALLOWED_HEADERS = 'Content-Type,X-CSRF-Token,X-Requested-With';
-
-function isApiRequest(req) {
-  const u = req.originalUrl || req.url || '';
-  return u.startsWith('/api/');
-}
-
-function parseAllowlist() {
-  const raw = process.env.CORS_ORIGINS || '';
-  const list = raw
+function parseOrigins(env) {
+  return String(env || '')
     .split(',')
     .map(s => s.trim())
-    .filter(Boolean);
-
-  // Em não-produção, garantir localhost/127.0.0.1
-  const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
-  if (!isProd) {
-    const devs = new Set([
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'https://localhost:3000',
-      'https://127.0.0.1:3000'
-    ]);
-    for (const o of devs) if (!list.includes(o)) list.push(o);
-  }
-  return list;
+    .filter(Boolean)
+    .map(s => s.toLowerCase());
 }
 
-function corsMiddleware(req, res, next) {
-  // Só tratamos CORS na API
-  if (!isApiRequest(req)) return next();
+const configured = parseOrigins(process.env.CORS_ORIGINS);
 
-  const origin = req.headers.origin;
-  const allowlist = parseAllowlist();
-  const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
+// Constantes expostas (server.js usa no preflight OPTIONS)
+const ALLOWED_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
+const ALLOWED_HEADERS = 'Content-Type, X-Requested-With';
 
-  // Requisição sem Origin (ex.: curl, same-origin) -> segue
-  if (!origin) return next();
+function apiCors(req, res, next) {
+  const originHdr = req.headers.origin || '';
+  const origin = originHdr.toLowerCase();
 
-  // Origin 'null' (file://, sandbox)
-  if (origin === 'null') {
-    if (!isProd && process.env.CORS_ALLOW_NULL === '1') {
-      // leitura pública; sem credenciais
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Vary', 'Origin');
-      if (req.method === 'OPTIONS') {
-        res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
-        res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
-        res.setHeader('Access-Control-Max-Age', '600');
-        return res.sendStatus(204);
-      }
-      return next();
-    }
-    return res
-      .status(403)
-      .json({ success: false, error: 'Origem não permitida: null' });
+  // Monta o "host origin" atual (ex.: http://localhost:3000)
+  const scheme = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host');
+  const hostOrigin = `${scheme}://${host}`.toLowerCase();
+
+  const noOrigin = !origin;                  // same-origin "cru" (navegação normal) vem sem Origin
+  const isSameOrigin = origin && origin === hostOrigin;
+  const isConfigured = origin && configured.includes(origin);
+
+  // Permitimos: ausência de Origin (same-origin), same-origin explícito, ou origin da allowlist
+  const allowed = noOrigin || isSameOrigin || isConfigured;
+
+  if (!allowed) {
+    return res.status(403).json({ success: false, error: 'Origem não permitida' });
   }
 
-  // Origin presente: precisa estar na allowlist
-  if (!allowlist.includes(origin)) {
+  // Só anexa cabeçalhos CORS quando existir uma origem cross-origin permitida
+  if (origin && origin !== hostOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
-    return res
-      .status(403)
-      .json({ success: false, error: `Origem não permitida: ${origin}` });
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
+    res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
   }
 
-  // Origin permitido
-  res.setHeader('Access-Control-Allow-Origin', origin);
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
-  res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
-  res.setHeader('Vary', 'Origin');
-
-  // Preflight
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Max-Age', '600'); // 10 min
-    return res.sendStatus(204);
-  }
+  // Trata pré-flight
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
 
   return next();
 }
 
-// Exporta constantes (server.js usa em preflight global)
-corsMiddleware.ALLOWED_METHODS = ALLOWED_METHODS;
-corsMiddleware.ALLOWED_HEADERS = ALLOWED_HEADERS;
+// Exporta constantes para o server.js (preflight global)
+apiCors.ALLOWED_METHODS = ALLOWED_METHODS;
+apiCors.ALLOWED_HEADERS = ALLOWED_HEADERS;
 
-module.exports = corsMiddleware;
+module.exports = apiCors;
 

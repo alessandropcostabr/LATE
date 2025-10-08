@@ -11,13 +11,26 @@ const MessageModel = require('../models/message'); // para /recados/:id
 
 const router = express.Router();
 
+// ------------------------------ Admin --------------------------------------
 // Admin → Usuários (apenas ADMIN)
 router.get('/admin/users', requireAuth, requireRole('ADMIN'), (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   return res.render('admin-users', {
     title: 'Admin · Usuários',
     csrfToken,
-    scripts: ['/js/admin-users.js'], // novo JS do painel admin
+    user: req.session.user || null,
+    scripts: ['/js/admin-users.js'], // JS do painel admin de usuários
+  });
+});
+
+// Admin → Setores (apenas ADMIN)
+router.get('/admin/sectors', requireAuth, requireRole('ADMIN'), (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  return res.render('admin-sectors', {
+    title: 'Admin · Setores',
+    csrfToken,
+    user: req.session.user || null,
+    scripts: ['/js/admin-sectors.js'], // JS do painel admin de setores
   });
 });
 

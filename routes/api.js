@@ -4,7 +4,7 @@
 const Router = require('router');
 const router = Router();
 
-// Controllers
+// Controllers existentes
 const messageController = require('../controllers/messageController');
 const statsController   = require('../controllers/statsController');
 
@@ -18,63 +18,17 @@ const {
   validateQueryMessages
 } = require('../middleware/validation');
 
-// Painel ADMIN de Usuarios
+// Painel ADMIN de Usuários
 const { requireRole } = require('../middleware/auth');
 const UserController = require('../controllers/userController');
 const {
   validateUserCreate,
   validateUserUpdate,
   validateIdParam
-} = require('../middleware/validation'); // <- não redeclara handleValidationErrors
+} = require('../middleware/validation'); // não redeclarar handleValidationErrors
 
-// Admin - Users (somente ADMIN)
-router.get('/users',
-  requireRole('ADMIN'),
-  UserController.list
-);
-
-router.get('/users/:id',
-  requireRole('ADMIN'),
-  validateIdParam,
-  handleValidationErrors,
-  UserController.getById
-);
-
-router.post('/users',
-  requireRole('ADMIN'),
-  validateUserCreate,
-  handleValidationErrors,
-  UserController.create
-);
-
-router.put('/users/:id',
-  requireRole('ADMIN'),
-  validateIdParam,
-  validateUserUpdate,
-  handleValidationErrors,
-  UserController.update
-);
-
-router.patch('/users/:id/active',
-  requireRole('ADMIN'),
-  validateIdParam,
-  handleValidationErrors,
-  UserController.setActive
-);
-
-router.patch('/users/:id/password',
-  requireRole('ADMIN'),
-  validateIdParam,
-  handleValidationErrors,
-  UserController.resetPassword
-);
-
-router.delete('/users/:id',
-  requireRole('ADMIN'),
-  validateIdParam,
-  handleValidationErrors,
-  UserController.remove
-);
+// --------- Admin: Setores ---------
+const sectorController = require('../controllers/sectorController');
 
 // --- Helper defensivo para middlewares vindos de fontes diversas ---
 function flatFns(...mws) {
@@ -129,46 +83,38 @@ function flatFns(...mws) {
 }
 
 // ========== Messages ==========
-
-// Listar (com querystring: limit/offset/status/recipient/start_date/end_date)
 router.get(
   '/messages',
   ...flatFns(validateQueryMessages, handleValidationErrors),
   messageController.list
 );
 
-// KPIs de cards (total/pending/in_progress/resolved)
 router.get('/messages/stats', ...flatFns(statsController.messagesStats));
 
-// Obter 1
 router.get(
   '/messages/:id',
   ...flatFns(validateId, handleValidationErrors),
   messageController.getById
 );
 
-// Criar
 router.post(
   '/messages',
   ...flatFns(validateCreateMessage, handleValidationErrors),
   messageController.create
 );
 
-// Atualizar
 router.put(
   '/messages/:id',
   ...flatFns(validateId, validateUpdateMessage, handleValidationErrors),
   messageController.update
 );
 
-// Atualizar status
 router.patch(
   '/messages/:id/status',
   ...flatFns(validateId, validateUpdateStatus, handleValidationErrors),
   messageController.updateStatus
 );
 
-// Remover
 router.delete(
   '/messages/:id',
   ...flatFns(validateId, handleValidationErrors),
@@ -179,6 +125,97 @@ router.delete(
 router.get('/stats/by-status',    ...flatFns(statsController.byStatus));
 router.get('/stats/by-recipient', ...flatFns(statsController.byRecipient));
 router.get('/stats/by-month',     ...flatFns(statsController.byMonth));
+
+// ========== Admin - Users ==========
+router.get('/users',
+  requireRole('ADMIN'),
+  UserController.list
+);
+
+router.get('/users/:id',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.getById
+);
+
+router.post('/users',
+  requireRole('ADMIN'),
+  validateUserCreate,
+  handleValidationErrors,
+  UserController.create
+);
+
+router.put('/users/:id',
+  requireRole('ADMIN'),
+  validateIdParam,
+  validateUserUpdate,
+  handleValidationErrors,
+  UserController.update
+);
+
+router.patch('/users/:id/active',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.setActive
+);
+
+router.patch('/users/:id/password',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.resetPassword
+);
+
+router.delete('/users/:id',
+  requireRole('ADMIN'),
+  validateIdParam,
+  handleValidationErrors,
+  UserController.remove
+);
+
+// ========== Admin - Sectors ==========
+router.get('/sectors',
+  requireRole('ADMIN'),
+  ...flatFns(sectorController.validateList),
+  sectorController.list
+);
+
+router.post('/sectors',
+  requireRole('ADMIN'),
+  ...flatFns(sectorController.validateCreate),
+  sectorController.create
+);
+
+router.put('/sectors/:id',
+  requireRole('ADMIN'),
+  ...flatFns(sectorController.validateUpdate),
+  sectorController.update
+);
+
+router.put('/sectors/:id/toggle',
+  requireRole('ADMIN'),
+  ...flatFns(sectorController.validateToggle),
+  sectorController.toggle
+);
+
+router.delete('/sectors/:id',
+  requireRole('ADMIN'),
+  sectorController.remove
+);
+
+// ========== Admin - User ↔ Sectors ==========
+router.get('/users/:id/sectors',
+  requireRole('ADMIN'),
+  sectorController.getUserSectors
+);
+
+router.put('/users/:id/sectors',
+  requireRole('ADMIN'),
+  ...flatFns(sectorController.validateUserSectors),
+  sectorController.setUserSectors
+);
 
 // Export
 module.exports = router;

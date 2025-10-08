@@ -39,13 +39,8 @@ app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// CORS e OPTIONS
-app.use(corsMw);
-app.options(/.*/, corsMw, (req, res) => {
-  res.setHeader('Access-Control-Allow-Methods', corsMw.ALLOWED_METHODS);
-  res.setHeader('Access-Control-Allow-Headers', corsMw.ALLOWED_HEADERS);
-  res.sendStatus(204);
-});
+// CORS somente na API (opcional recomendado; evita mexer no fluxo Web)
+app.use('/api', corsMw);
 
 if (isProd && validateOrigin) app.use(validateOrigin);
 
@@ -250,8 +245,8 @@ app.get('/health', healthController.check);
 // Rotas
 app.use('/login', loginLimiter);
 app.use('/api', apiLimiter);
-app.use('/api', apiRoutes);
-app.use('/', webRoutes);
+app.use('/api', apiRoutes); // ✅ API primeiro (antes das rotas Web)
+app.use('/', webRoutes);    // Web por último (tem 404 próprio)
 
 // Erros genéricos
 app.use((err, req, res, _next) => {

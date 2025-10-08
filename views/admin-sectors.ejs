@@ -1,0 +1,99 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container">
+
+      <!-- Cabeçalho da página (alinhado com Admin · Usuários) -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+          <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;"><%= title %></h1>
+          <p style="color: var(--text-secondary);">Gerencie os setores do sistema</p>
+        </div>
+        <button id="btnNewSector" class="btn btn-primary btn-lg">
+          <span aria-hidden="true">➕</span> Novo setor
+        </button>
+      </div>
+
+      <!-- Card: Pesquisar -->
+      <section class="card" style="margin-bottom: 1.5rem;">
+        <div class="card-body">
+          <h2 class="card-title h5">Pesquisar</h2>
+          <p class="card-subtitle text-muted" style="margin-bottom: 1rem;">Busque por nome ou e-mail</p>
+
+          <form id="searchForm" class="row g-2">
+            <div class="col-sm-6">
+              <input type="text" class="form-control" id="q" placeholder="Pesquisar por nome ou e-mail">
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Card: Setores (lista) -->
+      <section class="card">
+        <div class="card-body">
+          <h2 class="card-title h5">Setores</h2>
+          <p class="card-subtitle text-muted" style="margin-bottom: 1rem;">Lista de setores cadastrados</p>
+
+          <div class="table-responsive">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Status</th>
+                  <th style="width: 220px;">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="sectorsTableBody">
+                <tr><td colspan="4">Carregando...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <nav>
+            <ul class="pagination" id="pagination"></ul>
+          </nav>
+        </div>
+      </section>
+
+      <!-- Modal: criar/editar setor (IDs esperados pelo JS) -->
+      <div class="modal fade" id="sectorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <form class="modal-content" id="sectorForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="sectorModalLabel">Novo setor</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="sectorId">
+
+              <div class="mb-3">
+                <label for="sectorName" class="form-label">Nome</label>
+                <input type="text" class="form-control" id="sectorName" maxlength="120" required>
+                <div class="form-text">Obrigatório. Máx. 120 caracteres.</div>
+              </div>
+
+              <div class="mb-3">
+                <label for="sectorEmail" class="form-label">E-mail do setor (opcional)</label>
+                <input type="email" class="form-control" id="sectorEmail" placeholder="ex.: atendimento@exemplo.com">
+                <div class="form-text">Usado para notificações ao setor inteiro.</div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancelar</button>
+              <button class="btn btn-primary" type="submit">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+

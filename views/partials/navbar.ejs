@@ -6,6 +6,7 @@
     <button class="navbar-toggler" id="navbarToggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Alternar navegação">
       <span class="navbar-toggler-icon"></span>
     </button>
+
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
         <li class="nav-item">
@@ -22,8 +23,21 @@
           <li class="nav-item">
             <a class="nav-link<%= title === 'Relatórios' ? ' active' : '' %>" href="/relatorios">Relatórios</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link<%= title === 'Admin · Usuários' ? ' active' : '' %>" href="/admin/users">Usuários</a>
+
+          <!-- Menu Admin (dropdown) -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle<%= (title && title.startsWith('Admin ·')) ? ' active' : '' %>"
+               href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              Admin
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+              <li>
+                <a class="dropdown-item<%= title === 'Admin · Usuários' ? ' active' : '' %>" href="/admin/users">Usuários</a>
+              </li>
+              <li>
+                <a class="dropdown-item<%= title === 'Admin · Setores' ? ' active' : '' %>" href="/admin/sectors">Setores</a>
+              </li>
+            </ul>
           </li>
         <% } %>
       </ul>
