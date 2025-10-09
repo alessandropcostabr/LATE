@@ -16,7 +16,10 @@
     const call_date = val('#call_date');
     const call_time = val('#call_time');
     const recipientIdRaw = val('#recipientId');
-    const recipientId = recipientIdRaw ? recipientIdRaw : null;
+    const parsedRecipientId = recipientIdRaw ? Number(recipientIdRaw) : null;
+    const recipientId = Number.isFinite(parsedRecipientId) && parsedRecipientId > 0
+      ? parsedRecipientId
+      : null;
     const selectRecipient = document.querySelector('#recipientId');
     let recipientName = '';
     if (selectRecipient && selectRecipient.selectedIndex > 0) {
