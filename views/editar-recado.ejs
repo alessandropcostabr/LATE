@@ -4,6 +4,9 @@
 
   <main class="main" role="main">
     <div class="container">
+      <% if (typeof csrfToken !== 'undefined') { %>
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
       <div style="margin-bottom:2rem;">
         <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;">Editar Recado</h1>
         <p style="color:var(--text-secondary);">Atualize as informações do recado</p>

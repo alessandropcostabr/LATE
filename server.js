@@ -28,7 +28,27 @@ const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? (isProd ? 1 : 0));
 const app = express();
 app.set('etag', false);
 app.set('trust proxy', TRUST_PROXY);
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+const apiCsp = helmet.contentSecurityPolicy({
+  directives: {
+    'default-src': ["'self'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'self'"],
+    'script-src': ["'self'"],
+    'script-src-attr': ["'none'"],
+    'style-src': ["'self'"],
+    'style-src-attr': ["'none'"],
+    'img-src': ["'self'", 'data:'],
+    'font-src': ["'self'", 'https:', 'data:'],
+    'connect-src': ["'self'"],
+    'object-src': ["'none'"],
+  },
+});
 
 console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV || 'undefined'}`);
 
@@ -39,8 +59,9 @@ app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// CORS somente na API (opcional recomendado; evita mexer no fluxo Web)
+// CORS + CSP somente na API
 app.use('/api', corsMw);
+app.use('/api', apiCsp);
 
 if (isProd && validateOrigin) app.use(validateOrigin);
 

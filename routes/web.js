@@ -8,6 +8,7 @@ const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 
 const MessageModel = require('../models/message'); // para /recados/:id
+const UserModel = require('../models/user');
 
 const router = express.Router();
 
@@ -101,15 +102,29 @@ router.get('/recados', requireAuth, (req, res) => {
   res.render('recados', { title: 'Recados', user: req.session.user || null });
 });
 
-router.get('/novo-recado', requireAuth, (req, res) => {
-  res.render('novo-recado', { title: 'Novo Recado', user: req.session.user || null });
+router.get('/novo-recado', requireAuth, csrfProtection, async (req, res) => {
+  try {
+    const activeUsers = await UserModel.getActiveUsersSelect();
+    const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+    res.render('novo-recado', {
+      title: 'Novo Recado',
+      user: req.session.user || null,
+      csrfToken,
+      activeUsers,
+    });
+  } catch (err) {
+    console.error('[web] erro ao carregar /novo-recado:', err);
+    res.status(500).render('500', { title: 'Erro interno', user: req.session.user || null });
+  }
 });
 
-router.get('/editar-recado/:id', requireAuth, (req, res) => {
+router.get('/editar-recado/:id', requireAuth, csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   res.render('editar-recado', {
     title: 'Editar Recado',
     id: req.params.id,
-    user: req.session.user || null
+    user: req.session.user || null,
+    csrfToken,
   });
 });
 

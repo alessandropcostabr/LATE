@@ -27,7 +27,7 @@ function normalizeStatus(s) {
 function applyBodyNormalizers(req, _res, next) {
   const b = req.body || {};
   [
-    'recipient', 'sender_name', 'sender_phone', 'sender_email',
+    'recipient', 'recipientId', 'sender_name', 'sender_phone', 'sender_email',
     'subject', 'message', 'status', 'call_date', 'call_time',
     'callback_time', 'notes'
   ].forEach((k) => {
@@ -76,6 +76,10 @@ const validateCreateMessage = [
       return true;
     })
     .customSanitizer((value) => normalizeStatus(value)),
+  body('recipientId').notEmpty().withMessage('Destinatário é obrigatório')
+    .bail()
+    .isInt({ min: 1 }).withMessage('Destinatário inválido')
+    .toInt(),
   body('recipient').optional({ checkFalsy: true })
     .isLength({ max: 255 }).withMessage('Destinatário muito longo'),
   body('sender_email').optional({ checkFalsy: true })
@@ -103,6 +107,9 @@ const validateUpdateMessage = [
       return true;
     })
     .customSanitizer((value) => normalizeStatus(value)),
+  body('recipientId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Destinatário inválido')
+    .toInt(),
   body('recipient').optional({ checkFalsy: true })
     .isLength({ max: 255 }).withMessage('Destinatário muito longo'),
   body('sender_email').optional({ checkFalsy: true })
