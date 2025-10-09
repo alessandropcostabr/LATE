@@ -18,7 +18,7 @@ const configured = parseOrigins(process.env.CORS_ORIGINS);
 
 // Constantes expostas (server.js usa no preflight OPTIONS)
 const ALLOWED_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
-const ALLOWED_HEADERS = 'Content-Type, X-Requested-With';
+const ALLOWED_HEADERS = 'Content-Type, X-Requested-With, X-CSRF-Token';
 
 function apiCors(req, res, next) {
   const originHdr = req.headers.origin || '';

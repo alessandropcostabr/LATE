@@ -15,7 +15,11 @@
   function coletarDados() {
     const call_date = val('#call_date');
     const call_time = val('#call_time');
-    const recipientId = val('#recipientId');
+    const recipientIdRaw = val('#recipientId');
+    const parsedRecipientId = recipientIdRaw ? Number(recipientIdRaw) : null;
+    const recipientId = Number.isFinite(parsedRecipientId) && parsedRecipientId > 0
+      ? parsedRecipientId
+      : null;
     const selectRecipient = document.querySelector('#recipientId');
     let recipientName = '';
     if (selectRecipient && selectRecipient.selectedIndex > 0) {
@@ -37,8 +41,8 @@
     const basePayload = {
       call_date,
       call_time,
-      recipientId: recipientId ? Number(recipientId) : null,
-      recipient: recipientName,
+      recipientId,
+      recipient: recipientName || null,
       sender_name,
       sender_phone,
       sender_email,
