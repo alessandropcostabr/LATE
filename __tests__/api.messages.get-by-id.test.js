@@ -7,10 +7,23 @@ jest.mock('../models/message', () => ({
 
 const messageModel = require('../models/message');
 
-function createApp() {
+function createApp(role = 'reader') {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  app.use((req, _res, next) => {
+    if (role) {
+      req.session = {
+        user: {
+          id: 1,
+          name: 'Test Reader',
+          role,
+        },
+      };
+    }
+    next();
+  });
 
   const apiRoutes = require('../routes/api');
   app.use('/api', apiRoutes);
@@ -32,7 +45,7 @@ describe('GET /api/messages/:id', () => {
       updated_at: null,
     });
 
-    const app = createApp();
+    const app = createApp('reader');
     const response = await supertest(app).get('/api/messages/1');
 
     expect(response.status).toBe(200);
@@ -53,7 +66,7 @@ describe('GET /api/messages/:id', () => {
   it('retorna 404 quando o recado não existe', async () => {
     messageModel.findById.mockResolvedValueOnce(null);
 
-    const app = createApp();
+    const app = createApp('reader');
     const response = await supertest(app).get('/api/messages/999');
 
     expect(response.status).toBe(404);
@@ -65,7 +78,7 @@ describe('GET /api/messages/:id', () => {
   });
 
   it('retorna 400 quando o ID é inválido', async () => {
-    const app = createApp();
+    const app = createApp('reader');
     const response = await supertest(app).get('/api/messages/abc');
 
     expect(response.status).toBe(400);
