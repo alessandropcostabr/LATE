@@ -3,7 +3,16 @@
   <%- include('partials/navbar') %>
 
   <main class="main" role="main">
-    <div class="container">
+    <div
+      class="container"
+      data-message-permissions
+      data-can-update="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>"
+      data-can-delete="<%= permissions && permissions.deleteMessages ? 'true' : 'false' %>"
+    >
+
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
 
       <!-- Cabeçalho da página -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">

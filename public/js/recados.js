@@ -3,6 +3,10 @@
 // Lista de recados com filtros; tolera formatos de payload da API.
 
 // Helpers (iguais ao app.js — duplicados localmente para evitar dependências implícitas)
+const permissionsEl = document.querySelector('[data-message-permissions]');
+const CAN_UPDATE_MESSAGE = permissionsEl?.dataset?.canUpdate === 'true';
+const CAN_DELETE_MESSAGE = permissionsEl?.dataset?.canDelete === 'true';
+
 async function request(url, opts = {}) {
   const res = await fetch(url, {
     credentials: 'include',
@@ -39,6 +43,36 @@ function formatDateTimeBR(iso) {
     }).format(d);
   } catch (_e) {
     return d.toLocaleString('pt-BR');
+  }
+}
+
+function encodeAttr(value) {
+  return encodeURIComponent(String(value ?? ''));
+}
+
+function decodeAttr(value) {
+  if (!value) return '';
+  try {
+    return decodeURIComponent(value);
+  } catch (_err) {
+    return value;
+  }
+}
+
+function setButtonLoading(button, loading, textWhenLoading = 'Processando...') {
+  if (!button) return;
+  if (loading) {
+    if (!button.dataset.originalText) {
+      button.dataset.originalText = button.textContent;
+    }
+    button.disabled = true;
+    button.textContent = textWhenLoading;
+  } else {
+    button.disabled = false;
+    if (button.dataset.originalText) {
+      button.textContent = button.dataset.originalText;
+      delete button.dataset.originalText;
+    }
   }
 }
 
@@ -102,6 +136,28 @@ async function carregarRecados() {
       const sender  = m.sender_name || m.sender_email || '—';
       const recipient = m.recipient || 'Não informado';
 
+      const actions = [`
+        <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>
+      `];
+
+      if (CAN_UPDATE_MESSAGE) {
+        actions.push(`
+          <a class="btn btn-primary btn-sm" href="/editar-recado/${m.id}">✏️ Editar</a>
+        `);
+      }
+
+      if (CAN_DELETE_MESSAGE) {
+        actions.push(`
+          <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            data-action="delete-message"
+            data-message-id="${m.id}"
+            data-message-subject="${encodeAttr(subject)}"
+          >🗑️ Excluir</button>
+        `);
+      }
+
       return `
         <div class="list-item" style="display:grid;grid-template-columns:1fr auto;gap:0.5rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
           <div style="min-width:0;">
@@ -113,7 +169,9 @@ async function carregarRecados() {
           </div>
           <div style="text-align:right;align-self:center;">
             <div style="margin-bottom:0.5rem;"><span class="badge">${statusLabel}</span></div>
-            <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
+              ${actions.join('')}
+            </div>
           </div>
         </div>
       `;
@@ -154,6 +212,49 @@ document.addEventListener('DOMContentLoaded', () => {
         carregarRecados();
       });
     }
+  }
+
+  const listContainer = document.getElementById('listaRecados');
+  if (listContainer && CAN_DELETE_MESSAGE) {
+    listContainer.addEventListener('click', async (event) => {
+      const target = event.target.closest('[data-action="delete-message"]');
+      if (!target) return;
+      event.preventDefault();
+
+      const messageId = target.getAttribute('data-message-id');
+      if (!messageId) return;
+
+      const subject = decodeAttr(target.getAttribute('data-message-subject') || '');
+      const confirmation = subject
+        ? `Tem certeza de que deseja excluir o recado "${subject}"?`
+        : 'Tem certeza de que deseja excluir este recado?';
+
+      if (!window.confirm(confirmation)) return;
+
+      try {
+        setButtonLoading(target, true, 'Excluindo...');
+
+        if (!window.API || typeof window.API.deleteMessage !== 'function') {
+          throw new Error('API indisponível para excluir recados.');
+        }
+
+        await window.API.deleteMessage(messageId);
+        if (window.Toast?.success) {
+          window.Toast.success('Recado excluído com sucesso.');
+        }
+        carregarRecados();
+      } catch (err) {
+        const msg = err?.message || 'Erro ao excluir recado.';
+        if (window.Toast?.error) {
+          window.Toast.error(msg);
+        } else {
+          console.error('[recados] Falha ao excluir recado:', err);
+          alert(msg);
+        }
+      } finally {
+        setButtonLoading(target, false);
+      }
+    });
   }
 });
 

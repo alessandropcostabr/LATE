@@ -4,6 +4,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const form = document.getElementById('formEditarRecado');
   const id = location.pathname.split('/').pop();
+  const deleteButton = document.getElementById('btnExcluir');
   const allFields = [
     'call_date',
     'call_time',
@@ -31,6 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     fields = Array.from(new Set([...formFields, ...Object.keys(safeData)]));
     const cancel = document.getElementById('btnCancelar');
     if (cancel) cancel.href = `/visualizar-recado/${id}`;
+    if (deleteButton) {
+      deleteButton.dataset.messageSubject = encodeURIComponent(safeData.subject || '');
+    }
   } catch (e) {
     Toast.error('Erro ao carregar recado');
   }
@@ -66,4 +70,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       Loading.hide('btnSalvar');
     }
   });
+
+  if (deleteButton) {
+    deleteButton.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const subjectEncoded = deleteButton.dataset.messageSubject || '';
+      let subject = '';
+      try { subject = decodeURIComponent(subjectEncoded); } catch (_err) { subject = subjectEncoded; }
+      const confirmation = subject
+        ? `Tem certeza de que deseja excluir o recado "${subject}"?`
+        : 'Tem certeza de que deseja excluir este recado?';
+
+      if (!window.confirm(confirmation)) return;
+
+      const originalLabel = deleteButton.textContent;
+      try {
+        deleteButton.disabled = true;
+        deleteButton.textContent = 'Excluindo...';
+        await API.deleteMessage(id);
+        if (window.Toast?.success) {
+          window.Toast.success('Recado excluído com sucesso.');
+        }
+        setTimeout(() => (window.location.href = '/recados'), 600);
+      } catch (err) {
+        deleteButton.disabled = false;
+        deleteButton.textContent = originalLabel;
+        const msg = err?.message || 'Erro ao excluir recado.';
+        if (window.Toast?.error) {
+          window.Toast.error(msg);
+        } else {
+          alert(msg);
+        }
+      }
+    });
+  }
 });

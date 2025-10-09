@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const id = wrapper.dataset?.id || location.pathname.split('/').pop();
   const editButton = wrapper.querySelector('[data-edit-button]');
   const backButton = wrapper.querySelector('[data-back-button]');
+  const deleteButton = wrapper.querySelector('[data-delete-button]');
+  const canDelete = wrapper.dataset?.canDelete === 'true';
 
   if (backButton) backButton.href = '/recados';
 
@@ -47,6 +49,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       editButton.href = `/editar-recado/${id}`;
       editButton.hidden = false;
     }
+    if (deleteButton && canDelete) {
+      deleteButton.hidden = false;
+      deleteButton.dataset.messageId = id;
+      deleteButton.dataset.messageSubject = encodeURIComponent(recado?.subject || '');
+    }
   } catch (e) {
     const message = e?.status === 404
       ? 'Recado não encontrado.'
@@ -55,9 +62,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (editButton) {
       editButton.hidden = true;
     }
+    if (deleteButton) {
+      deleteButton.hidden = true;
+    }
     if (typeof Toast !== 'undefined' && Toast.error) {
       Toast.error(message);
     }
+  }
+
+  if (deleteButton && canDelete) {
+    deleteButton.addEventListener('click', async (event) => {
+      event.preventDefault();
+      const messageId = deleteButton.dataset.messageId || id;
+      if (!messageId) return;
+
+      const subjectEncoded = deleteButton.dataset.messageSubject || '';
+      let subject = '';
+      try { subject = decodeURIComponent(subjectEncoded); } catch (_err) { subject = subjectEncoded; }
+
+      const confirmation = subject
+        ? `Tem certeza de que deseja excluir o recado "${subject}"?`
+        : 'Tem certeza de que deseja excluir este recado?';
+
+      if (!window.confirm(confirmation)) return;
+
+      const originalText = deleteButton.textContent;
+      try {
+        deleteButton.disabled = true;
+        deleteButton.textContent = 'Excluindo...';
+        await API.deleteMessage(messageId);
+        if (window.Toast?.success) {
+          window.Toast.success('Recado excluído com sucesso.');
+        }
+        setTimeout(() => { window.location.href = '/recados'; }, 600);
+      } catch (err) {
+        deleteButton.disabled = false;
+        deleteButton.textContent = originalText;
+        const msg = err?.message || 'Erro ao excluir recado.';
+        if (window.Toast?.error) {
+          window.Toast.error(msg);
+        } else {
+          alert(msg);
+        }
+      }
+    });
   }
 });
 
