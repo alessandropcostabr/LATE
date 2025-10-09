@@ -184,20 +184,44 @@ const validateUserCreate = [
   vbody('email').notEmpty().withMessage('E-mail é obrigatório')
     .isEmail().withMessage('E-mail inválido').normalizeEmail(),
   vbody('password').notEmpty().withMessage('Senha é obrigatória')
-    .isLength({ min: 6, max: 255 }).withMessage('Senha inválida'),
+    .isLength({ min: 8, max: 255 }).withMessage('Senha deve ter pelo menos 8 caracteres'),
   vbody('role').optional({ checkFalsy: true })
     .custom((r) => ALLOWED_ROLES.includes(String(r).toUpperCase()))
-    .withMessage('Papel (role) inválido')
+    .withMessage('Papel (role) inválido'),
+  vbody('active').optional({ nullable: true })
+    .isBoolean().withMessage('Status inválido para ativo')
+    .toBoolean(),
+  vbody('sectorIds').isArray({ min: 1 }).withMessage('Selecione pelo menos um setor'),
+  vbody('sectorIds.*').isInt({ min: 1 }).withMessage('IDs de setor inválidos')
 ];
 
 const validateUserUpdate = [
-  vbody('name').notEmpty().withMessage('Nome é obrigatório')
+  vbody('name').optional({ nullable: true })
+    .notEmpty().withMessage('Nome é obrigatório')
     .isLength({ max: 255 }).withMessage('Nome muito longo'),
-  vbody('email').notEmpty().withMessage('E-mail é obrigatório')
+  vbody('email').optional({ nullable: true })
+    .notEmpty().withMessage('E-mail é obrigatório')
     .isEmail().withMessage('E-mail inválido').normalizeEmail(),
-  vbody('role').notEmpty().withMessage('Papel (role) é obrigatório')
+  vbody('role').optional({ nullable: true })
+    .notEmpty().withMessage('Papel (role) é obrigatório')
     .custom((r) => ALLOWED_ROLES.includes(String(r).toUpperCase()))
-    .withMessage('Papel (role) inválido')
+    .withMessage('Papel (role) inválido'),
+  vbody('active').optional({ nullable: true })
+    .isBoolean().withMessage('Status inválido para ativo')
+    .toBoolean()
+];
+
+const validateUserStatus = [
+  vbody('active').exists().withMessage('Status ativo é obrigatório')
+    .isBoolean().withMessage('Status inválido para ativo')
+    .toBoolean(),
+];
+
+const validateUserPassword = [
+  vbody('password').notEmpty().withMessage('Senha é obrigatória')
+    .isLength({ min: 8, max: 255 }).withMessage('Senha deve ter pelo menos 8 caracteres')
+    .matches(/[A-Za-z]/).withMessage('Senha deve conter letras')
+    .matches(/[0-9]/).withMessage('Senha deve conter números'),
 ];
 
 // -------------------------------------------------------------
@@ -223,5 +247,7 @@ module.exports = {
   // users
   validateUserCreate,
   validateUserUpdate,
+  validateUserStatus,
+  validateUserPassword,
 };
 

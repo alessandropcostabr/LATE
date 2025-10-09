@@ -24,6 +24,8 @@ const UserController = require('../controllers/userController');
 const {
   validateUserCreate,
   validateUserUpdate,
+  validateUserStatus,
+  validateUserPassword,
   validateIdParam
 } = require('../middleware/validation'); // não redeclarar handleValidationErrors
 
@@ -154,16 +156,18 @@ router.put('/users/:id',
   UserController.update
 );
 
-router.patch('/users/:id/active',
+router.put('/users/:id/status',
   requireRole('ADMIN'),
   validateIdParam,
+  validateUserStatus,
   handleValidationErrors,
-  UserController.setActive
+  UserController.updateStatus
 );
 
-router.patch('/users/:id/password',
+router.put('/users/:id/password',
   requireRole('ADMIN'),
   validateIdParam,
+  validateUserPassword,
   handleValidationErrors,
   UserController.resetPassword
 );

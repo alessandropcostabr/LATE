@@ -23,6 +23,30 @@ router.get('/admin/users', requireAuth, requireRole('ADMIN'), (req, res) => {
   });
 });
 
+router.get('/admin/users/new', requireAuth, requireRole('ADMIN'), (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  return res.render('admin-user-form', {
+    title: 'Novo usuário',
+    csrfToken,
+    user: req.session.user || null,
+    mode: 'create',
+    userId: null,
+    scripts: ['/js/admin-user-form.js'],
+  });
+});
+
+router.get('/admin/users/:id/edit', requireAuth, requireRole('ADMIN'), (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  return res.render('admin-user-form', {
+    title: 'Editar usuário',
+    csrfToken,
+    user: req.session.user || null,
+    mode: 'edit',
+    userId: Number(req.params.id) || null,
+    scripts: ['/js/admin-user-form.js'],
+  });
+});
+
 // Admin → Setores (apenas ADMIN)
 router.get('/admin/sectors', requireAuth, requireRole('ADMIN'), (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
