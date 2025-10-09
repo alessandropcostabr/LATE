@@ -4,7 +4,15 @@
 
   <main class="main" role="main">
     <div class="container">
-      <div class="card" id="detalhesRecado" data-id="<%= id %>">
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
+      <div
+        class="card"
+        id="detalhesRecado"
+        data-id="<%= id %>"
+        data-can-delete="<%= permissions && permissions.deleteMessages ? 'true' : 'false' %>"
+      >
         <div class="card-header">
           <h2 class="card-title">Detalhes do Recado</h2>
         </div>
@@ -16,6 +24,9 @@
             <a href="/recados" class="btn btn-outline" data-back-button>Voltar</a>
             <% if (permissions && permissions.updateMessages) { %>
               <a href="/editar-recado/<%= id %>" class="btn btn-primary" data-edit-button>✏️ Editar</a>
+            <% } %>
+            <% if (permissions && permissions.deleteMessages) { %>
+              <button type="button" class="btn btn-danger" data-delete-button>🗑️ Excluir</button>
             <% } %>
           </div>
         </div>

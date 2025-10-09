@@ -98,8 +98,13 @@ router.get('/', requireAuth, (req, res) => {
   res.render('index', { title: 'Dashboard', user: req.session.user || null });
 });
 
-router.get('/recados', requireAuth, requirePermission('read'), (req, res) => {
-  res.render('recados', { title: 'Recados', user: req.session.user || null });
+router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  res.render('recados', {
+    title: 'Recados',
+    user: req.session.user || null,
+    csrfToken,
+  });
 });
 
 router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
@@ -128,16 +133,18 @@ router.get('/editar-recado/:id', requireAuth, requirePermission('update'), csrfP
   });
 });
 
-router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), (req, res) => {
+router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   res.render('visualizar-recado', {
     title: 'Visualizar Recado',
     id: req.params.id,
-    user: req.session.user || null
+    user: req.session.user || null,
+    csrfToken,
   });
 });
 
 // Atende também /recados/:id (o front chama este caminho)
-router.get('/recados/:id', requireAuth, requirePermission('read'), async (req, res) => {
+router.get('/recados/:id', requireAuth, requirePermission('read'), csrfProtection, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
@@ -150,7 +157,8 @@ router.get('/recados/:id', requireAuth, requirePermission('read'), async (req, r
       title: 'Visualizar Recado',
       id,
       recado,
-      user: req.session.user || null
+      user: req.session.user || null,
+      csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : undefined,
     });
   } catch (e) {
     console.error('[web] erro ao carregar recado:', e);
