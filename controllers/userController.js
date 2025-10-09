@@ -256,6 +256,9 @@ exports.remove = async (req, res) => {
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
     return res.json({ success: true });
   } catch (err) {
+    if (err && err.code === 'SECTOR_MIN_ONE') {
+      return res.status(400).json({ success: false, error: err.message });
+    }
     console.error('[users] remove error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao remover usuário.' });
   }
