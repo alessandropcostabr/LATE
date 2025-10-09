@@ -24,12 +24,27 @@ jest.mock('../controllers/statsController', () => ({
   byMonth: jest.fn((_req, res) => res.json({ success: true })),
 }));
 
+jest.mock('../middleware/csrf', () => jest.fn((req, _res, next) => next()));
+
 const messageController = require('../controllers/messageController');
 
-function createApp() {
+function createApp(role = 'admin') {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  app.use((req, _res, next) => {
+    if (role) {
+      req.session = {
+        user: {
+          id: 1,
+          name: 'Test User',
+          role,
+        },
+      };
+    }
+    next();
+  });
 
   const apiRoutes = require('../routes/api');
   app.use('/api', apiRoutes);
