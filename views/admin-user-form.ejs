@@ -1,0 +1,83 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container" data-page-mode="<%= mode %>" data-user-id="<%= userId || '' %>">
+      <div class="mb-4">
+        <a href="/admin/users" class="btn btn-link ps-0">&larr; Voltar para a lista</a>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h1 class="card-title mb-3"><%= mode === 'edit' ? 'Editar usuário' : 'Novo usuário' %></h1>
+          <p class="text-muted mb-4">Preencha as informações do usuário e selecione os setores obrigatórios.</p>
+
+          <div id="formAlert" class="alert d-none" role="alert"></div>
+
+          <form id="userForm" novalidate>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="name" class="form-label">Nome completo</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+              </div>
+              <div class="col-md-6">
+                <label for="email" class="form-label">E-mail</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+              </div>
+
+              <% if (mode === 'create') { %>
+                <div class="col-md-6">
+                  <label for="password" class="form-label">Senha</label>
+                  <input type="password" class="form-control" id="password" name="password" minlength="8" required>
+                  <div class="form-text">Mínimo de 8 caracteres, contendo letras e números.</div>
+                </div>
+                <div class="col-md-6">
+                  <label for="passwordConfirm" class="form-label">Confirmar senha</label>
+                  <input type="password" class="form-control" id="passwordConfirm" name="passwordConfirm" minlength="8" required>
+                </div>
+              <% } %>
+
+              <div class="col-md-4">
+                <label for="role" class="form-label">Perfil de acesso</label>
+                <select id="role" name="role" class="form-select" required>
+                  <option value="ADMIN">Administrador</option>
+                  <option value="SUPERVISOR">Supervisor</option>
+                  <option value="OPERADOR" selected>Operador</option>
+                  <option value="LEITOR">Leitor</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label for="active" class="form-label">Status</label>
+                <select id="active" name="active" class="form-select">
+                  <option value="true" selected>Ativo</option>
+                  <option value="false">Inativo</option>
+                </select>
+                <div class="form-text">Usuários inativos não conseguem acessar o sistema.</div>
+              </div>
+
+              <div class="col-12">
+                <label for="sectorIds" class="form-label">Setores (obrigatório)</label>
+                <select id="sectorIds" name="sectorIds" class="form-select" multiple required size="6" aria-describedby="sectorHelp">
+                  <!-- preenchido via JS -->
+                </select>
+                <div id="sectorHelp" class="form-text">Selecione um ou mais setores. Pelo menos um é obrigatório.</div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4 gap-2">
+              <a href="/admin/users" class="btn btn-outline-secondary">Cancelar</a>
+              <button type="submit" class="btn btn-primary">
+                <%= mode === 'edit' ? 'Salvar alterações' : 'Criar usuário' %>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer', { scripts: ['/js/admin-user-form.js'] }) %>
+</body>
+</html>

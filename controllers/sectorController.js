@@ -138,10 +138,13 @@ exports.setUserSectors = async (req, res) => {
   const { sectorIds } = req.body;
   try {
     const data = await UserSector.setUserSectors(userId, sectorIds);
-    return res.json({ success: true, data, message: 'Setores do usuário atualizados' });
+    return res.json({ success: true, data, message: 'Setores atualizados com sucesso.' });
   } catch (err) {
     if (['VALIDATION', 'SECTOR_MIN_ONE', 'USER_MIN_ONE'].includes(err.code)) {
       return res.status(400).json({ success: false, error: err.message });
+    }
+    if (err.code === 'USER_NOT_FOUND') {
+      return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
     }
     console.error('[users/sectors/set] erro:', err);
     return res.status(500).json({ success: false, error: 'Erro ao atualizar setores do usuário' });

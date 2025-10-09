@@ -4,6 +4,7 @@
 const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
+const UserSector = require('../models/userSector');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
 
@@ -14,6 +15,12 @@ function normalizeRole(role) {
 
 function parseBooleanFlag(value) {
   return value === true || value === 'true' || value === 1 || value === '1';
+}
+
+function sanitizeUser(user) {
+  if (!user) return null;
+  const { password_hash, ...rest } = user;
+  return rest;
 }
 
 function isEmailUniqueViolation(err) {
@@ -33,7 +40,8 @@ exports.list = async (req, res) => {
   const q     = String(req.query.q || '');
   try {
     const r = await UserModel.list({ q, page, limit });
-    return res.json({ success: true, data: r.data, pagination: r.pagination });
+    const users = Array.isArray(r.data) ? r.data.map(sanitizeUser) : [];
+    return res.json({ success: true, data: users, pagination: r.pagination });
   } catch (err) {
     console.error('[users] list error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao listar usuários.' });
@@ -48,6 +56,10 @@ exports.create = async (req, res) => {
   const email    = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '').trim();
   const role     = normalizeRole(req.body.role);
+  const active   = req.body.active !== undefined ? parseBooleanFlag(req.body.active) : true;
+  const sectorIds = Array.isArray(req.body.sectorIds)
+    ? req.body.sectorIds.map((id) => Number(id)).filter(Number.isFinite)
+    : [];
 
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -58,9 +70,34 @@ exports.create = async (req, res) => {
   }
 
   try {
+    if (!sectorIds.length) {
+      return res.status(400).json({ success: false, error: 'Selecione pelo menos um setor.' });
+    }
+
     const password_hash = await argon2.hash(password, { type: argon2.argon2id });
-    const user = await UserModel.create({ name, email, password_hash, role });
-    return res.status(201).json({ success: true, data: user });
+    const created = await UserModel.create({ name, email, password_hash, role, active });
+
+    try {
+      await UserSector.setUserSectors(created.id, sectorIds);
+    } catch (sectorErr) {
+      // Evita usuário órfão caso associação falhe
+      try { await UserModel.remove(created.id); } catch (cleanupErr) {
+        console.error('[users] create rollback falhou:', cleanupErr);
+      }
+
+      if (['VALIDATION', 'SECTOR_MIN_ONE', 'USER_MIN_ONE'].includes(sectorErr.code)) {
+        return res.status(400).json({ success: false, error: sectorErr.message });
+      }
+      if (sectorErr.code === 'USER_NOT_FOUND') {
+        return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+      }
+      console.error('[users] setUserSectors após criação falhou:', sectorErr);
+      return res.status(500).json({ success: false, error: 'Erro interno ao associar setores.' });
+    }
+
+    const user = await UserModel.findById(created.id);
+    const sectors = await UserSector.listUserSectors(created.id);
+    return res.status(201).json({ success: true, data: { user: sanitizeUser(user), sectors } });
   } catch (err) {
     if (isEmailUniqueViolation(err)) {
       return res.status(409).json({ success: false, error: 'E-mail já cadastrado' });
@@ -70,13 +107,85 @@ exports.create = async (req, res) => {
   }
 };
 
-// PATCH /api/users/:id/active
-exports.setActive = async (req, res) => {
-  const id = Number(req.params.id);
-  const activeInput = req.body.active;
-  const active = parseBooleanFlag(activeInput);
+// GET /api/users/:id
+exports.getById = async (req, res) => {
   try {
+    const id = Number(req.params.id);
+    const user = await UserModel.findById(id);
+    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    return res.json({ success: true, data: { user: sanitizeUser(user) } });
+  } catch (err) {
+    console.error('[users] getById error:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno ao obter usuário.' });
+  }
+};
+
+// PUT /api/users/:id
+exports.update = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, error: 'Dados inválidos', details: errors.array() });
+  }
+
+  try {
+    const id = Number(req.params.id);
     const sessionUserId = Number(req.session?.user?.id);
+    const targetUser = await UserModel.findById(id);
+    if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    const payload = {};
+    if (req.body.name !== undefined) payload.name = String(req.body.name || '').trim();
+    if (req.body.email !== undefined) payload.email = String(req.body.email || '').trim().toLowerCase();
+    if (req.body.role !== undefined) payload.role = normalizeRole(req.body.role);
+    if (req.body.active !== undefined) payload.active = parseBooleanFlag(req.body.active);
+
+    if (Object.keys(payload).length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhum dado para atualizar.' });
+    }
+
+    const currentRole = targetUser.role;
+    const currentActive = targetUser.is_active;
+    const nextRole = payload.role || currentRole;
+    const nextActive = payload.active !== undefined ? payload.active : currentActive;
+
+    if (sessionUserId === id && currentRole === 'ADMIN' && nextRole !== 'ADMIN') {
+      return res.status(400).json({ success: false, error: 'Não é possível remover o próprio acesso de administrador.' });
+    }
+
+    if (currentRole === 'ADMIN' && currentActive) {
+      if (nextRole !== 'ADMIN' || nextActive === false) {
+        const remainingAdmins = await UserModel.countActiveAdmins({ excludeId: id });
+        if (remainingAdmins === 0) {
+          return res.status(400).json({ success: false, error: 'É necessário manter ao menos um administrador ativo no sistema.' });
+        }
+      }
+    }
+
+    const updated = await UserModel.update(id, payload);
+    if (!updated) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    return res.json({ success: true, data: { user: sanitizeUser(updated) } });
+  } catch (err) {
+    if (isEmailUniqueViolation(err)) {
+      return res.status(409).json({ success: false, error: 'E-mail já cadastrado' });
+    }
+    console.error('[users] update error:', err);
+    return res.status(500).json({ success: false, error: 'Erro interno ao atualizar usuário.' });
+  }
+};
+
+// PUT /api/users/:id/status
+exports.updateStatus = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, error: 'Dados inválidos', details: errors.array() });
+  }
+
+  try {
+    const id = Number(req.params.id);
+    const sessionUserId = Number(req.session?.user?.id);
+    const active = parseBooleanFlag(req.body.active);
+
     const targetUser = await UserModel.findById(id);
     if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
@@ -95,73 +204,28 @@ exports.setActive = async (req, res) => {
 
     const ok = await UserModel.setActive(id, active);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
     return res.json({ success: true, data: { id, active } });
   } catch (err) {
-    console.error('[users] setActive error:', err);
+    console.error('[users] updateStatus error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao atualizar usuário.' });
   }
 };
 
-// GET /api/users/:id
-exports.getById = async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const user = await UserModel.findById(id);
-    if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-    return res.json({ success: true, data: user });
-  } catch (err) {
-    console.error('[users] getById error:', err);
-    return res.status(500).json({ success: false, error: 'Erro interno ao obter usuário.' });
-  }
-};
-
-// PUT /api/users/:id
-exports.update = async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const sessionUserId = Number(req.session?.user?.id);
-    const changes = {
-      name: String(req.body.name || '').trim(),
-      email: String(req.body.email || '').trim().toLowerCase(),
-      role: normalizeRole(req.body.role),
-    };
-    const targetUser = await UserModel.findById(id);
-    if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-
-    if (sessionUserId === id && targetUser.role === 'ADMIN' && changes.role !== 'ADMIN') {
-      return res.status(400).json({ success: false, error: 'Não é possível remover o próprio acesso de administrador.' });
-    }
-
-    if (targetUser.role === 'ADMIN' && targetUser.is_active && changes.role !== 'ADMIN') {
-      const remainingAdmins = await UserModel.countActiveAdmins({ excludeId: id });
-      if (remainingAdmins === 0) {
-        return res.status(400).json({ success: false, error: 'É necessário manter ao menos um administrador ativo no sistema.' });
-      }
-    }
-
-    const ok = await UserModel.update(id, changes);
-    if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-    const user = await UserModel.findById(id);
-    return res.json({ success: true, data: user });
-  } catch (err) {
-    if (isEmailUniqueViolation(err)) {
-      return res.status(409).json({ success: false, error: 'E-mail já cadastrado' });
-    }
-    console.error('[users] update error:', err);
-    return res.status(500).json({ success: false, error: 'Erro interno ao atualizar usuário.' });
-  }
-};
-
-// PATCH /api/users/:id/password
+// PUT /api/users/:id/password
 exports.resetPassword = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, error: 'Dados inválidos', details: errors.array() });
+  }
+
   try {
     const id = Number(req.params.id);
     const newPassword = String(req.body.password || '').trim();
-    if (!newPassword) return res.status(400).json({ success: false, error: 'Senha inválida' });
     const password_hash = await argon2.hash(newPassword, { type: argon2.argon2id });
     const ok = await UserModel.resetPassword(id, password_hash);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-    return res.json({ success: true, data: { id } });
+    return res.json({ success: true });
   } catch (err) {
     console.error('[users] resetPassword error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao redefinir senha.' });
@@ -190,7 +254,7 @@ exports.remove = async (req, res) => {
 
     const ok = await UserModel.remove(id);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-    return res.json({ success: true, data: 'Usuário removido com sucesso' });
+    return res.json({ success: true });
   } catch (err) {
     console.error('[users] remove error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao remover usuário.' });

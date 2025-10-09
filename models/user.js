@@ -16,13 +16,19 @@ function normalizeRole(role) {
   const value = String(role || 'OPERADOR').trim().toUpperCase();
   return allowed.includes(value) ? value : 'OPERADOR';
 }
-function mapRow(row) {
+function mapRow(row, { includePassword = false } = {}) {
   if (!row) return null;
-  return {
-    ...row,
-    // Garante boolean consistente mesmo se vier 0/1
+  const data = {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role,
     is_active: row.is_active === true || row.is_active === 1 || row.is_active === 't',
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
+  if (includePassword) data.password_hash = row.password_hash;
+  return data;
 }
 
 const BASE_SELECT = `
@@ -43,7 +49,7 @@ class UserModel {
   async findByEmail(email) {
     const sql = `${BASE_SELECT} WHERE LOWER(email) = LOWER(${ph(1)}) LIMIT 1`;
     const { rows } = await db.query(sql, [normalizeEmail(email)]);
-    return mapRow(rows?.[0]);
+    return mapRow(rows?.[0], { includePassword: true });
   }
 
   async findById(id) {
@@ -53,7 +59,7 @@ class UserModel {
   }
 
   // Cria usuário; retorna os campos principais (id, name, email, role, is_active, created_at, updated_at)
-  async create({ name, email, password_hash, role = 'OPERADOR' }) {
+  async create({ name, email, password_hash, role = 'OPERADOR', active = true }) {
     const sql = `
       INSERT INTO users (
         name,
@@ -66,7 +72,7 @@ class UserModel {
         LOWER(${ph(2)}),
         ${ph(3)},
         ${ph(4)},
-        TRUE
+        ${ph(5)}
       )
       RETURNING id, name, email, role, is_active, created_at, updated_at
     `;
@@ -76,6 +82,7 @@ class UserModel {
         normalizeEmail(email),
         password_hash,
         normalizeRole(role),
+        active === true || active === 'true' || active === 1 || active === '1'
       ]);
       return mapRow(rows?.[0]);
     } catch (err) {
@@ -105,23 +112,53 @@ class UserModel {
     return this.updatePassword(id, password_hash);
   }
 
-  async update(id, { name, email, role }) {
+  async update(id, { name, email, role, active }) {
+    const setClauses = [];
+    const params = [];
+    let idx = 1;
+
+    if (name !== undefined) {
+      setClauses.push(`name = ${ph(idx)}`);
+      params.push(String(name || '').trim());
+      idx += 1;
+    }
+
+    if (email !== undefined) {
+      setClauses.push(`email = LOWER(${ph(idx)})`);
+      params.push(normalizeEmail(email));
+      idx += 1;
+    }
+
+    if (role !== undefined) {
+      setClauses.push(`role = ${ph(idx)}`);
+      params.push(normalizeRole(role));
+      idx += 1;
+    }
+
+    if (active !== undefined) {
+      setClauses.push(`is_active = ${ph(idx)}`);
+      params.push(active === true || active === 'true' || active === 1 || active === '1');
+      idx += 1;
+    }
+
+    if (setClauses.length === 0) {
+      return false;
+    }
+
+    setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+
     const sql = `
       UPDATE users
-         SET name = ${ph(1)},
-             email = LOWER(${ph(2)}),
-             role = ${ph(3)},
-             updated_at = CURRENT_TIMESTAMP
-       WHERE id = ${ph(4)}
+         SET ${setClauses.join(', ')}
+       WHERE id = ${ph(idx)}
+       RETURNING id, name, email, role, is_active, created_at, updated_at
     `;
+
+    params.push(id);
+
     try {
-      const { rowCount } = await db.query(sql, [
-        String(name || '').trim(),
-        normalizeEmail(email),
-        normalizeRole(role),
-        id
-      ]);
-      return rowCount > 0;
+      const { rows } = await db.query(sql, params);
+      return mapRow(rows?.[0]);
     } catch (err) {
       if (err && err.code === '23505') {
         const e = new Error('E-mail já cadastrado');
@@ -198,7 +235,7 @@ class UserModel {
     const total = Number(countRows?.[0]?.total || 0);
 
     return {
-      data: rows.map(mapRow),
+      data: rows.map((row) => mapRow(row)),
       pagination: {
         total,
         page: sanitizedPage,

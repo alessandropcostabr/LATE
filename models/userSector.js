@@ -8,14 +8,17 @@ const ph = (i) => `$${i}`;
 
 async function listUserSectors(userId) {
   const { rows } = await db.query(`
-    SELECT us.user_id, s.id AS sector_id, s.name, s.email, s.is_active
+    SELECT s.id, s.name, s.email, s.is_active
       FROM user_sectors us
       JOIN sectors s ON s.id = us.sector_id
      WHERE us.user_id = ${ph(1)}
+     ORDER BY s.name ASC
   `, [userId]);
   return rows.map(r => ({
-    user_id: r.user_id,
-    sector: { id: r.sector_id, name: r.name, email: r.email, is_active: r.is_active === true || r.is_active === 't' }
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    is_active: r.is_active === true || r.is_active === 't',
   }));
 }
 
@@ -36,7 +39,28 @@ async function setUserSectors(userId, sectorIds) {
 
   const client = await db.connect();
   try {
-    await client.query('BEGIN DEFERRABLE');
+    await client.query('BEGIN');
+
+    // Verifica existência do usuário (falha cedo para evitar operações desnecessárias)
+    const { rows: userRows } = await client.query(`
+      SELECT id FROM users WHERE id = ${ph(1)}
+    `, [userId]);
+    if (!userRows.length) {
+      const e = new Error('Usuário não encontrado');
+      e.code = 'USER_NOT_FOUND';
+      throw e;
+    }
+
+    // Confere se todos os setores existem
+    const { rows: sectorRows } = await client.query(`
+      SELECT id FROM sectors WHERE id = ANY(${ph(1)})
+    `, [uniqueIds]);
+    const existingSectorIds = sectorRows.map((row) => row.id);
+    if (existingSectorIds.length !== uniqueIds.length) {
+      const e = new Error('IDs de setor inválidos');
+      e.code = 'VALIDATION';
+      throw e;
+    }
 
     // Setores atuais
     const { rows: cur } = await client.query(`
