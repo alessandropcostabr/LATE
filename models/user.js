@@ -170,8 +170,65 @@ class UserModel {
   }
 
   async remove(id) {
-    const { rowCount } = await db.query(`DELETE FROM users WHERE id = ${ph(1)}`, [id]);
-    return rowCount > 0;
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      const { rows: userRows } = await client.query(`
+        SELECT id
+          FROM users
+         WHERE id = ${ph(1)}
+         LIMIT 1
+      `, [id]);
+
+      if (!userRows.length) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+
+      const { rows: sectorRows } = await client.query(`
+        SELECT sector_id
+          FROM user_sectors
+         WHERE user_id = ${ph(1)}
+      `, [id]);
+
+      const sectorIds = sectorRows.map((row) => row.sector_id);
+
+      if (sectorIds.length > 0) {
+        const { rows: counts } = await client.query(`
+          SELECT sector_id, COUNT(*)::int AS cnt
+            FROM user_sectors
+           WHERE sector_id = ANY(${ph(1)})
+           GROUP BY sector_id
+        `, [sectorIds]);
+
+        const countMap = Object.fromEntries(counts.map((row) => [row.sector_id, row.cnt]));
+        const wouldEmptySector = sectorIds.some((sectorId) => (countMap[sectorId] || 0) <= 1);
+
+        if (wouldEmptySector) {
+          const err = new Error('Não é possível remover: algum setor ficaria sem usuários');
+          err.code = 'SECTOR_MIN_ONE';
+          throw err;
+        }
+
+        await client.query(`
+          DELETE FROM user_sectors
+           WHERE user_id = ${ph(1)}
+        `, [id]);
+      }
+
+      const { rowCount } = await client.query(`
+        DELETE FROM users WHERE id = ${ph(1)}
+      `, [id]);
+
+      await client.query('COMMIT');
+      return rowCount > 0;
+    } catch (err) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async setActive(id, active) {
