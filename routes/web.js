@@ -166,7 +166,7 @@ router.get('/recados/:id', requireAuth, requirePermission('read'), csrfProtectio
   }
 });
 
-router.get('/relatorios', requireAuth, requireRole('ADMIN'), (req, res) => {
+router.get('/relatorios', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
   res.render('relatorios', { title: 'Relatórios', user: req.session.user || null });
 });
 
