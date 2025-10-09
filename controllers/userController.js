@@ -148,6 +148,10 @@ exports.update = async (req, res) => {
     const nextRole = payload.role || currentRole;
     const nextActive = payload.active !== undefined ? payload.active : currentActive;
 
+    if (sessionUserId === id && !nextActive) {
+      return res.status(400).json({ success: false, error: 'Não é possível desativar o próprio usuário.' });
+    }
+
     if (sessionUserId === id && currentRole === 'ADMIN' && nextRole !== 'ADMIN') {
       return res.status(400).json({ success: false, error: 'Não é possível remover o próprio acesso de administrador.' });
     }
