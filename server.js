@@ -17,6 +17,7 @@ const db = require('./config/database'); // Pool do pg (PG-only)
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 const healthController = require('./controllers/healthController');
+const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
 
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
@@ -111,9 +112,20 @@ app.use(session({
 
 // ⚠️ Importante: sem csurf global aqui. Proteção CSRF fica por rota no routes/web.js.
 
-// user nas views
+// user e permissões disponíveis nas views
 app.use((req, res, next) => {
-  res.locals.user = req.session.user;
+  const sessionUser = req.session.user || null;
+  const roleSlug = normalizeRoleSlug(sessionUser?.role);
+
+  res.locals.user = sessionUser;
+  res.locals.userRoleSlug = roleSlug;
+  res.locals.permissions = {
+    readMessages: hasPermission(roleSlug, 'read'),
+    createMessages: hasPermission(roleSlug, 'create'),
+    updateMessages: hasPermission(roleSlug, 'update'),
+    deleteMessages: hasPermission(roleSlug, 'delete'),
+  };
+
   next();
 });
 

@@ -23,13 +23,22 @@ function isApiRequest(req) {
 }
 
 function normalizeRoleSlug(role) {
-  const key = String(role || '').trim().toLowerCase();
+  const value = typeof role === 'object' && role !== null ? role.role : role;
+  const key = String(value || '').trim().toLowerCase();
   return ROLE_ALIASES[key] || ROLE_ALIASES[key.replace(/s$/i, '')] || 'reader';
+}
+
+function getRolePermissions(role) {
+  const slug = normalizeRoleSlug(role);
+  return {
+    slug,
+    permissions: ROLE_PERMISSIONS[slug] || ROLE_PERMISSIONS.reader,
+  };
 }
 
 function respondUnauthorized(req, res) {
   if (isApiRequest(req)) {
-    return res.status(401).json({ success: false, error: 'Autenticação necessária' });
+    return res.status(401).json({ success: false, error: 'Não autenticado' });
   }
   return res.redirect('/login');
 }
@@ -70,8 +79,8 @@ function requirePermission(action) {
       return respondUnauthorized(req, res);
     }
 
-    const roleSlug = req.userRoleSlug || normalizeRoleSlug(req.session.user.role);
-    const allowed = ROLE_PERMISSIONS[roleSlug] || ROLE_PERMISSIONS.reader;
+    const { slug: roleSlug, permissions } = getRolePermissions(req.userRoleSlug || req.session.user.role);
+    const allowed = permissions;
 
     if (!allowed.has(action)) {
       return respondForbidden(req, res);
@@ -82,4 +91,15 @@ function requirePermission(action) {
   };
 }
 
-module.exports = { requireAuth, requireRole, requirePermission };
+function hasPermission(role, action) {
+  const { permissions } = getRolePermissions(role);
+  return permissions.has(action);
+}
+
+module.exports = {
+  requireAuth,
+  requireRole,
+  requirePermission,
+  normalizeRoleSlug,
+  hasPermission,
+};

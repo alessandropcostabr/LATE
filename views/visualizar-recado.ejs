@@ -12,8 +12,12 @@
           <p>Carregando...</p>
         </div>
         <div class="card-footer">
-          <a href="/recados" class="btn btn-outline">Voltar</a>
-          <a href="/editar-recado/<%= id %>" class="btn btn-primary">Editar</a>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+            <a href="/recados" class="btn btn-outline" data-back-button>Voltar</a>
+            <% if (permissions && permissions.updateMessages) { %>
+              <a href="/editar-recado/<%= id %>" class="btn btn-primary" data-edit-button>✏️ Editar</a>
+            <% } %>
+          </div>
         </div>
       </div>
     </div>
