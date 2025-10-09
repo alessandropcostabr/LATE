@@ -25,26 +25,31 @@
           </li>
         <% } %>
 
-        <% if (typeof user !== 'undefined' && user && user.role === 'ADMIN') { %>
+        <% const showReports =
+          typeof userRoleSlug !== 'undefined' &&
+          (userRoleSlug === 'admin' || userRoleSlug === 'supervisor'); %>
+        <% if (showReports) { %>
           <li class="nav-item">
             <a class="nav-link<%= title === 'Relatórios' ? ' active' : '' %>" href="/relatorios">Relatórios</a>
           </li>
 
-          <!-- Menu Admin (dropdown) -->
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle<%= (title && title.startsWith('Admin ·')) ? ' active' : '' %>"
-               href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Admin
-            </a>
-            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-              <li>
-                <a class="dropdown-item<%= title === 'Admin · Usuários' ? ' active' : '' %>" href="/admin/users">Usuários</a>
-              </li>
-              <li>
-                <a class="dropdown-item<%= title === 'Admin · Setores' ? ' active' : '' %>" href="/admin/sectors">Setores</a>
-              </li>
-            </ul>
-          </li>
+          <% if (userRoleSlug === 'admin') { %>
+            <!-- Menu Admin (dropdown) -->
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle<%= (title && title.startsWith('Admin ·')) ? ' active' : '' %>"
+                 href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Admin
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                <li>
+                  <a class="dropdown-item<%= title === 'Admin · Usuários' ? ' active' : '' %>" href="/admin/users">Usuários</a>
+                </li>
+                <li>
+                  <a class="dropdown-item<%= title === 'Admin · Setores' ? ' active' : '' %>" href="/admin/sectors">Setores</a>
+                </li>
+              </ul>
+            </li>
+          <% } %>
         <% } %>
       </ul>
 
