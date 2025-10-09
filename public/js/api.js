@@ -20,6 +20,15 @@ const API = (() => {
       opts.body = JSON.stringify(data);
     }
 
+    if (typeof document !== 'undefined') {
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      const hidden = document.querySelector('input[name="_csrf"]');
+      const token = meta?.getAttribute('content') || hidden?.value;
+      if (token && !opts.headers['X-CSRF-Token']) {
+        opts.headers['X-CSRF-Token'] = token;
+      }
+    }
+
     const res = await fetch(base + path, opts);
 
     // Tenta decodificar como JSON; se falhar, cria um corpo padrão

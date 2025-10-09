@@ -58,6 +58,16 @@ beforeAll(async () => {
   const apiRoutes = require('../routes/api');
   app = express();
   app.use(express.json());
+  app.use((req, _res, next) => {
+    req.session = {
+      user: {
+        id: 1,
+        name: 'Test User',
+        role: 'ADMIN',
+      },
+    };
+    next();
+  });
   app.use('/api', apiRoutes);
 });
 
