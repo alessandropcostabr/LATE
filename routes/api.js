@@ -19,7 +19,7 @@ const {
 } = require('../middleware/validation');
 
 // Painel ADMIN de Usuários
-const { requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, requirePermission } = require('../middleware/auth');
 const UserController = require('../controllers/userController');
 const {
   validateUserCreate,
@@ -84,49 +84,56 @@ function flatFns(...mws) {
   return result;
 }
 
+const csrfProtection = require('../middleware/csrf');
+
+const canReadMessages = [requireAuth, requirePermission('read')];
+const canCreateMessages = [requireAuth, requirePermission('create'), csrfProtection];
+const canUpdateMessages = [requireAuth, requirePermission('update'), csrfProtection];
+const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
+
 // ========== Messages ==========
 router.get(
   '/messages',
-  ...flatFns(validateQueryMessages, handleValidationErrors),
+  ...flatFns(canReadMessages, validateQueryMessages, handleValidationErrors),
   messageController.list
 );
 
-router.get('/messages/stats', ...flatFns(statsController.messagesStats));
+router.get('/messages/stats', ...flatFns(canReadMessages, statsController.messagesStats));
 
 router.get(
   '/messages/:id',
-  ...flatFns(validateId, handleValidationErrors),
+  ...flatFns(canReadMessages, validateId, handleValidationErrors),
   messageController.getById
 );
 
 router.post(
   '/messages',
-  ...flatFns(validateCreateMessage, handleValidationErrors),
+  ...flatFns(canCreateMessages, validateCreateMessage, handleValidationErrors),
   messageController.create
 );
 
 router.put(
   '/messages/:id',
-  ...flatFns(validateId, validateUpdateMessage, handleValidationErrors),
+  ...flatFns(canUpdateMessages, validateId, validateUpdateMessage, handleValidationErrors),
   messageController.update
 );
 
 router.patch(
   '/messages/:id/status',
-  ...flatFns(validateId, validateUpdateStatus, handleValidationErrors),
+  ...flatFns(canUpdateMessages, validateId, validateUpdateStatus, handleValidationErrors),
   messageController.updateStatus
 );
 
 router.delete(
   '/messages/:id',
-  ...flatFns(validateId, handleValidationErrors),
+  ...flatFns(canDeleteMessages, validateId, handleValidationErrors),
   messageController.remove
 );
 
 // ========== Stats (Relatórios) ==========
-router.get('/stats/by-status',    ...flatFns(statsController.byStatus));
-router.get('/stats/by-recipient', ...flatFns(statsController.byRecipient));
-router.get('/stats/by-month',     ...flatFns(statsController.byMonth));
+router.get('/stats/by-status',    ...flatFns(canReadMessages, statsController.byStatus));
+router.get('/stats/by-recipient', ...flatFns(canReadMessages, statsController.byRecipient));
+router.get('/stats/by-month',     ...flatFns(canReadMessages, statsController.byMonth));
 
 // ========== Admin - Users ==========
 router.get('/users',

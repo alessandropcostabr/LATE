@@ -301,6 +301,17 @@ class UserModel {
       },
     };
   }
+
+  async getActiveUsersSelect() {
+    const sql = `
+      SELECT id, name
+        FROM users
+       WHERE is_active = TRUE
+       ORDER BY name ASC
+    `;
+    const { rows } = await db.query(sql);
+    return rows.map((row) => ({ id: row.id, name: row.name }));
+  }
 }
 
 module.exports = new UserModel();

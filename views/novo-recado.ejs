@@ -37,8 +37,13 @@
               </div>
 
               <div class="form-group">
-                <label for="recipient" class="form-label required">Destinatário</label>
-                <input id="recipient" name="recipient" type="text" class="form-input" placeholder="Nome da pessoa ou setor que deve receber o recado" required data-label="Destinatário" autocomplete="organization" />
+                <label for="recipientId" class="form-label required">Destinatário</label>
+                <select id="recipientId" name="recipientId" class="form-select" required data-label="Destinatário" autocomplete="organization">
+                  <option value="">Selecione um destinatário</option>
+                  <% (activeUsers || []).forEach(function(user) { %>
+                    <option value="<%= user.id %>"><%= user.name %></option>
+                  <% }); %>
+                </select>
                 <div class="form-help">Pessoa ou setor responsável por receber esta mensagem</div>
               </div>
             </fieldset>

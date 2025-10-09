@@ -2,6 +2,31 @@
 // Comentários em pt-BR; identificadores em inglês.
 
 const Message = require('../models/message');
+const UserModel = require('../models/user');
+
+function normalizeRecipientId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function resolveRecipientName(recipientId) {
+  const id = normalizeRecipientId(recipientId);
+  if (!id) return null;
+
+  const user = await UserModel.findById(id);
+  if (!user || user.is_active !== true) return null;
+  return user.name;
+}
+
+function sanitizePayload(body = {}) {
+  const payload = { ...body };
+  delete payload.recipientId;
+  delete payload.recipient_id;
+  delete payload.recipientName;
+  delete payload.recipient_name;
+  delete payload._csrf;
+  return payload;
+}
 
 // Mapeia status -> rótulo pt-BR (mantém contrato do projeto)
 const STATUS_LABELS_PT = {
@@ -76,7 +101,15 @@ exports.getById = async (req, res) => {
 // POST /api/messages
 exports.create = async (req, res) => {
   try {
-    const id = await Message.create(req.body || {});
+    const recipientName = await resolveRecipientName(req.body?.recipientId ?? req.body?.recipient_id);
+    if (!recipientName) {
+      return res.status(400).json({ success: false, error: 'Destinatário inválido' });
+    }
+
+    const payload = sanitizePayload(req.body);
+    payload.recipient = recipientName;
+
+    const id = await Message.create(payload);
     const created = await Message.findById(id);
     return res.status(201).json({ success: true, data: toClient(created) });
   } catch (err) {
@@ -92,7 +125,17 @@ exports.update = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const ok = await Message.update(id, req.body || {});
+    const payload = sanitizePayload(req.body);
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientId') ||
+        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_id')) {
+      const recipientName = await resolveRecipientName(req.body?.recipientId ?? req.body?.recipient_id);
+      if (!recipientName) {
+        return res.status(400).json({ success: false, error: 'Destinatário inválido' });
+      }
+      payload.recipient = recipientName;
+    }
+
+    const ok = await Message.update(id, payload);
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
