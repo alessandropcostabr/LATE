@@ -2,12 +2,20 @@
 // Código extraído de views/visualizar-recado.ejs
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const id = location.pathname.split('/').pop();
-  const container = document.getElementById('detalhesRecado');
+  const wrapper = document.getElementById('detalhesRecado');
+  const container = document.getElementById('conteudoRecado');
+  if (!wrapper || !container) return;
+
+  const id = wrapper.dataset?.id || location.pathname.split('/').pop();
+  const editButton = wrapper.querySelector('[data-edit-button]');
+  const backButton = wrapper.querySelector('[data-back-button]');
+
+  if (backButton) backButton.href = '/recados';
+
   try {
     const response = await API.getMessage(id);
     const recado = response?.data;
-    container.textContent = '';
+    container.innerHTML = '';
 
     const statusLabel = recado?.status_label
       || (typeof getStatusLabel === 'function'
@@ -29,30 +37,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     dados.forEach(([label, value]) => {
       const p = document.createElement('p');
       const strong = document.createElement('strong');
-      strong.textContent = label + ' ';
+      strong.textContent = `${label} `;
       p.appendChild(strong);
-      p.append(document.createTextNode(value));
+      p.append(document.createTextNode(value || '-'));
       container.appendChild(p);
     });
 
-    const actions = document.createElement('div');
-    actions.style.marginTop = '1rem';
-    const edit = document.createElement('a');
-    edit.href = `/editar-recado/${id}`;
-    edit.className = 'btn btn-primary';
-    edit.textContent = '✏️ Editar';
-    const back = document.createElement('a');
-    back.href = '/recados';
-    back.className = 'btn btn-outline';
-    back.textContent = 'Voltar';
-    actions.appendChild(edit);
-    actions.appendChild(back);
-    container.appendChild(actions);
+    if (editButton) {
+      editButton.href = `/editar-recado/${id}`;
+      editButton.hidden = false;
+    }
   } catch (e) {
     const message = e?.status === 404
       ? 'Recado não encontrado.'
-      : (e?.message || 'Erro ao carregar recado.');
+      : (e?.message || e?.body?.error || 'Erro ao carregar recado.');
     container.textContent = message;
+    if (editButton) {
+      editButton.hidden = true;
+    }
     if (typeof Toast !== 'undefined' && Toast.error) {
       Toast.error(message);
     }

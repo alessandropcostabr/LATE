@@ -3,7 +3,7 @@
 
 const express = require('express');
 const { body } = require('express-validator');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, requirePermission } = require('../middleware/auth');
 const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 
@@ -98,11 +98,11 @@ router.get('/', requireAuth, (req, res) => {
   res.render('index', { title: 'Dashboard', user: req.session.user || null });
 });
 
-router.get('/recados', requireAuth, (req, res) => {
+router.get('/recados', requireAuth, requirePermission('read'), (req, res) => {
   res.render('recados', { title: 'Recados', user: req.session.user || null });
 });
 
-router.get('/novo-recado', requireAuth, csrfProtection, async (req, res) => {
+router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
   try {
     const activeUsers = await UserModel.getActiveUsersSelect();
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
@@ -118,7 +118,7 @@ router.get('/novo-recado', requireAuth, csrfProtection, async (req, res) => {
   }
 });
 
-router.get('/editar-recado/:id', requireAuth, csrfProtection, (req, res) => {
+router.get('/editar-recado/:id', requireAuth, requirePermission('update'), csrfProtection, (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   res.render('editar-recado', {
     title: 'Editar Recado',
@@ -128,7 +128,7 @@ router.get('/editar-recado/:id', requireAuth, csrfProtection, (req, res) => {
   });
 });
 
-router.get('/visualizar-recado/:id', requireAuth, (req, res) => {
+router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), (req, res) => {
   res.render('visualizar-recado', {
     title: 'Visualizar Recado',
     id: req.params.id,
@@ -137,7 +137,7 @@ router.get('/visualizar-recado/:id', requireAuth, (req, res) => {
 });
 
 // Atende também /recados/:id (o front chama este caminho)
-router.get('/recados/:id', requireAuth, async (req, res) => {
+router.get('/recados/:id', requireAuth, requirePermission('read'), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });

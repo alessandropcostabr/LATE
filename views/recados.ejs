@@ -11,7 +11,9 @@
           <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;"><%= title || 'Recados' %></h1>
           <p style="color:var(--text-secondary);margin:0;">Filtre, visualize e gerencie os recados</p>
         </div>
-        <a href="/novo-recado" class="btn btn-primary btn-lg">➕ Novo Recado</a>
+        <% if (permissions && permissions.createMessages) { %>
+          <a href="/novo-recado" class="btn btn-primary btn-lg">➕ Novo Recado</a>
+        <% } %>
       </div>
 
       <!-- Filtros -->

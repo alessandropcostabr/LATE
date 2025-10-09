@@ -8,16 +8,22 @@
     </button>
 
     <div class="collapse navbar-collapse" id="navbarNav">
+      <% const canReadMessages = permissions && permissions.readMessages; %>
+      <% const canCreateMessages = permissions && permissions.createMessages; %>
       <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
         <li class="nav-item">
           <a class="nav-link<%= title === 'Dashboard' ? ' active' : '' %>" href="/">Dashboard</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link<%= title === 'Recados' ? ' active' : '' %>" href="/recados">Recados</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link<%= title === 'Novo Recado' ? ' active' : '' %>" href="/novo-recado">Novo Recado</a>
-        </li>
+        <% if (canReadMessages) { %>
+          <li class="nav-item">
+            <a class="nav-link<%= title === 'Recados' ? ' active' : '' %>" href="/recados">Recados</a>
+          </li>
+        <% } %>
+        <% if (canCreateMessages) { %>
+          <li class="nav-item">
+            <a class="nav-link<%= title === 'Novo Recado' ? ' active' : '' %>" href="/novo-recado">Novo Recado</a>
+          </li>
+        <% } %>
 
         <% if (typeof user !== 'undefined' && user && user.role === 'ADMIN') { %>
           <li class="nav-item">

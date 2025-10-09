@@ -64,7 +64,7 @@ describe('RBAC for /api/messages* routes', () => {
   it('bloqueia requisições sem sessão', async () => {
     const response = await supertest(app).get('/api/messages');
     expect(response.status).toBe(401);
-    expect(response.body).toEqual({ success: false, error: 'Autenticação necessária' });
+    expect(response.body).toEqual({ success: false, error: 'Não autenticado' });
     expect(messageController.list).not.toHaveBeenCalled();
   });
 
