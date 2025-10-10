@@ -34,7 +34,7 @@ async function getById(id) {
   return mapRow(rows?.[0]);
 }
 
-async function list({ q = '', page = 1, limit = 10 } = {}) {
+async function list({ q = '', page = 1, limit = 10, status } = {}) {
   const l = Math.max(1, Math.min(Number(limit) || 10, 200));
   const p = Math.max(1, Number(page) || 1);
   const offset = (p - 1) * l;
@@ -49,6 +49,13 @@ async function list({ q = '', page = 1, limit = 10 } = {}) {
     const term = `%${query.toLowerCase()}%`;
     params.push(term, term);
     i += 2;
+  }
+
+  const normalizedStatus = typeof status === 'string' ? status.trim().toLowerCase() : '';
+  if (normalizedStatus === 'active' || normalizedStatus === 'inactive') {
+    filters.push(`is_active = ${ph(i)}`);
+    params.push(normalizedStatus === 'active');
+    i += 1;
   }
 
   const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';

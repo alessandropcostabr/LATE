@@ -4,6 +4,8 @@
 
 const db = require('../config/database'); // Pool do pg
 
+const ALLOWED_ROLES = new Set(['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR']);
+
 // Helper de placeholder ($1, $2, ...)
 function ph(i) { return `$${i}`; }
 
@@ -259,7 +261,7 @@ class UserModel {
     return Number(rows?.[0]?.total || 0);
   }
 
-  async list({ q = '', page = 1, limit = 10 } = {}) {
+  async list({ q = '', page = 1, limit = 10, role, status } = {}) {
     const parsedLimit = Number(limit);
     const parsedPage = Number(page);
     const sanitizedLimit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(parsedLimit, 200)) : 10;
@@ -270,11 +272,36 @@ class UserModel {
     const params = [];
     let idx = 1;
 
-    if (q) {
+    const searchTerm = String(q || '').trim();
+    if (searchTerm) {
       filters.push(`(LOWER(name) LIKE ${ph(idx)} OR LOWER(email) LIKE ${ph(idx + 1)})`);
-      const term = `%${String(q).trim().toLowerCase()}%`;
+      const term = `%${searchTerm.toLowerCase()}%`;
       params.push(term, term);
       idx += 2;
+    }
+
+    const normalizedRole = typeof role === 'string' ? role.trim().toUpperCase() : '';
+    if (normalizedRole && ALLOWED_ROLES.has(normalizedRole)) {
+      filters.push(`role = ${ph(idx)}`);
+      params.push(normalizedRole);
+      idx += 1;
+    }
+
+    let statusValue;
+    if (typeof status === 'string') {
+      const normalizedStatus = status.trim().toLowerCase();
+      if (normalizedStatus === 'active') statusValue = true;
+      if (normalizedStatus === 'inactive') statusValue = false;
+    } else if (typeof status === 'boolean') {
+      statusValue = status;
+    } else if (status === 1 || status === 0) {
+      statusValue = status === 1;
+    }
+
+    if (statusValue !== undefined) {
+      filters.push(`is_active = ${ph(idx)}`);
+      params.push(statusValue === true);
+      idx += 1;
     }
 
     const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';

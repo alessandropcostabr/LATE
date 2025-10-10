@@ -136,6 +136,7 @@ router.get('/stats/by-recipient', ...flatFns(canReadMessages, statsController.by
 router.get('/stats/by-month',     ...flatFns(canReadMessages, statsController.byMonth));
 
 // ========== Admin - Users ==========
+// GET /api/users?role=ADMIN&status=active&q=Fulano
 router.get('/users',
   requireRole('ADMIN'),
   UserController.list
@@ -187,6 +188,7 @@ router.delete('/users/:id',
 );
 
 // ========== Admin - Sectors ==========
+// GET /api/sectors?status=active&q=Setor
 router.get('/sectors',
   requireRole('ADMIN'),
   ...flatFns(sectorController.validateList),

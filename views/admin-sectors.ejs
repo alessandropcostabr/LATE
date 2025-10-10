@@ -22,12 +22,21 @@
           <h2 class="card-title h5">Pesquisar</h2>
           <p class="card-subtitle text-muted" style="margin-bottom: 1rem;">Busque por nome ou e-mail</p>
 
-          <form id="searchForm" class="row g-2">
+          <form id="searchForm" class="row g-2 align-items-end">
             <div class="col-sm-6">
-              <input type="text" class="form-control" id="q" placeholder="Pesquisar por nome ou e-mail">
+              <label class="form-label" for="q">Buscar</label>
+              <input type="text" class="form-control" id="q" placeholder="Nome ou e-mail">
             </div>
-            <div class="col-auto">
-              <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+            <div class="col-sm-3">
+              <label class="form-label" for="status">Status</label>
+              <select id="status" class="form-select">
+                <option value="">Todos</option>
+                <option value="active">Ativos</option>
+                <option value="inactive">Inativos</option>
+              </select>
+            </div>
+            <div class="col-sm-3 col-lg-2">
+              <button class="btn btn-primary w-100" type="submit">Pesquisar</button>
             </div>
           </form>
         </div>

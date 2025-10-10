@@ -72,19 +72,31 @@
 
   const state = {
     users: [],
+    filters: {
+      q: '',
+      role: '',
+      status: '',
+    },
   };
 
   const tbody = $('#usersTbody');
-  const searchInput = $('#searchInput');
-  const searchBtn = $('#searchBtn');
+  const searchForm = $('#user-search-form');
+  const qInput = $('#user-q');
+  const roleSelect = $('#user-role');
+  const statusSelect = $('#user-status');
 
-  async function loadUsers(query = '') {
+  async function loadUsers() {
+    tbody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
     try {
       const params = new URLSearchParams();
-      if (query && query.trim()) params.set('q', query.trim());
+      if (state.filters.q) params.set('q', state.filters.q);
+      if (state.filters.role) params.set('role', state.filters.role);
+      if (state.filters.status) params.set('status', state.filters.status);
       params.set('limit', '100');
 
-      const data = await apiRequest(`/api/users?${params.toString()}`);
+      const qs = params.toString();
+      const url = qs ? `/api/users?${qs}` : '/api/users';
+      const data = await apiRequest(url);
       const list = unpackList(data);
       renderUsers(list);
     } catch (err) {
@@ -164,9 +176,12 @@
   }
 
   // ----------------------- Pesquisa -----------------------
-  searchBtn?.addEventListener('click', () => loadUsers(searchInput.value));
-  searchInput?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') loadUsers(searchInput.value);
+  searchForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    state.filters.q = qInput?.value.trim() || '';
+    state.filters.role = roleSelect?.value || '';
+    state.filters.status = statusSelect?.value || '';
+    loadUsers();
   });
 
   // ------------------ Modal de setores --------------------
@@ -398,6 +413,10 @@
     if (!window.bootstrap) {
       console.warn('[admin-users] Bootstrap não encontrado; modais podem não funcionar.');
     }
+    state.filters.q = qInput?.value.trim() || '';
+    state.filters.role = roleSelect?.value || '';
+    state.filters.status = statusSelect?.value || '';
+
     loadUsers().catch((err) => {
       console.error('[admin-users] Erro na inicialização:', err);
       tbody.innerHTML = '<tr><td colspan="6">Falha ao carregar usuários.</td></tr>';
