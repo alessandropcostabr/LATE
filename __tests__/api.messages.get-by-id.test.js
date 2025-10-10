@@ -60,7 +60,12 @@ describe('GET /api/messages/:id', () => {
         updatedAt: null,
       },
     });
-    expect(messageModel.findById).toHaveBeenCalledWith(1);
+    expect(messageModel.findById).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        viewer: expect.objectContaining({ id: 1 }),
+      }),
+    );
   });
 
   it('retorna 404 quando o recado não existe', async () => {
@@ -74,7 +79,12 @@ describe('GET /api/messages/:id', () => {
       success: false,
       error: 'Recado não encontrado',
     });
-    expect(messageModel.findById).toHaveBeenCalledWith(999);
+    expect(messageModel.findById).toHaveBeenCalledWith(
+      999,
+      expect.objectContaining({
+        viewer: expect.objectContaining({ id: 1 }),
+      }),
+    );
   });
 
   it('retorna 400 quando o ID é inválido', async () => {

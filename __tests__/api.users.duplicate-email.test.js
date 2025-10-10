@@ -14,6 +14,11 @@ jest.mock('../models/user', () => ({
   create: jest.fn(),
 }));
 
+jest.mock('../models/userSector', () => ({
+  setUserSectors: jest.fn().mockResolvedValue(undefined),
+  listUserSectors: jest.fn().mockResolvedValue([]),
+}));
+
 const UserController = require('../controllers/userController');
 const userModel = require('../models/user');
 
@@ -51,6 +56,7 @@ describe('POST /api/users duplicate email', () => {
         email: 'duplicado@late.test',
         password: 'Senha123!',
         role: 'OPERADOR',
+        sectorIds: [1],
       });
 
     expect(userModel.create).toHaveBeenCalled();

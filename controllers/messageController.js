@@ -4,6 +4,7 @@
 const Message = require('../models/message');
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
+const { sendMail } = require('../services/mailer');
 
 function normalizeRecipientId(value) {
   const parsed = Number(value);
@@ -97,6 +98,18 @@ function sanitizePayload(body = {}) {
   delete payload.recipient_type;
   delete payload._csrf;
   return payload;
+}
+
+function escapeHtml(value) {
+  const text = String(value ?? '');
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (char) => map[char]);
 }
 
 // Mapeia status -> rótulo pt-BR (mantém contrato do projeto)
@@ -215,6 +228,68 @@ exports.create = async (req, res) => {
 
     const id = await Message.create(payload);
     const created = await Message.findById(id);
+
+    if (created && created.recipient_user_id) {
+      let recipientEmail;
+      try {
+        const recipient = await UserModel.findById(created.recipient_user_id);
+        recipientEmail = recipient?.email;
+        if (process.env.MAIL_DEBUG === '1') {
+          console.info('[MAIL:DEBUG] preparado para enviar notificação', {
+            id: created.id,
+            recipientUserId: created.recipient_user_id,
+            recipientEmail,
+          });
+        }
+        if (recipientEmail) {
+          const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+          const openUrl = `${baseUrl}/recados/${created.id}`;
+          const messageSnippet = (created.message || '')
+            .replace(/\s+/g, ' ')
+            .slice(0, 240);
+          const messageTail = (created.message || '').length > 240 ? '…' : '';
+          const subject = '[LATE] Novo recado para você';
+          const text = `Olá, ${recipient.name || 'colega'}!
+
+Você recebeu um novo recado.
+
+Data/Hora: ${created.call_date || '-'} ${created.call_time || ''}
+Remetente: ${created.sender_name || '-'} (${created.sender_phone || '—'} / ${created.sender_email || '—'})
+Assunto: ${created.subject || '-'}
+Mensagem: ${messageSnippet}${messageTail}
+
+Abrir recado: ${openUrl}`;
+          const htmlRecipientName = escapeHtml(recipient.name || 'colega');
+          const htmlCallDate = escapeHtml(created.call_date || '-');
+          const htmlCallTime = escapeHtml(created.call_time || '');
+          const htmlSenderName = escapeHtml(created.sender_name || '-');
+          const htmlSenderPhone = escapeHtml(created.sender_phone || '—');
+          const htmlSenderEmail = escapeHtml(created.sender_email || '—');
+          const htmlSubject = escapeHtml(created.subject || '-');
+          const htmlMessageSnippet = escapeHtml(messageSnippet);
+          const htmlOpenUrl = escapeHtml(openUrl);
+          const html = `
+<p>Olá, ${htmlRecipientName}!</p>
+<p><strong>Você recebeu um novo recado.</strong></p>
+<ul>
+  <li><strong>Data/Hora:</strong> ${htmlCallDate} ${htmlCallTime}</li>
+  <li><strong>Remetente:</strong> ${htmlSenderName} (${htmlSenderPhone} / ${htmlSenderEmail})</li>
+  <li><strong>Assunto:</strong> ${htmlSubject}</li>
+  <li><strong>Mensagem:</strong> ${htmlMessageSnippet}${messageTail}</li>
+</ul>
+<p><a href="${htmlOpenUrl}">➜ Abrir recado</a></p>
+`;
+          await sendMail({ to: recipientEmail, subject, html, text });
+          console.info('[MAIL:INFO] Notificação enviada', { to: recipientEmail, messageId: created.id });
+        }
+      } catch (mailErr) {
+        console.error('[MAIL:ERROR] Falha ao enviar notificação', {
+          to: recipientEmail || created.recipient_user_id,
+          err: mailErr?.message || mailErr,
+        });
+      }
+    }
+
     return res.status(201).json({ success: true, data: toClient(created) });
   } catch (err) {
     console.error('[messages] erro ao criar:', err);

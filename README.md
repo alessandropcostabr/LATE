@@ -131,6 +131,18 @@ Acesse: http://localhost:3000 ou http://<SEU-IP>:3000
 
 `TRUST_PROXY` informa ao Express quantos proxies existem à frente da aplicação e só é aplicado quando `NODE_ENV=production`.
 
+## ✉️ Notificações por e-mail
+
+As notificações são configuradas via variáveis de ambiente:
+
+- `MAIL_DRIVER`: use `smtp` (padrão) para enviar e-mails reais ou `log` para apenas registrar no console.
+- `APP_BASE_URL`: URL pública do LATE (ex.: `https://late.miahchat.com`) usada no link “Abrir recado”.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`: host, porta e modo (465 + `SMTP_SECURE=1` para SSL, 587 + `SMTP_SECURE=0` para STARTTLS).
+- `SMTP_USER`, `SMTP_PASS`: credenciais da caixa (ex.: `no-reply@seudominio.com.br`).
+- `SMTP_FROM`: remetente exibido (ex.: `LATE <no-reply@seudominio.com.br>`).
+
+Falhas de envio são registradas em log e não impedem a criação do recado. Para homologação, defina `MAIL_DRIVER=log`.
+
 Produção com PM2
 
 pm2 start server.js --name "late"
@@ -292,4 +304,3 @@ Para gerar novos relatórios, execute `npm run lighthouse` com o servidor rodand
  PM2 configurado
 
  Testes manuais validados
-
