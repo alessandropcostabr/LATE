@@ -177,7 +177,7 @@ class UserModel {
       await client.query('BEGIN');
 
       const { rows: userRows } = await client.query(`
-        SELECT id
+        SELECT id, name
           FROM users
          WHERE id = ${ph(1)}
          LIMIT 1
@@ -188,17 +188,21 @@ class UserModel {
         return { deleted: false };
       }
 
-      const hasMessages = await client.query(`
-        SELECT 1
-          FROM messages
-         WHERE recipient_user_id = ${ph(1)} OR created_by = ${ph(1)}
-         LIMIT 1
-      `, [userId]);
+      const recipientName = (userRows[0]?.name || '').trim();
 
-      if (hasMessages.rowCount > 0) {
-        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-        err.code = 'HAS_MESSAGES';
-        throw err;
+      if (recipientName) {
+        const hasMessages = await client.query(`
+          SELECT 1
+            FROM messages
+           WHERE LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(1)})
+           LIMIT 1
+        `, [recipientName]);
+
+        if (hasMessages.rowCount > 0) {
+          const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+          err.code = 'HAS_MESSAGES';
+          throw err;
+        }
       }
 
       const { rows: sectorRows } = await client.query(`
