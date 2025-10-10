@@ -295,6 +295,12 @@ exports.remove = async (req, res) => {
     if (err && err.code === '23514' && /Setor precisa/.test(String(err.message || ''))) {
       return res.status(400).json({ success: false, error: 'Algum setor ficaria sem usuários. Ajuste os setores antes de remover o usuário.' });
     }
+    if (err && err.code === 'INTERNAL' && /Usuário precisa estar associado/.test(String(err.message || ''))) {
+      return res.status(409).json({
+        success: false,
+        error: 'Não é possível remover o usuário porque ele ainda está associado a um ou mais setores.',
+      });
+    }
     console.error('[users] remove error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao remover usuário.' });
   }

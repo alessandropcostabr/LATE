@@ -291,8 +291,8 @@ class UserModel {
       }
 
       console.error('[user.delete] erro ao excluir:', err);
-      const internalErr = new Error('Erro interno ao remover usuário.');
-      internalErr.code = 'INTERNAL';
+      const internalErr = new Error(err?.message || 'Erro interno ao remover usuário.');
+      internalErr.code = err?.code || 'INTERNAL';
       throw internalErr;
     } finally {
       client.release();
