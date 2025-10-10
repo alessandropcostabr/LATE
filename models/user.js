@@ -190,19 +190,25 @@ class UserModel {
 
       const recipientName = (userRows[0]?.name || '').trim();
 
-      if (recipientName) {
-        const hasMessages = await client.query(`
-          SELECT 1
-            FROM messages
-           WHERE LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(1)})
-           LIMIT 1
-        `, [recipientName]);
+      const messageParams = [userId];
+      let messageWhere = `recipient_user_id = ${ph(1)}`;
 
-        if (hasMessages.rowCount > 0) {
-          const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-          err.code = 'HAS_MESSAGES';
-          throw err;
-        }
+      if (recipientName) {
+        messageParams.push(recipientName);
+        messageWhere += ` OR (recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageParams.length)}))`;
+      }
+
+      const hasMessages = await client.query(`
+        SELECT 1
+          FROM messages
+         WHERE ${messageWhere}
+         LIMIT 1
+      `, messageParams);
+
+      if (hasMessages.rowCount > 0) {
+        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+        err.code = 'HAS_MESSAGES';
+        throw err;
       }
 
       const { rows: sectorRows } = await client.query(`

@@ -23,6 +23,7 @@ async function ensureSchema() {
       call_date TEXT,
       call_time TEXT,
       recipient TEXT,
+      recipient_user_id INTEGER,
       sender_name TEXT,
       sender_phone TEXT,
       sender_email TEXT,

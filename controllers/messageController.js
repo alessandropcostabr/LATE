@@ -9,13 +9,13 @@ function normalizeRecipientId(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-async function resolveRecipientName(recipientId) {
+async function resolveRecipient(recipientId) {
   const id = normalizeRecipientId(recipientId);
   if (!id) return null;
 
   const user = await UserModel.findById(id);
   if (!user || user.is_active !== true) return null;
-  return user.name;
+  return { id: user.id, name: user.name };
 }
 
 function sanitizePayload(body = {}) {
@@ -24,6 +24,8 @@ function sanitizePayload(body = {}) {
   delete payload.recipient_id;
   delete payload.recipientName;
   delete payload.recipient_name;
+  delete payload.recipientUserId;
+  delete payload.recipient_user_id;
   delete payload._csrf;
   return payload;
 }
@@ -40,6 +42,8 @@ function toClient(row) {
   if (!row) return null;
   return {
     ...row,
+    recipient_user_id: row.recipient_user_id ?? null,
+    recipientUserId: row.recipient_user_id ?? null,
     // alias em camelCase para compatibilidade com JS do front
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
@@ -101,13 +105,19 @@ exports.getById = async (req, res) => {
 // POST /api/messages
 exports.create = async (req, res) => {
   try {
-    const recipientName = await resolveRecipientName(req.body?.recipientId ?? req.body?.recipient_id);
-    if (!recipientName) {
+    const recipient = await resolveRecipient(
+      req.body?.recipientId ??
+      req.body?.recipient_id ??
+      req.body?.recipientUserId ??
+      req.body?.recipient_user_id
+    );
+    if (!recipient) {
       return res.status(400).json({ success: false, error: 'Destinatário inválido' });
     }
 
     const payload = sanitizePayload(req.body);
-    payload.recipient = recipientName;
+    payload.recipient = recipient.name;
+    payload.recipient_user_id = recipient.id;
 
     const id = await Message.create(payload);
     const created = await Message.findById(id);
@@ -127,12 +137,20 @@ exports.update = async (req, res) => {
     }
     const payload = sanitizePayload(req.body);
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientId') ||
-        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_id')) {
-      const recipientName = await resolveRecipientName(req.body?.recipientId ?? req.body?.recipient_id);
-      if (!recipientName) {
+        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_id') ||
+        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientUserId') ||
+        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_user_id')) {
+      const recipient = await resolveRecipient(
+        req.body?.recipientId ??
+        req.body?.recipient_id ??
+        req.body?.recipientUserId ??
+        req.body?.recipient_user_id
+      );
+      if (!recipient) {
         return res.status(400).json({ success: false, error: 'Destinatário inválido' });
       }
-      payload.recipient = recipientName;
+      payload.recipient = recipient.name;
+      payload.recipient_user_id = recipient.id;
     }
 
     const ok = await Message.update(id, payload);
