@@ -78,7 +78,6 @@
       call_date,
       call_time,
       recipientType,
-      recipientId: recipientUserId || recipientSectorId || null,
       recipientUserId,
       recipientSectorId,
       recipient: recipientName || null,

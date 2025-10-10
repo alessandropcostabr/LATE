@@ -91,9 +91,6 @@ const Form = {
     if (Object.prototype.hasOwnProperty.call(out, 'recipient_user_id')) {
       out.recipient_user_id = toPositiveInt(out.recipient_user_id);
     }
-    if (Object.prototype.hasOwnProperty.call(out, 'recipientId')) {
-      out.recipientId = toPositiveInt(out.recipientId);
-    }
     if (Object.prototype.hasOwnProperty.call(out, 'recipientSectorId')) {
       out.recipientSectorId = toPositiveInt(out.recipientSectorId);
     }
