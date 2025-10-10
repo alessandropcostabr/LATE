@@ -37,10 +37,9 @@ function flatFns(...mws) {
   const result = [];
   const warnings = [];
 
-  function pushWarning(message) {
-    warnings.push(message);
-    console.warn(message);
-  }
+function pushWarning(message) {
+  warnings.push(message);
+}
 
   function visit(node, path) {
     const location = path || '<root>';
@@ -66,22 +65,28 @@ function flatFns(...mws) {
 
   mws.forEach((mw, index) => visit(mw, `arg#${index + 1}`));
 
-  if (result.length === 0) {
-    const fallbackMessages = warnings.length
-      ? warnings.slice()
-      : [
-          `[router] Nenhum middleware válido fornecido (origens: ${
-            mws.length ? mws.map((_, index) => `arg#${index + 1}`).join(', ') : '<nenhuma>'
-          })`
-        ];
+const fallbackMessages = () => (
+  warnings.length
+    ? warnings.slice()
+    : [
+        `[router] Nenhum middleware válido fornecido (origens: ${
+          mws.length ? mws.map((_, index) => `arg#${index + 1}`).join(', ') : '<nenhuma>'
+        })`
+      ]
+);
 
-    result.push((req, res, next) => {
-      fallbackMessages.forEach((message) => console.warn(message));
-      next();
-    });
-  }
+const logWarnings = (req, res, next) => {
+  fallbackMessages().forEach((message) => console.warn(message));
+  next();
+};
 
-  return result;
+if (result.length === 0) {
+  result.push(logWarnings);
+} else if (warnings.length) {
+  result.push(logWarnings);
+}
+
+return result;
 }
 
 const csrfProtection = require('../middleware/csrf');
@@ -90,6 +95,20 @@ const canReadMessages = [requireAuth, requirePermission('read')];
 const canCreateMessages = [requireAuth, requirePermission('create'), csrfProtection];
 const canUpdateMessages = [requireAuth, requirePermission('update'), csrfProtection];
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
+
+// CSRF refresh para clientes não autenticados (ex.: tela de login)
+router.get('/csrf', csrfProtection, (req, res) => {
+  try {
+    const token = typeof req.csrfToken === 'function' ? req.csrfToken() : null;
+    if (!token) {
+      return res.status(500).json({ success: false, error: 'Falha ao gerar token CSRF' });
+    }
+    return res.json({ success: true, data: { token } });
+  } catch (err) {
+    console.error('[csrf] erro ao gerar token:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao gerar token CSRF' });
+  }
+});
 
 // ========== Messages ==========
 router.get(
@@ -232,4 +251,3 @@ router.put('/users/:id/sectors',
 
 // Export
 module.exports = router;
-

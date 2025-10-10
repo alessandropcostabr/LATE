@@ -56,6 +56,7 @@ describe('message model with modern schema', () => {
   afterEach(async () => {
     await dbManager.close();
     jest.resetModules();
+    delete global.__LATE_POOL_FACTORY;
   });
 
   test('supports basic CRUD flow', async () => {

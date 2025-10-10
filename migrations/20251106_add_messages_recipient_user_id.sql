@@ -5,12 +5,23 @@ BEGIN;
 ALTER TABLE messages
   ADD COLUMN IF NOT EXISTS recipient_user_id INTEGER;
 
--- Relaciona com users.id quando possível.
-ALTER TABLE messages
-  ADD CONSTRAINT IF NOT EXISTS fk_messages_recipient_user
-  FOREIGN KEY (recipient_user_id)
-  REFERENCES users(id)
-  ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM information_schema.table_constraints
+     WHERE constraint_schema = current_schema()
+       AND table_name = 'messages'
+       AND constraint_name = 'fk_messages_recipient_user'
+  ) THEN
+    ALTER TABLE messages
+      ADD CONSTRAINT fk_messages_recipient_user
+      FOREIGN KEY (recipient_user_id)
+      REFERENCES users(id)
+      ON DELETE SET NULL;
+  END IF;
+END;
+$$;
 
 WITH normalized_users AS (
   SELECT id, normalized_name

@@ -75,6 +75,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await dbManager.close();
   jest.resetModules();
+  delete global.__LATE_POOL_FACTORY;
 });
 
 test('orders messages by id descending', async () => {

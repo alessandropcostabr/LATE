@@ -3,6 +3,82 @@
 
 const db = require('../config/database'); // Pool do pg
 
+// ---------------------------- Metadados dinâmicos --------------------------
+const TABLE_NAME = 'messages';
+const RECIPIENT_USER_COLUMN = 'recipient_user_id';
+
+let cachedRecipientUserColumn;
+let checkingRecipientUserColumnPromise;
+
+async function supportsRecipientUserColumn() {
+  if (typeof cachedRecipientUserColumn === 'boolean') {
+    return cachedRecipientUserColumn;
+  }
+  if (checkingRecipientUserColumnPromise) {
+    return checkingRecipientUserColumnPromise;
+  }
+  const sql = `
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+       AND column_name = $2
+     LIMIT 1
+  `;
+
+  checkingRecipientUserColumnPromise = db
+    .query(sql, [TABLE_NAME, RECIPIENT_USER_COLUMN])
+    .then(({ rowCount }) => {
+      cachedRecipientUserColumn = rowCount > 0;
+      return cachedRecipientUserColumn;
+    })
+    .catch((err) => {
+      console.warn('[messages] não foi possível inspecionar recipient_user_id:', err.message || err);
+      cachedRecipientUserColumn = false;
+      return cachedRecipientUserColumn;
+    })
+    .finally(() => {
+      checkingRecipientUserColumnPromise = null;
+    });
+
+  return checkingRecipientUserColumnPromise;
+}
+
+const BASE_SELECT_FIELDS = [
+  'id',
+  'call_date',
+  'call_time',
+  'recipient',
+  'sender_name',
+  'sender_phone',
+  'sender_email',
+  'subject',
+  'message',
+  'status',
+  'callback_time',
+  'notes',
+  'created_at',
+  'updated_at',
+];
+
+function composeSelectFields(includeRecipientUserId) {
+  const fields = [...BASE_SELECT_FIELDS];
+  if (includeRecipientUserId) {
+    const recipientIndex = fields.indexOf('recipient');
+    const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
+    fields.splice(insertAt, 0, RECIPIENT_USER_COLUMN);
+  }
+  return fields;
+}
+
+async function resolveSelectColumns() {
+  const includeRecipientUserId = await supportsRecipientUserColumn();
+  return {
+    includeRecipientUserId,
+    selectColumns: composeSelectFields(includeRecipientUserId).join(',\n      '),
+  };
+}
+
 // Helper de placeholder para PG ($1, $2, ...)
 function ph(i) {
   return `$${i}`;
@@ -128,23 +204,6 @@ function attachTimestamps(_payload, source = {}) {
 }
 
 // ---------------------------- Mapeamento de colunas ------------------------
-const SELECT_COLUMNS = `
-  id,
-  call_date,
-  call_time,
-  recipient,
-  recipient_user_id,
-  sender_name,
-  sender_phone,
-  sender_email,
-  subject,
-  message,
-  status,
-  callback_time,
-  notes,
-  created_at,
-  updated_at
-`;
 
 function mapRow(row) {
   if (!row) return null;
@@ -216,6 +275,8 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1)
 
 // ---------------------------- CRUD / Listagem ------------------------------
 async function create(payload) {
+  const { includeRecipientUserId, selectColumns } = await resolveSelectColumns();
+
   const normalized = normalizePayload(payload);
   const timestamps = attachTimestamps({}, payload);
   const data = {
@@ -224,6 +285,11 @@ async function create(payload) {
   };
 
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(data, 'recipient_user_id');
+  const shouldIncludeRecipientUserId = includeRecipientUserId && hasRecipientUserId;
+
+  if (!includeRecipientUserId && hasRecipientUserId) {
+    delete data.recipient_user_id;
+  }
 
   const baseFields = [
     'call_date',
@@ -240,7 +306,7 @@ async function create(payload) {
   ];
   const fields = [...baseFields];
 
-  if (hasRecipientUserId) {
+  if (shouldIncludeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, 'recipient_user_id');
@@ -263,7 +329,7 @@ async function create(payload) {
     ) VALUES (
       ${fields.map((_, index) => ph(index + 1)).join(', ')}
     )
-    RETURNING ${SELECT_COLUMNS}
+    RETURNING ${selectColumns}
   `;
 
   const { rows } = await db.query(sql, values);
@@ -271,8 +337,9 @@ async function create(payload) {
 }
 
 async function findById(id) {
+  const { selectColumns } = await resolveSelectColumns();
   const sql = `
-    SELECT ${SELECT_COLUMNS}
+    SELECT ${selectColumns}
       FROM messages
      WHERE id = ${ph(1)}
      LIMIT 1
@@ -282,8 +349,14 @@ async function findById(id) {
 }
 
 async function update(id, payload) {
+  const { includeRecipientUserId } = await resolveSelectColumns();
   const normalized = normalizePayload(payload);
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_user_id');
+  const shouldIncludeRecipientUserId = includeRecipientUserId && hasRecipientUserId;
+
+  if (!includeRecipientUserId && hasRecipientUserId) {
+    delete normalized.data.recipient_user_id;
+  }
 
   const fields = [
     'call_date',
@@ -297,7 +370,7 @@ async function update(id, payload) {
     'callback_time',
     'notes',
   ];
-  if (hasRecipientUserId) {
+  if (shouldIncludeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, 'recipient_user_id');
@@ -345,6 +418,8 @@ async function list({
   order_by = 'created_at',
   order = 'desc'
 } = {}) {
+  const { selectColumns } = await resolveSelectColumns();
+
   // limites
   const parsedLimit = Number(limit);
   const parsedOffset = Number(offset);
@@ -369,7 +444,7 @@ async function list({
   });
 
   const sql = `
-    SELECT ${SELECT_COLUMNS}
+    SELECT ${selectColumns}
       FROM messages
       ${filters.clause}
   ORDER BY ${orderBy} ${sort}, id DESC
@@ -481,4 +556,3 @@ module.exports = {
     labelsPt: { ...STATUS_LABELS_PT },
   },
 };
-
