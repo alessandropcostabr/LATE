@@ -61,6 +61,7 @@ backup_*
 # Relatórios/artefatos locais
 lighthouse-reports/
 resultados_testes.md
+_reports/
 
 # Logs
 logs/
