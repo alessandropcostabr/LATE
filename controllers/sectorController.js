@@ -15,6 +15,14 @@ exports.validateList = [
   query('q').optional().isString().withMessage('Busca inválida'),
   query('page').optional().isInt({ min: 1 }).withMessage('Página inválida'),
   query('limit').optional().isInt({ min: 1, max: 200 }).withMessage('Limite inválido'),
+  query('status')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      const normalized = String(value || '').trim().toLowerCase();
+      if (!normalized) return true;
+      if (['active', 'inactive'].includes(normalized)) return true;
+      throw new Error('Status inválido');
+    }),
 ];
 
 exports.validateCreate = [
@@ -46,7 +54,10 @@ exports.list = async (req, res) => {
   if (!errors.isEmpty()) return sendValidation(res, errors);
 
   const { q, page, limit } = req.query;
-  const result = await Sector.list({ q, page, limit });
+  const rawStatus = typeof req.query.status === 'string' ? req.query.status : '';
+  const normalizedStatus = rawStatus.trim().toLowerCase();
+  const status = ['active', 'inactive'].includes(normalizedStatus) ? normalizedStatus : undefined;
+  const result = await Sector.list({ q, page, limit, status });
   return res.json({ success: true, data: result });
 };
 

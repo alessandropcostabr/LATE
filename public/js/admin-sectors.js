@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const pag = $('#pagination');
     const searchForm = $('#searchForm');
     const qInput = $('#q');
+    const statusSelect = $('#status');
     const btnNew = $('#btnNewSector');
 
     // Modal
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nameInput = $('#sectorName');
     const emailInput = $('#sectorEmail');
 
-    let state = { page: 1, limit: 10, q: '' };
+    let state = { page: 1, limit: 10, q: '', status: '' };
 
     function toastOk(msg) { (window.Toast?.success || alert)(msg); }
     function toastErr(msg) { (window.Toast?.error || alert)(msg); }
@@ -46,7 +47,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function load() {
       tbody.innerHTML = `<tr><td colspan="4">Carregando...</td></tr>`;
       try {
-        const { data } = await api(`/api/sectors?q=${encodeURIComponent(state.q)}&page=${state.page}&limit=${state.limit}`);
+        const params = new URLSearchParams();
+        if (state.q) params.set('q', state.q);
+        if (state.status) params.set('status', state.status);
+        params.set('page', state.page);
+        params.set('limit', state.limit);
+
+        const url = `/api/sectors?${params.toString()}`;
+        const { data } = await api(url);
         renderTable(data.data);
         renderPagination(data.pagination);
       } catch (err) {
@@ -102,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
       state.q = qInput.value.trim();
+      state.status = statusSelect.value;
       state.page = 1;
       load();
     });
@@ -173,6 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // init
+    state.q = qInput?.value.trim() || '';
+    state.status = statusSelect?.value || '';
     load();
   })();
 });

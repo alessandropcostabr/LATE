@@ -38,8 +38,16 @@ exports.list = async (req, res) => {
   const page  = Number(req.query.page)  || 1;
   const limit = Number(req.query.limit) || 10;
   const q     = String(req.query.q || '');
+
+  const rawRole = typeof req.query.role === 'string' ? req.query.role : '';
+  const normalizedRole = rawRole.trim().toUpperCase();
+  const role = ALLOWED_ROLES.includes(normalizedRole) ? normalizedRole : undefined;
+
+  const rawStatus = typeof req.query.status === 'string' ? req.query.status : '';
+  const normalizedStatus = rawStatus.trim().toLowerCase();
+  const status = ['active', 'inactive'].includes(normalizedStatus) ? normalizedStatus : undefined;
   try {
-    const r = await UserModel.list({ q, page, limit });
+    const r = await UserModel.list({ q, page, limit, role, status });
     const users = Array.isArray(r.data) ? r.data.map(sanitizeUser) : [];
     return res.json({ success: true, data: users, pagination: r.pagination });
   } catch (err) {
