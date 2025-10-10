@@ -286,6 +286,15 @@ exports.remove = async (req, res) => {
     if (err && err.code === 'SECTOR_MIN_ONE') {
       return res.status(400).json({ success: false, error: err.message });
     }
+    if (err && (err.code === 'USER_MIN_ONE' || (err.code === '23514' && /Usuário precisa estar associado/.test(String(err.message || ''))))) {
+      return res.status(409).json({
+        success: false,
+        error: 'Não é possível remover o usuário porque ele ainda está associado a um ou mais setores.',
+      });
+    }
+    if (err && err.code === '23514' && /Setor precisa/.test(String(err.message || ''))) {
+      return res.status(400).json({ success: false, error: 'Algum setor ficaria sem usuários. Ajuste os setores antes de remover o usuário.' });
+    }
     console.error('[users] remove error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao remover usuário.' });
   }

@@ -214,22 +214,28 @@ class UserModel {
         messageWhere += ` OR (recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageParams.length)}))`;
       }
 
-      const hasMessages = await client.query(`
+      const messageCheck = await client.query(`
         SELECT 1
           FROM messages
          WHERE ${messageWhere}
          LIMIT 1
       `, messageParams);
 
+      if (messageCheck.rowCount > 0) {
+        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+        err.code = 'HAS_MESSAGES';
+        throw err;
+      }
+
       if (recipientName) {
-        const hasMessages = await client.query(`
+        const hasMessagesByName = await client.query(`
           SELECT 1
             FROM messages
            WHERE LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(1)})
            LIMIT 1
         `, [recipientName]);
 
-        if (hasMessages.rowCount > 0) {
+        if (hasMessagesByName.rowCount > 0) {
           const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
           err.code = 'HAS_MESSAGES';
           throw err;
@@ -280,7 +286,7 @@ class UserModel {
         console.error('[user.delete] falha ao reverter transação:', rollbackErr);
       }
 
-      if (err && (err.code === 'HAS_MESSAGES' || err.code === 'SECTOR_MIN_ONE')) {
+      if (err && (err.code === 'HAS_MESSAGES' || err.code === 'SECTOR_MIN_ONE' || err.code === 'USER_MIN_ONE')) {
         throw err;
       }
 
