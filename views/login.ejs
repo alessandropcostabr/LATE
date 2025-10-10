@@ -1,24 +1,42 @@
 <%- include('partials/header') %>
-<body>
-  <%- include('partials/navbar') %>
+<body class="auth-body">
+  <main class="auth-layout">
+    <section class="auth-card" aria-labelledby="loginTitle">
+      <div class="auth-logo">
+        <img src="/assets/logo.png" alt="LATE">
+      </div>
+      <h1 id="loginTitle" class="auth-title">Entrar</h1>
+      <p class="auth-subtitle">Acesse o painel e acompanhe os recados da sua equipe.</p>
 
-  <main class="container mt-5" style="max-width:500px;">
-    <h1 class="mb-4">Login</h1>
-    <form method="POST" action="/login">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" class="form-control" id="email" name="email">
+      <form method="POST" action="/login" class="auth-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <label for="email" class="auth-label">E-mail</label>
+        <input type="email" class="auth-input" id="email" name="email" required autocomplete="email">
+
+        <label for="password" class="auth-label">Senha</label>
+        <input type="password" class="auth-input" id="password" name="password" required autocomplete="current-password">
+
+        <% if (typeof error !== 'undefined') { %>
+          <div class="auth-error" role="alert"><%= error %></div>
+        <% } %>
+
+        <button type="submit" class="btn btn-primary auth-submit">Entrar</button>
+      </form>
+
+      <div class="auth-help">
+        <a href="/help">Precisa de ajuda?</a>
       </div>
-      <div class="mb-3">
-        <label for="password" class="form-label">Senha</label>
-        <input type="password" class="form-control" id="password" name="password">
+    </section>
+
+    <section class="auth-hero" aria-hidden="true">
+      <div class="auth-hero-content">
+        <h2 class="auth-hero-title">Simplifique a gestão de recados</h2>
+        <p class="auth-hero-text">
+          Centralize informações, acompanhe status em tempo real e mantenha sua equipe alinhada.
+        </p>
+        <a href="/news" class="btn btn-outline auth-hero-action">Saiba mais</a>
       </div>
-      <% if (typeof error !== 'undefined') { %>
-        <div class="alert alert-danger"><%= error %></div>
-      <% } %>
-      <button type="submit" class="btn btn-primary">Entrar</button>
-    </form>
+    </section>
   </main>
 
   <%- include('partials/footer') %>

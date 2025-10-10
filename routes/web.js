@@ -99,6 +99,23 @@ router.get('/', requireAuth, (req, res) => {
   res.render('index', { title: 'Dashboard', user: req.session.user || null });
 });
 
+router.get('/news', requireAuth, (req, res) => {
+  res.render('news', { title: 'Novidades', user: req.session.user || null });
+});
+
+router.get('/help', requireAuth, (req, res) => {
+  res.render('help', { title: 'Central de Ajuda', user: req.session.user || null });
+});
+
+router.get('/account/password', requireAuth, csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  res.render('account-password', {
+    title: 'Trocar senha',
+    user: req.session.user || null,
+    csrfToken,
+  });
+});
+
 router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   res.render('recados', {

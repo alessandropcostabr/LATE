@@ -1,68 +1,86 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 fixed-top">
-  <div class="container">
-    <a class="navbar-brand" href="/">
-      <img src="/assets/logo.png" alt="LATE" height="30">
-    </a>
-    <button class="navbar-toggler" id="navbarToggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Alternar navegação">
-      <span class="navbar-toggler-icon"></span>
+<% const canReadMessages = permissions && permissions.readMessages; %>
+<% const canCreateMessages = permissions && permissions.createMessages; %>
+<% const showReports =
+  typeof userRoleSlug !== 'undefined' &&
+  (userRoleSlug === 'admin' || userRoleSlug === 'supervisor'); %>
+<% const rawUserName = (typeof user !== 'undefined' && user && user.name) ? String(user.name).trim() : ''; %>
+<% const userNameParts = rawUserName ? rawUserName.split(/\s+/).filter(Boolean) : []; %>
+<% const displayUserName = userNameParts.length > 1 ? `${userNameParts[0]} ${userNameParts[userNameParts.length - 1]}` : (userNameParts[0] || 'Usuário'); %>
+
+<nav class="app-navbar" role="navigation" aria-label="Navegação principal">
+  <div class="container app-navbar__inner">
+    <button
+      id="appNavbarToggle"
+      class="app-navbar__toggle"
+      type="button"
+      aria-label="Abrir menu"
+      aria-expanded="false"
+      aria-controls="appNavbarMenu">
+      <span class="app-navbar__toggle-icon" aria-hidden="true"></span>
     </button>
 
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <% const canReadMessages = permissions && permissions.readMessages; %>
-      <% const canCreateMessages = permissions && permissions.createMessages; %>
-      <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
-        <li class="nav-item">
-          <a class="nav-link<%= title === 'Dashboard' ? ' active' : '' %>" href="/">Dashboard</a>
-        </li>
-        <% if (canReadMessages) { %>
-          <li class="nav-item">
-            <a class="nav-link<%= title === 'Recados' ? ' active' : '' %>" href="/recados">Recados</a>
-          </li>
-        <% } %>
-        <% if (canCreateMessages) { %>
-          <li class="nav-item">
-            <a class="nav-link<%= title === 'Novo Recado' ? ' active' : '' %>" href="/novo-recado">Novo Recado</a>
-          </li>
-        <% } %>
+    <a class="app-navbar__brand" href="/">
+      <img src="/assets/logo.png" alt="LATE" height="44">
+    </a>
 
-        <% const showReports =
-          typeof userRoleSlug !== 'undefined' &&
-          (userRoleSlug === 'admin' || userRoleSlug === 'supervisor'); %>
-        <% if (showReports) { %>
-          <li class="nav-item">
-            <a class="nav-link<%= title === 'Relatórios' ? ' active' : '' %>" href="/relatorios">Relatórios</a>
-          </li>
+    <div class="app-navbar__actions">
+      <a href="/news" class="app-navbar__link<%= title === 'Novidades' ? ' is-active' : '' %>">Novidades</a>
 
-          <% if (userRoleSlug === 'admin') { %>
-            <!-- Menu Admin (dropdown) -->
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle<%= (title && title.startsWith('Admin ·')) ? ' active' : '' %>"
-                 href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Admin
-              </a>
-              <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                <li>
-                  <a class="dropdown-item<%= title === 'Admin · Usuários' ? ' active' : '' %>" href="/admin/users">Usuários</a>
-                </li>
-                <li>
-                  <a class="dropdown-item<%= title === 'Admin · Setores' ? ' active' : '' %>" href="/admin/sectors">Setores</a>
-                </li>
-              </ul>
-            </li>
-          <% } %>
-        <% } %>
-      </ul>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="app-navbar__user">
+          <button
+            id="appNavbarUserToggle"
+            class="app-navbar__user-toggle"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="appNavbarUserMenu">
+            <span class="app-navbar__avatar" aria-hidden="true">
+            <%= (user.name || user.email || '?').trim().charAt(0).toUpperCase() %>
+            </span>
+            <span class="app-navbar__user-name"><%= displayUserName %></span>
+            <span class="app-navbar__caret" aria-hidden="true"></span>
+          </button>
+          <div class="app-navbar__user-menu" id="appNavbarUserMenu" role="menu" aria-hidden="true">
+            <a href="/account/password" class="app-navbar__user-item" role="menuitem">Trocar senha</a>
+            <a href="/logout" class="app-navbar__user-item" role="menuitem">Sair</a>
+          </div>
+        </div>
+      <% } %>
 
-      <ul class="navbar-nav mb-2 mb-lg-0">
-        <% if (typeof user !== 'undefined' && user) { %>
-          <li class="nav-item"><a class="nav-link" href="/logout">Sair</a></li>
-        <% } else { %>
-          <li class="nav-item">
-            <a class="nav-link<%= title === 'Login' ? ' active' : '' %>" href="/login">Login</a>
-          </li>
-        <% } %>
-      </ul>
+      <a href="/help" class="btn btn-outline app-navbar__help<%= title && title.includes('Ajuda') ? ' is-active' : '' %>">Ajuda</a>
     </div>
   </div>
-</nav>
 
+  <div class="app-navbar__menu" id="appNavbarMenu">
+    <ul class="app-navbar__menu-list">
+      <li><a href="/" class="app-navbar__menu-link<%= title === 'Dashboard' ? ' is-active' : '' %>">Dashboard</a></li>
+
+      <% if (canReadMessages) { %>
+        <li><a href="/recados" class="app-navbar__menu-link<%= title === 'Recados' ? ' is-active' : '' %>">Recados</a></li>
+      <% } %>
+
+      <% if (canCreateMessages) { %>
+        <li><a href="/novo-recado" class="app-navbar__menu-link<%= title === 'Novo Recado' ? ' is-active' : '' %>">Novo Recado</a></li>
+      <% } %>
+
+      <% if (showReports) { %>
+        <li><a href="/relatorios" class="app-navbar__menu-link<%= title === 'Relatórios' ? ' is-active' : '' %>">Relatórios</a></li>
+      <% } %>
+
+      <% if (userRoleSlug === 'admin') { %>
+        <li class="app-navbar__menu-group">
+          <span class="app-navbar__menu-group-label">Admin</span>
+          <ul>
+            <li><a href="/admin/users" class="app-navbar__menu-link<%= title === 'Admin · Usuários' ? ' is-active' : '' %>">Usuários</a></li>
+            <li><a href="/admin/sectors" class="app-navbar__menu-link<%= title === 'Admin · Setores' ? ' is-active' : '' %>">Setores</a></li>
+          </ul>
+        </li>
+      <% } %>
+
+      <% if (!user) { %>
+        <li><a href="/login" class="app-navbar__menu-link<%= title === 'Login' ? ' is-active' : '' %>">Login</a></li>
+      <% } %>
+    </ul>
+  </div>
+</nav>
