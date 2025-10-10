@@ -221,13 +221,7 @@ class UserModel {
          LIMIT 1
       `, messageParams);
 
-      if (messageCheck.rowCount > 0) {
-        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-        err.code = 'HAS_MESSAGES';
-        throw err;
-      }
-
-      if (recipientName) {
+      if (recipientName && messageCheck.rowCount === 0) {
         const hasMessagesByName = await client.query(`
           SELECT 1
             FROM messages
@@ -236,42 +230,20 @@ class UserModel {
         `, [recipientName]);
 
         if (hasMessagesByName.rowCount > 0) {
-          const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-          err.code = 'HAS_MESSAGES';
-          throw err;
+          messageCheck.rowCount = 1;
         }
       }
 
-      const { rows: sectorRows } = await client.query(`
-        SELECT sector_id
-          FROM user_sectors
+      if (messageCheck.rowCount > 0) {
+        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+        err.code = 'HAS_MESSAGES';
+        throw err;
+      }
+
+      await client.query(`
+        DELETE FROM user_sectors
          WHERE user_id = ${ph(1)}
       `, [userId]);
-
-      const sectorIds = sectorRows.map((row) => row.sector_id);
-
-      if (sectorIds.length > 0) {
-        const { rows: counts } = await client.query(`
-          SELECT sector_id, COUNT(*)::int AS cnt
-            FROM user_sectors
-           WHERE sector_id = ANY(${ph(1)})
-           GROUP BY sector_id
-        `, [sectorIds]);
-
-        const countMap = Object.fromEntries(counts.map((row) => [row.sector_id, row.cnt]));
-        const wouldEmptySector = sectorIds.some((sectorId) => (countMap[sectorId] || 0) <= 1);
-
-        if (wouldEmptySector) {
-          const err = new Error('Não é possível remover: algum setor ficaria sem usuários');
-          err.code = 'SECTOR_MIN_ONE';
-          throw err;
-        }
-
-        await client.query(`
-          DELETE FROM user_sectors
-           WHERE user_id = ${ph(1)}
-        `, [userId]);
-      }
 
       const { rowCount } = await client.query(`
         DELETE FROM users WHERE id = ${ph(1)}
