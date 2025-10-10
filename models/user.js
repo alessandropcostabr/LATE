@@ -171,7 +171,7 @@ class UserModel {
     }
   }
 
-  async remove(id) {
+  async deleteUserSafely(userId) {
     const client = await db.connect();
     try {
       await client.query('BEGIN');
@@ -181,18 +181,31 @@ class UserModel {
           FROM users
          WHERE id = ${ph(1)}
          LIMIT 1
-      `, [id]);
+      `, [userId]);
 
       if (!userRows.length) {
         await client.query('ROLLBACK');
-        return false;
+        return { deleted: false };
+      }
+
+      const hasMessages = await client.query(`
+        SELECT 1
+          FROM messages
+         WHERE recipient_user_id = ${ph(1)} OR created_by = ${ph(1)}
+         LIMIT 1
+      `, [userId]);
+
+      if (hasMessages.rowCount > 0) {
+        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+        err.code = 'HAS_MESSAGES';
+        throw err;
       }
 
       const { rows: sectorRows } = await client.query(`
         SELECT sector_id
           FROM user_sectors
          WHERE user_id = ${ph(1)}
-      `, [id]);
+      `, [userId]);
 
       const sectorIds = sectorRows.map((row) => row.sector_id);
 
@@ -216,21 +229,38 @@ class UserModel {
         await client.query(`
           DELETE FROM user_sectors
            WHERE user_id = ${ph(1)}
-        `, [id]);
+        `, [userId]);
       }
 
       const { rowCount } = await client.query(`
         DELETE FROM users WHERE id = ${ph(1)}
-      `, [id]);
+      `, [userId]);
 
       await client.query('COMMIT');
-      return rowCount > 0;
+      return { deleted: rowCount > 0 };
     } catch (err) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
-      throw err;
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('[user.delete] falha ao reverter transação:', rollbackErr);
+      }
+
+      if (err && (err.code === 'HAS_MESSAGES' || err.code === 'SECTOR_MIN_ONE')) {
+        throw err;
+      }
+
+      console.error('[user.delete] erro ao excluir:', err);
+      const internalErr = new Error('Erro interno ao remover usuário.');
+      internalErr.code = 'INTERNAL';
+      throw internalErr;
     } finally {
       client.release();
     }
+  }
+
+  async remove(id) {
+    const result = await this.deleteUserSafely(id);
+    return result.deleted === true;
   }
 
   async setActive(id, active) {

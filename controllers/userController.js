@@ -260,10 +260,19 @@ exports.remove = async (req, res) => {
       }
     }
 
-    const ok = await UserModel.remove(id);
-    if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
-    return res.json({ success: true });
+    const result = await UserModel.deleteUserSafely(id);
+    if (!result.deleted) {
+      return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    }
+
+    return res.json({ success: true, data: { deleted: true, message: 'Usuário removido com sucesso.' } });
   } catch (err) {
+    if (err && err.code === 'HAS_MESSAGES') {
+      return res.status(409).json({
+        success: false,
+        error: 'Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.',
+      });
+    }
     if (err && err.code === 'SECTOR_MIN_ONE') {
       return res.status(400).json({ success: false, error: err.message });
     }
