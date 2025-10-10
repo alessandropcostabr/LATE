@@ -205,10 +205,19 @@ class UserModel {
          LIMIT 1
       `, messageParams);
 
-      if (hasMessages.rowCount > 0) {
-        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-        err.code = 'HAS_MESSAGES';
-        throw err;
+      if (recipientName) {
+        const hasMessages = await client.query(`
+          SELECT 1
+            FROM messages
+           WHERE LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(1)})
+           LIMIT 1
+        `, [recipientName]);
+
+        if (hasMessages.rowCount > 0) {
+          const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+          err.code = 'HAS_MESSAGES';
+          throw err;
+        }
       }
 
       const { rows: sectorRows } = await client.query(`
