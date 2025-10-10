@@ -4,6 +4,7 @@
 const Message = require('../models/message');
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
+const { sendMail } = require('../services/mailer');
 
 function normalizeRecipientId(value) {
   const parsed = Number(value);
@@ -215,6 +216,55 @@ exports.create = async (req, res) => {
 
     const id = await Message.create(payload);
     const created = await Message.findById(id);
+
+    if (created && created.recipient_user_id) {
+      let recipientEmail;
+      try {
+        const recipient = await UserModel.findById(created.recipient_user_id);
+        recipientEmail = recipient?.email;
+        if (recipientEmail) {
+          const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+          const openUrl = `${baseUrl}/recados/${created.id}`;
+          const messageSnippet = (created.message || '')
+            .replace(/\s+/g, ' ')
+            .slice(0, 240);
+          const messageTail = (created.message || '').length > 240 ? '…' : '';
+          const subject = `[LATE] Novo recado para você — ${created.subject || 'sem assunto'}`;
+          const text = `Olá, ${recipient.name || 'colega'}!
+
+Você recebeu um novo recado.
+
+Data/Hora: ${created.call_date || '-'} ${created.call_time || ''}
+Remetente: ${created.sender_name || '-'} (${created.sender_phone || '—'} / ${created.sender_email || '—'})
+Assunto: ${created.subject || '-'}
+Mensagem: ${messageSnippet}${messageTail}
+
+Abrir recado: ${openUrl}
+
+Se você não reconhece esta mensagem, ignore este e-mail.`;
+          const html = `
+<p>Olá, ${recipient.name || 'colega'}!</p>
+<p><strong>Você recebeu um novo recado.</strong></p>
+<ul>
+  <li><strong>Data/Hora:</strong> ${created.call_date || '-'} ${created.call_time || ''}</li>
+  <li><strong>Remetente:</strong> ${created.sender_name || '-'} (${created.sender_phone || '—'} / ${created.sender_email || '—'})</li>
+  <li><strong>Assunto:</strong> ${created.subject || '-'}</li>
+  <li><strong>Mensagem:</strong> ${messageSnippet}${messageTail}</li>
+</ul>
+<p><a href="${openUrl}">➜ Abrir recado</a></p>
+<p style="color:#666;">Este e-mail foi enviado automaticamente pelo LATE. Se você não reconhece esta mensagem, ignore este e-mail.</p>
+`;
+          await sendMail({ to: recipientEmail, subject, html, text });
+          console.info('[MAIL:INFO] Notificação enviada', { to: recipientEmail, messageId: created.id });
+        }
+      } catch (mailErr) {
+        console.error('[MAIL:ERROR] Falha ao enviar notificação', {
+          to: recipientEmail || created.recipient_user_id,
+          err: mailErr?.message || mailErr,
+        });
+      }
+    }
+
     return res.status(201).json({ success: true, data: toClient(created) });
   } catch (err) {
     console.error('[messages] erro ao criar:', err);
