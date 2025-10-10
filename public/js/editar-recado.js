@@ -9,15 +9,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     'call_date',
     'call_time',
     'recipient',
+    'recipientType',
+    'recipientUserId',
+    'recipientSectorId',
     'sender_name',
     'sender_phone',
     'sender_email',
     'callback_time',
     'subject',
     'status',
+    'visibility',
     'notes',
     'message'
   ];
+
+  const recipientTypeSelect = document.getElementById('recipientType');
+  const recipientUserSelect = document.getElementById('recipientUserId');
+  const recipientSectorSelect = document.getElementById('recipientSectorId');
+  const recipientHiddenInput = document.getElementById('recipient');
+  const recipientUserGroup = document.getElementById('recipientUserGroup');
+  const recipientSectorGroup = document.getElementById('recipientSectorGroup');
+  const visibilitySelect = document.getElementById('visibility');
+
+  function updateRecipientHidden() {
+    const type = (recipientTypeSelect?.value || 'user').toLowerCase();
+    let text = '';
+    if (type === 'sector' && recipientSectorSelect && recipientSectorSelect.selectedIndex > 0) {
+      text = recipientSectorSelect.options[recipientSectorSelect.selectedIndex].text || '';
+    } else if (recipientUserSelect && recipientUserSelect.selectedIndex > 0) {
+      text = recipientUserSelect.options[recipientUserSelect.selectedIndex].text || '';
+    }
+    if (recipientHiddenInput) {
+      recipientHiddenInput.value = text.trim();
+    }
+  }
+
+  function toggleRecipientFields() {
+    const type = (recipientTypeSelect?.value || 'user').toLowerCase();
+    if (type === 'sector') {
+      recipientUserGroup?.classList.add('d-none');
+      recipientSectorGroup?.classList.remove('d-none');
+      recipientUserSelect?.removeAttribute('required');
+      recipientSectorSelect?.setAttribute('required', 'required');
+    } else {
+      recipientSectorGroup?.classList.add('d-none');
+      recipientUserGroup?.classList.remove('d-none');
+      recipientSectorSelect?.removeAttribute('required');
+      recipientUserSelect?.setAttribute('required', 'required');
+    }
+    updateRecipientHidden();
+  }
+
+  recipientTypeSelect?.addEventListener('change', () => {
+    toggleRecipientFields();
+  });
+  recipientUserSelect?.addEventListener('change', updateRecipientHidden);
+  recipientSectorSelect?.addEventListener('change', updateRecipientHidden);
+
+  toggleRecipientFields();
 
   let safeData = {};
   let fields = [];
@@ -28,6 +77,24 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data[f] !== undefined) safeData[f] = data[f] ?? '';
     });
     Form.populate(form, safeData);
+    const recipientType = (data.recipient_sector_id ? 'sector' : 'user');
+    if (recipientTypeSelect) {
+      recipientTypeSelect.value = recipientType;
+    }
+    if (recipientType === 'sector') {
+      if (recipientSectorSelect) recipientSectorSelect.value = data.recipient_sector_id || '';
+      if (recipientUserSelect) recipientUserSelect.value = '';
+    } else {
+      if (recipientUserSelect) recipientUserSelect.value = data.recipient_user_id || '';
+      if (recipientSectorSelect) recipientSectorSelect.value = '';
+    }
+    if (recipientHiddenInput) {
+      recipientHiddenInput.value = data.recipient || '';
+    }
+    if (visibilitySelect) {
+      visibilitySelect.value = (data.visibility || 'private');
+    }
+    toggleRecipientFields();
     const formFields = Array.from(form.querySelectorAll('[name]')).map(el => el.name);
     fields = Array.from(new Set([...formFields, ...Object.keys(safeData)]));
     const cancel = document.getElementById('btnCancelar');
@@ -45,6 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (errors.length) return Toast.error(errors[0]);
     try {
       Loading.show('btnSalvar');
+      updateRecipientHidden();
       const formData = Form.getData(form);
       const payload = {};
       fields.forEach(f => {

@@ -118,6 +118,12 @@ export async function carregarRecadosRecentes(limit = 10) {
           : getSituacaoLabel(recado.status));
       sitSpan.textContent = statusLabel;
       tdSit.appendChild(sitSpan);
+      const visBadge = document.createElement('span');
+      visBadge.className = 'badge';
+      visBadge.style.marginLeft = '0.5rem';
+      visBadge.style.backgroundColor = 'var(--badge-neutral, #6c757d)';
+      visBadge.textContent = recado.visibility === 'public' ? 'Público' : 'Privado';
+      tdSit.appendChild(visBadge);
       tr.appendChild(tdSit);
 
       const tdAcoes = document.createElement('td');

@@ -12,19 +12,55 @@
     return String(el.value || '').trim();
   };
 
+  const recipientTypeSelect = document.getElementById('recipientType');
+  const recipientUserSelect = document.getElementById('recipientUserId');
+  const recipientSectorSelect = document.getElementById('recipientSectorId');
+  const recipientUserGroup = document.getElementById('recipientUserGroup');
+  const recipientSectorGroup = document.getElementById('recipientSectorGroup');
+  const visibilitySelect = document.getElementById('visibility');
+
+  function toggleRecipientFields() {
+    const type = (recipientTypeSelect?.value || 'user').toLowerCase();
+    if (type === 'sector') {
+      recipientUserGroup?.classList.add('d-none');
+      recipientSectorGroup?.classList.remove('d-none');
+      recipientUserSelect?.removeAttribute('required');
+      recipientSectorSelect?.setAttribute('required', 'required');
+    } else {
+      recipientSectorGroup?.classList.add('d-none');
+      recipientUserGroup?.classList.remove('d-none');
+      recipientSectorSelect?.removeAttribute('required');
+      recipientUserSelect?.setAttribute('required', 'required');
+    }
+  }
+
+  recipientTypeSelect?.addEventListener('change', toggleRecipientFields);
+  toggleRecipientFields();
+
   function coletarDados() {
     const call_date = val('#call_date');
     const call_time = val('#call_time');
-    const recipientIdRaw = val('#recipientId');
-    const parsedRecipientId = recipientIdRaw ? Number(recipientIdRaw) : null;
-    const recipientId = Number.isFinite(parsedRecipientId) && parsedRecipientId > 0
-      ? parsedRecipientId
-      : null;
-    const selectRecipient = document.querySelector('#recipientId');
+    const recipientType = (recipientTypeSelect?.value || 'user').toLowerCase();
+    let recipientUserId = null;
+    let recipientSectorId = null;
     let recipientName = '';
-    if (selectRecipient && selectRecipient.selectedIndex > 0) {
-      const option = selectRecipient.options[selectRecipient.selectedIndex];
-      recipientName = String(option?.text || '').trim();
+
+    if (recipientType === 'sector') {
+      const recipientSectorRaw = recipientSectorSelect ? recipientSectorSelect.value : '';
+      const parsedSector = recipientSectorRaw ? Number(recipientSectorRaw) : null;
+      recipientSectorId = Number.isFinite(parsedSector) && parsedSector > 0 ? parsedSector : null;
+      if (recipientSectorSelect && recipientSectorSelect.selectedIndex > 0) {
+        const option = recipientSectorSelect.options[recipientSectorSelect.selectedIndex];
+        recipientName = String(option?.text || '').trim();
+      }
+    } else {
+      const recipientUserRaw = recipientUserSelect ? recipientUserSelect.value : '';
+      const parsedUser = recipientUserRaw ? Number(recipientUserRaw) : null;
+      recipientUserId = Number.isFinite(parsedUser) && parsedUser > 0 ? parsedUser : null;
+      if (recipientUserSelect && recipientUserSelect.selectedIndex > 0) {
+        const option = recipientUserSelect.options[recipientUserSelect.selectedIndex];
+        recipientName = String(option?.text || '').trim();
+      }
     }
     const sender_name = val('#sender_name');
     const sender_phone = val('#sender_phone');
@@ -41,7 +77,9 @@
     const basePayload = {
       call_date,
       call_time,
-      recipientId,
+      recipientType,
+      recipientUserId,
+      recipientSectorId,
       recipient: recipientName || null,
       sender_name,
       sender_phone,
@@ -50,6 +88,7 @@
       message,            // <- obrigatório no banco; garantimos aqui
       status,
       callback_time,
+      visibility: (visibilitySelect?.value || 'private').toLowerCase(),
       notes
     };
 
@@ -70,7 +109,8 @@
       const faltando = [];
       if (!recado.call_date) faltando.push('Data da ligação');
       if (!recado.call_time) faltando.push('Hora da ligação');
-      if (!recado.recipientId) faltando.push('Destinatário');
+      if (recado.recipientType === 'sector' && !recado.recipientSectorId) faltando.push('Setor destinatário');
+      if (recado.recipientType !== 'sector' && !recado.recipientUserId) faltando.push('Usuário destinatário');
       if (!recado.sender_name) faltando.push('Remetente');
       if (!recado.subject) faltando.push('Assunto');
       if (!recado.message) faltando.push('Mensagem');
@@ -107,4 +147,3 @@
 
   document.addEventListener('DOMContentLoaded', iniciar);
 })();
-

@@ -2,21 +2,25 @@
 // Comentários em pt-BR; identificadores em inglês. PG-only (node-postgres).
 
 const db = require('../config/database'); // Pool do pg
+const { buildViewerOwnershipFilter } = require('./helpers/viewerScope');
 
 // ---------------------------- Metadados dinâmicos --------------------------
 const TABLE_NAME = 'messages';
 const RECIPIENT_USER_COLUMN = 'recipient_user_id';
+const RECIPIENT_SECTOR_COLUMN = 'recipient_sector_id';
+const VISIBILITY_COLUMN = 'visibility';
 
-let cachedRecipientUserColumn;
-let checkingRecipientUserColumnPromise;
+const columnSupportCache = new Map();
+const columnCheckPromises = new Map();
 
-async function supportsRecipientUserColumn() {
-  if (typeof cachedRecipientUserColumn === 'boolean') {
-    return cachedRecipientUserColumn;
+async function supportsColumn(column) {
+  if (columnSupportCache.has(column)) {
+    return columnSupportCache.get(column);
   }
-  if (checkingRecipientUserColumnPromise) {
-    return checkingRecipientUserColumnPromise;
+  if (columnCheckPromises.has(column)) {
+    return columnCheckPromises.get(column);
   }
+
   const sql = `
     SELECT 1
       FROM information_schema.columns
@@ -26,22 +30,24 @@ async function supportsRecipientUserColumn() {
      LIMIT 1
   `;
 
-  checkingRecipientUserColumnPromise = db
-    .query(sql, [TABLE_NAME, RECIPIENT_USER_COLUMN])
+  const promise = db
+    .query(sql, [TABLE_NAME, column])
     .then(({ rowCount }) => {
-      cachedRecipientUserColumn = rowCount > 0;
-      return cachedRecipientUserColumn;
+      const exists = rowCount > 0;
+      columnSupportCache.set(column, exists);
+      return exists;
     })
     .catch((err) => {
-      console.warn('[messages] não foi possível inspecionar recipient_user_id:', err.message || err);
-      cachedRecipientUserColumn = false;
-      return cachedRecipientUserColumn;
+      console.warn(`[messages] não foi possível inspecionar coluna ${column}:`, err.message || err);
+      columnSupportCache.set(column, false);
+      return false;
     })
     .finally(() => {
-      checkingRecipientUserColumnPromise = null;
+      columnCheckPromises.delete(column);
     });
 
-  return checkingRecipientUserColumnPromise;
+  columnCheckPromises.set(column, promise);
+  return promise;
 }
 
 const BASE_SELECT_FIELDS = [
@@ -55,27 +61,37 @@ const BASE_SELECT_FIELDS = [
   'subject',
   'message',
   'status',
+  'visibility',
   'callback_time',
   'notes',
   'created_at',
   'updated_at',
 ];
 
-function composeSelectFields(includeRecipientUserId) {
+function composeSelectFields(includeRecipientUserId, includeRecipientSectorId) {
   const fields = [...BASE_SELECT_FIELDS];
   if (includeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, RECIPIENT_USER_COLUMN);
   }
+  if (includeRecipientSectorId) {
+    const recipientIndex = fields.indexOf('recipient');
+    const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
+    fields.splice(insertAt, 0, RECIPIENT_SECTOR_COLUMN);
+  }
   return fields;
 }
 
 async function resolveSelectColumns() {
-  const includeRecipientUserId = await supportsRecipientUserColumn();
+  const [includeRecipientUserId, includeRecipientSectorId] = await Promise.all([
+    supportsColumn(RECIPIENT_USER_COLUMN),
+    supportsColumn(RECIPIENT_SECTOR_COLUMN),
+  ]);
   return {
     includeRecipientUserId,
-    selectColumns: composeSelectFields(includeRecipientUserId).join(',\n      '),
+    includeRecipientSectorId,
+    selectColumns: composeSelectFields(includeRecipientUserId, includeRecipientSectorId).join(',\n      '),
   };
 }
 
@@ -136,6 +152,16 @@ function normalizeRecipientUserId(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function normalizeRecipientSectorId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeVisibility(raw) {
+  const value = String(raw || 'private').trim().toLowerCase();
+  return value === 'public' ? 'public' : 'private';
+}
+
 function normalizeStatus(raw) {
   const base = trim(raw);
   if (!base) return 'pending';
@@ -166,10 +192,17 @@ function translateStatusForQuery(status) {
 function normalizePayload(payload = {}) {
   const messageContent = trim(payload.message || payload.notes || '');
   const statusProvided = Object.prototype.hasOwnProperty.call(payload, 'status');
+  const visibilityProvided = Object.prototype.hasOwnProperty.call(payload, 'visibility');
   const recipientUserProvided = Object.prototype.hasOwnProperty.call(payload, 'recipient_user_id') ||
     Object.prototype.hasOwnProperty.call(payload, 'recipientUserId');
+  const recipientSectorProvided = Object.prototype.hasOwnProperty.call(payload, 'recipient_sector_id') ||
+    Object.prototype.hasOwnProperty.call(payload, 'recipientSectorId');
+
   const recipientUserId = recipientUserProvided
     ? normalizeRecipientUserId(payload.recipient_user_id ?? payload.recipientUserId)
+    : null;
+  const recipientSectorId = recipientSectorProvided
+    ? normalizeRecipientSectorId(payload.recipient_sector_id ?? payload.recipientSectorId)
     : null;
 
   const data = {
@@ -182,6 +215,7 @@ function normalizePayload(payload = {}) {
     subject: emptyToNull(payload.subject),
     message: messageContent || '(sem mensagem)',
     status: statusProvided ? ensureStatus(payload.status) : null,
+    visibility: visibilityProvided ? normalizeVisibility(payload.visibility) : undefined,
     callback_time: emptyToNull(payload.callback_time),
     notes: emptyToNull(payload.notes),
   };
@@ -189,10 +223,16 @@ function normalizePayload(payload = {}) {
   if (recipientUserProvided) {
     data.recipient_user_id = recipientUserId;
   }
+  if (recipientSectorProvided) {
+    data.recipient_sector_id = recipientSectorId;
+  }
 
   return {
     data,
     statusProvided,
+    visibilityProvided,
+    recipientUserProvided,
+    recipientSectorProvided,
   };
 }
 
@@ -214,12 +254,15 @@ function mapRow(row) {
     recipient: row.recipient ?? null,
     recipient_user_id: row.recipient_user_id ?? null,
     recipientUserId: row.recipient_user_id ?? null,
+    recipient_sector_id: row.recipient_sector_id ?? null,
+    recipientSectorId: row.recipient_sector_id ?? null,
     sender_name: row.sender_name ?? null,
     sender_phone: row.sender_phone ?? null,
     sender_email: row.sender_email ?? null,
     subject: row.subject ?? null,
     message: row.message ?? null,
     status: ensureStatus(row.status),
+    visibility: normalizeVisibility(row.visibility),
     callback_time: row.callback_time ?? null,
     notes: row.notes ?? null,
     created_at: row.created_at ?? null,
@@ -275,7 +318,7 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1)
 
 // ---------------------------- CRUD / Listagem ------------------------------
 async function create(payload) {
-  const { includeRecipientUserId, selectColumns } = await resolveSelectColumns();
+  const { includeRecipientUserId, includeRecipientSectorId, selectColumns } = await resolveSelectColumns();
 
   const normalized = normalizePayload(payload);
   const timestamps = attachTimestamps({}, payload);
@@ -284,11 +327,22 @@ async function create(payload) {
     status: normalized.statusProvided && normalized.data.status ? normalized.data.status : 'pending',
   };
 
+  if (data.visibility === undefined) {
+    data.visibility = 'private';
+  }
+
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(data, 'recipient_user_id');
   const shouldIncludeRecipientUserId = includeRecipientUserId && hasRecipientUserId;
 
+  const hasRecipientSectorId = Object.prototype.hasOwnProperty.call(data, 'recipient_sector_id');
+  const shouldIncludeRecipientSectorId = includeRecipientSectorId && hasRecipientSectorId;
+
   if (!includeRecipientUserId && hasRecipientUserId) {
     delete data.recipient_user_id;
+  }
+
+  if (!includeRecipientSectorId && hasRecipientSectorId) {
+    delete data.recipient_sector_id;
   }
 
   const baseFields = [
@@ -301,6 +355,7 @@ async function create(payload) {
     'subject',
     'message',
     'status',
+    'visibility',
     'callback_time',
     'notes',
   ];
@@ -310,6 +365,12 @@ async function create(payload) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, 'recipient_user_id');
+  }
+
+  if (shouldIncludeRecipientSectorId) {
+    const recipientIndex = fields.indexOf('recipient');
+    const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
+    fields.splice(insertAt, 0, 'recipient_sector_id');
   }
 
   const values = fields.map((field) => data[field]);
@@ -336,26 +397,34 @@ async function create(payload) {
   return rows?.[0]?.id || null;
 }
 
-async function findById(id) {
+async function findById(id, { viewer } = {}) {
   const { selectColumns } = await resolveSelectColumns();
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, 2);
   const sql = `
     SELECT ${selectColumns}
       FROM messages
      WHERE id = ${ph(1)}
+     ${ownershipFilter.clause ? `AND ${ownershipFilter.clause}` : ''}
      LIMIT 1
   `;
-  const { rows } = await db.query(sql, [id]);
+  const params = ownershipFilter.clause ? [id, ...ownershipFilter.params] : [id];
+  const { rows } = await db.query(sql, params);
   return mapRow(rows?.[0]);
 }
 
 async function update(id, payload) {
-  const { includeRecipientUserId } = await resolveSelectColumns();
+  const { includeRecipientUserId, includeRecipientSectorId } = await resolveSelectColumns();
   const normalized = normalizePayload(payload);
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_user_id');
   const shouldIncludeRecipientUserId = includeRecipientUserId && hasRecipientUserId;
+  const hasRecipientSectorId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_sector_id');
+  const shouldIncludeRecipientSectorId = includeRecipientSectorId && hasRecipientSectorId;
 
   if (!includeRecipientUserId && hasRecipientUserId) {
     delete normalized.data.recipient_user_id;
+  }
+  if (!includeRecipientSectorId && hasRecipientSectorId) {
+    delete normalized.data.recipient_sector_id;
   }
 
   const fields = [
@@ -375,20 +444,33 @@ async function update(id, payload) {
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, 'recipient_user_id');
   }
+  if (shouldIncludeRecipientSectorId) {
+    const recipientIndex = fields.indexOf('recipient');
+    const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
+    fields.splice(insertAt, 0, 'recipient_sector_id');
+  }
   const values = fields.map((field) => normalized.data[field]);
   const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
 
   // status opcional
   const statusIndex = assignments.length + 1;
   assignments.push(`status = COALESCE(${ph(statusIndex)}, status)`);
+  const visibilityIndex = assignments.length + 1;
+  assignments.push(`visibility = COALESCE(${ph(visibilityIndex)}, visibility)`);
   assignments.push('updated_at = CURRENT_TIMESTAMP');
 
   const sql = `
     UPDATE messages
        SET ${assignments.join(', ')}
-     WHERE id = ${ph(statusIndex + 1)}
+     WHERE id = ${ph(visibilityIndex + 1)}
   `;
-  const { rowCount } = await db.query(sql, [...values, normalized.statusProvided ? normalized.data.status : null, id]);
+  const params = [
+    ...values,
+    normalized.statusProvided ? normalized.data.status : null,
+    normalized.visibilityProvided ? normalizeVisibility(normalized.data.visibility) : null,
+    id,
+  ];
+  const { rowCount } = await db.query(sql, params);
   return rowCount > 0;
 }
 
@@ -416,7 +498,8 @@ async function list({
   end_date,
   recipient,
   order_by = 'created_at',
-  order = 'desc'
+  order = 'desc',
+  viewer,
 } = {}) {
   const { selectColumns } = await resolveSelectColumns();
 
@@ -436,33 +519,61 @@ async function list({
   const endDate = trim(end_date);
   const recipientFilter = trim(recipient);
 
-  const filters = buildFilters({
+  const filtersResult = buildFilters({
     status: statusFilter,
     startDate: startDate || null,
     endDate: endDate || null,
     recipient: recipientFilter || null,
   });
+  let whereClause = filtersResult.clause;
+  let params = [...filtersResult.params];
+  let nextIndex = filtersResult.nextIndex;
+
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex);
+  if (ownershipFilter.clause) {
+    if (whereClause) {
+      whereClause += ` AND ${ownershipFilter.clause}`;
+    } else {
+      whereClause = `WHERE ${ownershipFilter.clause}`;
+    }
+    params.push(...ownershipFilter.params);
+    nextIndex = ownershipFilter.nextIndex;
+  }
 
   const sql = `
     SELECT ${selectColumns}
       FROM messages
-      ${filters.clause}
+      ${whereClause}
   ORDER BY ${orderBy} ${sort}, id DESC
-     LIMIT ${ph(filters.nextIndex)} OFFSET ${ph(filters.nextIndex + 1)}
+     LIMIT ${ph(nextIndex)} OFFSET ${ph(nextIndex + 1)}
   `;
 
-  const { rows } = await db.query(sql, [...filters.params, sanitizedLimit, sanitizedOffset]);
+  const { rows } = await db.query(sql, [...params, sanitizedLimit, sanitizedOffset]);
   return rows.map(mapRow);
 }
 
-async function listRecent(limit = 10) {
-  return list({ limit, order_by: 'created_at', order: 'desc' });
+async function listRecent(limit = 10, { viewer } = {}) {
+  return list({ limit, order_by: 'created_at', order: 'desc', viewer });
 }
 
 // ---------------------------- Estatísticas ---------------------------------
-async function stats() {
-  const total = await db.query('SELECT COUNT(*)::int AS count FROM messages');
-  const byStatus = await db.query('SELECT status, COUNT(*)::int AS count FROM messages GROUP BY status');
+async function stats({ viewer } = {}) {
+  const totalFilter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const totalSql = `
+    SELECT COUNT(*)::int AS count
+      FROM messages
+      ${totalFilter.clause ? `WHERE ${totalFilter.clause}` : ''}
+  `;
+  const total = await db.query(totalSql, totalFilter.params);
+
+  const statusFilter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const statusSql = `
+    SELECT status, COUNT(*)::int AS count
+      FROM messages
+      ${statusFilter.clause ? `WHERE ${statusFilter.clause}` : ''}
+  GROUP BY status
+  `;
+  const byStatus = await db.query(statusSql, statusFilter.params);
 
   const counters = byStatus.rows.reduce((acc, row) => {
     const normalized = ensureStatus(row.status);
@@ -478,31 +589,36 @@ async function stats() {
   };
 }
 
-async function statsByRecipient({ limit = 10 } = {}) {
+async function statsByRecipient({ limit = 10, viewer } = {}) {
   const parsedLimit = Number(limit);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
 
+  const filter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const limitIndex = filter.nextIndex;
   const sql = `
     SELECT
       COALESCE(NULLIF(TRIM(recipient), ''), 'Não informado') AS recipient,
       COUNT(*)::int AS count
       FROM messages
+      ${filter.clause ? `WHERE ${filter.clause}` : ''}
   GROUP BY recipient
   ORDER BY count DESC, recipient ASC
-     LIMIT ${ph(1)}
+     LIMIT ${ph(limitIndex)}
   `;
 
-  const { rows } = await db.query(sql, [sanitizedLimit]);
+  const { rows } = await db.query(sql, [...filter.params, sanitizedLimit]);
   return rows.map(r => ({ recipient: r.recipient, count: Number(r.count || 0) }));
 }
 
-async function statsByStatus() {
+async function statsByStatus({ viewer } = {}) {
+  const filter = buildViewerOwnershipFilter(viewer, ph, 1);
   const sql = `
     SELECT status, COUNT(*)::int AS count
       FROM messages
+      ${filter.clause ? `WHERE ${filter.clause}` : ''}
   GROUP BY status
   `;
-  const { rows } = await db.query(sql);
+  const { rows } = await db.query(sql, filter.params);
   const totals = STATUS_VALUES.reduce((acc, status) => ({ ...acc, [status]: 0 }), {});
   for (const row of rows) {
     const normalized = ensureStatus(row.status);
@@ -516,7 +632,8 @@ async function statsByStatus() {
 }
 
 // Série mensal (últimos 12 meses) por created_at — PostgreSQL
-async function statsByMonth() {
+async function statsByMonth({ viewer } = {}) {
+  const filter = buildViewerOwnershipFilter(viewer, ph, 1, { alias: 'ms' });
   const sql = `
     WITH months AS (
       SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, 11)) AS m
@@ -527,10 +644,11 @@ async function statsByMonth() {
     FROM months
     LEFT JOIN messages AS ms
       ON date_trunc('month', ms.created_at) = date_trunc('month', m)
+     ${filter.clause ? ` AND ${filter.clause}` : ''}
     GROUP BY m
     ORDER BY m;
   `;
-  const { rows } = await db.query(sql);
+  const { rows } = await db.query(sql, filter.params);
   return rows.map(r => ({ month: r.month, count: Number(r.count || 0) }));
 }
 

@@ -135,6 +135,7 @@ async function carregarRecados() {
       const subject = m.subject || '(Sem assunto)';
       const sender  = m.sender_name || m.sender_email || '—';
       const recipient = m.recipient || 'Não informado';
+      const visibilityLabel = m.visibility === 'public' ? 'Público' : 'Privado';
 
       const actions = [`
         <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>
@@ -163,7 +164,7 @@ async function carregarRecados() {
           <div style="min-width:0;">
             <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subject}</div>
             <div style="font-size:0.9rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              De: ${sender} • Para: ${recipient}
+              De: ${sender} • Para: ${recipient} • Visibilidade: ${visibilityLabel}
             </div>
             <div style="font-size:0.85rem;color:var(--text-secondary);">Criado em: ${created}</div>
           </div>
@@ -257,4 +258,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-

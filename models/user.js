@@ -5,6 +5,7 @@
 const db = require('../config/database'); // Pool do pg
 
 const ALLOWED_ROLES = new Set(['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR']);
+const ALLOWED_VIEW_SCOPES = new Set(['own', 'all']);
 
 // Helper de placeholder ($1, $2, ...)
 function ph(i) { return `$${i}`; }
@@ -18,6 +19,10 @@ function normalizeRole(role) {
   const value = String(role || 'OPERADOR').trim().toUpperCase();
   return allowed.includes(value) ? value : 'OPERADOR';
 }
+function normalizeViewScope(scope) {
+  const value = String(scope || 'all').trim().toLowerCase();
+  return ALLOWED_VIEW_SCOPES.has(value) ? value : 'all';
+}
 function mapRow(row, { includePassword = false } = {}) {
   if (!row) return null;
   const data = {
@@ -26,6 +31,7 @@ function mapRow(row, { includePassword = false } = {}) {
     email: row.email,
     role: row.role,
     is_active: row.is_active === true || row.is_active === 1 || row.is_active === 't',
+    view_scope: normalizeViewScope(row.view_scope),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -41,6 +47,7 @@ const BASE_SELECT = `
     password_hash,
     role,
     is_active,
+    view_scope,
     created_at,
     updated_at
   FROM users
@@ -61,22 +68,24 @@ class UserModel {
   }
 
   // Cria usuário; retorna os campos principais (id, name, email, role, is_active, created_at, updated_at)
-  async create({ name, email, password_hash, role = 'OPERADOR', active = true }) {
+  async create({ name, email, password_hash, role = 'OPERADOR', active = true, view_scope }) {
     const sql = `
       INSERT INTO users (
         name,
         email,
         password_hash,
         role,
-        is_active
+        is_active,
+        view_scope
       ) VALUES (
         ${ph(1)},
         LOWER(${ph(2)}),
         ${ph(3)},
         ${ph(4)},
-        ${ph(5)}
+        ${ph(5)},
+        ${ph(6)}
       )
-      RETURNING id, name, email, role, is_active, created_at, updated_at
+      RETURNING id, name, email, role, is_active, view_scope, created_at, updated_at
     `;
     try {
       const { rows } = await db.query(sql, [
@@ -84,7 +93,8 @@ class UserModel {
         normalizeEmail(email),
         password_hash,
         normalizeRole(role),
-        active === true || active === 'true' || active === 1 || active === '1'
+        active === true || active === 'true' || active === 1 || active === '1',
+        normalizeViewScope(view_scope),
       ]);
       return mapRow(rows?.[0]);
     } catch (err) {
@@ -114,7 +124,7 @@ class UserModel {
     return this.updatePassword(id, password_hash);
   }
 
-  async update(id, { name, email, role, active }) {
+  async update(id, { name, email, role, active, view_scope }) {
     const setClauses = [];
     const params = [];
     let idx = 1;
@@ -143,6 +153,12 @@ class UserModel {
       idx += 1;
     }
 
+    if (view_scope !== undefined) {
+      setClauses.push(`view_scope = ${ph(idx)}`);
+      params.push(normalizeViewScope(view_scope));
+      idx += 1;
+    }
+
     if (setClauses.length === 0) {
       return false;
     }
@@ -153,7 +169,7 @@ class UserModel {
       UPDATE users
          SET ${setClauses.join(', ')}
        WHERE id = ${ph(idx)}
-       RETURNING id, name, email, role, is_active, created_at, updated_at
+       RETURNING id, name, email, role, is_active, view_scope, created_at, updated_at
     `;
 
     params.push(id);
@@ -391,4 +407,3 @@ class UserModel {
 }
 
 module.exports = new UserModel();
-

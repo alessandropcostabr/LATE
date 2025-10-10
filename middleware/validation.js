@@ -76,12 +76,19 @@ const validateCreateMessage = [
       return true;
     })
     .customSanitizer((value) => normalizeStatus(value)),
-  body('recipientId').notEmpty().withMessage('Destinatário é obrigatório')
-    .bail()
+  body('recipientId').optional({ checkFalsy: true })
     .isInt({ min: 1 }).withMessage('Destinatário inválido')
+    .toInt(),
+  body('recipientUserId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Usuário destinatário inválido')
+    .toInt(),
+  body('recipientSectorId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Setor destinatário inválido')
     .toInt(),
   body('recipient').optional({ checkFalsy: true })
     .isLength({ max: 255 }).withMessage('Destinatário muito longo'),
+  body('recipientType').optional({ checkFalsy: true })
+    .isLength({ max: 30 }).withMessage('Tipo de destinatário inválido'),
   body('sender_email').optional({ checkFalsy: true })
     .isEmail().withMessage('Email inválido').normalizeEmail(),
   body('sender_phone').optional({ checkFalsy: true })
@@ -94,6 +101,24 @@ const validateCreateMessage = [
     .isLength({ max: 10 }).withMessage('Horário inválido'),
   body('callback_time').optional({ checkFalsy: true })
     .isLength({ max: 30 }).withMessage('Horário de retorno inválido')
+    ,
+  body('visibility').optional({ checkFalsy: true })
+    .custom((value) => {
+      const v = String(value || '').trim().toLowerCase();
+      if (v && v !== 'public' && v !== 'private') {
+        throw new Error('Visibilidade inválida');
+      }
+      return true;
+    })
+    .customSanitizer((value) => String(value || '').trim().toLowerCase()),
+  body().custom((_, { req }) => {
+    const recipientUserId = Number(req.body.recipientUserId ?? req.body.recipient_user_id ?? req.body.recipientId ?? req.body.recipient_id);
+    const recipientSectorId = Number(req.body.recipientSectorId ?? req.body.recipient_sector_id);
+    if (!Number.isFinite(recipientUserId) && !Number.isFinite(recipientSectorId)) {
+      throw new Error('Destinatário é obrigatório');
+    }
+    return true;
+  })
 ];
 
 const validateUpdateMessage = [
@@ -110,8 +135,16 @@ const validateUpdateMessage = [
   body('recipientId').optional({ checkFalsy: true })
     .isInt({ min: 1 }).withMessage('Destinatário inválido')
     .toInt(),
+  body('recipientUserId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Usuário destinatário inválido')
+    .toInt(),
+  body('recipientSectorId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Setor destinatário inválido')
+    .toInt(),
   body('recipient').optional({ checkFalsy: true })
     .isLength({ max: 255 }).withMessage('Destinatário muito longo'),
+  body('recipientType').optional({ checkFalsy: true })
+    .isLength({ max: 30 }).withMessage('Tipo de destinatário inválido'),
   body('sender_email').optional({ checkFalsy: true })
     .isEmail().withMessage('Email inválido').normalizeEmail(),
   body('sender_phone').optional({ checkFalsy: true })
@@ -124,6 +157,16 @@ const validateUpdateMessage = [
     .isLength({ max: 10 }).withMessage('Horário inválido'),
   body('callback_time').optional({ checkFalsy: true })
     .isLength({ max: 30 }).withMessage('Horário de retorno inválido')
+    ,
+  body('visibility').optional({ checkFalsy: true })
+    .custom((value) => {
+      const v = String(value || '').trim().toLowerCase();
+      if (v && v !== 'public' && v !== 'private') {
+        throw new Error('Visibilidade inválida');
+      }
+      return true;
+    })
+    .customSanitizer((value) => String(value || '').trim().toLowerCase())
 ];
 
 const validateUpdateStatus = [
@@ -185,6 +228,8 @@ const validateQueryMessages = [
 const vbody = expressValidator.body;
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
 
+const allowedViewScopes = ['own', 'all'];
+
 const validateUserCreate = [
   vbody('name').notEmpty().withMessage('Nome é obrigatório')
     .isLength({ max: 255 }).withMessage('Nome muito longo'),
@@ -198,6 +243,14 @@ const validateUserCreate = [
   vbody('active').optional({ nullable: true })
     .isBoolean().withMessage('Status inválido para ativo')
     .toBoolean(),
+  vbody('viewScope').optional({ checkFalsy: true, nullable: true })
+    .custom((value) => allowedViewScopes.includes(String(value || '').toLowerCase()))
+    .withMessage('Escopo de visualização inválido')
+    .customSanitizer((value) => String(value || '').toLowerCase()),
+  vbody('view_scope').optional({ checkFalsy: true, nullable: true })
+    .custom((value) => allowedViewScopes.includes(String(value || '').toLowerCase()))
+    .withMessage('Escopo de visualização inválido')
+    .customSanitizer((value) => String(value || '').toLowerCase()),
   vbody('sectorIds').isArray({ min: 1 }).withMessage('Selecione pelo menos um setor'),
   vbody('sectorIds.*').isInt({ min: 1 }).withMessage('IDs de setor inválidos')
 ];
@@ -215,7 +268,15 @@ const validateUserUpdate = [
     .withMessage('Papel (role) inválido'),
   vbody('active').optional({ nullable: true })
     .isBoolean().withMessage('Status inválido para ativo')
-    .toBoolean()
+    .toBoolean(),
+  vbody('viewScope').optional({ checkFalsy: true, nullable: true })
+    .custom((value) => allowedViewScopes.includes(String(value || '').toLowerCase()))
+    .withMessage('Escopo de visualização inválido')
+    .customSanitizer((value) => String(value || '').toLowerCase()),
+  vbody('view_scope').optional({ checkFalsy: true, nullable: true })
+    .custom((value) => allowedViewScopes.includes(String(value || '').toLowerCase()))
+    .withMessage('Escopo de visualização inválido')
+    .customSanitizer((value) => String(value || '').toLowerCase())
 ];
 
 const validateUserStatus = [
@@ -257,4 +318,3 @@ module.exports = {
   validateUserStatus,
   validateUserPassword,
 };
-

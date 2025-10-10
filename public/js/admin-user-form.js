@@ -16,6 +16,7 @@
   const roleSelect = document.getElementById('role');
   const activeSelect = document.getElementById('active');
   const sectorSelect = document.getElementById('sectorIds');
+  const viewScopeSelect = document.getElementById('viewScope');
 
   function showAlert(message, type = 'danger') {
     if (!alertBox) return;
@@ -140,6 +141,7 @@
       if (emailInput) emailInput.value = user.email || '';
       if (roleSelect) roleSelect.value = user.role || 'OPERADOR';
       if (activeSelect) activeSelect.value = user.is_active ? 'true' : 'false';
+      if (viewScopeSelect) viewScopeSelect.value = user.view_scope || 'all';
       const selectedIds = unpackList(sectorsResp).map((s) => s.id);
       await loadSectors(selectedIds);
     } catch (err) {
@@ -172,6 +174,7 @@
       email: (emailInput?.value || '').trim(),
       role: roleSelect?.value || 'OPERADOR',
       active: (activeSelect?.value || 'true') === 'true',
+      viewScope: viewScopeSelect?.value || 'all',
     };
 
     try {
@@ -190,6 +193,7 @@
           email: payloadBase.email,
           role: payloadBase.role,
           active: payloadBase.active,
+          viewScope: payloadBase.viewScope,
         };
         await apiRequest(`/api/users/${userId}`, { method: 'PUT', data: payload });
         await apiRequest(`/api/users/${userId}/sectors`, { method: 'PUT', data: { sectorIds } });

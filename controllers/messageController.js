@@ -3,19 +3,84 @@
 
 const Message = require('../models/message');
 const UserModel = require('../models/user');
+const SectorModel = require('../models/sector');
 
 function normalizeRecipientId(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-async function resolveRecipient(recipientId) {
-  const id = normalizeRecipientId(recipientId);
-  if (!id) return null;
+function extractRecipientInput(body = {}) {
+  return {
+    type: String(body.recipientType || body.recipient_type || '').trim().toLowerCase(),
+    userId: normalizeRecipientId(
+      body.recipientUserId ??
+      body.recipient_user_id ??
+      body.recipientId ??
+      body.recipient_id
+    ),
+    sectorId: normalizeRecipientId(body.recipientSectorId ?? body.recipient_sector_id),
+  };
+}
 
-  const user = await UserModel.findById(id);
-  if (!user || user.is_active !== true) return null;
-  return { id: user.id, name: user.name };
+async function resolveRecipientTarget({ type, userId, sectorId }) {
+  const hasUser = Number.isInteger(userId) && userId > 0;
+  const hasSector = Number.isInteger(sectorId) && sectorId > 0;
+
+  if (hasUser && hasSector) {
+    return { error: 'Escolha um único destinatário (usuário ou setor).' };
+  }
+
+  const wantsSector = type === 'setor' || type === 'sector' || type === 'sect' || type === 's' || type === 'grupo';
+  const wantsUser = type === 'usuario' || type === 'user' || type === 'u' || type === 'pessoa';
+
+  if ((hasSector && !wantsUser) || wantsSector) {
+    if (!hasSector) {
+      return { error: 'Informe o setor destinatário.' };
+    }
+    const sector = await SectorModel.getById(sectorId);
+    if (!sector || sector.is_active !== true) {
+      return { error: 'Setor inválido ou inativo.' };
+    }
+    return {
+      recipient: sector.name,
+      recipient_user_id: null,
+      recipient_sector_id: sector.id,
+      kind: 'sector',
+    };
+  }
+
+  if (hasUser || wantsUser) {
+    if (!hasUser) {
+      return { error: 'Informe o usuário destinatário.' };
+    }
+    const user = await UserModel.findById(userId);
+    const isActive = user && (user.is_active === true || user.is_active === 1 || user.is_active === '1');
+    if (!user || !isActive) {
+      return { error: 'Usuário destinatário inválido ou inativo.' };
+    }
+    return {
+      recipient: user.name,
+      recipient_user_id: user.id,
+      recipient_sector_id: null,
+      kind: 'user',
+    };
+  }
+
+  if (hasSector) {
+    const sector = await SectorModel.getById(sectorId);
+    if (!sector || sector.is_active !== true) {
+      return { error: 'Setor inválido ou inativo.' };
+    }
+    return {
+      recipient: sector.name,
+      recipient_user_id: null,
+      recipient_sector_id: sector.id,
+      kind: 'sector',
+    };
+  }
+
+  return { error: 'Destinatário inválido.' };
 }
 
 function sanitizePayload(body = {}) {
@@ -26,6 +91,10 @@ function sanitizePayload(body = {}) {
   delete payload.recipient_name;
   delete payload.recipientUserId;
   delete payload.recipient_user_id;
+  delete payload.recipientSectorId;
+  delete payload.recipient_sector_id;
+  delete payload.recipientType;
+  delete payload.recipient_type;
   delete payload._csrf;
   return payload;
 }
@@ -37,6 +106,16 @@ const STATUS_LABELS_PT = {
   resolved: 'Resolvido',
 };
 
+function getViewerFromRequest(req) {
+  const sessionUser = req.session?.user;
+  if (!sessionUser) return null;
+  return {
+    id: sessionUser.id,
+    name: sessionUser.name,
+    viewScope: sessionUser.viewScope || sessionUser.view_scope || 'all',
+  };
+}
+
 // Função para padronizar o objeto enviado ao cliente (mantém snake_case e adiciona camelCase)
 function toClient(row) {
   if (!row) return null;
@@ -44,6 +123,9 @@ function toClient(row) {
     ...row,
     recipient_user_id: row.recipient_user_id ?? null,
     recipientUserId: row.recipient_user_id ?? null,
+     recipient_sector_id: row.recipient_sector_id ?? null,
+     recipientSectorId: row.recipient_sector_id ?? null,
+     visibility: row.visibility ?? 'private',
     // alias em camelCase para compatibilidade com JS do front
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
@@ -66,6 +148,8 @@ exports.list = async (req, res) => {
       order,
     } = req.query;
 
+    const viewer = getViewerFromRequest(req);
+
     const rows = await Message.list({
       limit,
       offset,
@@ -75,6 +159,7 @@ exports.list = async (req, res) => {
       recipient,
       order_by,
       order,
+      viewer,
     });
 
     return res.json({ success: true, data: rows.map(toClient) });
@@ -91,7 +176,8 @@ exports.getById = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const row = await Message.findById(id);
+    const viewer = getViewerFromRequest(req);
+    const row = await Message.findById(id, { viewer });
     if (!row) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
@@ -105,19 +191,27 @@ exports.getById = async (req, res) => {
 // POST /api/messages
 exports.create = async (req, res) => {
   try {
-    const recipient = await resolveRecipient(
-      req.body?.recipientId ??
-      req.body?.recipient_id ??
-      req.body?.recipientUserId ??
-      req.body?.recipient_user_id
-    );
-    if (!recipient) {
-      return res.status(400).json({ success: false, error: 'Destinatário inválido' });
+    const recipientInput = extractRecipientInput(req.body);
+    const resolved = await resolveRecipientTarget(recipientInput);
+    if (resolved.error) {
+      return res.status(400).json({ success: false, error: resolved.error });
     }
 
     const payload = sanitizePayload(req.body);
-    payload.recipient = recipient.name;
-    payload.recipient_user_id = recipient.id;
+    payload.recipient = resolved.recipient;
+    if (resolved.recipient_user_id !== undefined) {
+      payload.recipient_user_id = resolved.recipient_user_id;
+    } else {
+      payload.recipient_user_id = null;
+    }
+    if (resolved.recipient_sector_id !== undefined) {
+      payload.recipient_sector_id = resolved.recipient_sector_id;
+    } else {
+      payload.recipient_sector_id = null;
+    }
+    if (payload.visibility === undefined || payload.visibility === null || payload.visibility === '') {
+      payload.visibility = 'private';
+    }
 
     const id = await Message.create(payload);
     const created = await Message.findById(id);
@@ -136,21 +230,30 @@ exports.update = async (req, res) => {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
     const payload = sanitizePayload(req.body);
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientId') ||
-        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_id') ||
-        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientUserId') ||
-        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_user_id')) {
-      const recipient = await resolveRecipient(
-        req.body?.recipientId ??
-        req.body?.recipient_id ??
-        req.body?.recipientUserId ??
-        req.body?.recipient_user_id
-      );
-      if (!recipient) {
-        return res.status(400).json({ success: false, error: 'Destinatário inválido' });
+
+    const recipientInput = extractRecipientInput(req.body);
+    const shouldResolveRecipient = (
+      recipientInput.userId ||
+      recipientInput.sectorId ||
+      recipientInput.type
+    );
+
+    if (shouldResolveRecipient) {
+      const resolved = await resolveRecipientTarget(recipientInput);
+      if (resolved.error) {
+        return res.status(400).json({ success: false, error: resolved.error });
       }
-      payload.recipient = recipient.name;
-      payload.recipient_user_id = recipient.id;
+      payload.recipient = resolved.recipient;
+      if (resolved.recipient_user_id !== undefined) {
+        payload.recipient_user_id = resolved.recipient_user_id;
+      } else {
+        payload.recipient_user_id = null;
+      }
+      if (resolved.recipient_sector_id !== undefined) {
+        payload.recipient_sector_id = resolved.recipient_sector_id;
+      } else {
+        payload.recipient_sector_id = null;
+      }
     }
 
     const ok = await Message.update(id, payload);
@@ -275,4 +378,3 @@ exports.statsByMonth = async (_req, res) => {
     return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por mês.' });
   }
 };
-

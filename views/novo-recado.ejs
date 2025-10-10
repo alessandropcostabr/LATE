@@ -37,14 +37,43 @@
               </div>
 
               <div class="form-group">
-                <label for="recipientId" class="form-label required">Destinatário</label>
-                <select id="recipientId" name="recipientId" class="form-select" required data-label="Destinatário" autocomplete="organization">
-                  <option value="">Selecione um destinatário</option>
+                <label for="recipientType" class="form-label required">Tipo de destinatário</label>
+                <select id="recipientType" name="recipientType" class="form-select" data-label="Tipo de destinatário" autocomplete="off">
+                  <option value="user" selected>Usuário específico</option>
+                  <option value="sector">Setor</option>
+                </select>
+                <div class="form-help">Escolha se o recado será direcionado a uma pessoa específica ou a todo um setor.</div>
+              </div>
+
+              <div class="form-group" id="recipientUserGroup">
+                <label for="recipientUserId" class="form-label required">Usuário destinatário</label>
+                <select id="recipientUserId" name="recipientUserId" class="form-select" data-label="Usuário destinatário" autocomplete="organization" required>
+                  <option value="">Selecione um usuário</option>
                   <% (activeUsers || []).forEach(function(user) { %>
                     <option value="<%= user.id %>"><%= user.name %></option>
                   <% }); %>
                 </select>
-                <div class="form-help">Pessoa ou setor responsável por receber esta mensagem</div>
+                <div class="form-help">Pessoa responsável por receber este recado.</div>
+              </div>
+
+              <div class="form-group d-none" id="recipientSectorGroup">
+                <label for="recipientSectorId" class="form-label required">Setor destinatário</label>
+                <select id="recipientSectorId" name="recipientSectorId" class="form-select" data-label="Setor destinatário" autocomplete="organization">
+                  <option value="">Selecione um setor</option>
+                  <% (activeSectors || []).forEach(function(sector) { %>
+                    <option value="<%= sector.id %>"><%= sector.name %></option>
+                  <% }); %>
+                </select>
+                <div class="form-help">Escolha o setor que deve visualizar este recado.</div>
+              </div>
+
+              <div class="form-group">
+                <label for="visibility" class="form-label">Visibilidade</label>
+                <select id="visibility" name="visibility" class="form-select" autocomplete="off">
+                  <option value="private" selected>Privado (apenas destinatário)</option>
+                  <option value="public">Público (todos com acesso)</option>
+                </select>
+                <div class="form-help">Recados públicos ficam visíveis para todos com permissão de leitura.</div>
               </div>
             </fieldset>
 
@@ -112,4 +141,3 @@
   </main>
 
   <%- include('partials/footer', { scripts: ['/js/novo-recado.js'] }) %>
-

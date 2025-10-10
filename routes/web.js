@@ -9,6 +9,7 @@ const authController = require('../controllers/authController');
 
 const MessageModel = require('../models/message'); // para /recados/:id
 const UserModel = require('../models/user');
+const SectorModel = require('../models/sector');
 
 const router = express.Router();
 
@@ -109,13 +110,17 @@ router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, (
 
 router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
   try {
-    const activeUsers = await UserModel.getActiveUsersSelect();
+    const [activeUsers, sectorsResult] = await Promise.all([
+      UserModel.getActiveUsersSelect(),
+      SectorModel.list({ status: 'active', limit: 200 })
+    ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('novo-recado', {
       title: 'Novo Recado',
       user: req.session.user || null,
       csrfToken,
       activeUsers,
+      activeSectors: sectorsResult?.data || [],
     });
   } catch (err) {
     console.error('[web] erro ao carregar /novo-recado:', err);
@@ -123,14 +128,25 @@ router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtect
   }
 });
 
-router.get('/editar-recado/:id', requireAuth, requirePermission('update'), csrfProtection, (req, res) => {
-  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
-  res.render('editar-recado', {
-    title: 'Editar Recado',
-    id: req.params.id,
-    user: req.session.user || null,
-    csrfToken,
-  });
+router.get('/editar-recado/:id', requireAuth, requirePermission('update'), csrfProtection, async (req, res) => {
+  try {
+    const [activeUsers, sectorsResult] = await Promise.all([
+      UserModel.getActiveUsersSelect(),
+      SectorModel.list({ status: 'active', limit: 200 })
+    ]);
+    const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+    res.render('editar-recado', {
+      title: 'Editar Recado',
+      id: req.params.id,
+      user: req.session.user || null,
+      csrfToken,
+      activeUsers,
+      activeSectors: sectorsResult?.data || [],
+    });
+  } catch (err) {
+    console.error('[web] erro ao carregar /editar-recado:', err);
+    res.status(500).render('500', { title: 'Erro interno', user: req.session.user || null });
+  }
 });
 
 router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
@@ -178,4 +194,3 @@ router.use((req, res) => {
 });
 
 module.exports = router;
-
