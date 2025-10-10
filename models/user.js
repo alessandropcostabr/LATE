@@ -190,6 +190,21 @@ class UserModel {
 
       const recipientName = (userRows[0]?.name || '').trim();
 
+      const messageParams = [userId];
+      let messageWhere = `recipient_user_id = ${ph(1)}`;
+
+      if (recipientName) {
+        messageParams.push(recipientName);
+        messageWhere += ` OR (recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageParams.length)}))`;
+      }
+
+      const hasMessages = await client.query(`
+        SELECT 1
+          FROM messages
+         WHERE ${messageWhere}
+         LIMIT 1
+      `, messageParams);
+
       if (recipientName) {
         const hasMessages = await client.query(`
           SELECT 1

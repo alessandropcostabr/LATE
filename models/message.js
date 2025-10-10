@@ -55,6 +55,11 @@ function emptyToNull(value) {
   return v === '' ? null : v;
 }
 
+function normalizeRecipientUserId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function normalizeStatus(raw) {
   const base = trim(raw);
   if (!base) return 'pending';
@@ -85,20 +90,32 @@ function translateStatusForQuery(status) {
 function normalizePayload(payload = {}) {
   const messageContent = trim(payload.message || payload.notes || '');
   const statusProvided = Object.prototype.hasOwnProperty.call(payload, 'status');
+  const recipientUserProvided = Object.prototype.hasOwnProperty.call(payload, 'recipient_user_id') ||
+    Object.prototype.hasOwnProperty.call(payload, 'recipientUserId');
+  const recipientUserId = recipientUserProvided
+    ? normalizeRecipientUserId(payload.recipient_user_id ?? payload.recipientUserId)
+    : null;
+
+  const data = {
+    call_date: emptyToNull(payload.call_date),
+    call_time: emptyToNull(payload.call_time),
+    recipient: emptyToNull(payload.recipient),
+    sender_name: emptyToNull(payload.sender_name),
+    sender_phone: emptyToNull(payload.sender_phone),
+    sender_email: emptyToNull(payload.sender_email),
+    subject: emptyToNull(payload.subject),
+    message: messageContent || '(sem mensagem)',
+    status: statusProvided ? ensureStatus(payload.status) : null,
+    callback_time: emptyToNull(payload.callback_time),
+    notes: emptyToNull(payload.notes),
+  };
+
+  if (recipientUserProvided) {
+    data.recipient_user_id = recipientUserId;
+  }
+
   return {
-    data: {
-      call_date: emptyToNull(payload.call_date),
-      call_time: emptyToNull(payload.call_time),
-      recipient: emptyToNull(payload.recipient),
-      sender_name: emptyToNull(payload.sender_name),
-      sender_phone: emptyToNull(payload.sender_phone),
-      sender_email: emptyToNull(payload.sender_email),
-      subject: emptyToNull(payload.subject),
-      message: messageContent || '(sem mensagem)',
-      status: statusProvided ? ensureStatus(payload.status) : null,
-      callback_time: emptyToNull(payload.callback_time),
-      notes: emptyToNull(payload.notes),
-    },
+    data,
     statusProvided,
   };
 }
@@ -116,6 +133,7 @@ const SELECT_COLUMNS = `
   call_date,
   call_time,
   recipient,
+  recipient_user_id,
   sender_name,
   sender_phone,
   sender_email,
@@ -135,6 +153,8 @@ function mapRow(row) {
     call_date: row.call_date ?? null,
     call_time: row.call_time ?? null,
     recipient: row.recipient ?? null,
+    recipient_user_id: row.recipient_user_id ?? null,
+    recipientUserId: row.recipient_user_id ?? null,
     sender_name: row.sender_name ?? null,
     sender_phone: row.sender_phone ?? null,
     sender_email: row.sender_email ?? null,
@@ -203,6 +223,8 @@ async function create(payload) {
     status: normalized.statusProvided && normalized.data.status ? normalized.data.status : 'pending',
   };
 
+  const hasRecipientUserId = Object.prototype.hasOwnProperty.call(data, 'recipient_user_id');
+
   const baseFields = [
     'call_date',
     'call_time',
@@ -217,7 +239,14 @@ async function create(payload) {
     'notes',
   ];
   const fields = [...baseFields];
-  const values = baseFields.map((field) => data[field]);
+
+  if (hasRecipientUserId) {
+    const recipientIndex = fields.indexOf('recipient');
+    const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
+    fields.splice(insertAt, 0, 'recipient_user_id');
+  }
+
+  const values = fields.map((field) => data[field]);
 
   if (timestamps.created_at) {
     fields.push('created_at');
@@ -254,6 +283,8 @@ async function findById(id) {
 
 async function update(id, payload) {
   const normalized = normalizePayload(payload);
+  const hasRecipientUserId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_user_id');
+
   const fields = [
     'call_date',
     'call_time',
@@ -266,6 +297,11 @@ async function update(id, payload) {
     'callback_time',
     'notes',
   ];
+  if (hasRecipientUserId) {
+    const recipientIndex = fields.indexOf('recipient');
+    const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
+    fields.splice(insertAt, 0, 'recipient_user_id');
+  }
   const values = fields.map((field) => normalized.data[field]);
   const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
 
