@@ -84,12 +84,20 @@ function translateStatusForQuery(status) {
 // ---------------------------- Normalização de payload ----------------------
 function normalizePayload(payload = {}) {
   const messageContent = trim(payload.message || payload.notes || '');
+  const rawRecipientUserId = payload.recipient_user_id ?? payload.recipientUserId;
+  const parsedRecipientUserId = Number(rawRecipientUserId);
+  const recipientUserIdProvided = Object.prototype.hasOwnProperty.call(payload, 'recipient_user_id')
+    || Object.prototype.hasOwnProperty.call(payload, 'recipientUserId');
+  const recipient_user_id = recipientUserIdProvided && Number.isInteger(parsedRecipientUserId) && parsedRecipientUserId > 0
+    ? parsedRecipientUserId
+    : null;
   const statusProvided = Object.prototype.hasOwnProperty.call(payload, 'status');
   return {
     data: {
       call_date: emptyToNull(payload.call_date),
       call_time: emptyToNull(payload.call_time),
       recipient: emptyToNull(payload.recipient),
+      recipient_user_id,
       sender_name: emptyToNull(payload.sender_name),
       sender_phone: emptyToNull(payload.sender_phone),
       sender_email: emptyToNull(payload.sender_email),
@@ -100,6 +108,7 @@ function normalizePayload(payload = {}) {
       notes: emptyToNull(payload.notes),
     },
     statusProvided,
+    recipientUserIdProvided,
   };
 }
 
@@ -116,6 +125,7 @@ const SELECT_COLUMNS = `
   call_date,
   call_time,
   recipient,
+  recipient_user_id,
   sender_name,
   sender_phone,
   sender_email,
@@ -135,6 +145,7 @@ function mapRow(row) {
     call_date: row.call_date ?? null,
     call_time: row.call_time ?? null,
     recipient: row.recipient ?? null,
+    recipient_user_id: row.recipient_user_id ?? null,
     sender_name: row.sender_name ?? null,
     sender_phone: row.sender_phone ?? null,
     sender_email: row.sender_email ?? null,
@@ -207,6 +218,7 @@ async function create(payload) {
     'call_date',
     'call_time',
     'recipient',
+    'recipient_user_id',
     'sender_name',
     'sender_phone',
     'sender_email',
@@ -266,20 +278,38 @@ async function update(id, payload) {
     'callback_time',
     'notes',
   ];
-  const values = fields.map((field) => normalized.data[field]);
-  const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
 
-  // status opcional
-  const statusIndex = assignments.length + 1;
-  assignments.push(`status = COALESCE(${ph(statusIndex)}, status)`);
+  const assignments = [];
+  const params = [];
+  let index = 1;
+
+  for (const field of fields) {
+    assignments.push(`${field} = ${ph(index)}`);
+    params.push(normalized.data[field]);
+    index += 1;
+  }
+
+  if (normalized.recipientUserIdProvided) {
+    assignments.push(`recipient_user_id = ${ph(index)}`);
+    params.push(normalized.data.recipient_user_id);
+    index += 1;
+  }
+
+  assignments.push(`status = COALESCE(${ph(index)}, status)`);
+  params.push(normalized.statusProvided ? normalized.data.status : null);
+  index += 1;
+
   assignments.push('updated_at = CURRENT_TIMESTAMP');
 
   const sql = `
     UPDATE messages
        SET ${assignments.join(', ')}
-     WHERE id = ${ph(statusIndex + 1)}
+     WHERE id = ${ph(index)}
   `;
-  const { rowCount } = await db.query(sql, [...values, normalized.statusProvided ? normalized.data.status : null, id]);
+
+  params.push(id);
+
+  const { rowCount } = await db.query(sql, params);
   return rowCount > 0;
 }
 

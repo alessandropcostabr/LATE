@@ -9,13 +9,13 @@ function normalizeRecipientId(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-async function resolveRecipientName(recipientId) {
+async function resolveRecipientUser(recipientId) {
   const id = normalizeRecipientId(recipientId);
   if (!id) return null;
 
   const user = await UserModel.findById(id);
   if (!user || user.is_active !== true) return null;
-  return user.name;
+  return user;
 }
 
 function sanitizePayload(body = {}) {
@@ -101,13 +101,14 @@ exports.getById = async (req, res) => {
 // POST /api/messages
 exports.create = async (req, res) => {
   try {
-    const recipientName = await resolveRecipientName(req.body?.recipientId ?? req.body?.recipient_id);
-    if (!recipientName) {
+    const recipientUser = await resolveRecipientUser(req.body?.recipientId ?? req.body?.recipient_id);
+    if (!recipientUser) {
       return res.status(400).json({ success: false, error: 'Destinatário inválido' });
     }
 
     const payload = sanitizePayload(req.body);
-    payload.recipient = recipientName;
+    payload.recipient = recipientUser.name;
+    payload.recipient_user_id = recipientUser.id;
 
     const id = await Message.create(payload);
     const created = await Message.findById(id);
@@ -128,11 +129,12 @@ exports.update = async (req, res) => {
     const payload = sanitizePayload(req.body);
     if (Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientId') ||
         Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_id')) {
-      const recipientName = await resolveRecipientName(req.body?.recipientId ?? req.body?.recipient_id);
-      if (!recipientName) {
+      const recipientUser = await resolveRecipientUser(req.body?.recipientId ?? req.body?.recipient_id);
+      if (!recipientUser) {
         return res.status(400).json({ success: false, error: 'Destinatário inválido' });
       }
-      payload.recipient = recipientName;
+      payload.recipient = recipientUser.name;
+      payload.recipient_user_id = recipientUser.id;
     }
 
     const ok = await Message.update(id, payload);
