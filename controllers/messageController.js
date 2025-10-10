@@ -22,6 +22,7 @@ function sanitizePayload(body = {}) {
   const payload = { ...body };
   delete payload.recipientId;
   delete payload.recipient_id;
+  delete payload.recipient_user_id;
   delete payload.recipientName;
   delete payload.recipient_name;
   delete payload._csrf;
@@ -127,9 +128,13 @@ exports.update = async (req, res) => {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
     const payload = sanitizePayload(req.body);
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'recipientId') ||
-        Object.prototype.hasOwnProperty.call(req.body || {}, 'recipient_id')) {
-      const recipientUser = await resolveRecipientUser(req.body?.recipientId ?? req.body?.recipient_id);
+    const hasRecipientRef = ['recipientId', 'recipient_id', 'recipient_user_id']
+      .some((prop) => Object.prototype.hasOwnProperty.call(req.body || {}, prop));
+
+    if (hasRecipientRef) {
+      const recipientUser = await resolveRecipientUser(
+        req.body?.recipientId ?? req.body?.recipient_id ?? req.body?.recipient_user_id,
+      );
       if (!recipientUser) {
         return res.status(400).json({ success: false, error: 'Destinatário inválido' });
       }
