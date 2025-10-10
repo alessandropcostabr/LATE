@@ -30,10 +30,46 @@
                   <input id="call_time" name="call_time" type="time" class="form-input" required data-label="Hora da ligação" autocomplete="off" />
                 </div>
               </div>
+              <input type="hidden" id="recipient" name="recipient" />
+
               <div class="form-group">
-                <label for="recipient" class="form-label required">Destinatário</label>
-                <input id="recipient" name="recipient" type="text" class="form-input" placeholder="Nome da pessoa ou setor que deve receber o recado" required data-label="Destinatário" autocomplete="organization" />
-                <div class="form-help">Pessoa ou setor responsável por receber esta mensagem</div>
+                <label for="recipientType" class="form-label required">Tipo de destinatário</label>
+                <select id="recipientType" name="recipientType" class="form-select" data-label="Tipo de destinatário" autocomplete="off">
+                  <option value="user" selected>Usuário específico</option>
+                  <option value="sector">Setor</option>
+                </select>
+                <div class="form-help">Defina se este recado pertence a um usuário ou a um setor.</div>
+              </div>
+
+              <div class="form-group" id="recipientUserGroup">
+                <label for="recipientUserId" class="form-label required">Usuário destinatário</label>
+                <select id="recipientUserId" name="recipientUserId" class="form-select" data-label="Usuário destinatário" autocomplete="organization" required>
+                  <option value="">Selecione um usuário</option>
+                  <% (activeUsers || []).forEach(function(user) { %>
+                    <option value="<%= user.id %>"><%= user.name %></option>
+                  <% }); %>
+                </select>
+                <div class="form-help">Pessoa que deve receber e acompanhar este recado.</div>
+              </div>
+
+              <div class="form-group d-none" id="recipientSectorGroup">
+                <label for="recipientSectorId" class="form-label required">Setor destinatário</label>
+                <select id="recipientSectorId" name="recipientSectorId" class="form-select" data-label="Setor destinatário" autocomplete="organization">
+                  <option value="">Selecione um setor</option>
+                  <% (activeSectors || []).forEach(function(sector) { %>
+                    <option value="<%= sector.id %>"><%= sector.name %></option>
+                  <% }); %>
+                </select>
+                <div class="form-help">Todos os integrantes do setor selecionado poderão visualizar o recado.</div>
+              </div>
+
+              <div class="form-group">
+                <label for="visibility" class="form-label">Visibilidade</label>
+                <select id="visibility" name="visibility" class="form-select" autocomplete="off">
+                  <option value="private">Privado (apenas destinatário)</option>
+                  <option value="public">Público (todos com acesso)</option>
+                </select>
+                <div class="form-help">Recados públicos ficam visíveis para todos com permissão de leitura.</div>
               </div>
             </fieldset>
 

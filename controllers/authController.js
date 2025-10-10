@@ -93,6 +93,7 @@ exports.login = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      viewScope: user.view_scope || 'all',
     };
 
     await new Promise((resolve, reject) => {

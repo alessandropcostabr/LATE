@@ -57,6 +57,15 @@
                 <div class="form-text">Usuários inativos não conseguem acessar o sistema.</div>
               </div>
 
+              <div class="col-md-4">
+                <label for="viewScope" class="form-label">Escopo de visualização</label>
+                <select id="viewScope" name="viewScope" class="form-select">
+                  <option value="all" selected>Todos os recados</option>
+                  <option value="own">Apenas recados destinados a ele</option>
+                </select>
+                <div class="form-text">Define se o usuário enxerga todos os recados ou apenas os destinados a ele.</div>
+              </div>
+
               <div class="col-12">
                 <label for="sectorIds" class="form-label">Setores (obrigatório)</label>
                 <select id="sectorIds" name="sectorIds" class="form-select" multiple required size="6" aria-describedby="sectorHelp">

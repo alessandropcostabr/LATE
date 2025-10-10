@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       ['E-mail:', recado?.sender_email || '-'],
       ['Horário de Retorno:', recado?.callback_time || '-'],
       ['Assunto:', recado?.subject || '-'],
+      ['Visibilidade:', recado?.visibility === 'public' ? 'Público' : 'Privado'],
       ['Situação:', statusLabel || '-'],
       ['Observações:', recado?.notes || '-']
     ];
@@ -108,4 +109,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 });
-

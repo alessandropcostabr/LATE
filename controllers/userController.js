@@ -7,10 +7,16 @@ const UserModel = require('../models/user');
 const UserSector = require('../models/userSector');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
+const ALLOWED_VIEW_SCOPES = ['own', 'all'];
 
 function normalizeRole(role) {
   const value = String(role || 'OPERADOR').trim().toUpperCase();
   return ALLOWED_ROLES.includes(value) ? value : 'OPERADOR';
+}
+
+function normalizeViewScope(scope) {
+  const value = String(scope || 'all').trim().toLowerCase();
+  return ALLOWED_VIEW_SCOPES.includes(value) ? value : 'all';
 }
 
 function parseBooleanFlag(value) {
@@ -68,6 +74,7 @@ exports.create = async (req, res) => {
   const sectorIds = Array.isArray(req.body.sectorIds)
     ? req.body.sectorIds.map((id) => Number(id)).filter(Number.isFinite)
     : [];
+  const viewScope = normalizeViewScope(req.body.viewScope ?? req.body.view_scope);
 
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -83,7 +90,7 @@ exports.create = async (req, res) => {
     }
 
     const password_hash = await argon2.hash(password, { type: argon2.argon2id });
-    const created = await UserModel.create({ name, email, password_hash, role, active });
+    const created = await UserModel.create({ name, email, password_hash, role, active, view_scope: viewScope });
 
     try {
       await UserSector.setUserSectors(created.id, sectorIds);
@@ -146,6 +153,9 @@ exports.update = async (req, res) => {
     if (req.body.email !== undefined) payload.email = String(req.body.email || '').trim().toLowerCase();
     if (req.body.role !== undefined) payload.role = normalizeRole(req.body.role);
     if (req.body.active !== undefined) payload.active = parseBooleanFlag(req.body.active);
+    if (req.body.viewScope !== undefined || req.body.view_scope !== undefined) {
+      payload.view_scope = normalizeViewScope(req.body.viewScope ?? req.body.view_scope);
+    }
 
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ success: false, error: 'Nenhum dado para atualizar.' });
@@ -280,4 +290,3 @@ exports.remove = async (req, res) => {
     return res.status(500).json({ success: false, error: 'Erro interno ao remover usuário.' });
   }
 };
-

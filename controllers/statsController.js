@@ -4,6 +4,16 @@
 
 const StatsModel = require('../models/stats');
 
+function getViewerFromRequest(req) {
+  const sessionUser = req.session?.user;
+  if (!sessionUser) return null;
+  return {
+    id: sessionUser.id,
+    name: sessionUser.name,
+    viewScope: sessionUser.viewScope || sessionUser.view_scope || 'all',
+  };
+}
+
 // Normaliza intervalo de datas recebido por query (aceita start_date/end_date ou data_inicio/data_fim)
 function normalizeRange(q = {}) {
   const start = String(q.start_date || q.data_inicio || '').trim();
@@ -19,7 +29,8 @@ function normalizeRange(q = {}) {
 exports.messagesStats = async (req, res) => {
   try {
     const { startAt, endAt } = normalizeRange(req.query);
-    const raw = await StatsModel.getMessagesStats({ startAt, endAt }); // { total, pendente, em_andamento, resolvido }
+    const viewer = getViewerFromRequest(req);
+    const raw = await StatsModel.getMessagesStats({ startAt, endAt, viewer }); // { total, pendente, em_andamento, resolvido }
 
     const data = {
       total: Number(raw.total || 0),
@@ -40,10 +51,11 @@ exports.messagesStats = async (req, res) => {
 };
 
 // GET /api/stats/by-status  -> { labels: [...], data: [...] }
-exports.byStatus = async (_req, res) => {
+exports.byStatus = async (req, res) => {
   try {
     // rows: [{ status, total }]
-    const rows = await StatsModel.getStatsByStatus();
+    const viewer = getViewerFromRequest(req);
+    const rows = await StatsModel.getStatsByStatus({ viewer });
     // Ordem fixa para o gráfico
     const order = ['pending', 'in_progress', 'resolved'];
     const mapLabel = (s) => ({
@@ -64,10 +76,11 @@ exports.byStatus = async (_req, res) => {
 };
 
 // GET /api/stats/by-recipient -> { labels: [...], data: [...] }
-exports.byRecipient = async (_req, res) => {
+exports.byRecipient = async (req, res) => {
   try {
     // rows: [{ recipient, total }]; model usa 'Sem destinatário' para NULL
-    const rows = await StatsModel.getStatsByRecipient();
+    const viewer = getViewerFromRequest(req);
+    const rows = await StatsModel.getStatsByRecipient({ viewer });
     const labels = rows.map(r => (r.recipient === 'Sem destinatário' ? 'Não informado' : r.recipient));
     const data   = rows.map(r => Number(r.total || 0));
     return res.json({ success: true, data: { labels, data } });
@@ -78,10 +91,11 @@ exports.byRecipient = async (_req, res) => {
 };
 
 // GET /api/stats/by-month -> { labels: ["MM/YYYY", ...], data: [N, ...] }
-exports.byMonth = async (_req, res) => {
+exports.byMonth = async (req, res) => {
   try {
     // rows: [{ month: 'YYYY-MM', total: int }]
-    const rows = await StatsModel.getStatsByMonth({ months: 12 });
+    const viewer = getViewerFromRequest(req);
+    const rows = await StatsModel.getStatsByMonth({ months: 12, viewer });
 
     // Formato que o front espera: MM/YYYY
     const toMMYYYY = (yyyyMM) => {
@@ -99,4 +113,3 @@ exports.byMonth = async (_req, res) => {
     return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por mês.' });
   }
 };
-

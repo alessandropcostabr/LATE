@@ -37,9 +37,9 @@ function flatFns(...mws) {
   const result = [];
   const warnings = [];
 
-function pushWarning(message) {
-  warnings.push(message);
-}
+  function pushWarning(message) {
+    warnings.push(message);
+  }
 
   function visit(node, path) {
     const location = path || '<root>';
@@ -65,28 +65,28 @@ function pushWarning(message) {
 
   mws.forEach((mw, index) => visit(mw, `arg#${index + 1}`));
 
-const fallbackMessages = () => (
-  warnings.length
-    ? warnings.slice()
-    : [
-        `[router] Nenhum middleware válido fornecido (origens: ${
-          mws.length ? mws.map((_, index) => `arg#${index + 1}`).join(', ') : '<nenhuma>'
-        })`
-      ]
-);
+  const fallbackMessages = () => (
+    warnings.length
+      ? warnings.slice()
+      : [
+          `[router] Nenhum middleware válido fornecido (origens: ${
+            mws.length ? mws.map((_, index) => `arg#${index + 1}`).join(', ') : '<nenhuma>'
+          })`
+        ]
+  );
 
-const logWarnings = (req, res, next) => {
-  fallbackMessages().forEach((message) => console.warn(message));
-  next();
-};
+  const logWarnings = (req, res, next) => {
+    fallbackMessages().forEach((message) => console.warn(message));
+    next();
+  };
 
-if (result.length === 0) {
-  result.push(logWarnings);
-} else if (warnings.length) {
-  result.push(logWarnings);
-}
+  if (result.length === 0) {
+    result.push(logWarnings);
+  } else if (warnings.length) {
+    result.push(logWarnings);
+  }
 
-return result;
+  return result;
 }
 
 const csrfProtection = require('../middleware/csrf');

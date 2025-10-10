@@ -86,7 +86,7 @@
   const statusSelect = $('#user-status');
 
   async function loadUsers() {
-    tbody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
     try {
       const params = new URLSearchParams();
       if (state.filters.q) params.set('q', state.filters.q);
@@ -101,7 +101,7 @@
       renderUsers(list);
     } catch (err) {
       console.error('[admin-users] Falha ao carregar usuários:', err);
-      tbody.innerHTML = '<tr><td colspan="6">Falha ao carregar usuários.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">Falha ao carregar usuários.</td></tr>';
       showToast(err.message || 'Falha ao carregar usuários.', 'error');
     }
   }
@@ -110,9 +110,14 @@
     state.users = Array.isArray(users) ? users.slice() : [];
 
     if (!state.users.length) {
-      tbody.innerHTML = '<tr><td colspan="6">Nenhum usuário encontrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">Nenhum usuário encontrado.</td></tr>';
       return;
     }
+
+    const viewScopeLabels = {
+      all: 'Todos os recados',
+      own: 'Recados destinados',
+    };
 
     const rows = state.users.map((user) => {
       const badge = user.is_active
@@ -121,13 +126,16 @@
       const role = (user.role || '').toUpperCase();
       const toggleLabel = user.is_active ? 'Inativar' : 'Ativar';
       const toggleClass = user.is_active ? 'link-warning' : 'link-success';
+      const scope = String(user.view_scope || 'all').toLowerCase();
+      const scopeLabel = viewScopeLabels[scope] || 'Todos os recados';
 
       return `
-        <tr data-user-id="${user.id}" data-user-name="${escapeHtml(user.name || '')}" data-user-email="${escapeHtml(user.email || '')}" data-user-role="${role}" data-user-active="${user.is_active ? 'true' : 'false'}">
+        <tr data-user-id="${user.id}" data-user-name="${escapeHtml(user.name || '')}" data-user-email="${escapeHtml(user.email || '')}" data-user-role="${role}" data-user-active="${user.is_active ? 'true' : 'false'}" data-user-view-scope="${scope}">
           <td>${user.id}</td>
           <td>${escapeHtml(user.name || '')}</td>
           <td>${escapeHtml(user.email || '')}</td>
           <td>${role}</td>
+          <td>${scopeLabel}</td>
           <td class="js-status-cell">${badge}</td>
           <td class="d-flex flex-wrap gap-2 align-items-center">
             <a href="/admin/users/${user.id}/edit" class="link-primary">Editar</a>
@@ -362,7 +370,7 @@
       const row = tbody.querySelector(`tr[data-user-id="${userId}"]`);
       row?.remove();
       if (!tbody.querySelector('tr')) {
-        tbody.innerHTML = '<tr><td colspan="6">Nenhum usuário encontrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">Nenhum usuário encontrado.</td></tr>';
       }
     } catch (err) {
       console.error('[admin-users] Falha ao remover usuário:', err);
@@ -450,7 +458,7 @@
 
     loadUsers().catch((err) => {
       console.error('[admin-users] Erro na inicialização:', err);
-      tbody.innerHTML = '<tr><td colspan="6">Falha ao carregar usuários.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7">Falha ao carregar usuários.</td></tr>';
     });
   });
 })();

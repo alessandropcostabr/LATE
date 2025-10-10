@@ -74,15 +74,45 @@ const Form = {
   prepareRecadoPayload(data) {
     const out = { ...data };
 
+    const toPositiveInt = (value) => {
+      const parsed = Number(value);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+    };
+
     // Campos opcionais: vazio -> null
     out.sender_email  = Normalizer.toNullIfEmpty(out.sender_email);
     out.sender_phone  = Normalizer.toNullIfEmpty(out.sender_phone);
     out.callback_time = Normalizer.toNullIfEmpty(out.callback_time);
     out.notes         = Normalizer.toNullIfEmpty(out.notes);
 
+    if (Object.prototype.hasOwnProperty.call(out, 'recipientUserId')) {
+      out.recipientUserId = toPositiveInt(out.recipientUserId);
+    }
+    if (Object.prototype.hasOwnProperty.call(out, 'recipient_user_id')) {
+      out.recipient_user_id = toPositiveInt(out.recipient_user_id);
+    }
+    if (Object.prototype.hasOwnProperty.call(out, 'recipientId')) {
+      out.recipientId = toPositiveInt(out.recipientId);
+    }
+    if (Object.prototype.hasOwnProperty.call(out, 'recipientSectorId')) {
+      out.recipientSectorId = toPositiveInt(out.recipientSectorId);
+    }
+    if (Object.prototype.hasOwnProperty.call(out, 'recipient_sector_id')) {
+      out.recipient_sector_id = toPositiveInt(out.recipient_sector_id);
+    }
+
+    if (out.recipientType !== undefined) {
+      out.recipientType = Normalizer.toNullIfEmpty(out.recipientType)?.toLowerCase() || undefined;
+    }
+
     // Situação
     if (out.status !== undefined) {
       out.status = Normalizer.normalizeStatus(out.status);
+    }
+
+    if (out.visibility !== undefined) {
+      const visibility = String(out.visibility || '').trim().toLowerCase();
+      out.visibility = visibility === 'public' ? 'public' : 'private';
     }
 
     // Mensagem obrigatória no back; se vier vazia, evita "null" na UI
@@ -230,4 +260,3 @@ const Loading = {
 window.Normalizer = Normalizer;
 window.Form = Form;
 window.Loading = Loading;
-
