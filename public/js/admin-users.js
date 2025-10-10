@@ -119,7 +119,7 @@
         ? '<span class="badge bg-success">ATIVO</span>'
         : '<span class="badge bg-secondary">INATIVO</span>';
       const role = (user.role || '').toUpperCase();
-      const toggleLabel = user.is_active ? 'Desativar' : 'Ativar';
+      const toggleLabel = user.is_active ? 'Inativar' : 'Ativar';
       const toggleClass = user.is_active ? 'link-warning' : 'link-success';
 
       return `
@@ -169,7 +169,7 @@
     }
     const toggleBtn = row.querySelector('.js-toggle-status');
     if (toggleBtn) {
-      toggleBtn.textContent = isActive ? 'Desativar' : 'Ativar';
+      toggleBtn.textContent = isActive ? 'Inativar' : 'Ativar';
       toggleBtn.classList.toggle('link-warning', isActive);
       toggleBtn.classList.toggle('link-success', !isActive);
     }
@@ -366,7 +366,38 @@
       }
     } catch (err) {
       console.error('[admin-users] Falha ao remover usuário:', err);
-      removeUserAlertEl.textContent = err?.message || 'Erro ao remover usuário.';
+
+      const message = err?.message || '';
+      const conflict = err?.status === 409 || /não pode ser excluído/i.test(message);
+
+      if (conflict) {
+        const promptMessage = `${message || 'Usuário possui recados associados e não pode ser excluído.'}\n\nDeseja inativar este usuário agora?`;
+        const shouldInactivate = window.confirm(promptMessage);
+
+        if (shouldInactivate) {
+          try {
+            await apiRequest(`/api/users/${userId}/status`, { method: 'PUT', data: { active: false } });
+            showToast('Usuário inativado com sucesso.', 'success');
+            removeUserModalInstance?.hide();
+            try {
+              await loadUsers();
+            } catch (reloadErr) {
+              console.error('[admin-users] Falha ao recarregar usuários após inativação:', reloadErr);
+            }
+          } catch (inactiveErr) {
+            console.error('[admin-users] Falha ao inativar usuário após conflito de remoção:', inactiveErr);
+            removeUserAlertEl.textContent = inactiveErr?.message || 'Erro ao inativar usuário.';
+            removeUserAlertEl.classList.remove('d-none');
+          }
+        } else {
+          removeUserAlertEl.textContent = message || 'Usuário possui recados associados e não pode ser excluído.';
+          removeUserAlertEl.classList.remove('d-none');
+        }
+
+        return;
+      }
+
+      removeUserAlertEl.textContent = message || 'Erro ao remover usuário.';
       removeUserAlertEl.classList.remove('d-none');
     }
   });
