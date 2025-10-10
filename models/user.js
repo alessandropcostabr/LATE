@@ -9,6 +9,25 @@ const ALLOWED_ROLES = new Set(['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR']);
 // Helper de placeholder ($1, $2, ...)
 function ph(i) { return `$${i}`; }
 
+// Verifica se a coluna messages.recipient_user_id está disponível (para retrocompatibilidade)
+async function messagesSupportsRecipientUserId(executor = db) {
+  const client = executor && typeof executor.query === 'function' ? executor : db;
+  try {
+    const { rowCount } = await client.query(`
+      SELECT 1
+        FROM information_schema.columns
+       WHERE table_schema = current_schema()
+         AND table_name = 'messages'
+         AND column_name = 'recipient_user_id'
+       LIMIT 1
+    `);
+    return rowCount > 0;
+  } catch (err) {
+    console.error('[users] falha ao verificar coluna recipient_user_id:', err);
+    return false;
+  }
+}
+
 // Normalizadores
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -178,35 +197,51 @@ class UserModel {
         const trimmedOld = String(previousName || '').trim();
 
         if (trimmedNew) {
-          if (trimmedOld && trimmedOld !== trimmedNew) {
-            await db.query(`
-              UPDATE messages
-                 SET recipient = ${ph(1)},
-                     recipient_user_id = ${ph(2)},
-                     updated_at = CURRENT_TIMESTAMP
-               WHERE recipient_user_id = ${ph(2)}
-                  OR (recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(3)}))
-            `, [trimmedNew, updated.id, trimmedOld]);
-          } else {
-            await db.query(`
-              UPDATE messages
-                 SET recipient = ${ph(1)},
-                     updated_at = CURRENT_TIMESTAMP
-               WHERE recipient_user_id = ${ph(2)}
-                 AND LOWER(COALESCE(TRIM(recipient), '')) <> LOWER(${ph(1)})
-            `, [trimmedNew, updated.id]);
-          }
+          const supportsRecipientColumn = await messagesSupportsRecipientUserId();
 
-          await db.query(`
-            UPDATE messages
-               SET recipient_user_id = ${ph(1)}
-             WHERE recipient_user_id IS NULL
-               AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(2)})
-          `, [updated.id, trimmedNew]);
+          if (supportsRecipientColumn) {
+            if (trimmedOld && trimmedOld !== trimmedNew) {
+              await db.query(`
+                UPDATE messages
+                   SET recipient = ${ph(1)},
+                       recipient_user_id = ${ph(2)},
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE recipient_user_id = ${ph(2)}
+                    OR (recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(3)}))
+              `, [trimmedNew, updated.id, trimmedOld]);
+            } else {
+              await db.query(`
+                UPDATE messages
+                   SET recipient = ${ph(1)},
+                       updated_at = CURRENT_TIMESTAMP
+                 WHERE recipient_user_id = ${ph(2)}
+                   AND LOWER(COALESCE(TRIM(recipient), '')) <> LOWER(${ph(1)})
+              `, [trimmedNew, updated.id]);
+            }
+
+            await db.query(`
+              UPDATE messages
+                 SET recipient_user_id = ${ph(1)}
+               WHERE recipient_user_id IS NULL
+                 AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(2)})
+            `, [updated.id, trimmedNew]);
+          } else if (trimmedOld && trimmedOld !== trimmedNew) {
+            // Fallback para bancos sem a coluna recipient_user_id
+            await db.query(`
+              UPDATE messages
+                 SET recipient = ${ph(1)},
+                     updated_at = CURRENT_TIMESTAMP
+               WHERE LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(2)})
+            `, [trimmedNew, trimmedOld]);
+          }
         }
       } else if (updated) {
         const trimmedName = String(updated.name || '').trim();
         if (trimmedName) {
+          const supportsRecipientColumn = await messagesSupportsRecipientUserId();
+          if (!supportsRecipientColumn) {
+            return updated;
+          }
           await db.query(`
             UPDATE messages
                SET recipient_user_id = ${ph(1)}
@@ -245,28 +280,40 @@ class UserModel {
       }
 
       const recipientName = (userRows[0]?.name || '').trim();
+      const supportsRecipientColumn = await messagesSupportsRecipientUserId(client);
 
-      const messageClauses = [`recipient_user_id = ${ph(1)}`];
-      const messageParams = [userId];
-      let messageIdx = 2;
+      const messageClauses = [];
+      const messageParams = [];
+      let messageIdx = 1;
+
+      if (supportsRecipientColumn) {
+        messageClauses.push(`recipient_user_id = ${ph(messageIdx)}`);
+        messageParams.push(userId);
+        messageIdx += 1;
+      }
 
       if (recipientName) {
-        messageClauses.push(`(recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageIdx)}))`);
+        const recipientClause = supportsRecipientColumn
+          ? `(recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageIdx)}))`
+          : `LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageIdx)})`;
+        messageClauses.push(recipientClause);
         messageParams.push(recipientName);
         messageIdx += 1;
       }
 
-      const hasMessages = await client.query(`
-        SELECT 1
-          FROM messages
-         WHERE ${messageClauses.join(' OR ')}
-         LIMIT 1
-      `, messageParams);
+      if (messageClauses.length > 0) {
+        const hasMessages = await client.query(`
+          SELECT 1
+            FROM messages
+           WHERE ${messageClauses.join(' OR ')}
+           LIMIT 1
+        `, messageParams);
 
-      if (hasMessages.rowCount > 0) {
-        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-        err.code = 'HAS_MESSAGES';
-        throw err;
+        if (hasMessages.rowCount > 0) {
+          const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+          err.code = 'HAS_MESSAGES';
+          throw err;
+        }
       }
 
       const { rows: sectorRows } = await client.query(`
