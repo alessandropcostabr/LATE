@@ -4,16 +4,41 @@
 
   <main class="main" role="main">
     <div class="container">
-      <div class="card">
+      <article class="card" aria-labelledby="newsTitle">
         <div class="card-header">
-          <h1 class="card-title">Novidades do LATE</h1>
-          <p class="card-subtitle">Confira o que chegou de novo no sistema.</p>
+          <h1 class="card-title" id="newsTitle">🗞️ LATE — Novidade da Semana</h1>
+          <p class="card-subtitle">Sprint “Abrir recado” – Fase 1 concluída</p>
         </div>
         <div class="card-body">
-          <p>Em breve você verá aqui as atualizações mais recentes, melhorias e dicas para aproveitar o LATE ao máximo.</p>
-          <p>Enquanto isso, continue acompanhando seus recados pelo dashboard e avise a equipe caso tenha sugestões.</p>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✨ O que mudou</h2>
+            <p>Agora toda vez que você registra um recado, o responsável recebe um e-mail automático com um resumo e o botão <strong>“Abrir recado”</strong>. Assim ninguém perde tempo procurando na lista: basta abrir o e-mail e ir direto para o recado certo.</p>
+          </section>
+
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🚀 Como isso ajuda a equipe</h2>
+            <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
+              <li>O responsável é avisado na hora e já abre o recado certo pelo botão.</li>
+              <li>O fluxo interno continua igual: sem novos campos, sem telas diferentes.</li>
+              <li>Se houver qualquer falha no envio, o recado continua salvo normalmente e o time técnico é alertado.</li>
+            </ul>
+          </section>
+
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛠️ Bastidores (para os curiosos)</h2>
+            <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
+              <li>Adicionamos um serviço de e-mail dedicado que dispara o aviso assim que o recado é criado.</li>
+              <li>Funciona com uma conta de e-mail real (ex.: cPanel/Workspace) para garantir entrega.</li>
+              <li>Nenhum botão de “marcar como resolvido” ou similares foi incluído no e-mail, mantendo a segurança do painel.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">⚠️ Observações</h2>
+            <p>Não mudamos nada nas suas rotinas: o e-mail é apenas um lembrete extra. Continue usando o painel para atualizar status ou responder ao cliente.</p>
+          </section>
         </div>
-      </div>
+      </article>
     </div>
   </main>
 
