@@ -119,6 +119,17 @@ class UserModel {
     const params = [];
     let idx = 1;
 
+    let previousName;
+    if (name !== undefined) {
+      const { rows: existingRows } = await db.query(`
+        SELECT name
+          FROM users
+         WHERE id = ${ph(1)}
+         LIMIT 1
+      `, [id]);
+      previousName = existingRows?.[0]?.name ?? null;
+    }
+
     if (name !== undefined) {
       setClauses.push(`name = ${ph(idx)}`);
       params.push(String(name || '').trim());
@@ -160,7 +171,52 @@ class UserModel {
 
     try {
       const { rows } = await db.query(sql, params);
-      return mapRow(rows?.[0]);
+      const updated = mapRow(rows?.[0]);
+
+      if (updated && name !== undefined) {
+        const trimmedNew = String(updated.name || '').trim();
+        const trimmedOld = String(previousName || '').trim();
+
+        if (trimmedNew) {
+          if (trimmedOld && trimmedOld !== trimmedNew) {
+            await db.query(`
+              UPDATE messages
+                 SET recipient = ${ph(1)},
+                     recipient_user_id = ${ph(2)},
+                     updated_at = CURRENT_TIMESTAMP
+               WHERE recipient_user_id = ${ph(2)}
+                  OR (recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(3)}))
+            `, [trimmedNew, updated.id, trimmedOld]);
+          } else {
+            await db.query(`
+              UPDATE messages
+                 SET recipient = ${ph(1)},
+                     updated_at = CURRENT_TIMESTAMP
+               WHERE recipient_user_id = ${ph(2)}
+                 AND LOWER(COALESCE(TRIM(recipient), '')) <> LOWER(${ph(1)})
+            `, [trimmedNew, updated.id]);
+          }
+
+          await db.query(`
+            UPDATE messages
+               SET recipient_user_id = ${ph(1)}
+             WHERE recipient_user_id IS NULL
+               AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(2)})
+          `, [updated.id, trimmedNew]);
+        }
+      } else if (updated) {
+        const trimmedName = String(updated.name || '').trim();
+        if (trimmedName) {
+          await db.query(`
+            UPDATE messages
+               SET recipient_user_id = ${ph(1)}
+             WHERE recipient_user_id IS NULL
+               AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(2)})
+          `, [updated.id, trimmedName]);
+        }
+      }
+
+      return updated;
     } catch (err) {
       if (err && err.code === '23505') {
         const e = new Error('E-mail já cadastrado');
@@ -190,19 +246,27 @@ class UserModel {
 
       const recipientName = (userRows[0]?.name || '').trim();
 
-      if (recipientName) {
-        const hasMessages = await client.query(`
-          SELECT 1
-            FROM messages
-           WHERE LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(1)})
-           LIMIT 1
-        `, [recipientName]);
+      const messageClauses = [`recipient_user_id = ${ph(1)}`];
+      const messageParams = [userId];
+      let messageIdx = 2;
 
-        if (hasMessages.rowCount > 0) {
-          const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
-          err.code = 'HAS_MESSAGES';
-          throw err;
-        }
+      if (recipientName) {
+        messageClauses.push(`(recipient_user_id IS NULL AND LOWER(COALESCE(TRIM(recipient), '')) = LOWER(${ph(messageIdx)}))`);
+        messageParams.push(recipientName);
+        messageIdx += 1;
+      }
+
+      const hasMessages = await client.query(`
+        SELECT 1
+          FROM messages
+         WHERE ${messageClauses.join(' OR ')}
+         LIMIT 1
+      `, messageParams);
+
+      if (hasMessages.rowCount > 0) {
+        const err = new Error('Usuário possui recados associados e não pode ser excluído. Você pode inativá-lo.');
+        err.code = 'HAS_MESSAGES';
+        throw err;
       }
 
       const { rows: sectorRows } = await client.query(`
