@@ -12,13 +12,24 @@ ALTER TABLE messages
   REFERENCES users(id)
   ON DELETE SET NULL;
 
--- Preenche dados existentes com base em nomes iguais (melhor esforço).
+WITH normalized_users AS (
+  SELECT id, normalized_name
+    FROM (
+      SELECT id,
+             LOWER(TRIM(name)) AS normalized_name,
+             COUNT(*) OVER (PARTITION BY LOWER(TRIM(name))) AS normalized_count
+        FROM users
+    ) uniq
+   WHERE normalized_name IS NOT NULL
+     AND normalized_name <> ''
+     AND normalized_count = 1
+)
 UPDATE messages m
-   SET recipient_user_id = u.id
-  FROM users u
+   SET recipient_user_id = nu.id
+  FROM normalized_users nu
  WHERE m.recipient_user_id IS NULL
    AND LENGTH(TRIM(COALESCE(m.recipient, ''))) > 0
-   AND LOWER(TRIM(m.recipient)) = LOWER(TRIM(u.name));
+   AND LOWER(TRIM(m.recipient)) = nu.normalized_name;
 
 CREATE INDEX IF NOT EXISTS idx_messages_recipient_user_id
     ON messages(recipient_user_id);
