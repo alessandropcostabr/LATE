@@ -222,6 +222,13 @@ exports.create = async (req, res) => {
       try {
         const recipient = await UserModel.findById(created.recipient_user_id);
         recipientEmail = recipient?.email;
+        if (process.env.MAIL_DEBUG === '1') {
+          console.info('[MAIL:DEBUG] preparado para enviar notificação', {
+            id: created.id,
+            recipientUserId: created.recipient_user_id,
+            recipientEmail,
+          });
+        }
         if (recipientEmail) {
           const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
           const openUrl = `${baseUrl}/recados/${created.id}`;
@@ -229,7 +236,7 @@ exports.create = async (req, res) => {
             .replace(/\s+/g, ' ')
             .slice(0, 240);
           const messageTail = (created.message || '').length > 240 ? '…' : '';
-          const subject = `[LATE] Novo recado para você — ${created.subject || 'sem assunto'}`;
+          const subject = '[LATE] Novo recado para você';
           const text = `Olá, ${recipient.name || 'colega'}!
 
 Você recebeu um novo recado.
@@ -239,9 +246,7 @@ Remetente: ${created.sender_name || '-'} (${created.sender_phone || '—'} / ${c
 Assunto: ${created.subject || '-'}
 Mensagem: ${messageSnippet}${messageTail}
 
-Abrir recado: ${openUrl}
-
-Se você não reconhece esta mensagem, ignore este e-mail.`;
+Abrir recado: ${openUrl}`;
           const html = `
 <p>Olá, ${recipient.name || 'colega'}!</p>
 <p><strong>Você recebeu um novo recado.</strong></p>
@@ -252,7 +257,6 @@ Se você não reconhece esta mensagem, ignore este e-mail.`;
   <li><strong>Mensagem:</strong> ${messageSnippet}${messageTail}</li>
 </ul>
 <p><a href="${openUrl}">➜ Abrir recado</a></p>
-<p style="color:#666;">Este e-mail foi enviado automaticamente pelo LATE. Se você não reconhece esta mensagem, ignore este e-mail.</p>
 `;
           await sendMail({ to: recipientEmail, subject, html, text });
           console.info('[MAIL:INFO] Notificação enviada', { to: recipientEmail, messageId: created.id });
