@@ -76,7 +76,22 @@ pm2 status
 pm2 save
 ```
 
-### 5. Configurar Firewall (se necessário)
+### 5. Configurar notificações por e-mail (opcional)
+
+```bash
+export MAIL_DRIVER=smtp            # use log para homologação
+export APP_BASE_URL=https://late.miahchat.com
+export SMTP_HOST=mail.seudominio.com.br
+export SMTP_PORT=465               # 465 com SSL (SMTP_SECURE=1) ou 587 com STARTTLS (SMTP_SECURE=0)
+export SMTP_SECURE=1
+export SMTP_USER=no-reply@seudominio.com.br
+export SMTP_PASS='senha-da-caixa'
+export SMTP_FROM="LATE <no-reply@seudominio.com.br>"
+```
+
+Utilize uma caixa real (cPanel, Workspace, etc.) e mantenha SPF/DKIM atualizados para garantir entregabilidade. Falhas são registradas em `[MAIL:ERROR]` e não bloqueiam a criação do recado.
+
+### 6. Configurar Firewall (se necessário)
 
 ```bash
 # Permitir acesso à porta 3000
@@ -86,7 +101,7 @@ sudo ufw allow 3000
 sudo ufw status
 ```
 
-### 6. Testar Funcionamento
+### 7. Testar Funcionamento
 
 ```bash
 # Verificar se o servidor está rodando
@@ -311,4 +326,3 @@ Após o deploy bem-sucedido:
 **🎉 Parabéns! Seu Sistema de Recados está no ar!**
 
 Para suporte, consulte os logs do PM2 e a documentação principal no README.md.
-
