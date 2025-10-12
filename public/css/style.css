@@ -131,6 +131,36 @@ body.has-navbar-menu::after {
 .auth-help a:hover {
   text-decoration: underline;
 }
+.password-field {
+  position: relative;
+}
+.password-field input {
+  width: 100%;
+  padding-right: 3rem;
+}
+.password-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: color 0.2s ease-in-out;
+}
+.password-toggle-btn:hover,
+.password-toggle-btn:focus {
+  color: var(--primary);
+}
+.password-toggle-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+  border-radius: var(--radius-sm);
+}
 .auth-hero {
   align-items: center;
   background: linear-gradient(135deg, #2563eb 0%, #60a5fa 45%, #93c5fd 100%);
