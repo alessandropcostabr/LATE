@@ -44,6 +44,39 @@
     // Atualiza o token ao carregar (não quebra se o endpoint não existir).
     refreshCsrfToken();
 
+    // Alterna conteúdos auxiliares (ajuda e novidades) sem recarregar a página.
+    function setupInlineToggles() {
+      const buttons = document.querySelectorAll('[data-toggle-target]');
+      if (!buttons.length) return;
+
+      buttons.forEach((btn) => {
+        const selector = btn.getAttribute('data-toggle-target');
+        if (!selector) return;
+        const target = document.querySelector(selector);
+        if (!target) return;
+
+        btn.addEventListener('click', () => {
+          const willShow = target.hasAttribute('hidden');
+          if (willShow) {
+            target.removeAttribute('hidden');
+          } else {
+            target.setAttribute('hidden', '');
+          }
+          btn.setAttribute('aria-expanded', willShow ? 'true' : 'false');
+
+          if (willShow) {
+            try {
+              target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } catch (_) {
+              target.scrollIntoView();
+            }
+          }
+        });
+      });
+    }
+
+    setupInlineToggles();
+
     // Auxiliares
     function sanitizeEmail(v) {
       return String(v || '').trim().toLowerCase();
