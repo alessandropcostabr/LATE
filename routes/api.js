@@ -7,6 +7,7 @@ const router = Router();
 // Controllers existentes
 const messageController = require('../controllers/messageController');
 const statsController   = require('../controllers/statsController');
+const passwordController = require('../controllers/passwordController');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
 const {
@@ -15,7 +16,10 @@ const {
   validateUpdateMessage,
   validateUpdateStatus,
   validateId,
-  validateQueryMessages
+  validateQueryMessages,
+  validatePasswordResetRequest,
+  validatePasswordResetSubmit,
+  validateAccountPasswordChange
 } = require('../middleware/validation');
 
 // Painel ADMIN de Usuários
@@ -95,6 +99,7 @@ const canReadMessages = [requireAuth, requirePermission('read')];
 const canCreateMessages = [requireAuth, requirePermission('create'), csrfProtection];
 const canUpdateMessages = [requireAuth, requirePermission('update'), csrfProtection];
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
+const canChangeOwnPassword = [requireAuth, csrfProtection];
 
 // CSRF refresh para clientes não autenticados (ex.: tela de login)
 router.get('/csrf', csrfProtection, (req, res) => {
@@ -147,6 +152,26 @@ router.delete(
   '/messages/:id',
   ...flatFns(canDeleteMessages, validateId, handleValidationErrors),
   messageController.remove
+);
+
+// ========== Account Password ==========
+router.post(
+  '/account/password',
+  ...flatFns(canChangeOwnPassword, validateAccountPasswordChange, handleValidationErrors),
+  passwordController.changePassword
+);
+
+// ========== Password Recovery ==========
+router.post(
+  '/password/recover',
+  ...flatFns(csrfProtection, validatePasswordResetRequest, handleValidationErrors),
+  passwordController.requestReset
+);
+
+router.post(
+  '/password/reset',
+  ...flatFns(csrfProtection, validatePasswordResetSubmit, handleValidationErrors),
+  passwordController.resetWithToken
 );
 
 // ========== Stats (Relatórios) ==========

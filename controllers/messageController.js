@@ -267,6 +267,7 @@ Abrir recado: ${openUrl}`;
           const htmlSenderEmail = escapeHtml(created.sender_email || '—');
           const htmlSubject = escapeHtml(created.subject || '-');
           const htmlMessageSnippet = escapeHtml(messageSnippet);
+          const htmlMessageTail = escapeHtml(messageTail);
           const htmlOpenUrl = escapeHtml(openUrl);
           const html = `
 <p>Olá, ${htmlRecipientName}!</p>
@@ -275,7 +276,7 @@ Abrir recado: ${openUrl}`;
   <li><strong>Data/Hora:</strong> ${htmlCallDate} ${htmlCallTime}</li>
   <li><strong>Remetente:</strong> ${htmlSenderName} (${htmlSenderPhone} / ${htmlSenderEmail})</li>
   <li><strong>Assunto:</strong> ${htmlSubject}</li>
-  <li><strong>Mensagem:</strong> ${htmlMessageSnippet}${messageTail}</li>
+  <li><strong>Mensagem:</strong> ${htmlMessageSnippet}${htmlMessageTail}</li>
 </ul>
 <p><a href="${htmlOpenUrl}">➜ Abrir recado</a></p>
 `;
