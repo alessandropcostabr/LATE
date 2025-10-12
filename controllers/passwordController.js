@@ -7,6 +7,7 @@ const UserModel = require('../models/user');
 const PasswordResetTokenModel = require('../models/passwordResetToken');
 const { sendMail } = require('../services/mailer');
 const { validatePassword } = require('../utils/passwordPolicy');
+const db = require('../config/database');
 
 function buildBaseUrl(req) {
   const configured = process.env.APP_BASE_URL;
@@ -121,35 +122,56 @@ exports.resetWithToken = async (req, res) => {
     return res.status(400).json({ success: false, error: 'As novas senhas não conferem.' });
   }
 
+  const client = await db.connect();
+
   try {
-    const tokenRecord = await PasswordResetTokenModel.findValidByToken(token);
+    await client.query('BEGIN');
+
+    const tokenRecord = await PasswordResetTokenModel.findValidByToken(token, { client, forUpdate: true });
     if (!tokenRecord) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: 'Token inválido ou expirado.' });
     }
 
-    const user = await UserModel.findById(tokenRecord.user_id);
+    const user = await UserModel.findById(tokenRecord.user_id, { client });
     if (!user) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: 'Token inválido ou expirado.' });
     }
 
     const { valid, errors: passwordErrors } = validatePassword(password, { email: user.email });
     if (!valid) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ success: false, error: passwordErrors.join(' ') });
     }
 
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-    const updated = await UserModel.updatePassword(user.id, passwordHash);
+    const updated = await UserModel.updatePassword(user.id, passwordHash, { client });
 
     if (!updated) {
+      await client.query('ROLLBACK');
       return res.status(500).json({ success: false, error: 'Não foi possível atualizar a senha.' });
     }
 
-    await PasswordResetTokenModel.markUsed(tokenRecord.id);
+    const marked = await PasswordResetTokenModel.markUsed(tokenRecord.id, { client });
+    if (!marked) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ success: false, error: 'Token inválido ou expirado.' });
+    }
+
+    await client.query('COMMIT');
 
     return res.json({ success: true, message: 'Senha atualizada com sucesso.' });
   } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('[password] falha ao desfazer transação:', rollbackErr);
+    }
     console.error('[password] erro ao redefinir com token:', err);
     return res.status(500).json({ success: false, error: 'Não foi possível atualizar a senha.' });
+  } finally {
+    client.release();
   }
 };
 

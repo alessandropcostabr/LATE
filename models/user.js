@@ -23,6 +23,9 @@ function normalizeViewScope(scope) {
   const value = String(scope || 'all').trim().toLowerCase();
   return ALLOWED_VIEW_SCOPES.has(value) ? value : 'all';
 }
+function getExecutor(client) {
+  return client && typeof client.query === 'function' ? client : db;
+}
 function mapRow(row, { includePassword = false } = {}) {
   if (!row) return null;
   const data = {
@@ -55,16 +58,18 @@ const BASE_SELECT = `
 
 class UserModel {
   // Busca por e-mail (case-insensitive)
-  async findByEmail(email) {
+  async findByEmail(email, { client } = {}) {
+    const executor = getExecutor(client);
     const sql = `${BASE_SELECT} WHERE LOWER(email) = LOWER(${ph(1)}) LIMIT 1`;
-    const { rows } = await db.query(sql, [normalizeEmail(email)]);
+    const { rows } = await executor.query(sql, [normalizeEmail(email)]);
     return mapRow(rows?.[0], { includePassword: true });
   }
 
-  async findById(id) {
+  async findById(id, { client, includePassword = false } = {}) {
+    const executor = getExecutor(client);
     const sql = `${BASE_SELECT} WHERE id = ${ph(1)} LIMIT 1`;
-    const { rows } = await db.query(sql, [id]);
-    return mapRow(rows?.[0]);
+    const { rows } = await executor.query(sql, [id]);
+    return mapRow(rows?.[0], { includePassword });
   }
 
   // Cria usuário; retorna os campos principais (id, name, email, role, is_active, created_at, updated_at)
@@ -108,20 +113,21 @@ class UserModel {
     }
   }
 
-  async updatePassword(id, password_hash) {
+  async updatePassword(id, password_hash, { client } = {}) {
+    const executor = getExecutor(client);
     const sql = `
       UPDATE users
          SET password_hash = ${ph(1)},
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(2)}
     `;
-    const { rowCount } = await db.query(sql, [password_hash, id]);
+    const { rowCount } = await executor.query(sql, [password_hash, id]);
     return rowCount > 0;
   }
 
   // Alias compatível com controller
-  async resetPassword(id, password_hash) {
-    return this.updatePassword(id, password_hash);
+  async resetPassword(id, password_hash, options) {
+    return this.updatePassword(id, password_hash, options);
   }
 
   async update(id, { name, email, role, active, view_scope }) {

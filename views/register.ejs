@@ -22,7 +22,17 @@
 
       <div class="mb-3">
         <label for="password" class="form-label">Senha</label>
-        <input type="password" class="form-control" id="password" name="password">
+        <div class="password-field">
+          <input type="password" class="form-control" id="password" name="password">
+          <button
+            type="button"
+            class="password-toggle-btn"
+            data-password-toggle="password"
+            aria-pressed="false"
+          >
+            <span data-password-toggle-label>Mostrar</span>
+          </button>
+        </div>
       </div>
 
       <div class="mb-3">
@@ -55,4 +65,3 @@
   </main>
 
   <%- include('partials/footer') %>
-

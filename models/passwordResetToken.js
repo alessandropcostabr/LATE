@@ -8,14 +8,19 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
 
+function getExecutor(client) {
+  return client && typeof client.query === 'function' ? client : db;
+}
+
 class PasswordResetTokenModel {
   constructor() {
     this.DEFAULT_TTL_MINUTES = 60;
   }
 
-  async purgeExpired() {
+  async purgeExpired({ client } = {}) {
+    const executor = getExecutor(client);
     try {
-      await db.query(`
+      await executor.query(`
         DELETE FROM password_reset_tokens
          WHERE used_at IS NOT NULL
             OR expires_at <= NOW()
@@ -25,8 +30,9 @@ class PasswordResetTokenModel {
     }
   }
 
-  async invalidateForUser(userId) {
-    await db.query(
+  async invalidateForUser(userId, { client } = {}) {
+    const executor = getExecutor(client);
+    await executor.query(
       `DELETE FROM password_reset_tokens WHERE user_id = $1`,
       [userId],
     );
@@ -56,23 +62,28 @@ class PasswordResetTokenModel {
     return { token, expiresAt };
   }
 
-  async findValidByToken(token) {
+  async findValidByToken(token, { client, forUpdate = false } = {}) {
     if (!token) return null;
+    const executor = getExecutor(client);
     const tokenHash = hashToken(token);
-    const { rows } = await db.query(`
+    const sql = `
       SELECT id, user_id, expires_at, used_at, created_at
         FROM password_reset_tokens
        WHERE token_hash = $1
          AND used_at IS NULL
          AND expires_at > NOW()
+       ORDER BY id DESC
        LIMIT 1
-    `, [tokenHash]);
+      ${forUpdate ? 'FOR UPDATE' : ''}
+    `;
+    const { rows } = await executor.query(sql, [tokenHash]);
     return rows?.[0] || null;
   }
 
-  async markUsed(id) {
+  async markUsed(id, { client } = {}) {
     if (!id) return false;
-    const { rowCount } = await db.query(`
+    const executor = getExecutor(client);
+    const { rowCount } = await executor.query(`
       UPDATE password_reset_tokens
          SET used_at = NOW()
        WHERE id = $1

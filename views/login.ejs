@@ -14,7 +14,24 @@
         <input type="email" class="auth-input" id="email" name="email" required autocomplete="email">
 
         <label for="password" class="auth-label">Senha</label>
-        <input type="password" class="auth-input" id="password" name="password" required autocomplete="current-password">
+        <div class="password-field">
+          <input
+            type="password"
+            class="auth-input"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+          >
+          <button
+            type="button"
+            class="password-toggle-btn"
+            data-password-toggle="password"
+            aria-pressed="false"
+          >
+            <span data-password-toggle-label>Mostrar</span>
+          </button>
+        </div>
 
         <% if (typeof error !== 'undefined') { %>
           <div class="auth-error" role="alert"><%= error %></div>
