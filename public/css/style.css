@@ -124,12 +124,54 @@ body.has-navbar-menu::after {
 .auth-help {
   font-size: 0.9rem;
 }
-.auth-help a {
+.auth-help a,
+.auth-link {
   color: var(--primary);
   text-decoration: none;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
 }
-.auth-help a:hover {
+.auth-help a:hover,
+.auth-link:hover,
+.auth-link:focus {
   text-decoration: underline;
+  color: var(--primary-dark);
+}
+.auth-link:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
+  border-radius: var(--radius-sm);
+}
+.auth-inline-card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+}
+.auth-inline-card--floating {
+  margin: 2rem auto 0;
+  max-width: clamp(320px, 48vw, 540px);
+}
+.auth-inline-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+.auth-inline-list {
+  list-style: disc;
+  margin: 0 0 1rem 1.25rem;
+  line-height: 1.6;
+}
+.auth-inline-footnote {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
 }
 .password-field {
   position: relative;
