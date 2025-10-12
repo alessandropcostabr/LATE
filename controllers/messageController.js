@@ -100,6 +100,18 @@ function sanitizePayload(body = {}) {
   return payload;
 }
 
+function escapeHtml(value) {
+  const text = String(value ?? '');
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (char) => map[char]);
+}
+
 // Mapeia status -> rótulo pt-BR (mantém contrato do projeto)
 const STATUS_LABELS_PT = {
   pending: 'Pendente',
@@ -247,16 +259,25 @@ Assunto: ${created.subject || '-'}
 Mensagem: ${messageSnippet}${messageTail}
 
 Abrir recado: ${openUrl}`;
+          const htmlRecipientName = escapeHtml(recipient.name || 'colega');
+          const htmlCallDate = escapeHtml(created.call_date || '-');
+          const htmlCallTime = escapeHtml(created.call_time || '');
+          const htmlSenderName = escapeHtml(created.sender_name || '-');
+          const htmlSenderPhone = escapeHtml(created.sender_phone || '—');
+          const htmlSenderEmail = escapeHtml(created.sender_email || '—');
+          const htmlSubject = escapeHtml(created.subject || '-');
+          const htmlMessageSnippet = escapeHtml(messageSnippet);
+          const htmlOpenUrl = escapeHtml(openUrl);
           const html = `
-<p>Olá, ${recipient.name || 'colega'}!</p>
+<p>Olá, ${htmlRecipientName}!</p>
 <p><strong>Você recebeu um novo recado.</strong></p>
 <ul>
-  <li><strong>Data/Hora:</strong> ${created.call_date || '-'} ${created.call_time || ''}</li>
-  <li><strong>Remetente:</strong> ${created.sender_name || '-'} (${created.sender_phone || '—'} / ${created.sender_email || '—'})</li>
-  <li><strong>Assunto:</strong> ${created.subject || '-'}</li>
-  <li><strong>Mensagem:</strong> ${messageSnippet}${messageTail}</li>
+  <li><strong>Data/Hora:</strong> ${htmlCallDate} ${htmlCallTime}</li>
+  <li><strong>Remetente:</strong> ${htmlSenderName} (${htmlSenderPhone} / ${htmlSenderEmail})</li>
+  <li><strong>Assunto:</strong> ${htmlSubject}</li>
+  <li><strong>Mensagem:</strong> ${htmlMessageSnippet}${messageTail}</li>
 </ul>
-<p><a href="${openUrl}">➜ Abrir recado</a></p>
+<p><a href="${htmlOpenUrl}">➜ Abrir recado</a></p>
 `;
           await sendMail({ to: recipientEmail, subject, html, text });
           console.info('[MAIL:INFO] Notificação enviada', { to: recipientEmail, messageId: created.id });
