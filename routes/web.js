@@ -73,6 +73,28 @@ router.post(
 
 router.get('/logout', requireAuth, authController.logout);
 
+router.get('/account/password/recover', csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  res.render('password-recover', {
+    title: 'Recuperar senha',
+    csrfToken,
+    scripts: ['/js/password-recover.js'],
+    user: null,
+  });
+});
+
+router.get('/account/password/reset', csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  const token = String(req.query?.token || '');
+  res.render('password-reset', {
+    title: 'Redefinir senha',
+    csrfToken,
+    token,
+    scripts: ['/js/password-reset.js'],
+    user: null,
+  });
+});
+
 // --------------------------- Registro de usuários --------------------------
 router.get(
   '/register',
@@ -113,6 +135,7 @@ router.get('/account/password', requireAuth, csrfProtection, (req, res) => {
     title: 'Trocar senha',
     user: req.session.user || null,
     csrfToken,
+    scripts: ['/js/account-password.js'],
   });
 });
 

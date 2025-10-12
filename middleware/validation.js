@@ -313,6 +313,22 @@ const validateUserPassword = [
     .matches(/[0-9]/).withMessage('Senha deve conter números'),
 ];
 
+const validatePasswordResetRequest = [
+  body('email').trim().isEmail().withMessage('E-mail inválido').normalizeEmail(),
+];
+
+const validatePasswordResetSubmit = [
+  body('token').trim().notEmpty().withMessage('Token é obrigatório'),
+  body('password').trim().isLength({ min: 8 }).withMessage('Senha deve ter pelo menos 8 caracteres'),
+  body('confirm').trim().notEmpty().withMessage('Confirmação é obrigatória'),
+];
+
+const validateAccountPasswordChange = [
+  body('currentPassword').trim().notEmpty().withMessage('Informe a senha atual.'),
+  body('newPassword').trim().isLength({ min: 8 }).withMessage('A nova senha deve ter pelo menos 8 caracteres.'),
+  body('confirmPassword').trim().notEmpty().withMessage('Confirme a nova senha.'),
+];
+
 // -------------------------------------------------------------
 // Exports unificados
 // -------------------------------------------------------------
@@ -338,4 +354,7 @@ module.exports = {
   validateUserUpdate,
   validateUserStatus,
   validateUserPassword,
+  validatePasswordResetRequest,
+  validatePasswordResetSubmit,
+  validateAccountPasswordChange,
 };
