@@ -7,7 +7,6 @@ const { requireAuth, requireRole, requirePermission } = require('../middleware/a
 const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 
-const MessageModel = require('../models/message'); // para /recados/:id
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
 
@@ -218,27 +217,13 @@ router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csr
   });
 });
 
-// Atende também /recados/:id (o front chama este caminho)
-router.get('/recados/:id', requireAuth, requirePermission('read'), csrfProtection, async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!id) return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
-
-    const recado = await (MessageModel.findById ? MessageModel.findById(id) : MessageModel.getById(id));
-    if (!recado) return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
-
-    // Renderiza a mesma view de visualização (sem alterar layout)
-    return res.render('visualizar-recado', {
-      title: 'Visualizar Recado',
-      id,
-      recado,
-      user: req.session.user || null,
-      csrfToken: typeof req.csrfToken === 'function' ? req.csrfToken() : undefined,
-    });
-  } catch (e) {
-    console.error('[web] erro ao carregar recado:', e);
-    return res.status(500).render('500', { title: 'Erro interno', user: req.session.user || null });
+// Mantém compatibilidade com links antigos
+router.get('/recados/:id', requireAuth, requirePermission('read'), (req, res) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    return res.status(404).render('404', { title: 'Página não encontrada', user: req.session.user || null });
   }
+  return res.redirect(302, `/visualizar-recado/${encodeURIComponent(id)}`);
 });
 
 router.get('/relatorios', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
