@@ -142,6 +142,48 @@ const validateCreateMessage = [
   })
 ];
 
+const validateForwardMessage = [
+  applyBodyNormalizers,
+  body('recipientType').optional({ checkFalsy: true })
+    .isLength({ max: 30 }).withMessage('Tipo de destinatário inválido'),
+  body('recipientUserId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Usuário destinatário inválido')
+    .toInt(),
+  body('recipientSectorId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Setor destinatário inválido')
+    .toInt(),
+  body().custom((_, { req }) => {
+    const parseId = (value) => {
+      const raw = String(value ?? '').trim();
+      if (!raw) return null;
+      const parsed = Number(raw);
+      if (!Number.isInteger(parsed) || parsed < 1) return null;
+      return parsed;
+    };
+
+    const recipientUserId = parseId(
+      req.body.recipientUserId ??
+      req.body.recipient_user_id ??
+      req.body.recipientId ??
+      req.body.recipient_id
+    );
+
+    const recipientSectorId = parseId(
+      req.body.recipientSectorId ??
+      req.body.recipient_sector_id
+    );
+
+    if (!recipientUserId && !recipientSectorId) {
+      throw new Error('Destinatário é obrigatório');
+    }
+
+    if (recipientUserId) req.body.recipientUserId = recipientUserId;
+    if (recipientSectorId) req.body.recipientSectorId = recipientSectorId;
+
+    return true;
+  })
+];
+
 const validateUpdateMessage = [
   applyBodyNormalizers,
   body('message').optional({ checkFalsy: true })
@@ -341,6 +383,7 @@ module.exports = {
 
   // messages
   validateCreateMessage,
+  validateForwardMessage,
   validateUpdateMessage,
   validateUpdateStatus,
 

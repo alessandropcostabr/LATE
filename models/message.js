@@ -474,6 +474,39 @@ async function update(id, payload) {
   return rowCount > 0;
 }
 
+async function updateRecipient(id, { recipient, recipient_user_id = null, recipient_sector_id = null }) {
+  const { includeRecipientUserId, includeRecipientSectorId } = await resolveSelectColumns();
+  const assignments = [];
+  const params = [];
+  let index = 0;
+
+  assignments.push(`recipient = ${ph(++index)}`);
+  params.push(emptyToNull(recipient));
+
+  if (includeRecipientUserId) {
+    assignments.push(`recipient_user_id = ${ph(++index)}`);
+    params.push(recipient_user_id ?? null);
+  }
+
+  if (includeRecipientSectorId) {
+    assignments.push(`recipient_sector_id = ${ph(++index)}`);
+    params.push(recipient_sector_id ?? null);
+  }
+
+  assignments.push('updated_at = CURRENT_TIMESTAMP');
+
+  const sql = `
+    UPDATE messages
+       SET ${assignments.join(', ')}
+     WHERE id = ${ph(++index)}
+  `;
+
+  params.push(id);
+
+  const { rowCount } = await db.query(sql, params);
+  return rowCount > 0;
+}
+
 async function updateStatus(id, status) {
   const sql = `
     UPDATE messages
@@ -668,6 +701,7 @@ module.exports = {
   normalizeStatus,
   STATUS_VALUES,
   STATUS_LABELS_PT,
+  updateRecipient,
   STATUS_TRANSLATIONS: {
     enToPt: { ...STATUS_EN_TO_PT },
     ptToEn: { ...STATUS_PT_TO_EN },

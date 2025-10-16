@@ -13,6 +13,7 @@ const passwordController = require('../controllers/passwordController');
 const {
   handleValidationErrors,
   validateCreateMessage,
+  validateForwardMessage,
   validateUpdateMessage,
   validateUpdateStatus,
   validateId,
@@ -140,6 +141,12 @@ router.put(
   '/messages/:id',
   ...flatFns(canUpdateMessages, validateId, validateUpdateMessage, handleValidationErrors),
   messageController.update
+);
+
+router.post(
+  '/messages/:id/forward',
+  ...flatFns(canUpdateMessages, validateId, validateForwardMessage, handleValidationErrors),
+  messageController.forward
 );
 
 router.patch(

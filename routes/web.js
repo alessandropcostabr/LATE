@@ -189,13 +189,32 @@ router.get('/editar-recado/:id', requireAuth, requirePermission('update'), csrfP
   }
 });
 
-router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csrfProtection, async (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+
+  let activeUsers = [];
+  let activeSectors = [];
+
+  if (res.locals.permissions?.updateMessages) {
+    try {
+      const [users, sectors] = await Promise.all([
+        UserModel.getActiveUsersSelect(),
+        SectorModel.list({ status: 'active', limit: 200 }),
+      ]);
+      activeUsers = users || [];
+      activeSectors = sectors?.data || [];
+    } catch (err) {
+      console.error('[web] erro ao preparar encaminhamento em /visualizar-recado:', err);
+    }
+  }
+
   res.render('visualizar-recado', {
     title: 'Visualizar Recado',
     id: req.params.id,
     user: req.session.user || null,
     csrfToken,
+    activeUsers,
+    activeSectors,
   });
 });
 

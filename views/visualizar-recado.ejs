@@ -24,6 +24,7 @@
             <a href="/recados" class="btn btn-outline" data-back-button>Voltar</a>
             <% if (permissions && permissions.updateMessages) { %>
               <a href="/editar-recado/<%= id %>" class="btn btn-primary" data-edit-button>✏️ Editar</a>
+              <button type="button" class="btn btn-secondary" data-forward-button>📤 Encaminhar</button>
             <% } %>
             <% if (permissions && permissions.deleteMessages) { %>
               <button type="button" class="btn btn-danger" data-delete-button>🗑️ Excluir</button>
@@ -31,6 +32,60 @@
           </div>
         </div>
       </div>
+      <% if (permissions && permissions.updateMessages) { 
+           const forwardUsers = Array.isArray(activeUsers) ? activeUsers : [];
+           const forwardSectors = Array.isArray(activeSectors) ? activeSectors : [];
+      %>
+        <div class="modal fade" id="forwardModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+          <div class="modal-dialog">
+            <form class="modal-content" id="forwardForm">
+              <div class="modal-header">
+                <h5 class="modal-title">Encaminhar recado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="forwardRecipientType" class="form-label">Tipo de destinatário</label>
+                  <select id="forwardRecipientType" name="recipientType" class="form-select" autocomplete="off">
+                    <option value="user" selected>Usuário específico</option>
+                    <option value="sector" <%= forwardSectors.length ? '' : 'disabled' %>>Setor</option>
+                  </select>
+                  <div class="form-help">Escolha se o recado será encaminhado para um usuário ou setor.</div>
+                </div>
+                <div class="mb-3" id="forwardUserGroup">
+                  <label for="forwardRecipientUserId" class="form-label required">Usuário destinatário</label>
+                  <select id="forwardRecipientUserId" name="recipientUserId" class="form-select" autocomplete="organization">
+                    <option value="">Selecione um usuário</option>
+                    <% forwardUsers.forEach(function(user) { %>
+                      <option value="<%= user.id %>"><%= user.name %></option>
+                    <% }); %>
+                  </select>
+                  <div class="form-help">O usuário selecionado receberá um e-mail informando o encaminhamento.</div>
+                </div>
+                <div class="mb-3 d-none" id="forwardSectorGroup">
+                  <label for="forwardRecipientSectorId" class="form-label required">Setor destinatário</label>
+                  <select id="forwardRecipientSectorId" name="recipientSectorId" class="form-select" autocomplete="organization">
+                    <option value="">Selecione um setor</option>
+                    <% forwardSectors.forEach(function(sector) { %>
+                      <option value="<%= sector.id %>"><%= sector.name %></option>
+                    <% }); %>
+                  </select>
+                  <div class="form-help">Todos os integrantes do setor poderão visualizar o recado.</div>
+                </div>
+                <div class="mb-3">
+                  <label for="forwardNote" class="form-label">Observação para o destinatário (opcional)</label>
+                  <textarea id="forwardNote" name="forwardNote" class="form-textarea" rows="3" placeholder="Mensagem adicional para o novo destinatário."></textarea>
+                  <div class="form-help">A observação será exibida no e-mail de encaminhamento.</div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="forwardSubmit">📤 Encaminhar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      <% } %>
     </div>
   </main>
 

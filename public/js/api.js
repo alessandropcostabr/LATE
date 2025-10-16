@@ -80,6 +80,10 @@ const API = (() => {
     return request(`/messages/${encodeURIComponent(id)}`, { method: 'PUT', data });
   }
 
+  async function forwardMessage(id, data) {
+    return request(`/messages/${encodeURIComponent(id)}/forward`, { method: 'POST', data });
+  }
+
   async function deleteMessage(id) {
     return request(`/messages/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
@@ -103,6 +107,7 @@ const API = (() => {
     listMessages,
     getMessage,
     updateMessage,
+    forwardMessage,
     deleteMessage,
     updateMessageStatus,
     getMessageStats,
@@ -116,10 +121,10 @@ const API = (() => {
     excluirRecado: deleteMessage,
     getStats: getMessageStats,
     getRecadosRecentes: listRecentMessages,
+    encaminharRecado: forwardMessage,
   };
 })();
 
 if (typeof window !== 'undefined') {
   window.API = API;
 }
-
