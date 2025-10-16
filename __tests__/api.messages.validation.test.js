@@ -12,6 +12,7 @@ jest.mock('../controllers/messageController', () => {
     getById: createResponder(),
     create: createResponder(201),
     update: createResponder(),
+    forward: createResponder(),
     updateStatus: createResponder(),
     remove: createResponder(),
   };
@@ -95,4 +96,3 @@ describe('API message validation', () => {
     expect(messageController.updateStatus).not.toHaveBeenCalled();
   });
 });
-

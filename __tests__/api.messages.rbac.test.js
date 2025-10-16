@@ -6,6 +6,7 @@ jest.mock('../controllers/messageController', () => ({
   getById: jest.fn((_req, res) => res.json({ success: true, data: 'item' })),
   create: jest.fn((_req, res) => res.status(201).json({ success: true })),
   update: jest.fn((_req, res) => res.json({ success: true })),
+  forward: jest.fn((_req, res) => res.json({ success: true })),
   updateStatus: jest.fn((_req, res) => res.json({ success: true })),
   remove: jest.fn((_req, res) => res.json({ success: true })),
 }));
@@ -45,6 +46,25 @@ function createApp() {
   const apiRoutes = require('../routes/api');
   app.use('/api', apiRoutes);
 
+  const originalListen = app.listen.bind(app);
+  app.listen = function patchedListen(port, host, callback) {
+    if (typeof port === 'function') {
+      callback = port;
+      port = 0;
+      host = '127.0.0.1';
+    } else if (typeof host === 'function') {
+      callback = host;
+      host = '127.0.0.1';
+    }
+    if (typeof port !== 'number' || Number.isNaN(port)) {
+      port = 0;
+    }
+    if (typeof host !== 'string') {
+      host = '127.0.0.1';
+    }
+    return originalListen(port, host, callback);
+  };
+
   return app;
 }
 
@@ -81,6 +101,13 @@ describe('RBAC for /api/messages* routes', () => {
       .send({ message: 'Olá', recipientId: 1 });
     expectForbidden(createResponse);
     expect(messageController.create).not.toHaveBeenCalled();
+
+    const forwardResponse = await supertest(app)
+      .post('/api/messages/1/forward')
+      .set('x-test-role', 'reader')
+      .send({ recipientUserId: 2 });
+    expectForbidden(forwardResponse);
+    expect(messageController.forward).not.toHaveBeenCalled();
   });
 
   it('permite criação para operator mas bloqueia atualização completa', async () => {
@@ -97,6 +124,13 @@ describe('RBAC for /api/messages* routes', () => {
       .send({ message: 'Atualizado' });
     expectForbidden(updateResponse);
     expect(messageController.update).not.toHaveBeenCalled();
+
+    const forwardResponse = await supertest(app)
+      .post('/api/messages/1/forward')
+      .set('x-test-role', 'operator')
+      .send({ recipientUserId: 3 });
+    expectForbidden(forwardResponse);
+    expect(messageController.forward).not.toHaveBeenCalled();
   });
 
   it('permite atualização para supervisor mas bloqueia remoção', async () => {
@@ -106,6 +140,13 @@ describe('RBAC for /api/messages* routes', () => {
       .send({ status: 'resolved' });
     expect(updateResponse.status).toBe(200);
     expect(messageController.updateStatus).toHaveBeenCalled();
+
+    const forwardResponse = await supertest(app)
+      .post('/api/messages/1/forward')
+      .set('x-test-role', 'supervisor')
+      .send({ recipientUserId: 4 });
+    expect(forwardResponse.status).toBe(200);
+    expect(messageController.forward).toHaveBeenCalled();
 
     const deleteResponse = await supertest(app)
       .delete('/api/messages/1')
@@ -120,14 +161,16 @@ describe('RBAC for /api/messages* routes', () => {
       supertest(app).post('/api/messages').set('x-test-role', 'admin').send({ message: 'Olá', recipientId: 1 }),
       supertest(app).put('/api/messages/1').set('x-test-role', 'admin').send({ message: 'Atualizado' }),
       supertest(app).patch('/api/messages/1/status').set('x-test-role', 'admin').send({ status: 'resolved' }),
+      supertest(app).post('/api/messages/1/forward').set('x-test-role', 'admin').send({ recipientUserId: 6 }),
       supertest(app).delete('/api/messages/1').set('x-test-role', 'admin'),
     ]);
 
-    expect(responses.map((res) => res.status)).toEqual([200, 201, 200, 200, 200]);
+    expect(responses.map((res) => res.status)).toEqual([200, 201, 200, 200, 200, 200]);
     expect(messageController.list).toHaveBeenCalled();
     expect(messageController.create).toHaveBeenCalled();
     expect(messageController.update).toHaveBeenCalled();
     expect(messageController.updateStatus).toHaveBeenCalled();
+    expect(messageController.forward).toHaveBeenCalled();
     expect(messageController.remove).toHaveBeenCalled();
   });
 
@@ -144,5 +187,12 @@ describe('RBAC for /api/messages* routes', () => {
       .set('x-test-role', 'none');
     expect(listResponse.status).toBe(200);
     expect(messageController.list).toHaveBeenCalled();
+
+    const forwardResponse = await supertest(app)
+      .post('/api/messages/1/forward')
+      .set('x-test-role', 'none')
+      .send({ recipientUserId: 2 });
+    expectForbidden(forwardResponse);
+    expect(messageController.forward).not.toHaveBeenCalled();
   });
 });
