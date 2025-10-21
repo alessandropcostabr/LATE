@@ -77,7 +77,7 @@ function setButtonLoading(button, loading, textWhenLoading = 'Processando...') {
 }
 
 // Constrói query string a partir do formulário de filtros
-function buildQueryFromForm(form) {
+function buildQueryFromForm(form, { includeLimit = true } = {}) {
   const p = new URLSearchParams();
   const start = form.start_date?.value?.trim();
   const end   = form.end_date?.value?.trim();
@@ -88,8 +88,30 @@ function buildQueryFromForm(form) {
   if (end)   p.set('end_date', end);
   if (rec)   p.set('recipient', rec);
   if (st)    p.set('status', st);
-  p.set('limit', '10');
-  return p.toString();
+  if (includeLimit) {
+    p.set('limit', '10');
+  }
+  return p;
+}
+
+function hydrateFormFromUrl(form, searchParams = new URLSearchParams(window.location.search)) {
+  if (!form || !form.elements) return;
+  const mappings = [
+    ['start_date', 'start_date'],
+    ['end_date', 'end_date'],
+    ['recipient', 'recipient'],
+    ['status', 'status'],
+  ];
+
+  mappings.forEach(([fieldName, param]) => {
+    const field = form.elements.namedItem(fieldName);
+    if (!field) return;
+    if (searchParams.has(param)) {
+      field.value = searchParams.get(param) || '';
+    } else {
+      field.value = '';
+    }
+  });
 }
 
 async function carregarRecados() {
@@ -108,10 +130,35 @@ async function carregarRecados() {
     // Pega filtros da URL ou do form
     const url = new URL(window.location.href);
     const qs  = url.searchParams;
-    // Se houver form, reinicializa a partir dele (usuario pode ter alterado)
-    const query = form ? buildQueryFromForm(form) : qs.toString();
+    let apiParams;
 
-    const resp = await request(`/api/messages${query ? `?${query}` : ''}`);
+    if (form) {
+      const formParams = buildQueryFromForm(form);
+      apiParams = new URLSearchParams(formParams);
+
+      // preserva parâmetros que não fazem parte do formulário (ex: paginação)
+      qs.forEach((value, key) => {
+        if (!['start_date', 'end_date', 'recipient', 'status', 'limit'].includes(key)) {
+          apiParams.set(key, value);
+        }
+      });
+
+      // Atualiza a URL visível com os filtros (sem o limit auxiliar)
+      const urlParams = buildQueryFromForm(form, { includeLimit: false });
+      const urlSearch = urlParams.toString();
+      const targetSearch = urlSearch ? `?${urlSearch}` : '';
+      if (targetSearch !== url.search) {
+        history.replaceState({}, '', `${url.pathname}${targetSearch}`);
+      }
+    } else {
+      apiParams = new URLSearchParams(qs);
+      if (!apiParams.has('limit')) {
+        apiParams.set('limit', '10');
+      }
+    }
+
+    const queryString = apiParams.toString();
+    const resp = await request(`/api/messages${queryString ? `?${queryString}` : ''}`);
     const list = asItems(resp);
 
     if (totalEl) totalEl.textContent = `${list.length} resultado(s)`;
@@ -194,11 +241,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Só roda na página /recados
   if (!document.getElementById('listaRecados')) return;
 
+  const form = document.getElementById('filtrosForm');
+  if (form) {
+    hydrateFormFromUrl(form);
+  }
+
   // Inicial
   carregarRecados();
 
   // Filtros
-  const form = document.getElementById('filtrosForm');
   if (form) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -257,4 +308,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  window.addEventListener('popstate', () => {
+    if (form) {
+      hydrateFormFromUrl(form, new URLSearchParams(window.location.search));
+    }
+    carregarRecados();
+  });
 });
