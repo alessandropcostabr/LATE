@@ -1,6 +1,12 @@
 const express = require('express');
 const supertest = require('supertest');
 
+const mockFindById = jest.fn();
+
+jest.mock('../models/message', () => ({
+  findById: (...args) => mockFindById(...args),
+}));
+
 jest.mock('../controllers/messageController', () => ({
   list: jest.fn((_req, res) => res.json({ success: true, data: 'list' })),
   getById: jest.fn((_req, res) => res.json({ success: true, data: 'item' })),
@@ -78,6 +84,7 @@ describe('RBAC for /api/messages* routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFindById.mockReset();
     app = createApp();
   });
 
@@ -110,7 +117,7 @@ describe('RBAC for /api/messages* routes', () => {
     expect(messageController.forward).not.toHaveBeenCalled();
   });
 
-  it('permite criação para operator mas bloqueia atualização completa', async () => {
+  it('permite criação e edição do próprio recado para operator, mas bloqueia encaminhamento', async () => {
     const createResponse = await supertest(app)
       .post('/api/messages')
       .set('x-test-role', 'operator')
@@ -118,12 +125,13 @@ describe('RBAC for /api/messages* routes', () => {
     expect(createResponse.status).toBe(201);
     expect(messageController.create).toHaveBeenCalled();
 
+    mockFindById.mockResolvedValueOnce({ id: 1, created_by: 1 });
     const updateResponse = await supertest(app)
       .put('/api/messages/1')
       .set('x-test-role', 'operator')
       .send({ message: 'Atualizado' });
-    expectForbidden(updateResponse);
-    expect(messageController.update).not.toHaveBeenCalled();
+    expect(updateResponse.status).toBe(200);
+    expect(messageController.update).toHaveBeenCalled();
 
     const forwardResponse = await supertest(app)
       .post('/api/messages/1/forward')
@@ -131,6 +139,18 @@ describe('RBAC for /api/messages* routes', () => {
       .send({ recipientUserId: 3 });
     expectForbidden(forwardResponse);
     expect(messageController.forward).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia operator ao tentar editar recado de outro usuário', async () => {
+    mockFindById.mockResolvedValueOnce({ id: 7, created_by: 2 });
+
+    const response = await supertest(app)
+      .put('/api/messages/7')
+      .set('x-test-role', 'operator')
+      .send({ message: 'Sem permissão' });
+
+    expectForbidden(response);
+    expect(messageController.update).not.toHaveBeenCalled();
   });
 
   it('permite atualização para supervisor mas bloqueia remoção', async () => {

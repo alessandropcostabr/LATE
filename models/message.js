@@ -8,6 +8,8 @@ const { buildViewerOwnershipFilter } = require('./helpers/viewerScope');
 const TABLE_NAME = 'messages';
 const RECIPIENT_USER_COLUMN = 'recipient_user_id';
 const RECIPIENT_SECTOR_COLUMN = 'recipient_sector_id';
+const CREATED_BY_COLUMN = 'created_by';
+const UPDATED_BY_COLUMN = 'updated_by';
 const VISIBILITY_COLUMN = 'visibility';
 
 const columnSupportCache = new Map();
@@ -66,9 +68,11 @@ const BASE_SELECT_FIELDS = [
   'notes',
   'created_at',
   'updated_at',
+  'created_by',
+  'updated_by',
 ];
 
-function composeSelectFields(includeRecipientUserId, includeRecipientSectorId) {
+function composeSelectFields(includeRecipientUserId, includeRecipientSectorId, includeCreatedBy, includeUpdatedBy) {
   const fields = [...BASE_SELECT_FIELDS];
   if (includeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
@@ -80,18 +84,40 @@ function composeSelectFields(includeRecipientUserId, includeRecipientSectorId) {
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, RECIPIENT_SECTOR_COLUMN);
   }
+  if (!includeCreatedBy) {
+    const idx = fields.indexOf(CREATED_BY_COLUMN);
+    if (idx !== -1) fields.splice(idx, 1);
+  }
+  if (!includeUpdatedBy) {
+    const idx = fields.indexOf(UPDATED_BY_COLUMN);
+    if (idx !== -1) fields.splice(idx, 1);
+  }
   return fields;
 }
 
 async function resolveSelectColumns() {
-  const [includeRecipientUserId, includeRecipientSectorId] = await Promise.all([
+  const [
+    includeRecipientUserId,
+    includeRecipientSectorId,
+    includeCreatedBy,
+    includeUpdatedBy,
+  ] = await Promise.all([
     supportsColumn(RECIPIENT_USER_COLUMN),
     supportsColumn(RECIPIENT_SECTOR_COLUMN),
+    supportsColumn(CREATED_BY_COLUMN),
+    supportsColumn(UPDATED_BY_COLUMN),
   ]);
   return {
     includeRecipientUserId,
     includeRecipientSectorId,
-    selectColumns: composeSelectFields(includeRecipientUserId, includeRecipientSectorId).join(',\n      '),
+    includeCreatedBy,
+    includeUpdatedBy,
+    selectColumns: composeSelectFields(
+      includeRecipientUserId,
+      includeRecipientSectorId,
+      includeCreatedBy,
+      includeUpdatedBy,
+    ).join(',\n      '),
   };
 }
 
@@ -153,6 +179,11 @@ function normalizeRecipientUserId(value) {
 }
 
 function normalizeRecipientSectorId(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeUserId(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
@@ -267,6 +298,10 @@ function mapRow(row) {
     notes: row.notes ?? null,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
+    created_by: row.created_by ?? null,
+    createdBy: row.created_by ?? null,
+    updated_by: row.updated_by ?? null,
+    updatedBy: row.updated_by ?? null,
   };
 }
 
@@ -318,10 +353,22 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1)
 
 // ---------------------------- CRUD / Listagem ------------------------------
 async function create(payload) {
-  const { includeRecipientUserId, includeRecipientSectorId, selectColumns } = await resolveSelectColumns();
+  const {
+    includeRecipientUserId,
+    includeRecipientSectorId,
+    includeCreatedBy,
+    includeUpdatedBy,
+    selectColumns,
+  } = await resolveSelectColumns();
 
   const normalized = normalizePayload(payload);
   const timestamps = attachTimestamps({}, payload);
+  const creatorId = normalizeUserId(payload?.created_by ?? payload?.createdBy);
+  const updaterSource = payload?.updated_by ?? payload?.updatedBy;
+  const updaterId = normalizeUserId(
+    updaterSource !== undefined ? updaterSource : creatorId
+  );
+
   const data = {
     ...normalized.data,
     status: normalized.statusProvided && normalized.data.status ? normalized.data.status : 'pending',
@@ -329,6 +376,13 @@ async function create(payload) {
 
   if (data.visibility === undefined) {
     data.visibility = 'private';
+  }
+
+  if (includeCreatedBy) {
+    data.created_by = creatorId ?? null;
+  }
+  if (includeUpdatedBy) {
+    data.updated_by = updaterId ?? null;
   }
 
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(data, 'recipient_user_id');
@@ -373,6 +427,14 @@ async function create(payload) {
     fields.splice(insertAt, 0, 'recipient_sector_id');
   }
 
+  if (includeCreatedBy) {
+    fields.push('created_by');
+  }
+
+  if (includeUpdatedBy) {
+    fields.push('updated_by');
+  }
+
   const values = fields.map((field) => data[field]);
 
   if (timestamps.created_at) {
@@ -413,7 +475,11 @@ async function findById(id, { viewer } = {}) {
 }
 
 async function update(id, payload) {
-  const { includeRecipientUserId, includeRecipientSectorId } = await resolveSelectColumns();
+  const {
+    includeRecipientUserId,
+    includeRecipientSectorId,
+    includeUpdatedBy,
+  } = await resolveSelectColumns();
   const normalized = normalizePayload(payload);
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_user_id');
   const shouldIncludeRecipientUserId = includeRecipientUserId && hasRecipientUserId;
@@ -451,25 +517,37 @@ async function update(id, payload) {
   }
   const values = fields.map((field) => normalized.data[field]);
   const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
+  const params = [...values];
+  let nextIndex = assignments.length + 1;
 
   // status opcional
-  const statusIndex = assignments.length + 1;
-  assignments.push(`status = COALESCE(${ph(statusIndex)}, status)`);
-  const visibilityIndex = assignments.length + 1;
-  assignments.push(`visibility = COALESCE(${ph(visibilityIndex)}, visibility)`);
+  assignments.push(`status = COALESCE(${ph(nextIndex)}, status)`);
+  params.push(normalized.statusProvided ? normalized.data.status : null);
+  nextIndex += 1;
+
+  assignments.push(`visibility = COALESCE(${ph(nextIndex)}, visibility)`);
+  params.push(normalized.visibilityProvided ? normalizeVisibility(normalized.data.visibility) : null);
+  nextIndex += 1;
+
+  const hasUpdatedByField = includeUpdatedBy && (
+    (payload && Object.prototype.hasOwnProperty.call(payload, 'updated_by')) ||
+    (payload && Object.prototype.hasOwnProperty.call(payload, 'updatedBy'))
+  );
+
+  if (hasUpdatedByField) {
+    assignments.push(`updated_by = ${ph(nextIndex)}`);
+    params.push(normalizeUserId(payload.updated_by ?? payload.updatedBy));
+    nextIndex += 1;
+  }
+
   assignments.push('updated_at = CURRENT_TIMESTAMP');
 
   const sql = `
     UPDATE messages
        SET ${assignments.join(', ')}
-     WHERE id = ${ph(visibilityIndex + 1)}
+     WHERE id = ${ph(nextIndex)}
   `;
-  const params = [
-    ...values,
-    normalized.statusProvided ? normalized.data.status : null,
-    normalized.visibilityProvided ? normalizeVisibility(normalized.data.visibility) : null,
-    id,
-  ];
+  params.push(id);
   const { rowCount } = await db.query(sql, params);
   return rowCount > 0;
 }
@@ -507,14 +585,31 @@ async function updateRecipient(id, { recipient, recipient_user_id = null, recipi
   return rowCount > 0;
 }
 
-async function updateStatus(id, status) {
+async function updateStatus(id, status, { updatedBy } = {}) {
+  const normalizedStatus = ensureStatus(status);
+  if (updatedBy !== undefined) {
+    const sqlWithUser = `
+      UPDATE messages
+         SET status = ${ph(1)},
+             updated_by = ${ph(2)},
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = ${ph(3)}
+    `;
+    const { rowCount } = await db.query(sqlWithUser, [
+      normalizedStatus,
+      normalizeUserId(updatedBy),
+      id,
+    ]);
+    return rowCount > 0;
+  }
+
   const sql = `
     UPDATE messages
        SET status = ${ph(1)},
            updated_at = CURRENT_TIMESTAMP
      WHERE id = ${ph(2)}
   `;
-  const { rowCount } = await db.query(sql, [ensureStatus(status), id]);
+  const { rowCount } = await db.query(sql, [normalizedStatus, id]);
   return rowCount > 0;
 }
 

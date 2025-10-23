@@ -18,6 +18,7 @@ function buildViewerOwnershipFilter(
   const idColumn = alias ? `${alias}.recipient_user_id` : 'recipient_user_id';
   const sectorColumn = alias ? `${alias}.recipient_sector_id` : 'recipient_sector_id';
   const nameColumn = alias ? `${alias}.recipient` : 'recipient';
+  const creatorColumn = alias ? `${alias}.created_by` : 'created_by';
   const visibilityColumn = alias ? `${alias}.visibility` : 'visibility';
 
   const clauses = [];
@@ -27,6 +28,10 @@ function buildViewerOwnershipFilter(
   const viewerId = Number(viewer.id);
   if (Number.isInteger(viewerId) && viewerId > 0) {
     clauses.push(`${idColumn} = ${placeholder(index)}`);
+    params.push(viewerId);
+    index += 1;
+
+    clauses.push(`${creatorColumn} = ${placeholder(index)}`);
     params.push(viewerId);
     index += 1;
 

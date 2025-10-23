@@ -240,18 +240,29 @@ ${htmlNote}
 }
 
 // Função para padronizar o objeto enviado ao cliente (mantém snake_case e adiciona camelCase)
-function toClient(row) {
+function toClient(row, viewer) {
   if (!row) return null;
+  const createdBy = row.created_by ?? row.createdBy ?? null;
+  const updatedBy = row.updated_by ?? row.updatedBy ?? null;
+  const viewerId = Number(viewer?.id);
+  const isOwner = Number.isInteger(viewerId) && viewerId > 0 && createdBy === viewerId;
+
   return {
     ...row,
     recipient_user_id: row.recipient_user_id ?? null,
     recipientUserId: row.recipient_user_id ?? null,
-     recipient_sector_id: row.recipient_sector_id ?? null,
-     recipientSectorId: row.recipient_sector_id ?? null,
-     visibility: row.visibility ?? 'private',
+    recipient_sector_id: row.recipient_sector_id ?? null,
+    recipientSectorId: row.recipient_sector_id ?? null,
+    visibility: row.visibility ?? 'private',
     // alias em camelCase para compatibilidade com JS do front
     createdAt: row.created_at ?? null,
     updatedAt: row.updated_at ?? null,
+    created_by: createdBy,
+    createdBy,
+    updated_by: updatedBy,
+    updatedBy,
+    is_owner: isOwner,
+    isOwner,
     // rótulo amigável
     status_label: STATUS_LABELS_PT[row.status] || row.status,
   };
@@ -285,7 +296,7 @@ exports.list = async (req, res) => {
       viewer,
     });
 
-    return res.json({ success: true, data: rows.map(toClient) });
+    return res.json({ success: true, data: rows.map((row) => toClient(row, viewer)) });
   } catch (err) {
     console.error('[messages] erro ao listar:', err);
     return res.status(500).json({ success: false, error: 'Falha ao listar recados' });
@@ -304,7 +315,7 @@ exports.getById = async (req, res) => {
     if (!row) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
-    return res.json({ success: true, data: toClient(row) });
+    return res.json({ success: true, data: toClient(row, viewer) });
   } catch (err) {
     console.error('[messages] erro ao obter por id:', err);
     return res.status(500).json({ success: false, error: 'Falha ao obter recado' });
@@ -314,6 +325,9 @@ exports.getById = async (req, res) => {
 // POST /api/messages
 exports.create = async (req, res) => {
   try {
+    const viewer = getViewerFromRequest(req);
+    const sessionUserId = Number(req.session?.user?.id);
+
     const recipientInput = extractRecipientInput(req.body);
     const resolved = await resolveRecipientTarget(recipientInput);
     if (resolved.error) {
@@ -336,12 +350,17 @@ exports.create = async (req, res) => {
       payload.visibility = 'private';
     }
 
+    if (Number.isInteger(sessionUserId) && sessionUserId > 0) {
+      payload.created_by = sessionUserId;
+      payload.updated_by = sessionUserId;
+    }
+
     const id = await Message.create(payload);
     const created = await Message.findById(id);
 
     await notifyRecipientUser(created, { template: 'new' });
 
-    return res.status(201).json({ success: true, data: toClient(created) });
+    return res.status(201).json({ success: true, data: toClient(created, viewer) });
   } catch (err) {
     console.error('[messages] erro ao criar:', err);
     return res.status(500).json({ success: false, error: 'Falha ao criar recado' });
@@ -355,6 +374,8 @@ exports.update = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
+    const viewer = getViewerFromRequest(req);
+    const sessionUserId = Number(req.session?.user?.id);
     const payload = sanitizePayload(req.body);
 
     const recipientInput = extractRecipientInput(req.body);
@@ -382,12 +403,16 @@ exports.update = async (req, res) => {
       }
     }
 
+    if (Number.isInteger(sessionUserId) && sessionUserId > 0) {
+      payload.updated_by = sessionUserId;
+    }
+
     const ok = await Message.update(id, payload);
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
-    const updated = await Message.findById(id);
-    return res.json({ success: true, data: toClient(updated) });
+    const updated = await Message.findById(id, { viewer });
+    return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar:', err);
     return res.status(500).json({ success: false, error: 'Falha ao atualizar recado' });
@@ -401,6 +426,7 @@ exports.forward = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
+    const viewer = getViewerFromRequest(req);
 
     const current = await Message.findById(id);
     if (!current) {
@@ -451,7 +477,7 @@ exports.forward = async (req, res) => {
       });
     }
 
-    return res.json({ success: true, data: toClient(updated) });
+    return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao encaminhar:', err);
     return res.status(500).json({ success: false, error: 'Falha ao encaminhar recado' });
@@ -465,13 +491,17 @@ exports.updateStatus = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
+    const viewer = getViewerFromRequest(req);
+    const sessionUserId = Number(req.session?.user?.id);
     const { status } = req.body || {};
-    const ok = await Message.updateStatus(id, status);
+    const ok = await Message.updateStatus(id, status, {
+      updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
+    });
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
-    const updated = await Message.findById(id);
-    return res.json({ success: true, data: toClient(updated) });
+    const updated = await Message.findById(id, { viewer });
+    return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar status:', err);
     return res.status(500).json({ success: false, error: 'Falha ao atualizar status' });
