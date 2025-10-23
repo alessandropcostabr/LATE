@@ -246,6 +246,7 @@ function toClient(row, viewer) {
   const updatedBy = row.updated_by ?? row.updatedBy ?? null;
   const viewerId = Number(viewer?.id);
   const isOwner = Number.isInteger(viewerId) && viewerId > 0 && createdBy === viewerId;
+  const isRecipient = Number.isInteger(viewerId) && viewerId > 0 && (row.recipient_user_id ?? row.recipientUserId) === viewerId;
 
   return {
     ...row,
@@ -263,6 +264,8 @@ function toClient(row, viewer) {
     updatedBy,
     is_owner: isOwner,
     isOwner,
+    is_recipient: isRecipient,
+    isRecipient,
     // rótulo amigável
     status_label: STATUS_LABELS_PT[row.status] || row.status,
   };

@@ -186,7 +186,8 @@ async function carregarRecados() {
       const visibilityLabel = m.visibility === 'public' ? 'Público' : 'Privado';
 
       const isOwner = m.is_owner === true || m.isOwner === true;
-      const canEditThis = CAN_UPDATE_MESSAGE || (CAN_EDIT_OWN_MESSAGE && isOwner);
+      const isRecipient = m.is_recipient === true || m.isRecipient === true;
+      const canEditThis = CAN_UPDATE_MESSAGE || (CAN_EDIT_OWN_MESSAGE && (isOwner || isRecipient));
 
       const actions = [`
         <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>

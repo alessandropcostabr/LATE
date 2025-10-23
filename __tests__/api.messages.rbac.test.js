@@ -141,6 +141,18 @@ describe('RBAC for /api/messages* routes', () => {
     expect(messageController.forward).not.toHaveBeenCalled();
   });
 
+  it('permite operator atualizar recado recebido', async () => {
+    mockFindById.mockResolvedValueOnce({ id: 9, created_by: 2, recipient_user_id: 1 });
+
+    const updateResponse = await supertest(app)
+      .put('/api/messages/9')
+      .set('x-test-role', 'operator')
+      .send({ message: 'Follow-up' });
+
+    expect(updateResponse.status).toBe(200);
+    expect(messageController.update).toHaveBeenCalled();
+  });
+
   it('bloqueia operator ao tentar editar recado de outro usuário', async () => {
     mockFindById.mockResolvedValueOnce({ id: 7, created_by: 2 });
 

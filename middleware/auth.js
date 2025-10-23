@@ -124,9 +124,16 @@ async function requireMessageUpdatePermission(req, res, next) {
     }
 
     const sessionUserId = Number(req.session.user.id);
-    if (Number.isInteger(sessionUserId) && sessionUserId > 0 && message.created_by === sessionUserId) {
+    const isOwner = Number.isInteger(sessionUserId) && sessionUserId > 0 && message.created_by === sessionUserId;
+    const isRecipient = Number.isInteger(sessionUserId) && sessionUserId > 0 && message.recipient_user_id === sessionUserId;
+
+    if (isOwner || isRecipient) {
       req.userRoleSlug = roleSlug;
-      req.messageAccess = { isOwner: true, messageId };
+      req.messageAccess = {
+        isOwner,
+        isRecipient,
+        messageId,
+      };
       return next();
     }
 
