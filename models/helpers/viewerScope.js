@@ -9,7 +9,7 @@ function buildViewerOwnershipFilter(
   viewer = {},
   placeholder = (i) => `$${i}`,
   startIndex = 1,
-  { alias } = {}
+  { alias, supportsCreator } = {}
 ) {
   if (!viewer || normalizeViewScope(viewer.viewScope || viewer.view_scope) !== 'own') {
     return { clause: '', params: [], nextIndex: startIndex };
@@ -18,7 +18,6 @@ function buildViewerOwnershipFilter(
   const idColumn = alias ? `${alias}.recipient_user_id` : 'recipient_user_id';
   const sectorColumn = alias ? `${alias}.recipient_sector_id` : 'recipient_sector_id';
   const nameColumn = alias ? `${alias}.recipient` : 'recipient';
-  const creatorColumn = alias ? `${alias}.created_by` : 'created_by';
   const visibilityColumn = alias ? `${alias}.visibility` : 'visibility';
 
   const clauses = [];
@@ -31,9 +30,12 @@ function buildViewerOwnershipFilter(
     params.push(viewerId);
     index += 1;
 
-    clauses.push(`${creatorColumn} = ${placeholder(index)}`);
-    params.push(viewerId);
-    index += 1;
+    if (supportsCreator) {
+      const creatorColumn = alias ? `${alias}.created_by` : 'created_by';
+      clauses.push(`${creatorColumn} = ${placeholder(index)}`);
+      params.push(viewerId);
+      index += 1;
+    }
 
     clauses.push(`(${sectorColumn} IS NOT NULL AND EXISTS (
       SELECT 1

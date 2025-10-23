@@ -460,8 +460,10 @@ async function create(payload) {
 }
 
 async function findById(id, { viewer } = {}) {
-  const { selectColumns } = await resolveSelectColumns();
-  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, 2);
+  const { selectColumns, includeCreatedBy } = await resolveSelectColumns();
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, 2, {
+    supportsCreator: includeCreatedBy,
+  });
   const sql = `
     SELECT ${selectColumns}
       FROM messages
@@ -629,7 +631,7 @@ async function list({
   order = 'desc',
   viewer,
 } = {}) {
-  const { selectColumns } = await resolveSelectColumns();
+  const { selectColumns, includeCreatedBy } = await resolveSelectColumns();
 
   // limites
   const parsedLimit = Number(limit);
@@ -657,7 +659,9 @@ async function list({
   let params = [...filtersResult.params];
   let nextIndex = filtersResult.nextIndex;
 
-  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex);
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex, {
+    supportsCreator: includeCreatedBy,
+  });
   if (ownershipFilter.clause) {
     if (whereClause) {
       whereClause += ` AND ${ownershipFilter.clause}`;
@@ -686,7 +690,10 @@ async function listRecent(limit = 10, { viewer } = {}) {
 
 // ---------------------------- Estatísticas ---------------------------------
 async function stats({ viewer } = {}) {
-  const totalFilter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const totalFilter = buildViewerOwnershipFilter(viewer, ph, 1, {
+    supportsCreator,
+  });
   const totalSql = `
     SELECT COUNT(*)::int AS count
       FROM messages
@@ -694,7 +701,9 @@ async function stats({ viewer } = {}) {
   `;
   const total = await db.query(totalSql, totalFilter.params);
 
-  const statusFilter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const statusFilter = buildViewerOwnershipFilter(viewer, ph, 1, {
+    supportsCreator,
+  });
   const statusSql = `
     SELECT status, COUNT(*)::int AS count
       FROM messages
@@ -721,7 +730,10 @@ async function statsByRecipient({ limit = 10, viewer } = {}) {
   const parsedLimit = Number(limit);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
 
-  const filter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const filter = buildViewerOwnershipFilter(viewer, ph, 1, {
+    supportsCreator,
+  });
   const limitIndex = filter.nextIndex;
   const sql = `
     SELECT
@@ -739,7 +751,10 @@ async function statsByRecipient({ limit = 10, viewer } = {}) {
 }
 
 async function statsByStatus({ viewer } = {}) {
-  const filter = buildViewerOwnershipFilter(viewer, ph, 1);
+  const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const filter = buildViewerOwnershipFilter(viewer, ph, 1, {
+    supportsCreator,
+  });
   const sql = `
     SELECT status, COUNT(*)::int AS count
       FROM messages
@@ -761,7 +776,11 @@ async function statsByStatus({ viewer } = {}) {
 
 // Série mensal (últimos 12 meses) por created_at — PostgreSQL
 async function statsByMonth({ viewer } = {}) {
-  const filter = buildViewerOwnershipFilter(viewer, ph, 1, { alias: 'ms' });
+  const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const filter = buildViewerOwnershipFilter(viewer, ph, 1, {
+    alias: 'ms',
+    supportsCreator,
+  });
   const sql = `
     WITH months AS (
       SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, 11)) AS m
