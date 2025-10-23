@@ -24,7 +24,12 @@ const {
 } = require('../middleware/validation');
 
 // Painel ADMIN de Usuários
-const { requireAuth, requireRole, requirePermission } = require('../middleware/auth');
+const {
+  requireAuth,
+  requireRole,
+  requirePermission,
+  requireMessageUpdatePermission,
+} = require('../middleware/auth');
 const UserController = require('../controllers/userController');
 const {
   validateUserCreate,
@@ -139,7 +144,13 @@ router.post(
 
 router.put(
   '/messages/:id',
-  ...flatFns(canUpdateMessages, validateId, validateUpdateMessage, handleValidationErrors),
+  ...flatFns(
+    [requireAuth, csrfProtection],
+    validateId,
+    validateUpdateMessage,
+    handleValidationErrors,
+    [requireMessageUpdatePermission]
+  ),
   messageController.update
 );
 
@@ -151,7 +162,13 @@ router.post(
 
 router.patch(
   '/messages/:id/status',
-  ...flatFns(canUpdateMessages, validateId, validateUpdateStatus, handleValidationErrors),
+  ...flatFns(
+    [requireAuth, csrfProtection],
+    validateId,
+    validateUpdateStatus,
+    handleValidationErrors,
+    [requireMessageUpdatePermission]
+  ),
   messageController.updateStatus
 );
 

@@ -33,6 +33,8 @@ function setupDatabase() {
         visibility TEXT NOT NULL DEFAULT 'private',
         callback_time TEXT,
         notes TEXT,
+        created_by INTEGER,
+        updated_by INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -113,9 +115,9 @@ describe('message model with modern schema', () => {
     const db = database;
 
     const baseInsert = `
-      INSERT INTO messages (call_date, call_time, recipient, sender_name, subject, message, status, created_at, updated_at)
-      VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pending','2024-01-01 10:00:00','2024-01-01 10:00:00'),
-             ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolved','2024-01-02 11:00:00','2024-01-02 11:00:00');
+      INSERT INTO messages (call_date, call_time, recipient, sender_name, subject, message, status, created_by, updated_by, created_at, updated_at)
+      VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pending',1,1,'2024-01-01 10:00:00','2024-01-01 10:00:00'),
+             ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolved',1,1,'2024-01-02 11:00:00','2024-01-02 11:00:00');
     `;
 
     // Em PG, TIMESTAMP aceita o mesmo literal string padrão ISO; manter igual.
@@ -132,9 +134,9 @@ describe('message model with modern schema', () => {
     const db = database;
 
     await db.exec(`
-      INSERT INTO messages (call_date, call_time, recipient, sender_name, subject, message, status, created_at, updated_at)
-      VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pending','2024-01-01 10:00:00','2024-01-01 10:00:00'),
-             ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolved','2024-01-02 11:00:00','2024-01-02 11:00:00');
+      INSERT INTO messages (call_date, call_time, recipient, sender_name, subject, message, status, created_by, updated_by, created_at, updated_at)
+      VALUES ('2024-01-01','09:00','Dest1','Rem1','A','Mensagem A','pending',1,1,'2024-01-01 10:00:00','2024-01-01 10:00:00'),
+             ('2024-01-02','10:00','Dest2','Rem2','B','Mensagem B','resolved',1,1,'2024-01-02 11:00:00','2024-01-02 11:00:00');
     `);
 
     const summary = await MessageModel.stats();

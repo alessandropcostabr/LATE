@@ -1,3 +1,5 @@
+const MessageModel = require('../models/message');
+
 const ROLE_ALIASES = {
   admin: 'admin',
   administrador: 'admin',
@@ -91,6 +93,53 @@ function requirePermission(action) {
   };
 }
 
+async function requireMessageUpdatePermission(req, res, next) {
+  if (!req.session || !req.session.user) {
+    return respondUnauthorized(req, res);
+  }
+
+  const { slug: roleSlug, permissions } = getRolePermissions(req.userRoleSlug || req.session.user.role);
+
+  if (permissions.has('update')) {
+    req.userRoleSlug = roleSlug;
+    return next();
+  }
+
+  if (roleSlug !== 'operator') {
+    return respondForbidden(req, res);
+  }
+
+  const messageId = Number(req.params?.id);
+  if (!Number.isInteger(messageId) || messageId <= 0) {
+    return respondForbidden(req, res);
+  }
+
+  try {
+    const message = await MessageModel.findById(messageId);
+    if (!message) {
+      if (isApiRequest(req)) {
+        return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      }
+      return res.status(404).render('404', { title: 'Recado não encontrado' });
+    }
+
+    const sessionUserId = Number(req.session.user.id);
+    if (Number.isInteger(sessionUserId) && sessionUserId > 0 && message.created_by === sessionUserId) {
+      req.userRoleSlug = roleSlug;
+      req.messageAccess = { isOwner: true, messageId };
+      return next();
+    }
+
+    return respondForbidden(req, res);
+  } catch (err) {
+    console.error('[auth] erro ao validar atualização de recado:', err);
+    if (isApiRequest(req)) {
+      return res.status(500).json({ success: false, error: 'Falha ao validar permissão' });
+    }
+    return res.status(500).render('500', { title: 'Erro interno' });
+  }
+}
+
 function hasPermission(role, action) {
   const { permissions } = getRolePermissions(role);
   return permissions.has(action);
@@ -100,6 +149,7 @@ module.exports = {
   requireAuth,
   requireRole,
   requirePermission,
+  requireMessageUpdatePermission,
   normalizeRoleSlug,
   hasPermission,
 };

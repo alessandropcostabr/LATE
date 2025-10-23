@@ -6,6 +6,7 @@
 const permissionsEl = document.querySelector('[data-message-permissions]');
 const CAN_UPDATE_MESSAGE = permissionsEl?.dataset?.canUpdate === 'true';
 const CAN_DELETE_MESSAGE = permissionsEl?.dataset?.canDelete === 'true';
+const CAN_EDIT_OWN_MESSAGE = permissionsEl?.dataset?.canEditOwn === 'true';
 
 async function request(url, opts = {}) {
   const res = await fetch(url, {
@@ -184,14 +185,28 @@ async function carregarRecados() {
       const recipient = m.recipient || 'Não informado';
       const visibilityLabel = m.visibility === 'public' ? 'Público' : 'Privado';
 
+      const isOwner = m.is_owner === true || m.isOwner === true;
+      const canEditThis = CAN_UPDATE_MESSAGE || (CAN_EDIT_OWN_MESSAGE && isOwner);
+
       const actions = [`
         <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>
       `];
 
-      if (CAN_UPDATE_MESSAGE) {
+      if (canEditThis) {
         actions.push(`
           <a class="btn btn-primary btn-sm" href="/editar-recado/${m.id}">✏️ Editar</a>
         `);
+
+        if (m.status !== 'resolved') {
+          actions.push(`
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              data-action="resolve-message"
+              data-message-id="${m.id}"
+            >✅ Resolver</button>
+          `);
+        }
       }
 
       if (CAN_DELETE_MESSAGE) {
@@ -267,44 +282,81 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const listContainer = document.getElementById('listaRecados');
-  if (listContainer && CAN_DELETE_MESSAGE) {
+  if (listContainer) {
     listContainer.addEventListener('click', async (event) => {
-      const target = event.target.closest('[data-action="delete-message"]');
-      if (!target) return;
-      event.preventDefault();
+      const deleteButton = event.target.closest('[data-action="delete-message"]');
+      if (deleteButton) {
+        if (!CAN_DELETE_MESSAGE) return;
+        event.preventDefault();
 
-      const messageId = target.getAttribute('data-message-id');
-      if (!messageId) return;
+        const messageId = deleteButton.getAttribute('data-message-id');
+        if (!messageId) return;
 
-      const subject = decodeAttr(target.getAttribute('data-message-subject') || '');
-      const confirmation = subject
-        ? `Tem certeza de que deseja excluir o recado "${subject}"?`
-        : 'Tem certeza de que deseja excluir este recado?';
+        const subject = decodeAttr(deleteButton.getAttribute('data-message-subject') || '');
+        const confirmation = subject
+          ? `Tem certeza de que deseja excluir o recado "${subject}"?`
+          : 'Tem certeza de que deseja excluir este recado?';
 
-      if (!window.confirm(confirmation)) return;
+        if (!window.confirm(confirmation)) return;
 
-      try {
-        setButtonLoading(target, true, 'Excluindo...');
+        try {
+          setButtonLoading(deleteButton, true, 'Excluindo...');
 
-        if (!window.API || typeof window.API.deleteMessage !== 'function') {
-          throw new Error('API indisponível para excluir recados.');
+          if (!window.API || typeof window.API.deleteMessage !== 'function') {
+            throw new Error('API indisponível para excluir recados.');
+          }
+
+          await window.API.deleteMessage(messageId);
+          if (window.Toast?.success) {
+            window.Toast.success('Recado excluído com sucesso.');
+          }
+          carregarRecados();
+        } catch (err) {
+          const msg = err?.message || 'Erro ao excluir recado.';
+          if (window.Toast?.error) {
+            window.Toast.error(msg);
+          } else {
+            console.error('[recados] Falha ao excluir recado:', err);
+            alert(msg);
+          }
+        } finally {
+          setButtonLoading(deleteButton, false);
         }
+        return;
+      }
 
-        await window.API.deleteMessage(messageId);
-        if (window.Toast?.success) {
-          window.Toast.success('Recado excluído com sucesso.');
+      const resolveButton = event.target.closest('[data-action="resolve-message"]');
+      if (resolveButton) {
+        event.preventDefault();
+
+        const messageId = resolveButton.getAttribute('data-message-id');
+        if (!messageId) return;
+
+        if (!window.confirm('Marcar este recado como resolvido?')) return;
+
+        try {
+          setButtonLoading(resolveButton, true, 'Resolvendo...');
+
+          if (!window.API || typeof window.API.updateMessageStatus !== 'function') {
+            throw new Error('API indisponível para resolver recados.');
+          }
+
+          await window.API.updateMessageStatus(messageId, { status: 'resolved' });
+          if (window.Toast?.success) {
+            window.Toast.success('Recado marcado como resolvido.');
+          }
+          carregarRecados();
+        } catch (err) {
+          const msg = err?.message || 'Erro ao resolver recado.';
+          if (window.Toast?.error) {
+            window.Toast.error(msg);
+          } else {
+            console.error('[recados] Falha ao resolver recado:', err);
+            alert(msg);
+          }
+        } finally {
+          setButtonLoading(resolveButton, false);
         }
-        carregarRecados();
-      } catch (err) {
-        const msg = err?.message || 'Erro ao excluir recado.';
-        if (window.Toast?.error) {
-          window.Toast.error(msg);
-        } else {
-          console.error('[recados] Falha ao excluir recado:', err);
-          alert(msg);
-        }
-      } finally {
-        setButtonLoading(target, false);
       }
     });
   }

@@ -3,7 +3,12 @@
 
 const express = require('express');
 const { body } = require('express-validator');
-const { requireAuth, requireRole, requirePermission } = require('../middleware/auth');
+const {
+  requireAuth,
+  requireRole,
+  requirePermission,
+  requireMessageUpdatePermission,
+} = require('../middleware/auth');
 const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 
@@ -167,7 +172,7 @@ router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtect
   }
 });
 
-router.get('/editar-recado/:id', requireAuth, requirePermission('update'), csrfProtection, async (req, res) => {
+router.get('/editar-recado/:id', requireAuth, requireMessageUpdatePermission, csrfProtection, async (req, res) => {
   try {
     const [activeUsers, sectorsResult] = await Promise.all([
       UserModel.getActiveUsersSelect(),
