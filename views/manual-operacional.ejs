@@ -1,0 +1,170 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container" style="max-width:960px;">
+      <article class="card">
+        <div class="card-header">
+          <h1 class="card-title">Manual Operacional do LATE</h1>
+          <p class="card-subtitle">Guia rápido para registrar, encaminhar e concluir recados com eficiência.</p>
+        </div>
+        <div class="card-body manual-body">
+          <section>
+            <h2>1. O que é o LATE?</h2>
+            <ul>
+              <li>Plataforma web que substitui o caderno físico de recados.</li>
+              <li>Centraliza ligações, recados e confirmações em um único lugar.</li>
+              <li>Funciona em computadores e celulares modernos, sem instalação adicional.</li>
+            </ul>
+            <h3>Benefícios para o time</h3>
+            <ul>
+              <li><strong>Organização:</strong> todos os recados ficam ordenados e com histórico.</li>
+              <li><strong>Agilidade:</strong> destinatários recebem alertas por e-mail (individual ou por setor).</li>
+              <li><strong>Segurança:</strong> acesso controlado por perfil, com registro de alterações.</li>
+              <li><strong>Visibilidade:</strong> indicadores no painel mostram volume e status.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>2. Quem usa?</h2>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Perfil</th>
+                  <th>O que faz no LATE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Recepção / Atendimento</td>
+                  <td>Registra ligações, corrige informações e marca recados como entregues.</td>
+                </tr>
+                <tr>
+                  <td>Destinatários</td>
+                  <td>Consultam recados recebidos, registram retorno e alteram status.</td>
+                </tr>
+                <tr>
+                  <td>Gestores</td>
+                  <td>Acompanham estatísticas, distribuem a fila e monitoram prazos.</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section>
+            <h2>3. Primeiro acesso</h2>
+            <ol>
+              <li>Abra o navegador (Chrome, Edge ou Firefox).</li>
+              <li>Acesse o endereço informado pela empresa (<code>https://late.…</code>).</li>
+              <li>Informe e-mail e senha cadastrados. Se for o primeiro acesso, troque a senha após entrar.</li>
+              <li>Use “Esqueci minha senha” se precisar redefinir o acesso.</li>
+            </ol>
+            <div class="manual-hint">
+              <strong>Dicas:</strong>
+              <ul>
+                <li>Ative o lembrete de senha apenas em dispositivos confiáveis.</li>
+                <li>Solicite criação de usuários ao responsável indicado pela sua área.</li>
+                <li>Finalize a sessão clicando em <strong>Sair</strong> ao encerrar o turno.</li>
+              </ul>
+            </div>
+          </section>
+
+          <section>
+            <h2>4. Conhecendo a tela inicial</h2>
+            <ul>
+              <li><strong>Menu superior:</strong> atalhos para Registrar Recado, Recados, Dashboard e Ajuda.</li>
+              <li><strong>Cartões de resumo:</strong> pendências, recados em andamento e concluídos.</li>
+              <li><strong>Lista de recados:</strong> visualização rápida com remetente, destinatário e status.</li>
+              <li><strong>Pesquisa e filtros:</strong> refine por setor, status ou período.</li>
+            </ul>
+            <p class="manual-hint">Use os filtros laterais para mostrar apenas um departamento ou status específico.</p>
+          </section>
+
+          <section>
+            <h2>5. Como registrar um recado</h2>
+            <ol>
+              <li>Clique em <strong>Novo Recado</strong>.</li>
+              <li>Preencha os campos obrigatórios:
+                <ul>
+                  <li>Nome e telefone de quem ligou.</li>
+                  <li>Destinatário (usuário) ou setor responsável.</li>
+                  <li>Mensagem com o pedido ou contexto.</li>
+                </ul>
+              </li>
+              <li>Ajuste data/hora se a ligação não ocorreu no momento do registro.</li>
+              <li>Informe a urgência caso seja crítico.</li>
+              <li>Salve. O recado entra na lista e os destinatários são notificados automaticamente.</li>
+            </ol>
+            <h3>Boas práticas</h3>
+            <ul>
+              <li>Mensagem clara, objetiva e sem siglas desconhecidas.</li>
+              <li>Use observações para detalhes extras (ex.: horário ideal de retorno).</li>
+              <li>Confirme telefone/e-mail com quem ligou para facilitar follow-up.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>6. Lista de recados e ações rápidas</h2>
+            <p>Em <code>/recados</code> você encontra:</p>
+            <ul>
+              <li><strong>✏️ Editar:</strong> corrige dados rapidamente.</li>
+              <li><strong>🚧 Em andamento:</strong> muda o status e registra o responsável.</li>
+              <li><strong>✅ Resolver:</strong> encerra o recado após o retorno.</li>
+              <li><strong>📤 Encaminhar:</strong> redireciona para outro usuário ou setor (disponível na visualização detalhada).</li>
+            </ul>
+            <p class="manual-hint">Os atalhos aparecem para quem criou o recado, para os perfis com permissão de edição e também para os destinatários — inclusive quando o recado foi atribuído a um setor.</p>
+          </section>
+
+          <section>
+            <h2>7. Notificações</h2>
+            <ul>
+              <li>Recados destinados a um usuário disparam e-mail com o resumo e o botão “Abrir recado”.</li>
+              <li>Recados destinados a um <strong>setor</strong> enviam e-mail para todos os membros ativos do setor.</li>
+              <li>Quando alguém do setor altera o status para <strong>Em andamento</strong> ou <strong>Resolvido</strong>, o recado passa a ter esse usuário como destinatário único e os próximos avisos são direcionados somente a ele.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>8. Dashboard e indicadores</h2>
+            <p>O painel mostra gráficos de recados por status, horários de pico e principais destinatários. Use essas informações para equilibrar a equipe e antecipar gargalos.</p>
+          </section>
+
+          <section>
+            <h2>9. Atalhos úteis</h2>
+            <ul>
+              <li><kbd>Ctrl</kbd> + <kbd>F</kbd>: busca termos específicos na página.</li>
+              <li>Filtros salvos (quando disponíveis) permitem alternar rapidamente entre setores ou períodos.</li>
+              <li>Reordene colunas (em telas largas) arrastando para priorizar as que você mais usa.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>10. Perguntas frequentes</h2>
+            <dl>
+              <dt>Preciso instalar algo?</dt>
+              <dd>Não. Basta utilizar um navegador atualizado.</dd>
+              <dt>Posso acessar pelo celular?</dt>
+              <dd>Sim. O layout é responsivo e se adapta a telas menores.</dd>
+              <dt>Como saber se o recado foi lido?</dt>
+              <dd>O status muda conforme a ação do destinatário e o histórico registra cada interação.</dd>
+              <dt>Quem vê todos os recados?</dt>
+              <dd>Somente perfis autorizados (ex.: supervisão ou admin).</dd>
+            </dl>
+          </section>
+
+          <section>
+            <h2>11. Suporte</h2>
+            <ul>
+              <li>Dúvidas de uso: consulte o responsável interno ou a Central de Ajuda.</li>
+              <li>Problemas de acesso: informe data, horário e captura de tela ao suporte técnico.</li>
+              <li>Mantenha seus dados de contato sempre atualizados para receber as notificações corretamente.</li>
+            </ul>
+          </section>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>

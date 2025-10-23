@@ -133,6 +133,13 @@ router.get('/help', requireAuth, (req, res) => {
   res.render('help', { title: 'Central de Ajuda', user: req.session.user || null });
 });
 
+router.get('/manual-operacional', requireAuth, (req, res) => {
+  res.render('manual-operacional', {
+    title: 'Manual Operacional',
+    user: req.session.user || null,
+  });
+});
+
 router.get('/account/password', requireAuth, csrfProtection, (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   res.render('account-password', {
