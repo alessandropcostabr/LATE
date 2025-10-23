@@ -207,6 +207,17 @@ async function carregarRecados() {
             >✅ Resolver</button>
           `);
         }
+
+        if (m.status !== 'in_progress') {
+          actions.push(`
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              data-action="progress-message"
+              data-message-id="${m.id}"
+            >🚧 Em andamento</button>
+          `);
+        }
       }
 
       if (CAN_DELETE_MESSAGE) {
@@ -325,37 +336,50 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const resolveButton = event.target.closest('[data-action="resolve-message"]');
-      if (resolveButton) {
+      const statusButton = event.target.closest('[data-action="resolve-message"], [data-action="progress-message"]');
+      if (statusButton) {
         event.preventDefault();
 
-        const messageId = resolveButton.getAttribute('data-message-id');
+        const messageId = statusButton.getAttribute('data-message-id');
         if (!messageId) return;
 
-        if (!window.confirm('Marcar este recado como resolvido?')) return;
+        const action = statusButton.getAttribute('data-action');
+        const targetStatus = action === 'progress-message' ? 'in_progress' : 'resolved';
+        const confirmationText = action === 'progress-message'
+          ? 'Marcar este recado como em andamento?'
+          : 'Marcar este recado como resolvido?';
+        const loadingText = action === 'progress-message' ? 'Atualizando...' : 'Resolvendo...';
+        const successText = action === 'progress-message'
+          ? 'Recado marcado como em andamento.'
+          : 'Recado marcado como resolvido.';
+        const errorText = action === 'progress-message'
+          ? 'Erro ao atualizar recado.'
+          : 'Erro ao resolver recado.';
+
+        if (!window.confirm(confirmationText)) return;
 
         try {
-          setButtonLoading(resolveButton, true, 'Resolvendo...');
+          setButtonLoading(statusButton, true, loadingText);
 
           if (!window.API || typeof window.API.updateMessageStatus !== 'function') {
-            throw new Error('API indisponível para resolver recados.');
+            throw new Error('API indisponível para atualizar recados.');
           }
 
-          await window.API.updateMessageStatus(messageId, { status: 'resolved' });
+          await window.API.updateMessageStatus(messageId, { status: targetStatus });
           if (window.Toast?.success) {
-            window.Toast.success('Recado marcado como resolvido.');
+            window.Toast.success(successText);
           }
           carregarRecados();
         } catch (err) {
-          const msg = err?.message || 'Erro ao resolver recado.';
+          const msg = err?.message || errorText;
           if (window.Toast?.error) {
             window.Toast.error(msg);
           } else {
-            console.error('[recados] Falha ao resolver recado:', err);
+            console.error('[recados] Falha ao atualizar recado:', err);
             alert(msg);
           }
         } finally {
-          setButtonLoading(resolveButton, false);
+          setButtonLoading(statusButton, false);
         }
       }
     });
