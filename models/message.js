@@ -590,7 +590,9 @@ async function updateRecipient(id, { recipient, recipient_user_id = null, recipi
 async function updateStatus(id, status, { updatedBy } = {}) {
   const normalizedStatus = ensureStatus(status);
   if (updatedBy !== undefined) {
-    const sqlWithUser = `
+    const canUpdateUser = await supportsColumn(UPDATED_BY_COLUMN);
+    if (canUpdateUser) {
+      const sqlWithUser = `
       UPDATE messages
          SET status = ${ph(1)},
              updated_by = ${ph(2)},
@@ -603,6 +605,7 @@ async function updateStatus(id, status, { updatedBy } = {}) {
       id,
     ]);
     return rowCount > 0;
+    }
   }
 
   const sql = `
