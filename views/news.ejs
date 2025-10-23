@@ -4,29 +4,74 @@
 
   <main class="main" role="main">
     <div class="container">
-      <article class="card" aria-labelledby="newsTitle">
+      <article class="card" aria-labelledby="news-2025-10-23">
         <div class="card-header">
-          <h1 class="card-title" id="newsTitle">🗞️ LATE — Novidade da Semana</h1>
-          <p class="card-subtitle">Implantação 10/10/2025</p>
+          <h1 class="card-title" id="news-2025-10-23">🗞️ Novidades — 23/10/2025</h1>
+          <p class="card-subtitle">Notificações para setores e adoção automática do recado</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-            Publicado em 10/10/2025 · Release: Notificação de recado por e-mail.
+            Publicado em 23/10/2025 · PR #208 · Manual Operacional atualizado.
           </p>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✨ As novidades</h2>
-            <p>Consolidamos em um único release tudo que acelera o atendimento diário: o aviso por e-mail com o botão <strong>“Abrir recado”</strong> continua ativo e agora o painel destaca as melhorias mais pedidas para este fluxo.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Aviso por e-mail para todo o setor</h2>
+            <p>Quando o recado é direcionado a um setor, todos os usuários ativos associados a ele recebem um e-mail com o resumo da mensagem e o atalho “Abrir recado”. Ninguém fica de fora do atendimento.</p>
           </section>
-
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Correção dos filtros</h2>
-            <p>A busca por recados voltou a respeitar todos os critérios combinados. Corrigimos o filtro por setor e status, eliminamos resultados duplicados e garantimos que os recados marcados como resolvidos só apareçam quando esse filtro for escolhido.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧭 Quem assume vira o destinatário</h2>
+            <p>O primeiro membro do setor que altera o status para <strong>Em andamento</strong> ou <strong>Resolvido</strong> passa a ser o novo destinatário do recado. A partir daí, as notificações seguem apenas para esse responsável.</p>
           </section>
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Manual Operacional</h2>
+            <p>O guia do LATE foi atualizado explicando como funcionam as notificações por setor e a adoção automática do recado.</p>
+          </section>
+        </div>
+      </article>
 
+      <article class="card" aria-labelledby="news-2025-10-22">
+        <div class="card-header">
+          <h1 class="card-title" id="news-2025-10-22">🗞️ Novidades — 22/10/2025</h1>
+          <p class="card-subtitle">Atalhos rápidos na lista e na visualização de recados</p>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+            Publicado em 22/10/2025 · PRs #207, #205 (internos).
+          </p>
           <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">⚡ Ações direto na lista</h2>
+            <p>Incluímos os botões <strong>✏️ Editar</strong>, <strong>🚧 Em andamento</strong> e <strong>✅ Resolver</strong> em <code>/recados</code>. Operadores enxergam os atalhos sempre que forem donos ou destinatários da mensagem.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🗂️ Visualização com contexto</h2>
+            <p>A página <code>/visualizar-recado/:id</code> ganhou os mesmos atalhos, além do botão de encaminhar. As ações são exibidas automaticamente para quem tem permissão ou recebeu o recado.</p>
+          </section>
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧑‍💼 Operador destinatário pode editar</h2>
+            <p>Operadores que recebem o recado agora conseguem atualizar dados e status, mesmo que não tenham sido os criadores originais.</p>
+          </section>
+        </div>
+      </article>
+
+      <article class="card" aria-labelledby="news-2025-10-10">
+        <div class="card-header">
+          <h1 class="card-title" id="news-2025-10-10">🗞️ Implantação 10/10/2025</h1>
+          <p class="card-subtitle">Release inicial de notificações por e-mail</p>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+            Publicado em 10/10/2025 · Release inaugural do LATE com alertas por e-mail.
+          </p>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✨ Principais entregas</h2>
+            <p>Lançamento do aviso por e-mail com o botão <strong>“Abrir recado”</strong> e destaque das melhorias mais pedidas para o fluxo de atendimento.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Filtros de recados</h2>
+            <p>Correção do filtro por setor e status, eliminação de resultados duplicados e exibição correta dos recados resolvidos quando solicitado.</p>
+          </section>
+          <section>
             <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Encaminhar recados</h2>
-            <p>Incluímos o recurso <strong>Encaminhar</strong> na visualização do recado. Agora é possível redirecionar a mensagem para outro setor ou responsável em um clique, mantendo o histórico completo e os alertas por e-mail atualizados. Siga utilizando o painel para qualquer atualização de status ou resposta ao cliente; o botão serve apenas para enviar o recado à pessoa certa mais rápido.</p>
-            <p style="margin-top:0.75rem;color:var(--text-secondary);">Dúvidas? Consulte a Central de Ajuda ou fale com o suporte interno.</p>
+            <p>Inclusão do recurso <strong>Encaminhar</strong> na visualização, permitindo redirecionar mensagens e preservar o histórico com alertas atualizados.</p>
           </section>
         </div>
       </article>
