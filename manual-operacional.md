@@ -73,9 +73,10 @@ O card **Dashboard** mostra gráficos simples com:
 Use essas informações para distribuir a carga entre a equipe e identificar horários de reforço no atendimento.
 
 ## 8. Notificações e retornos
-- O LATE pode enviar alertas por e-mail aos destinatários assim que um recado é criado.
-- Quem recebe o recado consegue marcar **“Recebi”** ou deixar uma resposta. Essas ações aparecem no histórico.
-- A recepção pode verificar os recados sem retorno utilizando o filtro **“Aguardando confirmação”**.
+- O LATE envia e-mail automático para o destinatário escolhido e, quando o recado é destinado a um **setor**, todos os membros ativos daquele setor são avisados ao mesmo tempo.
+- Assim que alguém do setor assume o atendimento e altera o status para **Em andamento** ou **Resolvido**, esse usuário passa a ser o novo destinatário do recado e continua recebendo as próximas notificações.
+- Quem recebe o recado pode marcar **“Recebi”**, deixar observações e acompanhar a linha do tempo do atendimento.
+- A recepção consegue identificar recados sem retorno utilizando o filtro **“Aguardando confirmação”**.
 
 ## 9. Atalhos para o dia a dia
 - `Ctrl + F`: aciona a busca do navegador para localizar termos na página.
