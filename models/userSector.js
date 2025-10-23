@@ -124,5 +124,15 @@ async function setUserSectors(userId, sectorIds) {
   }
 }
 
-module.exports = { listUserSectors, setUserSectors };
+async function isUserInSector(userId, sectorId) {
+  const { rows } = await db.query(`
+    SELECT 1
+      FROM user_sectors
+     WHERE user_id = ${ph(1)}
+       AND sector_id = ${ph(2)}
+     LIMIT 1
+  `, [userId, sectorId]);
+  return rows.length > 0;
+}
 
+module.exports = { listUserSectors, setUserSectors, isUserInSector };

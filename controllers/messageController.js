@@ -4,6 +4,7 @@
 const Message = require('../models/message');
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
+const UserSectorModel = require('../models/userSector');
 const { sendMail } = require('../services/mailer');
 
 function normalizeRecipientId(value) {
@@ -239,6 +240,80 @@ ${htmlNote}
   }
 }
 
+async function notifyRecipientSectorMembers(messageRow) {
+  const sectorId = messageRow?.recipient_sector_id ?? null;
+  if (!sectorId) return;
+
+  try {
+    const members = await UserModel.getActiveUsersBySector(sectorId);
+    if (!Array.isArray(members) || members.length === 0) {
+      if (process.env.MAIL_DEBUG === '1') {
+        console.info('[MAIL:DEBUG] nenhum usuário ativo para setor', { sectorId, messageId: messageRow?.id });
+      }
+      return;
+    }
+
+    const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const openUrl = `${baseUrl}/recados/${messageRow.id}`;
+    const messageSnippet = (messageRow.message || '').replace(/\s+/g, ' ').slice(0, 240);
+    const messageTail = (messageRow.message || '').length > 240 ? '…' : '';
+
+    for (const member of members) {
+      const recipientEmail = member?.email;
+      if (!recipientEmail) continue;
+
+      const recipientName = member?.name || 'colega';
+      const textLines = [
+        `Olá, ${recipientName}!`,
+        '',
+        `Um novo recado foi criado para o setor ${messageRow.recipient || '(setor)'}.`,
+        '',
+        `Data/Hora: ${messageRow.call_date || '-'} ${messageRow.call_time || ''}`,
+        `Remetente: ${messageRow.sender_name || '-'} (${messageRow.sender_phone || '—'} / ${messageRow.sender_email || '—'})`,
+        `Assunto: ${messageRow.subject || '-'}`,
+        `Mensagem: ${messageSnippet}${messageTail}`,
+        '',
+        `Abrir recado: ${openUrl}`,
+      ];
+
+      const html = `
+        <p>Olá, <strong>${escapeHtml(recipientName)}</strong>!</p>
+        <p>Um novo recado foi criado para o setor <strong>${escapeHtml(messageRow.recipient || '(setor)')}</strong>.</p>
+        <ul>
+          <li><strong>Data/Hora:</strong> ${escapeHtml(messageRow.call_date || '-')} ${escapeHtml(messageRow.call_time || '')}</li>
+          <li><strong>Remetente:</strong> ${escapeHtml(messageRow.sender_name || '-')} (${escapeHtml(messageRow.sender_phone || '—')} / ${escapeHtml(messageRow.sender_email || '—')})</li>
+          <li><strong>Assunto:</strong> ${escapeHtml(messageRow.subject || '-')}</li>
+          <li><strong>Mensagem:</strong> ${escapeHtml(messageSnippet)}${messageTail}</li>
+        </ul>
+        <p><a href="${escapeHtml(openUrl)}">➜ Abrir recado</a></p>
+      `.trim();
+
+      const subject = `[LATE] Novo recado para o setor ${messageRow.recipient || ''}`.trim();
+
+      await sendMail({
+        to: recipientEmail,
+        subject,
+        html,
+        text: textLines.join('\n'),
+      });
+
+      if (process.env.MAIL_DEBUG === '1') {
+        console.info('[MAIL:DEBUG] notificação de setor enviada', {
+          messageId: messageRow?.id,
+          sectorId,
+          recipientUserId: member.id,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[MAIL:ERROR] Falha ao notificar setor', {
+      messageId: messageRow?.id,
+      sectorId,
+      err: err?.message || err,
+    });
+  }
+}
+
 // Função para padronizar o objeto enviado ao cliente (mantém snake_case e adiciona camelCase)
 function toClient(row, viewer) {
   if (!row) return null;
@@ -269,6 +344,49 @@ function toClient(row, viewer) {
     // rótulo amigável
     status_label: STATUS_LABELS_PT[row.status] || row.status,
   };
+}
+
+async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer) {
+  if (!messageRow) return messageRow;
+  const sectorId = messageRow.recipient_sector_id ?? messageRow.recipientSectorId ?? null;
+  if (!sectorId) return messageRow;
+
+  const status = messageRow.status;
+  if (status !== 'in_progress' && status !== 'resolved') {
+    return messageRow;
+  }
+
+  const sessionUserId = Number(sessionUser?.id);
+  const sessionUserName = String(sessionUser?.name || '').trim();
+  if (!Number.isInteger(sessionUserId) || sessionUserId <= 0 || !sessionUserName) {
+    return messageRow;
+  }
+
+  if (messageRow.recipient_user_id && messageRow.recipient_user_id !== sessionUserId) {
+    return messageRow;
+  }
+
+  if (messageRow.recipient_user_id === sessionUserId && !messageRow.recipient_sector_id) {
+    return messageRow;
+  }
+
+  const isMember = await UserSectorModel.isUserInSector(sessionUserId, sectorId);
+  if (!isMember) {
+    return messageRow;
+  }
+
+  const updated = await Message.updateRecipient(messageRow.id, {
+    recipient: sessionUserName,
+    recipient_user_id: sessionUserId,
+    recipient_sector_id: null,
+  });
+
+  if (!updated) {
+    return messageRow;
+  }
+
+  const refreshed = await Message.findById(messageRow.id, { viewer });
+  return refreshed || messageRow;
 }
 
 // GET /api/messages?limit&offset&start_date&end_date&status&recipient&order_by&order
@@ -362,6 +480,7 @@ exports.create = async (req, res) => {
     const created = await Message.findById(id);
 
     await notifyRecipientUser(created, { template: 'new' });
+    await notifyRecipientSectorMembers(created);
 
     return res.status(201).json({ success: true, data: toClient(created, viewer) });
   } catch (err) {
@@ -414,7 +533,8 @@ exports.update = async (req, res) => {
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
-    const updated = await Message.findById(id, { viewer });
+    let updated = await Message.findById(id, { viewer });
+    updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer);
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar:', err);
@@ -503,7 +623,8 @@ exports.updateStatus = async (req, res) => {
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
-    const updated = await Message.findById(id, { viewer });
+    let updated = await Message.findById(id, { viewer });
+    updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer);
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar status:', err);

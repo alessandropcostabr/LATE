@@ -388,6 +388,24 @@ class UserModel {
     const { rows } = await db.query(sql);
     return rows.map((row) => ({ id: row.id, name: row.name }));
   }
+
+  async getActiveUsersBySector(sectorId) {
+    const sql = `
+      SELECT u.id, u.name, u.email
+        FROM user_sectors us
+        JOIN users u ON u.id = us.user_id
+       WHERE us.sector_id = ${ph(1)}
+         AND u.is_active = TRUE
+         AND COALESCE(NULLIF(TRIM(u.email), ''), NULL) IS NOT NULL
+       ORDER BY u.name ASC
+    `;
+    const { rows } = await db.query(sql, [sectorId]);
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+    }));
+  }
 }
 
 module.exports = new UserModel();
