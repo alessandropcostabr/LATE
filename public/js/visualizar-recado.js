@@ -7,10 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!wrapper || !container) return;
 
   const id = wrapper.dataset?.id || location.pathname.split('/').pop();
+  const canUpdateMessage = wrapper.dataset?.canUpdate === 'true';
+  const canEditOwn = wrapper.dataset?.canEditOwn === 'true';
   const editButton = wrapper.querySelector('[data-edit-button]');
   const backButton = wrapper.querySelector('[data-back-button]');
   const deleteButton = wrapper.querySelector('[data-delete-button]');
   const forwardButton = wrapper.querySelector('[data-forward-button]');
+  const progressButton = wrapper.querySelector('[data-progress-button]');
+  const resolveButton = wrapper.querySelector('[data-resolve-button]');
   const canDelete = wrapper.dataset?.canDelete === 'true';
 
   const forwardModalEl = document.getElementById('forwardModal');
@@ -68,6 +72,10 @@ document.addEventListener('DOMContentLoaded', () => {
           ? getStatusLabel(recado?.status)
           : (typeof getSituacaoLabel === 'function' ? getSituacaoLabel(recado?.status) : recado?.status));
 
+      const isOwner = recado?.is_owner === true || recado?.isOwner === true;
+      const isRecipient = recado?.is_recipient === true || recado?.isRecipient === true;
+      const canManage = canUpdateMessage || (canEditOwn && (isOwner || isRecipient));
+
       const dados = [
         ['Data/Hora:', `${recado?.call_date || ''} ${recado?.call_time || ''}`.trim()],
         ['Destinatário:', recado?.recipient || '-'],
@@ -92,7 +100,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (editButton) {
         editButton.href = `/editar-recado/${id}`;
-        editButton.hidden = false;
+        editButton.hidden = !canManage;
+        editButton.disabled = !canManage;
+      }
+
+      if (progressButton) {
+        progressButton.hidden = !canManage || recado?.status === 'in_progress';
+        progressButton.disabled = progressButton.hidden;
+      }
+
+      if (resolveButton) {
+        resolveButton.hidden = !canManage || recado?.status === 'resolved';
+        resolveButton.disabled = resolveButton.hidden;
       }
 
       if (deleteButton && canDelete) {
@@ -102,7 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (forwardButton) {
-        forwardButton.disabled = false;
+        forwardButton.hidden = !canManage;
+        forwardButton.disabled = forwardButton.hidden;
       }
     } catch (e) {
       currentMessage = null;
@@ -112,12 +132,22 @@ document.addEventListener('DOMContentLoaded', () => {
       container.textContent = message;
       if (editButton) {
         editButton.hidden = true;
+        editButton.disabled = true;
       }
       if (deleteButton) {
         deleteButton.hidden = true;
       }
       if (forwardButton) {
         forwardButton.disabled = true;
+        forwardButton.hidden = true;
+      }
+      if (progressButton) {
+        progressButton.disabled = true;
+        progressButton.hidden = true;
+      }
+      if (resolveButton) {
+        resolveButton.disabled = true;
+        resolveButton.hidden = true;
       }
       if (typeof Toast !== 'undefined' && Toast.error) {
         Toast.error(message);
@@ -134,6 +164,58 @@ document.addEventListener('DOMContentLoaded', () => {
     if (forwardModal) {
       forwardModal.show();
     }
+  });
+
+  async function handleStatusUpdate(button, status) {
+    if (!button || !currentMessage) return;
+
+    const messages = status === 'in_progress'
+      ? {
+          confirm: 'Marcar este recado como em andamento?',
+          loading: 'Atualizando...',
+          success: 'Recado marcado como em andamento.',
+          error: 'Erro ao atualizar recado.',
+        }
+      : {
+          confirm: 'Marcar este recado como resolvido?',
+          loading: 'Atualizando...',
+          success: 'Recado marcado como resolvido.',
+          error: 'Erro ao atualizar recado.',
+        };
+
+    if (!window.confirm(messages.confirm)) return;
+
+    const originalText = button.textContent;
+    try {
+      button.disabled = true;
+      button.textContent = messages.loading;
+
+      await API.updateMessageStatus(currentMessage.id, { status });
+      if (window.Toast?.success) {
+        window.Toast.success(messages.success);
+      }
+      await loadMessage();
+    } catch (err) {
+      const msg = err?.message || messages.error;
+      if (window.Toast?.error) {
+        window.Toast.error(msg);
+      } else {
+        alert(msg);
+      }
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+
+  progressButton?.addEventListener('click', (event) => {
+    event.preventDefault();
+    handleStatusUpdate(progressButton, 'in_progress');
+  });
+
+  resolveButton?.addEventListener('click', (event) => {
+    event.preventDefault();
+    handleStatusUpdate(resolveButton, 'resolved');
   });
 
   if (forwardForm) {

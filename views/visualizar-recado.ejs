@@ -11,6 +11,9 @@
         class="card"
         id="detalhesRecado"
         data-id="<%= id %>"
+        data-can-update="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>"
+        data-can-edit-own="<%= userRoleSlug === 'operator' ? 'true' : 'false' %>"
+        data-user-role="<%= userRoleSlug || 'reader' %>"
         data-can-delete="<%= permissions && permissions.deleteMessages ? 'true' : 'false' %>"
       >
         <div class="card-header">
@@ -22,10 +25,10 @@
         <div class="card-footer">
           <div style="display:flex;gap:1rem;flex-wrap:wrap;">
             <a href="/recados" class="btn btn-outline" data-back-button>Voltar</a>
-            <% if (permissions && permissions.updateMessages) { %>
-              <a href="/editar-recado/<%= id %>" class="btn btn-primary" data-edit-button>✏️ Editar</a>
-              <button type="button" class="btn btn-secondary" data-forward-button>📤 Encaminhar</button>
-            <% } %>
+            <a href="/editar-recado/<%= id %>" class="btn btn-primary" data-edit-button hidden>✏️ Editar</a>
+            <button type="button" class="btn btn-secondary" data-forward-button hidden>📤 Encaminhar</button>
+            <button type="button" class="btn btn-secondary" data-progress-button hidden>🚧 Em andamento</button>
+            <button type="button" class="btn btn-success" data-resolve-button hidden>✅ Resolver</button>
             <% if (permissions && permissions.deleteMessages) { %>
               <button type="button" class="btn btn-danger" data-delete-button>🗑️ Excluir</button>
             <% } %>
