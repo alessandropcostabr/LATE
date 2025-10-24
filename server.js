@@ -17,6 +17,7 @@ const db = require('./config/database'); // Pool do pg (PG-only)
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 const healthController = require('./controllers/healthController');
+const { startAlertScheduler } = require('./services/messageAlerts');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
 
 let validateOrigin;
@@ -308,6 +309,15 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'})`);
 });
 
+const disableScheduler = String(process.env.DISABLE_ALERT_SCHEDULER || '').toLowerCase();
+if (!['true', '1', 'yes'].includes(disableScheduler) && process.env.NODE_ENV !== 'test') {
+  try {
+    startAlertScheduler();
+  } catch (err) {
+    console.error('[alerts] falha ao iniciar agendador', err);
+  }
+}
+
 process.on('SIGTERM', () => {
   console.log('🛑 Recebido SIGTERM. Encerrando servidor...');
   server.close(async () => {
@@ -333,4 +343,3 @@ process.on('unhandledRejection', reason => {
 });
 
 module.exports = app;
-
