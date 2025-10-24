@@ -720,16 +720,8 @@ main.auth-layout {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-.stat-card.pendente {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), var(--error));
-  border-color: rgba(239, 68, 68, 0.6);
-  color: #fff;
-}
 .stat-card.pendente .stat-number {
-  color: #fff;
-}
-.stat-card.pendente .stat-label {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--error);
 }
 .stat-card.andamento .stat-number {
   color: var(--progress);
