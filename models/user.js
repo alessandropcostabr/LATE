@@ -406,6 +406,23 @@ class UserModel {
       email: row.email,
     }));
   }
+
+  async getNamesByIds(ids = []) {
+    const uniqueIds = [...new Set(ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+    if (uniqueIds.length === 0) return {};
+
+    const placeholders = uniqueIds.map((_, index) => ph(index + 1)).join(', ');
+    const sql = `
+      SELECT id, name
+        FROM users
+       WHERE id IN (${placeholders})
+    `;
+    const { rows } = await db.query(sql, uniqueIds);
+    return rows.reduce((acc, row) => {
+      acc[row.id] = row.name;
+      return acc;
+    }, {});
+  }
 }
 
 module.exports = new UserModel();

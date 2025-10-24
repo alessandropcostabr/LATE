@@ -5,6 +5,7 @@ const Message = require('../models/message');
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
 const UserSectorModel = require('../models/userSector');
+const MessageEvent = require('../models/messageEvent');
 const { sendMail } = require('../services/mailer');
 
 function normalizeRecipientId(value) {
@@ -316,19 +317,52 @@ async function notifyRecipientSectorMembers(messageRow) {
 
       const subject = `[LATE] Novo recado para o setor ${messageRow.recipient || ''}`.trim();
 
-      await sendMail({
-        to: recipientEmail,
-        subject,
-        html,
-        text: textLines.join('\n'),
-      });
+      try {
+        await sendMail({
+          to: recipientEmail,
+          subject,
+          html,
+          text: textLines.join('\n'),
+        });
 
-      if (process.env.MAIL_DEBUG === '1') {
-        console.info('[MAIL:DEBUG] notificação de setor enviada', {
+        if (process.env.MAIL_DEBUG === '1') {
+          console.info('[MAIL:DEBUG] notificação de setor enviada', {
+            messageId: messageRow?.id,
+            sectorId,
+            recipientUserId: member.id,
+            recipientEmail,
+          });
+        }
+      } catch (mailErr) {
+        const reason = mailErr?.message || mailErr;
+        console.error('[MAIL:ERROR] Falha ao notificar integrante do setor', {
           messageId: messageRow?.id,
           sectorId,
           recipientUserId: member.id,
+          recipientEmail,
+          err: reason,
         });
+        try {
+          await MessageEvent.create({
+            message_id: messageRow.id,
+            event_type: 'email_failure',
+            payload: {
+              email: recipientEmail,
+              sector_id: sectorId,
+              user_id: member.id,
+              reason,
+              scope: 'sector_notification',
+            },
+          });
+        } catch (eventErr) {
+          console.warn('[MAIL:WARN] falha ao registrar evento de erro de e-mail', {
+            messageId: messageRow?.id,
+            sectorId,
+            recipientEmail,
+            err: eventErr?.message || eventErr,
+          });
+        }
+        continue;
       }
     }
   } catch (err) {
@@ -377,6 +411,8 @@ function toClient(row, viewer) {
     isRecipient,
     is_sector_member: isSectorMember,
     isSectorMember,
+    created_by_name: row.created_by_name ?? null,
+    createdByName: row.created_by_name ?? null,
     // rótulo amigável
     status_label: STATUS_LABELS_PT[row.status] || row.status,
   };
@@ -422,7 +458,24 @@ async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer) {
   }
 
   const refreshed = await Message.findById(messageRow.id, { viewer });
+  await attachCreatorNames([refreshed]);
   return refreshed || messageRow;
+}
+
+async function attachCreatorNames(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  const ids = rows
+    .map((row) => row?.created_by ?? row?.createdBy ?? null)
+    .filter((id) => Number.isInteger(Number(id)) && Number(id) > 0);
+  if (!ids.length) return;
+
+  const namesMap = await UserModel.getNamesByIds(ids);
+  rows.forEach((row) => {
+    const creatorId = row?.created_by ?? row?.createdBy;
+    if (creatorId && namesMap[creatorId]) {
+      row.created_by_name = namesMap[creatorId];
+    }
+  });
 }
 
 // GET /api/messages?limit&offset&start_date&end_date&status&recipient&order_by&order
@@ -452,6 +505,7 @@ exports.list = async (req, res) => {
       order,
       viewer,
     });
+    await attachCreatorNames(rows);
 
     return res.json({ success: true, data: rows.map((row) => toClient(row, viewer)) });
   } catch (err) {
@@ -469,6 +523,7 @@ exports.getById = async (req, res) => {
     }
     const viewer = await resolveViewerWithSectors(req);
     const row = await Message.findById(id, { viewer });
+    await attachCreatorNames([row]);
     if (!row) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
@@ -514,6 +569,7 @@ exports.create = async (req, res) => {
 
     const id = await Message.create(payload);
     const created = await Message.findById(id);
+    await attachCreatorNames([created]);
 
     await notifyRecipientUser(created, { template: 'new' });
     await notifyRecipientSectorMembers(created);
@@ -570,6 +626,7 @@ exports.update = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
     let updated = await Message.findById(id, { viewer });
+    await attachCreatorNames([updated]);
     updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer);
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
@@ -624,6 +681,7 @@ exports.forward = async (req, res) => {
     }
 
     const updated = await Message.findById(id);
+    await attachCreatorNames([updated]);
     const forwardNoteRaw = req.body?.forwardNote ?? req.body?.forward_note ?? req.body?.note ?? req.body?.comment;
     const forwardNote = typeof forwardNoteRaw === 'string' ? forwardNoteRaw.trim() : '';
     const forwardedBy = req.session?.user?.name || null;
@@ -660,6 +718,7 @@ exports.updateStatus = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
     let updated = await Message.findById(id, { viewer });
+    await attachCreatorNames([updated]);
     updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer);
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
