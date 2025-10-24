@@ -130,6 +130,32 @@ function getViewerFromRequest(req) {
   };
 }
 
+async function resolveViewerWithSectors(req) {
+  if (req._viewerCache) return req._viewerCache;
+
+  const base = getViewerFromRequest(req);
+  if (!base || !Number.isInteger(Number(base.id))) {
+    req._viewerCache = base;
+    return base;
+  }
+
+  try {
+    const sectors = await UserSectorModel.listUserSectors(base.id);
+    base.sectorIds = sectors
+      .map((sector) => Number(sector.id))
+      .filter((id) => Number.isInteger(id) && id > 0);
+  } catch (err) {
+    console.warn('[viewer] falha ao carregar setores do usuário', {
+      userId: base.id,
+      err: err?.message || err,
+    });
+    base.sectorIds = [];
+  }
+
+  req._viewerCache = base;
+  return base;
+}
+
 async function notifyRecipientUser(messageRow, { template = 'new', forwardedBy, reason } = {}) {
   const recipientUserId = messageRow?.recipient_user_id ?? null;
   if (!recipientUserId) return;
@@ -321,7 +347,15 @@ function toClient(row, viewer) {
   const updatedBy = row.updated_by ?? row.updatedBy ?? null;
   const viewerId = Number(viewer?.id);
   const isOwner = Number.isInteger(viewerId) && viewerId > 0 && createdBy === viewerId;
-  const isRecipient = Number.isInteger(viewerId) && viewerId > 0 && (row.recipient_user_id ?? row.recipientUserId) === viewerId;
+  const viewerSectorIds = Array.isArray(viewer?.sectorIds) ? viewer.sectorIds : [];
+  const sectorId = row.recipient_sector_id ?? row.recipientSectorId ?? null;
+  const isSectorMember = Number.isInteger(viewerId) && viewerId > 0 &&
+    Number.isInteger(sectorId) && viewerSectorIds.includes(Number(sectorId));
+  const isRecipient = (
+    Number.isInteger(viewerId) &&
+    viewerId > 0 &&
+    ((row.recipient_user_id ?? row.recipientUserId) === viewerId || isSectorMember)
+  );
 
   return {
     ...row,
@@ -341,6 +375,8 @@ function toClient(row, viewer) {
     isOwner,
     is_recipient: isRecipient,
     isRecipient,
+    is_sector_member: isSectorMember,
+    isSectorMember,
     // rótulo amigável
     status_label: STATUS_LABELS_PT[row.status] || row.status,
   };
@@ -403,7 +439,7 @@ exports.list = async (req, res) => {
       order,
     } = req.query;
 
-    const viewer = getViewerFromRequest(req);
+    const viewer = await resolveViewerWithSectors(req);
 
     const rows = await Message.list({
       limit,
@@ -431,7 +467,7 @@ exports.getById = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const viewer = getViewerFromRequest(req);
+    const viewer = await resolveViewerWithSectors(req);
     const row = await Message.findById(id, { viewer });
     if (!row) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
@@ -446,7 +482,7 @@ exports.getById = async (req, res) => {
 // POST /api/messages
 exports.create = async (req, res) => {
   try {
-    const viewer = getViewerFromRequest(req);
+    const viewer = await resolveViewerWithSectors(req);
     const sessionUserId = Number(req.session?.user?.id);
 
     const recipientInput = extractRecipientInput(req.body);
@@ -496,7 +532,7 @@ exports.update = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const viewer = getViewerFromRequest(req);
+    const viewer = await resolveViewerWithSectors(req);
     const sessionUserId = Number(req.session?.user?.id);
     const payload = sanitizePayload(req.body);
 
@@ -549,7 +585,7 @@ exports.forward = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const viewer = getViewerFromRequest(req);
+    const viewer = await resolveViewerWithSectors(req);
 
     const current = await Message.findById(id);
     if (!current) {
@@ -614,7 +650,7 @@ exports.updateStatus = async (req, res) => {
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
-    const viewer = getViewerFromRequest(req);
+    const viewer = await resolveViewerWithSectors(req);
     const sessionUserId = Number(req.session?.user?.id);
     const { status } = req.body || {};
     const ok = await Message.updateStatus(id, status, {
