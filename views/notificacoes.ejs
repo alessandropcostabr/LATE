@@ -1,0 +1,54 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container" style="max-width: 720px;">
+      <article class="card">
+        <div class="card-header">
+          <h1 class="card-title">Configurações de Notificações</h1>
+          <p class="card-subtitle">Defina a periodicidade dos alertas por e-mail para recados pendentes e em andamento.</p>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="/notificacoes">
+            <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <% } %>
+
+            <section style="margin-bottom:2rem;">
+              <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:1rem;">Alertas de Recados Pendentes</h2>
+              <div class="form-group" style="display:flex;align-items:center;gap:0.75rem;">
+                <input type="checkbox" id="pending_enabled" name="pending_enabled" <%= settings.pending_enabled ? 'checked' : '' %>>
+                <label for="pending_enabled" class="form-label" style="margin:0;">Enviar lembretes para recados pendentes</label>
+              </div>
+              <div class="form-group">
+                <label for="pending_interval_hours" class="form-label">Intervalo (em horas)</label>
+                <input id="pending_interval_hours" name="pending_interval_hours" type="number" min="1" class="form-input" value="<%= settings.pending_interval_hours %>">
+                <p class="form-help">O destinatário (ou todos do setor) receberá um e-mail a cada intervalo informado enquanto o recado estiver pendente.</p>
+              </div>
+            </section>
+
+            <section style="margin-bottom:2rem;">
+              <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:1rem;">Alertas de Recados em Andamento</h2>
+              <div class="form-group" style="display:flex;align-items:center;gap:0.75rem;">
+                <input type="checkbox" id="in_progress_enabled" name="in_progress_enabled" <%= settings.in_progress_enabled ? 'checked' : '' %>>
+                <label for="in_progress_enabled" class="form-label" style="margin:0;">Enviar lembretes para recados em andamento</label>
+              </div>
+              <div class="form-group">
+                <label for="in_progress_interval_hours" class="form-label">Intervalo (em horas)</label>
+                <input id="in_progress_interval_hours" name="in_progress_interval_hours" type="number" min="1" class="form-input" value="<%= settings.in_progress_interval_hours %>">
+                <p class="form-help">O usuário responsável (quem assumiu o recado) receberá um e-mail enquanto o status permanecer em andamento.</p>
+              </div>
+            </section>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;">
+              <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>

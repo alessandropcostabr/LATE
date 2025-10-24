@@ -9,7 +9,7 @@ function buildViewerOwnershipFilter(
   viewer = {},
   placeholder = (i) => `$${i}`,
   startIndex = 1,
-  { alias, supportsCreator } = {}
+  { alias, supportsCreator, supportsSectorMembership = true } = {}
 ) {
   if (!viewer || normalizeViewScope(viewer.viewScope || viewer.view_scope) !== 'own') {
     return { clause: '', params: [], nextIndex: startIndex };
@@ -37,14 +37,16 @@ function buildViewerOwnershipFilter(
       index += 1;
     }
 
-    clauses.push(`(${sectorColumn} IS NOT NULL AND EXISTS (
+    if (supportsSectorMembership) {
+      clauses.push(`(${sectorColumn} IS NOT NULL AND EXISTS (
       SELECT 1
         FROM user_sectors us
        WHERE us.user_id = ${placeholder(index)}
          AND us.sector_id = ${sectorColumn}
     ))`);
-    params.push(viewerId);
-    index += 1;
+      params.push(viewerId);
+      index += 1;
+    }
   }
 
   const viewerName = String(viewer.name || '').trim();

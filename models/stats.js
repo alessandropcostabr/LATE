@@ -5,10 +5,92 @@
 const db = require('../config/database'); // Pool do pg
 const { buildViewerOwnershipFilter } = require('./helpers/viewerScope');
 
+const USER_SECTORS_TABLE = 'user_sectors';
+const tableSupportCache = new Map();
+const tableCheckPromises = new Map();
+const RECIPIENT_SECTOR_COLUMN = 'recipient_sector_id';
+const columnSupportCache = new Map();
+const columnCheckPromises = new Map();
+
+async function supportsUserSectorsTable() {
+  if (tableSupportCache.has(USER_SECTORS_TABLE)) {
+    return tableSupportCache.get(USER_SECTORS_TABLE);
+  }
+  if (tableCheckPromises.has(USER_SECTORS_TABLE)) {
+    return tableCheckPromises.get(USER_SECTORS_TABLE);
+  }
+
+  const sql = `
+    SELECT 1
+      FROM information_schema.tables
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+     LIMIT 1
+  `;
+
+  const promise = db
+    .query(sql, [USER_SECTORS_TABLE])
+    .then(({ rowCount }) => {
+      const exists = rowCount > 0;
+      tableSupportCache.set(USER_SECTORS_TABLE, exists);
+      return exists;
+    })
+    .catch((err) => {
+      console.warn('[stats] não foi possível inspecionar tabela user_sectors:', err.message || err);
+      tableSupportCache.set(USER_SECTORS_TABLE, false);
+      return false;
+    })
+    .finally(() => {
+      tableCheckPromises.delete(USER_SECTORS_TABLE);
+    });
+
+  tableCheckPromises.set(USER_SECTORS_TABLE, promise);
+  return promise;
+}
+
+async function supportsRecipientSectorColumn() {
+  if (columnSupportCache.has(RECIPIENT_SECTOR_COLUMN)) {
+    return columnSupportCache.get(RECIPIENT_SECTOR_COLUMN);
+  }
+  if (columnCheckPromises.has(RECIPIENT_SECTOR_COLUMN)) {
+    return columnCheckPromises.get(RECIPIENT_SECTOR_COLUMN);
+  }
+
+  const sql = `
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'messages'
+       AND column_name = $1
+     LIMIT 1
+  `;
+
+  const promise = db
+    .query(sql, [RECIPIENT_SECTOR_COLUMN])
+    .then(({ rowCount }) => {
+      const exists = rowCount > 0;
+      columnSupportCache.set(RECIPIENT_SECTOR_COLUMN, exists);
+      return exists;
+    })
+    .catch((err) => {
+      console.warn('[stats] não foi possível inspecionar coluna recipient_sector_id:', err.message || err);
+      columnSupportCache.set(RECIPIENT_SECTOR_COLUMN, false);
+      return false;
+    })
+    .finally(() => {
+      columnCheckPromises.delete(RECIPIENT_SECTOR_COLUMN);
+    });
+
+  columnCheckPromises.set(RECIPIENT_SECTOR_COLUMN, promise);
+  return promise;
+}
+
 // Estatísticas gerais no intervalo informado (por created_at)
 // Retorna chaves esperadas pelo front: { total, pendente, em_andamento, resolvido }
 exports.getMessagesStats = async ({ startAt, endAt, viewer } = {}) => {
-  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 3);
+  const supportsRecipientSector = await supportsRecipientSectorColumn();
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
+  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 3, { supportsSectorMembership });
   const sql = `
     SELECT
       COUNT(*)::int                                                   AS total,
@@ -31,7 +113,9 @@ exports.getMessagesStats = async ({ startAt, endAt, viewer } = {}) => {
 
 // Agrupado por status (para gráficos/relatórios)
 exports.getStatsByStatus = async ({ viewer } = {}) => {
-  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 1);
+  const supportsRecipientSector = await supportsRecipientSectorColumn();
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
+  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 1, { supportsSectorMembership });
   const sql = `
     SELECT status, COUNT(*)::int AS total
     FROM messages
@@ -45,7 +129,9 @@ exports.getStatsByStatus = async ({ viewer } = {}) => {
 
 // Agrupado por destinatário
 exports.getStatsByRecipient = async ({ viewer } = {}) => {
-  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 1);
+  const supportsRecipientSector = await supportsRecipientSectorColumn();
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
+  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 1, { supportsSectorMembership });
   const sql = `
     SELECT COALESCE(NULLIF(TRIM(recipient), ''), 'Não informado') AS recipient, COUNT(*)::int AS total
     FROM messages
@@ -60,7 +146,12 @@ exports.getStatsByRecipient = async ({ viewer } = {}) => {
 // Últimos 12 meses
 exports.getStatsByMonth = async ({ viewer, months = 12 } = {}) => {
   const span = Math.max(1, Number(months) || 12);
-  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 1, { alias: 'ms' });
+  const supportsRecipientSector = await supportsRecipientSectorColumn();
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
+  const viewerFilter = buildViewerOwnershipFilter(viewer, (i) => `$${i}`, 1, {
+    alias: 'ms',
+    supportsSectorMembership,
+  });
   const sql = `
     WITH months AS (
       SELECT date_trunc('month', NOW()) - (INTERVAL '1 month' * generate_series(0, ${span - 1})) AS m

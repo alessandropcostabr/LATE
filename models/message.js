@@ -11,9 +11,14 @@ const RECIPIENT_SECTOR_COLUMN = 'recipient_sector_id';
 const CREATED_BY_COLUMN = 'created_by';
 const UPDATED_BY_COLUMN = 'updated_by';
 const VISIBILITY_COLUMN = 'visibility';
+const USER_SECTORS_TABLE = 'user_sectors';
+let recipientSectorFeatureDisabled = false;
 
 const columnSupportCache = new Map();
 const columnCheckPromises = new Map();
+
+const tableSupportCache = new Map();
+const tableCheckPromises = new Map();
 
 async function supportsColumn(column) {
   if (columnSupportCache.has(column)) {
@@ -52,6 +57,95 @@ async function supportsColumn(column) {
   return promise;
 }
 
+async function supportsTable(table) {
+  if (tableSupportCache.has(table)) {
+    return tableSupportCache.get(table);
+  }
+  if (tableCheckPromises.has(table)) {
+    return tableCheckPromises.get(table);
+  }
+
+  const sql = `
+    SELECT 1
+      FROM information_schema.tables
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+     LIMIT 1
+  `;
+
+  const promise = db
+    .query(sql, [table])
+    .then(({ rowCount }) => {
+      const exists = rowCount > 0;
+      tableSupportCache.set(table, exists);
+      return exists;
+    })
+    .catch((err) => {
+      console.warn(`[messages] não foi possível inspecionar tabela ${table}:`, err.message || err);
+      tableSupportCache.set(table, false);
+      return false;
+    })
+    .finally(() => {
+      tableCheckPromises.delete(table);
+    });
+
+  tableCheckPromises.set(table, promise);
+  return promise;
+}
+
+async function supportsUserSectorsTable() {
+  return supportsTable(USER_SECTORS_TABLE);
+}
+
+function invalidateColumnSupport(column) {
+  columnSupportCache.set(column, false);
+  columnCheckPromises.delete(column);
+}
+
+function invalidateTableSupport(table) {
+  tableSupportCache.set(table, false);
+  tableCheckPromises.delete(table);
+}
+
+function extractMissingColumn(err) {
+  if (!err) return null;
+  const message = String(err.message || '');
+  const match = /column "([^"]+)" does not exist/i.exec(message);
+  if (match) return match[1];
+  return null;
+}
+
+function extractMissingTable(err) {
+  if (!err) return null;
+  const message = String(err.message || '');
+  const match = /relation "([^"]+)" does not exist/i.exec(message);
+  if (match) return match[1];
+  return null;
+}
+
+async function handleSchemaError(err, retrying, retryFn) {
+  if (retrying) throw err;
+
+  const missingTable = extractMissingTable(err);
+  if (missingTable && missingTable === USER_SECTORS_TABLE) {
+    console.warn('[messages] fallback: desabilitando filtros por setor (tabela user_sectors ausente)');
+    invalidateTableSupport(USER_SECTORS_TABLE);
+    return retryFn();
+  }
+
+  const missingColumn = extractMissingColumn(err);
+  if (missingColumn && OPTIONAL_COLUMNS.has(missingColumn)) {
+    console.warn(`[messages] fallback: coluna opcional ausente (${missingColumn})`);
+    invalidateColumnSupport(missingColumn);
+    if (missingColumn === RECIPIENT_SECTOR_COLUMN) {
+      recipientSectorFeatureDisabled = true;
+    }
+    return retryFn();
+  }
+
+  throw err;
+}
+
 const BASE_SELECT_FIELDS = [
   'id',
   'call_date',
@@ -71,6 +165,13 @@ const BASE_SELECT_FIELDS = [
   'created_by',
   'updated_by',
 ];
+
+const OPTIONAL_COLUMNS = new Set([
+  RECIPIENT_USER_COLUMN,
+  RECIPIENT_SECTOR_COLUMN,
+  CREATED_BY_COLUMN,
+  UPDATED_BY_COLUMN,
+]);
 
 function composeSelectFields(includeRecipientUserId, includeRecipientSectorId, includeCreatedBy, includeUpdatedBy) {
   const fields = [...BASE_SELECT_FIELDS];
@@ -107,14 +208,15 @@ async function resolveSelectColumns() {
     supportsColumn(CREATED_BY_COLUMN),
     supportsColumn(UPDATED_BY_COLUMN),
   ]);
+  const effectiveRecipientSectorId = !recipientSectorFeatureDisabled && includeRecipientSectorId;
   return {
     includeRecipientUserId,
-    includeRecipientSectorId,
+    includeRecipientSectorId: effectiveRecipientSectorId,
     includeCreatedBy,
     includeUpdatedBy,
     selectColumns: composeSelectFields(
       includeRecipientUserId,
-      includeRecipientSectorId,
+      effectiveRecipientSectorId,
       includeCreatedBy,
       includeUpdatedBy,
     ).join(',\n      '),
@@ -459,10 +561,13 @@ async function create(payload) {
   return rows?.[0]?.id || null;
 }
 
-async function findById(id, { viewer } = {}) {
-  const { selectColumns, includeCreatedBy } = await resolveSelectColumns();
+async function findById(id, { viewer } = {}, retrying = false) {
+  const { selectColumns, includeCreatedBy, includeRecipientSectorId } = await resolveSelectColumns();
+  const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
   const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, 2, {
     supportsCreator: includeCreatedBy,
+    supportsSectorMembership,
   });
   const sql = `
     SELECT ${selectColumns}
@@ -472,11 +577,15 @@ async function findById(id, { viewer } = {}) {
      LIMIT 1
   `;
   const params = ownershipFilter.clause ? [id, ...ownershipFilter.params] : [id];
-  const { rows } = await db.query(sql, params);
-  return mapRow(rows?.[0]);
+  try {
+    const { rows } = await db.query(sql, params);
+    return mapRow(rows?.[0]);
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => findById(id, { viewer }, true));
+  }
 }
 
-async function update(id, payload) {
+async function update(id, payload, retrying = false) {
   const {
     includeRecipientUserId,
     includeRecipientSectorId,
@@ -550,11 +659,20 @@ async function update(id, payload) {
      WHERE id = ${ph(nextIndex)}
   `;
   params.push(id);
-  const { rowCount } = await db.query(sql, params);
-  return rowCount > 0;
+  try {
+    const { rowCount } = await db.query(sql, params);
+    return rowCount > 0;
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => update(id, payload, true));
+  }
 }
 
-async function updateRecipient(id, { recipient, recipient_user_id = null, recipient_sector_id = null }) {
+async function updateRecipient(id, options = {}, retrying = false) {
+  const {
+    recipient,
+    recipient_user_id = null,
+    recipient_sector_id = null,
+  } = options;
   const { includeRecipientUserId, includeRecipientSectorId } = await resolveSelectColumns();
   const assignments = [];
   const params = [];
@@ -583,11 +701,15 @@ async function updateRecipient(id, { recipient, recipient_user_id = null, recipi
 
   params.push(id);
 
-  const { rowCount } = await db.query(sql, params);
-  return rowCount > 0;
+  try {
+    const { rowCount } = await db.query(sql, params);
+    return rowCount > 0;
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => updateRecipient(id, options, true));
+  }
 }
 
-async function updateStatus(id, status, { updatedBy } = {}) {
+async function updateStatus(id, status, { updatedBy } = {}, retrying = false) {
   const normalizedStatus = ensureStatus(status);
   if (updatedBy !== undefined) {
     const canUpdateUser = await supportsColumn(UPDATED_BY_COLUMN);
@@ -599,12 +721,16 @@ async function updateStatus(id, status, { updatedBy } = {}) {
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(3)}
     `;
-    const { rowCount } = await db.query(sqlWithUser, [
-      normalizedStatus,
-      normalizeUserId(updatedBy),
-      id,
-    ]);
-    return rowCount > 0;
+    try {
+      const { rowCount } = await db.query(sqlWithUser, [
+        normalizedStatus,
+        normalizeUserId(updatedBy),
+        id,
+      ]);
+      return rowCount > 0;
+    } catch (err) {
+      return handleSchemaError(err, retrying, () => updateStatus(id, status, { updatedBy }, true));
+    }
     }
   }
 
@@ -614,35 +740,45 @@ async function updateStatus(id, status, { updatedBy } = {}) {
            updated_at = CURRENT_TIMESTAMP
      WHERE id = ${ph(2)}
   `;
-  const { rowCount } = await db.query(sql, [normalizedStatus, id]);
-  return rowCount > 0;
+  try {
+    const { rowCount } = await db.query(sql, [normalizedStatus, id]);
+    return rowCount > 0;
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => updateStatus(id, status, { updatedBy }, true));
+  }
 }
 
-async function remove(id) {
-  const { rowCount } = await db.query(`DELETE FROM messages WHERE id = ${ph(1)}`, [id]);
-  return rowCount > 0;
+async function remove(id, retrying = false) {
+  try {
+    const { rowCount } = await db.query(`DELETE FROM messages WHERE id = ${ph(1)}`, [id]);
+    return rowCount > 0;
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => remove(id, true));
+  }
 }
 
-async function list({
-  limit = 10,
-  offset = 0,
-  status,
-  start_date,
-  end_date,
-  recipient,
-  order_by = 'created_at',
-  order = 'desc',
-  viewer,
-} = {}) {
-  const { selectColumns, includeCreatedBy } = await resolveSelectColumns();
+async function list(options = {}, retrying = false) {
+  const {
+    limit = 10,
+    offset = 0,
+    status,
+    start_date,
+    end_date,
+    recipient,
+    order_by = 'created_at',
+    order = 'desc',
+    viewer,
+  } = options;
 
-  // limites
+  const { selectColumns, includeCreatedBy, includeRecipientSectorId } = await resolveSelectColumns();
+  const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
+
   const parsedLimit = Number(limit);
   const parsedOffset = Number(offset);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
   const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
-  // ordenação segura
   const orderByAllowed = ['created_at', 'updated_at', 'id', 'status'];
   const orderBy = orderByAllowed.includes(String(order_by)) ? String(order_by) : 'created_at';
   const sort = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
@@ -659,11 +795,12 @@ async function list({
     recipient: recipientFilter || null,
   });
   let whereClause = filtersResult.clause;
-  let params = [...filtersResult.params];
+  let queryParams = [...filtersResult.params];
   let nextIndex = filtersResult.nextIndex;
 
   const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex, {
     supportsCreator: includeCreatedBy,
+    supportsSectorMembership,
   });
   if (ownershipFilter.clause) {
     if (whereClause) {
@@ -671,7 +808,7 @@ async function list({
     } else {
       whereClause = `WHERE ${ownershipFilter.clause}`;
     }
-    params.push(...ownershipFilter.params);
+    queryParams.push(...ownershipFilter.params);
     nextIndex = ownershipFilter.nextIndex;
   }
 
@@ -683,8 +820,12 @@ async function list({
      LIMIT ${ph(nextIndex)} OFFSET ${ph(nextIndex + 1)}
   `;
 
-  const { rows } = await db.query(sql, [...params, sanitizedLimit, sanitizedOffset]);
-  return rows.map(mapRow);
+  try {
+    const { rows } = await db.query(sql, [...queryParams, sanitizedLimit, sanitizedOffset]);
+    return rows.map(mapRow);
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => list(options, true));
+  }
 }
 
 async function listRecent(limit = 10, { viewer } = {}) {
@@ -694,8 +835,11 @@ async function listRecent(limit = 10, { viewer } = {}) {
 // ---------------------------- Estatísticas ---------------------------------
 async function stats({ viewer } = {}) {
   const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const supportsRecipientSector = !recipientSectorFeatureDisabled && await supportsColumn(RECIPIENT_SECTOR_COLUMN);
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
   const totalFilter = buildViewerOwnershipFilter(viewer, ph, 1, {
     supportsCreator,
+    supportsSectorMembership,
   });
   const totalSql = `
     SELECT COUNT(*)::int AS count
@@ -706,6 +850,7 @@ async function stats({ viewer } = {}) {
 
   const statusFilter = buildViewerOwnershipFilter(viewer, ph, 1, {
     supportsCreator,
+    supportsSectorMembership,
   });
   const statusSql = `
     SELECT status, COUNT(*)::int AS count
@@ -734,8 +879,11 @@ async function statsByRecipient({ limit = 10, viewer } = {}) {
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
 
   const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const supportsRecipientSector = !recipientSectorFeatureDisabled && await supportsColumn(RECIPIENT_SECTOR_COLUMN);
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
   const filter = buildViewerOwnershipFilter(viewer, ph, 1, {
     supportsCreator,
+    supportsSectorMembership,
   });
   const limitIndex = filter.nextIndex;
   const sql = `
@@ -755,8 +903,11 @@ async function statsByRecipient({ limit = 10, viewer } = {}) {
 
 async function statsByStatus({ viewer } = {}) {
   const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const supportsRecipientSector = !recipientSectorFeatureDisabled && await supportsColumn(RECIPIENT_SECTOR_COLUMN);
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
   const filter = buildViewerOwnershipFilter(viewer, ph, 1, {
     supportsCreator,
+    supportsSectorMembership,
   });
   const sql = `
     SELECT status, COUNT(*)::int AS count
@@ -780,9 +931,12 @@ async function statsByStatus({ viewer } = {}) {
 // Série mensal (últimos 12 meses) por created_at — PostgreSQL
 async function statsByMonth({ viewer } = {}) {
   const supportsCreator = await supportsColumn(CREATED_BY_COLUMN);
+  const supportsRecipientSector = !recipientSectorFeatureDisabled && await supportsColumn(RECIPIENT_SECTOR_COLUMN);
+  const supportsSectorMembership = supportsRecipientSector && await supportsUserSectorsTable();
   const filter = buildViewerOwnershipFilter(viewer, ph, 1, {
     alias: 'ms',
     supportsCreator,
+    supportsSectorMembership,
   });
   const sql = `
     WITH months AS (

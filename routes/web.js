@@ -11,6 +11,7 @@ const {
 } = require('../middleware/auth');
 const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
+const notificationController = require('../controllers/notificationController');
 
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -132,6 +133,9 @@ router.get('/news', requireAuth, (req, res) => {
 router.get('/help', requireAuth, (req, res) => {
   res.render('help', { title: 'Central de Ajuda', user: req.session.user || null });
 });
+
+router.get('/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.showSettings);
+router.post('/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.updateSettings);
 
 router.get('/manual-operacional', requireAuth, (req, res) => {
   res.render('manual-operacional', {
