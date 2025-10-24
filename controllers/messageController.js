@@ -579,6 +579,7 @@ exports.list = async (req, res) => {
     } = req.query;
 
     const viewer = await resolveViewerWithSectors(req);
+    const actor = getSessionActor(req);
 
     const rows = await Message.list({
       limit,

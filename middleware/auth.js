@@ -1,4 +1,5 @@
 const MessageModel = require('../models/message');
+const UserSectorModel = require('../models/userSector');
 
 const ROLE_ALIASES = {
   admin: 'admin',
@@ -126,12 +127,17 @@ async function requireMessageUpdatePermission(req, res, next) {
     const sessionUserId = Number(req.session.user.id);
     const isOwner = Number.isInteger(sessionUserId) && sessionUserId > 0 && message.created_by === sessionUserId;
     const isRecipient = Number.isInteger(sessionUserId) && sessionUserId > 0 && message.recipient_user_id === sessionUserId;
+    const isSectorRecipient = Number.isInteger(sessionUserId) &&
+      sessionUserId > 0 &&
+      Number.isInteger(message.recipient_sector_id) &&
+      await UserSectorModel.isUserInSector(sessionUserId, message.recipient_sector_id);
 
-    if (isOwner || isRecipient) {
+    if (isOwner || isRecipient || isSectorRecipient) {
       req.userRoleSlug = roleSlug;
       req.messageAccess = {
         isOwner,
-        isRecipient,
+        isRecipient: isRecipient || isSectorRecipient,
+        isSectorRecipient,
         messageId,
       };
       return next();
