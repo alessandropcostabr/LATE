@@ -121,6 +121,23 @@ const STATUS_LABELS_PT = {
   resolved: 'Resolvido',
 };
 
+const CHANGE_FIELD_LABELS = {
+  recipient: 'Destinatário',
+  recipient_user_id: 'Destinatário (usuário)',
+  recipient_sector_id: 'Destinatário (setor)',
+  status: 'Situação',
+  message: 'Mensagem',
+  notes: 'Observações',
+  call_date: 'Data da ligação',
+  call_time: 'Hora da ligação',
+  callback_time: 'Horário de retorno',
+  sender_name: 'Remetente',
+  sender_phone: 'Telefone',
+  sender_email: 'E-mail',
+  subject: 'Assunto',
+  visibility: 'Visibilidade',
+};
+
 function getViewerFromRequest(req) {
   const sessionUser = req.session?.user;
   if (!sessionUser) return null;
@@ -418,7 +435,7 @@ function toClient(row, viewer) {
   };
 }
 
-async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer) {
+async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer, actor = {}) {
   if (!messageRow) return messageRow;
   const sectorId = messageRow.recipient_sector_id ?? messageRow.recipientSectorId ?? null;
   if (!sectorId) return messageRow;
@@ -430,6 +447,9 @@ async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer) {
 
   const sessionUserId = Number(sessionUser?.id);
   const sessionUserName = String(sessionUser?.name || '').trim();
+  const actorId = Number.isInteger(Number(actor?.id)) ? Number(actor.id) : sessionUserId;
+  const actorName = actor?.name || sessionUserName;
+
   if (!Number.isInteger(sessionUserId) || sessionUserId <= 0 || !sessionUserName) {
     return messageRow;
   }
@@ -459,6 +479,13 @@ async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer) {
 
   const refreshed = await Message.findById(messageRow.id, { viewer });
   await attachCreatorNames([refreshed]);
+  await logMessageEvent(messageRow.id, 'adopted', {
+    user_id: actorId,
+    user_name: actorName,
+    from_sector_id: sectorId,
+    previous_user_id: messageRow.recipient_user_id,
+    previous_recipient: messageRow.recipient,
+  });
   return refreshed || messageRow;
 }
 
@@ -478,6 +505,65 @@ async function attachCreatorNames(rows) {
   });
 }
 
+function getSessionActor(req) {
+  const user = req.session?.user || {};
+  const id = Number(user.id);
+  return {
+    id: Number.isInteger(id) && id > 0 ? id : null,
+    name: typeof user.name === 'string' && user.name.trim() ? user.name.trim() : null,
+  };
+}
+
+async function logMessageEvent(messageId, eventType, payload = {}) {
+  if (!Number.isInteger(Number(messageId)) || messageId <= 0) return;
+  try {
+    await MessageEvent.create({
+      message_id: messageId,
+      event_type: eventType,
+      payload,
+    });
+  } catch (eventErr) {
+    console.warn('[messages] falha ao registrar evento', {
+      messageId,
+      eventType,
+      err: eventErr?.message || eventErr,
+    });
+  }
+}
+
+function computeChanges(before, after) {
+  if (!before || !after) return [];
+  const trackedFields = [
+    'recipient',
+    'status',
+    'message',
+    'notes',
+    'call_date',
+    'call_time',
+    'callback_time',
+    'sender_name',
+    'sender_phone',
+    'sender_email',
+    'subject',
+    'visibility',
+  ];
+
+  return trackedFields.reduce((acc, field) => {
+    const beforeValue = before[field] ?? null;
+    const afterValue = after[field] ?? null;
+    if ((beforeValue ?? null) === (afterValue ?? null)) {
+      return acc;
+    }
+    acc.push({
+      field,
+      label: CHANGE_FIELD_LABELS[field] || field,
+      from: beforeValue,
+      to: afterValue,
+    });
+    return acc;
+  }, []);
+}
+
 // GET /api/messages?limit&offset&start_date&end_date&status&recipient&order_by&order
 exports.list = async (req, res) => {
   try {
@@ -493,6 +579,9 @@ exports.list = async (req, res) => {
     } = req.query;
 
     const viewer = await resolveViewerWithSectors(req);
+    const actor = getSessionActor(req);
+    const actor = getSessionActor(req);
+    const actor = getSessionActor(req);
 
     const rows = await Message.list({
       limit,
@@ -550,6 +639,7 @@ exports.create = async (req, res) => {
   try {
     const viewer = await resolveViewerWithSectors(req);
     const sessionUserId = Number(req.session?.user?.id);
+    const actor = getSessionActor(req);
 
     const recipientInput = extractRecipientInput(req.body);
     const resolved = await resolveRecipientTarget(recipientInput);
@@ -585,6 +675,11 @@ exports.create = async (req, res) => {
     await notifyRecipientUser(created, { template: 'new' });
     await notifyRecipientSectorMembers(created);
 
+    await logMessageEvent(id, 'created', {
+      user_id: actor.id,
+      user_name: actor.name,
+    });
+
     return res.status(201).json({ success: true, data: toClient(created, viewer) });
   } catch (err) {
     console.error('[messages] erro ao criar:', err);
@@ -601,7 +696,12 @@ exports.update = async (req, res) => {
     }
     const viewer = await resolveViewerWithSectors(req);
     const sessionUserId = Number(req.session?.user?.id);
+    const actor = getSessionActor(req);
     const payload = sanitizePayload(req.body);
+    const before = await Message.findById(id);
+    if (!before) {
+      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+    }
 
     const recipientInput = extractRecipientInput(req.body);
     const shouldResolveRecipient = (
@@ -638,7 +738,17 @@ exports.update = async (req, res) => {
     }
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
-    updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer);
+    const changes = computeChanges(before, updated);
+
+    updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer, actor);
+    if (changes.length) {
+      await logMessageEvent(id, 'updated', {
+        user_id: actor.id,
+        user_name: actor.name,
+        changes,
+      });
+    }
+
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar:', err);
@@ -705,6 +815,21 @@ exports.forward = async (req, res) => {
       });
     }
 
+    await logMessageEvent(id, 'forwarded', {
+      user_id: actor.id,
+      user_name: actor.name,
+      from: {
+        recipient: current.recipient,
+        recipient_user_id: current.recipient_user_id,
+        recipient_sector_id: current.recipient_sector_id,
+      },
+      to: {
+        recipient: updated?.recipient ?? null,
+        recipient_user_id: updated?.recipient_user_id ?? null,
+        recipient_sector_id: updated?.recipient_sector_id ?? null,
+      },
+    });
+
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao encaminhar:', err);
@@ -721,7 +846,12 @@ exports.updateStatus = async (req, res) => {
     }
     const viewer = await resolveViewerWithSectors(req);
     const sessionUserId = Number(req.session?.user?.id);
+    const actor = getSessionActor(req);
     const { status } = req.body || {};
+    const before = await Message.findById(id);
+    if (!before) {
+      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+    }
     const ok = await Message.updateStatus(id, status, {
       updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
     });
@@ -730,7 +860,17 @@ exports.updateStatus = async (req, res) => {
     }
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
-    updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer);
+    updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer, actor);
+
+    if ((before.status ?? null) !== (updated?.status ?? null)) {
+      await logMessageEvent(id, 'status_changed', {
+        user_id: actor.id,
+        user_name: actor.name,
+        from: before.status,
+        to: updated?.status,
+      });
+    }
+
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar status:', err);

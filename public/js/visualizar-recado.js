@@ -158,6 +158,9 @@ document.addEventListener('DOMContentLoaded', () => {
         resolveButton.disabled = true;
         resolveButton.hidden = true;
       }
+      if (timelineButton) {
+        timelineButton.hidden = true;
+      }
       if (typeof Toast !== 'undefined' && Toast.error) {
         Toast.error(message);
       }
@@ -240,9 +243,78 @@ document.addEventListener('DOMContentLoaded', () => {
 
     button.hidden = false;
     button.disabled = !hasEvents;
-    button.textContent = hasEvents ? 'Histórico' : 'Histórico (vazio)';
+    button.textContent = 'Histórico';
+    button.title = hasEvents ? 'Mostrar histórico' : 'Sem eventos registrados.';
+    if (!hasEvents) {
+      return;
+    }
 
-    if (!hasEvents) return;
+    const statusLabels = {
+      pending: 'Pendente',
+      in_progress: 'Em andamento',
+      resolved: 'Resolvido',
+    };
+
+    const fieldLabels = {
+      recipient: 'Destinatário',
+      recipient_user_id: 'Destinatário (usuário)',
+      recipient_sector_id: 'Destinatário (setor)',
+      status: 'Situação',
+      message: 'Mensagem',
+      notes: 'Observações',
+      call_date: 'Data da ligação',
+      call_time: 'Hora da ligação',
+      callback_time: 'Horário de retorno',
+      sender_name: 'Remetente',
+      sender_phone: 'Telefone',
+      sender_email: 'E-mail',
+      subject: 'Assunto',
+      visibility: 'Visibilidade',
+    };
+
+    const formatValue = (value) => {
+      if (value === null || value === undefined || value === '') return '—';
+      return String(value);
+    };
+
+    const describeEvent = (event) => {
+      const payload = event?.payload || {};
+      const actor = payload.user_name || 'Usuário';
+
+      switch (event?.type) {
+        case 'created':
+          return `Recado criado por ${actor}.`;
+        case 'updated': {
+          const changes = Array.isArray(payload.changes) ? payload.changes : [];
+          if (!changes.length) {
+            return `${actor} atualizou o recado.`;
+          }
+          const details = changes
+            .map((change) => {
+              const label = change.label || fieldLabels[change.field] || change.field;
+              return `${label}: ${formatValue(change.from)} → ${formatValue(change.to)}`;
+            })
+            .join('; ');
+          return `${actor} atualizou o recado (${details}).`;
+        }
+        case 'status_changed':
+          return `${actor} alterou a situação de ${statusLabels[payload.from] || payload.from || '—'} para ${statusLabels[payload.to] || payload.to || '—'}.`;
+        case 'forwarded': {
+          const from = formatValue(payload.from?.recipient);
+          const to = formatValue(payload.to?.recipient);
+          return `${actor} encaminhou o recado (${from} → ${to}).`;
+        }
+        case 'adopted':
+          return `${actor} assumiu o recado.`;
+        case 'email_failure': {
+          const email = payload.email || 'destinatário desconhecido';
+          const reason = payload.reason || 'falha não informada';
+          return `Falha ao enviar e-mail para ${email} (${reason}).`;
+        }
+        default:
+          return event?.type || 'Evento';
+      }
+    };
 
     const timelineCard = document.createElement('div');
     timelineCard.className = 'card';
@@ -268,14 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const date = new Date(event.created_at);
       const stamp = Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('pt-BR');
 
-      let description = '';
-      if (event.type === 'email_failure') {
-        const email = event.payload?.email || 'destinatário desconhecido';
-        const reason = event.payload?.reason || 'falha não informada';
-        description = `Falha ao enviar e-mail para ${email} (${reason})`;
-      } else {
-        description = event.type;
-      }
+      const description = describeEvent(event);
 
       item.innerHTML = `<strong>${stamp}:</strong> ${description}`;
       list.appendChild(item);
@@ -289,6 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       timelineCard.hidden = !timelineCard.hidden;
       button.textContent = timelineCard.hidden ? 'Histórico' : 'Ocultar histórico';
+      button.title = timelineCard.hidden ? 'Mostrar histórico' : 'Ocultar histórico';
     };
   }
 
