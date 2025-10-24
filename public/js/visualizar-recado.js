@@ -89,6 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ['Observações:', recado?.notes || '-']
       ];
 
+      if (recado?.created_by_name) {
+        dados.splice(1, 0, ['Criado por:', recado.created_by_name]);
+      }
+
       dados.forEach(([label, value]) => {
         const p = document.createElement('p');
         const strong = document.createElement('strong');
@@ -124,6 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
         forwardButton.hidden = !canManage;
         forwardButton.disabled = forwardButton.hidden;
       }
+
+      renderTimeline(recado);
     } catch (e) {
       currentMessage = null;
       const message = e?.status === 404
@@ -217,6 +223,50 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     handleStatusUpdate(resolveButton, 'resolved');
   });
+
+  function renderTimeline(recado) {
+    const timeline = Array.isArray(recado?.timeline) ? recado.timeline : recado?.timelineEvents;
+    if (!Array.isArray(timeline) || timeline.length === 0) return;
+
+    const timelineCard = document.createElement('div');
+    timelineCard.className = 'card';
+    timelineCard.style.marginTop = '1.5rem';
+
+    const header = document.createElement('div');
+    header.className = 'card-header';
+    header.innerHTML = '<h3 class="card-title">Histórico</h3><p class="card-subtitle">Eventos registrados para este recado</p>';
+    timelineCard.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    const list = document.createElement('ul');
+    list.style.listStyle = 'disc';
+    list.style.marginLeft = '1.25rem';
+    list.style.lineHeight = '1.6';
+
+    timeline.forEach((event) => {
+      const item = document.createElement('li');
+      const date = new Date(event.created_at);
+      const stamp = Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('pt-BR');
+
+      let description = '';
+      if (event.type === 'email_failure') {
+        const email = event.payload?.email || 'destinatário desconhecido';
+        const reason = event.payload?.reason || 'falha não informada';
+        description = `Falha ao enviar e-mail para ${email} (${reason})`;
+      } else {
+        description = event.type;
+      }
+
+      item.innerHTML = `<strong>${stamp}:</strong> ${description}`;
+      list.appendChild(item);
+    });
+
+    body.appendChild(list);
+    timelineCard.appendChild(body);
+    container.appendChild(timelineCard);
+  }
 
   if (forwardForm) {
     forwardForm.addEventListener('submit', async (event) => {

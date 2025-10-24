@@ -21,6 +21,18 @@ class MessageEventModel {
     ]);
     return rows?.[0] || null;
   }
+
+  async listByMessage(messageId, { limit = 50 } = {}) {
+    const sql = `
+      SELECT id, message_id, event_type, payload, created_at
+        FROM message_events
+       WHERE message_id = ${ph(1)}
+       ORDER BY created_at DESC, id DESC
+       LIMIT ${ph(2)}
+    `;
+    const { rows } = await db.query(sql, [messageId, Math.max(1, Math.min(limit, 200))]);
+    return rows || [];
+  }
 }
 
 module.exports = new MessageEventModel();

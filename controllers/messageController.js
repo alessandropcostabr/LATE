@@ -523,11 +523,22 @@ exports.getById = async (req, res) => {
     }
     const viewer = await resolveViewerWithSectors(req);
     const row = await Message.findById(id, { viewer });
-    await attachCreatorNames([row]);
     if (!row) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
     }
-    return res.json({ success: true, data: toClient(row, viewer) });
+    await attachCreatorNames([row]);
+    const events = await MessageEvent.listByMessage(id);
+    const timeline = events.map((event) => ({
+      id: event.id,
+      type: event.event_type,
+      payload: event.payload,
+      created_at: event.created_at,
+    }));
+    const data = toClient(row, viewer);
+    data.timeline = timeline;
+    data.timelineEvents = timeline;
+
+    return res.json({ success: true, data });
   } catch (err) {
     console.error('[messages] erro ao obter por id:', err);
     return res.status(500).json({ success: false, error: 'Falha ao obter recado' });
