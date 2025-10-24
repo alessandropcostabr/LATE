@@ -579,9 +579,6 @@ exports.list = async (req, res) => {
     } = req.query;
 
     const viewer = await resolveViewerWithSectors(req);
-    const actor = getSessionActor(req);
-    const actor = getSessionActor(req);
-    const actor = getSessionActor(req);
 
     const rows = await Message.list({
       limit,
@@ -611,6 +608,7 @@ exports.getById = async (req, res) => {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
     const viewer = await resolveViewerWithSectors(req);
+    const actor = getSessionActor(req);
     const row = await Message.findById(id, { viewer });
     if (!row) {
       return res.status(404).json({ success: false, error: 'Recado não encontrado' });
