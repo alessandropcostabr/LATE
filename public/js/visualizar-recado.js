@@ -234,17 +234,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!button) return;
 
-    if (!Array.isArray(timeline) || timeline.length === 0) {
-      button.hidden = true;
-      if (existing) existing.remove();
-      return;
-    }
+    if (existing) existing.remove();
+
+    const hasEvents = Array.isArray(timeline) && timeline.length > 0;
 
     button.hidden = false;
-    button.disabled = false;
-    button.textContent = 'Histórico';
+    button.disabled = !hasEvents;
+    button.textContent = hasEvents ? 'Histórico' : 'Histórico (vazio)';
 
-    if (existing) existing.remove();
+    if (!hasEvents) return;
 
     const timelineCard = document.createElement('div');
     timelineCard.className = 'card';
