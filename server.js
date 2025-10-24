@@ -18,6 +18,7 @@ const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 const healthController = require('./controllers/healthController');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
+const { startAlertScheduler } = require('./services/messageAlerts');
 
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
@@ -195,6 +196,8 @@ if (!shouldBypassCache) {
   recadosBundle = buildRecadosBundle();
 }
 
+startAlertScheduler();
+
 const sendAppBundle = (req, res) => {
   if (shouldBypassCache || !appBundle) appBundle = buildAppBundle();
   res.type('application/javascript').send(appBundle);
@@ -333,4 +336,3 @@ process.on('unhandledRejection', reason => {
 });
 
 module.exports = app;
-
