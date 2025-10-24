@@ -150,13 +150,25 @@ router.get('/account/password', requireAuth, csrfProtection, (req, res) => {
   });
 });
 
-router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
-  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
-  res.render('recados', {
-    title: 'Recados',
-    user: req.session.user || null,
-    csrfToken,
-  });
+router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, async (req, res) => {
+  try {
+    const [activeUsers, sectorsResult] = await Promise.all([
+      UserModel.getActiveUsersSelect(),
+      SectorModel.list({ status: 'active', limit: 200 })
+    ]);
+
+    const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+    res.render('recados', {
+      title: 'Recados',
+      user: req.session.user || null,
+      csrfToken,
+      destinatariosUsuarios: activeUsers,
+      destinatariosSetores: sectorsResult?.data || [],
+    });
+  } catch (err) {
+    console.error('[web] erro ao carregar /recados:', err);
+    res.status(500).render('500', { title: 'Erro interno', user: req.session.user || null });
+  }
 });
 
 router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
