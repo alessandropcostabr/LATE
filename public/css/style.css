@@ -10,6 +10,9 @@
   --secondary: #64748b;
   --success: #10b981;
   --warning: #f59e0b;
+  --pending: #fb923c;
+  --progress: #facc15;
+  --neutral: #e2e8f0;
   --error: #ef4444;
   --background: #f8fafc;
   --surface: #fff;
@@ -718,10 +721,10 @@ main.auth-layout {
   text-transform: uppercase;
 }
 .stat-card.pendente .stat-number {
-  color: var(--warning);
+  color: var(--pending);
 }
 .stat-card.andamento .stat-number {
-  color: var(--primary);
+  color: var(--progress);
 }
 .stat-card.resolvido .stat-number {
   color: var(--success);
@@ -769,6 +772,13 @@ main.auth-layout {
 .btn-success:hover:not(:disabled) {
   background: #059669;
 }
+.btn-progress {
+  background: var(--progress);
+  color: #1f2937;
+}
+.btn-progress:hover:not(:disabled) {
+  background: #eab308;
+}
 .btn-warning {
   background: var(--warning);
   color: #fff;
@@ -782,6 +792,13 @@ main.auth-layout {
 }
 .btn-error:hover:not(:disabled) {
   background: #dc2626;
+}
+.btn-neutral {
+  background: var(--neutral);
+  color: var(--text-primary);
+}
+.btn-neutral:hover:not(:disabled) {
+  background: #cbd5f0;
 }
 .btn-outline {
   background: transparent;

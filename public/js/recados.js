@@ -190,7 +190,7 @@ async function carregarRecados() {
       const canEditThis = CAN_UPDATE_MESSAGE || (CAN_EDIT_OWN_MESSAGE && (isOwner || isRecipient));
 
       const actions = [`
-        <a class="btn btn-outline btn-sm" href="/recados/${m.id}">Ver</a>
+        <a class="btn btn-neutral btn-sm" href="/recados/${m.id}">Ver</a>
       `];
 
       if (canEditThis) {
@@ -213,7 +213,7 @@ async function carregarRecados() {
           actions.push(`
             <button
               type="button"
-              class="btn btn-secondary btn-sm"
+              class="btn btn-progress btn-sm"
               data-action="progress-message"
               data-message-id="${m.id}"
             >🚧 Em andamento</button>
@@ -225,7 +225,7 @@ async function carregarRecados() {
         actions.push(`
           <button
             type="button"
-            class="btn btn-danger btn-sm"
+            class="btn btn-error btn-sm"
             data-action="delete-message"
             data-message-id="${m.id}"
             data-message-subject="${encodeAttr(subject)}"
