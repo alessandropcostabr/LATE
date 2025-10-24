@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const progressButton = wrapper.querySelector('[data-progress-button]');
   const resolveButton = wrapper.querySelector('[data-resolve-button]');
   const canDelete = wrapper.dataset?.canDelete === 'true';
-  const ensureSection = (id) => document.getElementById(id);
 
   const forwardModalEl = document.getElementById('forwardModal');
   const forwardForm = document.getElementById('forwardForm');
@@ -228,13 +227,30 @@ document.addEventListener('DOMContentLoaded', () => {
     handleStatusUpdate(resolveButton, 'resolved');
   });
 
-  function renderTimeline(recado) {
+  function setupTimeline(recado) {
     const timeline = Array.isArray(recado?.timeline) ? recado.timeline : recado?.timelineEvents;
-    if (!Array.isArray(timeline) || timeline.length === 0) return;
+    const button = timelineButton;
+    const existing = document.getElementById('timeline-card');
+
+    if (!button) return;
+
+    if (!Array.isArray(timeline) || timeline.length === 0) {
+      button.hidden = true;
+      if (existing) existing.remove();
+      return;
+    }
+
+    button.hidden = false;
+    button.disabled = false;
+    button.textContent = 'Histórico';
+
+    if (existing) existing.remove();
 
     const timelineCard = document.createElement('div');
     timelineCard.className = 'card';
+    timelineCard.id = 'timeline-card';
     timelineCard.style.marginTop = '1.5rem';
+    timelineCard.hidden = true;
 
     const header = document.createElement('div');
     header.className = 'card-header';
@@ -270,6 +286,12 @@ document.addEventListener('DOMContentLoaded', () => {
     body.appendChild(list);
     timelineCard.appendChild(body);
     container.appendChild(timelineCard);
+
+    button.onclick = (event) => {
+      event.preventDefault();
+      timelineCard.hidden = !timelineCard.hidden;
+      button.textContent = timelineCard.hidden ? 'Histórico' : 'Ocultar histórico';
+    };
   }
 
   if (forwardForm) {
