@@ -730,7 +730,7 @@ main.auth-layout {
   color: var(--success);
 }
 .stat-card.total .stat-number {
-  color: var(--text-primary);
+  color: var(--primary);
 }
 .btn {
   align-items: center;
