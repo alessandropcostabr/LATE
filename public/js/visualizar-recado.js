@@ -13,9 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const backButton = wrapper.querySelector('[data-back-button]');
   const deleteButton = wrapper.querySelector('[data-delete-button]');
   const forwardButton = wrapper.querySelector('[data-forward-button]');
+  const timelineButton = wrapper.querySelector('[data-timeline-button]');
   const progressButton = wrapper.querySelector('[data-progress-button]');
   const resolveButton = wrapper.querySelector('[data-resolve-button]');
   const canDelete = wrapper.dataset?.canDelete === 'true';
+  const ensureSection = (id) => document.getElementById(id);
 
   const forwardModalEl = document.getElementById('forwardModal');
   const forwardForm = document.getElementById('forwardForm');
@@ -71,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
         || (typeof getStatusLabel === 'function'
           ? getStatusLabel(recado?.status)
           : (typeof getSituacaoLabel === 'function' ? getSituacaoLabel(recado?.status) : recado?.status));
+      setupTimeline(recado);
+
 
       const isOwner = recado?.is_owner === true || recado?.isOwner === true;
       const isRecipient = recado?.is_recipient === true || recado?.isRecipient === true;
@@ -129,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         forwardButton.disabled = forwardButton.hidden;
       }
 
-      renderTimeline(recado);
+      setupTimeline(recado);
     } catch (e) {
       currentMessage = null;
       const message = e?.status === 404

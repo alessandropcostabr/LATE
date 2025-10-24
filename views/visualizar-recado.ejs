@@ -29,6 +29,9 @@
             <button type="button" class="btn btn-secondary" data-forward-button hidden>📤 Encaminhar</button>
             <button type="button" class="btn btn-progress" data-progress-button hidden>🚧 Em andamento</button>
             <button type="button" class="btn btn-success" data-resolve-button hidden>✅ Resolver</button>
+            <% if (userRoleSlug === 'admin' || userRoleSlug === 'supervisor') { %>
+              <button type="button" class="btn btn-neutral" data-timeline-button hidden>Histórico</button>
+            <% } %>
             <% if (permissions && permissions.deleteMessages) { %>
               <button type="button" class="btn btn-error" data-delete-button>🗑️ Excluir</button>
             <% } %>
