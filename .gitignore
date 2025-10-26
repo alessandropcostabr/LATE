@@ -20,6 +20,7 @@ data/sessions.sqlite-wal
 
 # Configurações de ambiente
 .env
+.env.prod
 
 # PM2 logs e dump
 .pids/
@@ -70,11 +71,10 @@ logs/
 #Scripts
 *.sh
 
-
 # local only
-.env*
 data/*.db
 migrations/99999999_noop.sql
+*ecosystem*
 
 # ignore SQLite
 data/*.db
