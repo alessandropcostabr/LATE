@@ -35,7 +35,7 @@ exports.requestReset = async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Dados inválidos',
-      details: errors.array(),
+      data: { details: errors.array() },
     });
   }
 
@@ -46,7 +46,7 @@ exports.requestReset = async (req, res) => {
     const user = await UserModel.findByEmail(email);
 
     if (!user || user.is_active === false) {
-      return res.json({ success: true, message: genericMessage });
+      return res.json({ success: true, data: { message: genericMessage } });
     }
 
     const { token, expiresAt } = await PasswordResetTokenModel.createForUser(user.id);
@@ -93,7 +93,7 @@ Se você não fez essa solicitação, pode ignorar este e-mail.
       html,
     });
 
-    return res.json({ success: true, message: genericMessage });
+    return res.json({ success: true, data: { message: genericMessage } });
   } catch (err) {
     console.error('[password] erro ao solicitar redefinição:', err);
     return res.status(500).json({ success: false, error: 'Não foi possível enviar o e-mail agora. Tente novamente mais tarde.' });
@@ -106,7 +106,7 @@ exports.resetWithToken = async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Dados inválidos',
-      details: errors.array(),
+      data: { details: errors.array() },
     });
   }
 
@@ -161,7 +161,7 @@ exports.resetWithToken = async (req, res) => {
 
     await client.query('COMMIT');
 
-    return res.json({ success: true, message: 'Senha atualizada com sucesso.' });
+    return res.json({ success: true, data: { message: 'Senha atualizada com sucesso.' } });
   } catch (err) {
     try {
       await client.query('ROLLBACK');
@@ -181,7 +181,7 @@ exports.changePassword = async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Dados inválidos',
-      details: errors.array(),
+      data: { details: errors.array() },
     });
   }
 
@@ -226,7 +226,7 @@ exports.changePassword = async (req, res) => {
 
     await PasswordResetTokenModel.invalidateForUser(user.id);
 
-    return res.json({ success: true, message: 'Senha atualizada com sucesso.' });
+    return res.json({ success: true, data: { message: 'Senha atualizada com sucesso.' } });
   } catch (err) {
     console.error('[password] erro ao atualizar senha da conta:', err);
     return res.status(500).json({ success: false, error: 'Não foi possível atualizar a senha.' });

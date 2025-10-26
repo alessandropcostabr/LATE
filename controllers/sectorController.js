@@ -67,7 +67,7 @@ exports.create = async (req, res) => {
 
   try {
     const created = await Sector.create(req.body);
-    return res.status(201).json({ success: true, data: created, message: 'Setor criado com sucesso' });
+    return res.status(201).json({ success: true, data: { sector: created, message: 'Setor criado com sucesso' } });
   } catch (err) {
     if (err.code === 'VALIDATION') {
       return res.status(400).json({ success: false, error: err.message });
@@ -89,7 +89,7 @@ exports.update = async (req, res) => {
     const ok = await Sector.update(id, req.body);
     if (!ok) return res.status(404).json({ success: false, error: 'Setor não encontrado' });
     const data = await Sector.getById(id);
-    return res.json({ success: true, data, message: 'Setor atualizado com sucesso' });
+    return res.json({ success: true, data: { sector: data, message: 'Setor atualizado com sucesso' } });
   } catch (err) {
     if (err.code === 'VALIDATION') return res.status(400).json({ success: false, error: err.message });
     if (err.code === 'UNIQUE') return res.status(409).json({ success: false, error: err.message });
@@ -108,7 +108,13 @@ exports.toggle = async (req, res) => {
     const ok = await Sector.setActive(id, is_active);
     if (!ok) return res.status(404).json({ success: false, error: 'Setor não encontrado' });
     const data = await Sector.getById(id);
-    return res.json({ success: true, data, message: is_active ? 'Setor ativado' : 'Setor desativado' });
+    return res.json({
+      success: true,
+      data: {
+        sector: data,
+        message: is_active ? 'Setor ativado' : 'Setor desativado',
+      },
+    });
   } catch (err) {
     console.error('[sectors/toggle] erro:', err);
     return res.status(500).json({ success: false, error: 'Erro ao alterar status do setor' });
@@ -120,7 +126,7 @@ exports.remove = async (req, res) => {
   try {
     const ok = await Sector.remove(id);
     if (!ok) return res.status(404).json({ success: false, error: 'Setor não encontrado' });
-    return res.json({ success: true, message: 'Setor excluído com sucesso' });
+    return res.json({ success: true, data: { message: 'Setor excluído com sucesso' } });
   } catch (err) {
     if (err.code === 'SECTOR_HAS_USERS') {
       return res.status(400).json({ success: false, error: err.message });
@@ -149,7 +155,7 @@ exports.setUserSectors = async (req, res) => {
   const { sectorIds } = req.body;
   try {
     const data = await UserSector.setUserSectors(userId, sectorIds);
-    return res.json({ success: true, data, message: 'Setores atualizados com sucesso.' });
+    return res.json({ success: true, data: { sectors: data, message: 'Setores atualizados com sucesso.' } });
   } catch (err) {
     if (['VALIDATION', 'SECTOR_MIN_ONE', 'USER_MIN_ONE'].includes(err.code)) {
       return res.status(400).json({ success: false, error: err.message });
@@ -161,4 +167,3 @@ exports.setUserSectors = async (req, res) => {
     return res.status(500).json({ success: false, error: 'Erro ao atualizar setores do usuário' });
   }
 };
-

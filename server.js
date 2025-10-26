@@ -24,17 +24,30 @@ let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
 
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT ?? 3000);          // garante número
-const TRUST_PROXY = Number(
-  process.env.TRUST_PROXY ?? (isProd ? 1 : 0)
-); // aceita "1"/"0" ou true/false já normalizados no helper
+const PORT = Number(process.env.PORT ?? 3000);
+// NÃO achatar para boolean. Preservar number/string conforme Express:
+// aceita: number (hops), true/false, 'loopback' | 'linklocal' | 'uniquelocal' | lista/CIDR.
+const rawTrustProxy = (process.env.TRUST_PROXY ?? (isProd ? '1' : '')).toString().trim();
 
 const app = express();
-app.set('trust proxy', Boolean(TRUST_PROXY)); //Express precisa saber que está atrás de proxy para setar secure:'auto' corretamente
+app.set(
+  'trust proxy',
+  /^\d+$/.test(rawTrustProxy)
+    ? Number(rawTrustProxy)            // "1","2",...
+    : rawTrustProxy === '' 
+      ? false                          // vazio → desliga
+      : rawTrustProxy === 'true'
+        ? true
+        : rawTrustProxy === 'false'
+          ? false
+          : rawTrustProxy              // 'loopback'|'linklocal'|'uniquelocal' ou CIDR/IP
+);
+
 app.set('etag', false);
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  hsts: isProd ? undefined : false, // Por quê: HSTS apenas em produção/HTTPS
 }));
 
 const apiCsp = helmet.contentSecurityPolicy({
@@ -74,11 +87,16 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, error: 'Muitas requisições. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: req => req.method !== 'POST'
 });
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Limite de requisições atingido. Aguarde antes de tentar novamente.' },
   skip: req => req.method === 'OPTIONS'
 });
 

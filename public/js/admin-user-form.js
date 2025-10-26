@@ -55,7 +55,7 @@
     }
 
     if (!res.ok || body.success === false) {
-      const message = body?.error || body?.message || `Falha na requisição (${res.status})`;
+      const message = body?.error || body?.data?.message || body?.message || `Falha na requisição (${res.status})`;
       const error = new Error(message);
       error.status = res.status;
       error.body = body;

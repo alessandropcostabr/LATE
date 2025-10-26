@@ -10,8 +10,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
-
 // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
 require('../config/loadEnv').loadEnv();
 
@@ -110,6 +108,17 @@ async function main() {
 
   const client = await pool.connect();
   try {
+    try {
+      const { rows } = await client.query("SELECT extname FROM pg_extension WHERE extname = 'pgcrypto'");
+      const enabled = rows.length > 0;
+      console.info('[migrate] pgcrypto %s', enabled ? 'ATIVO' : 'INATIVO');
+      if (!enabled) {
+        console.warn('[migrate] Atenção: extensão pgcrypto não encontrada. Execute CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+      }
+    } catch (err) {
+      console.warn('[migrate] Não foi possível verificar a extensão pgcrypto:', err.message || err);
+    }
+
     // Garante tabela de controle
     await ensureMigrationsTable(client);
 
@@ -148,4 +157,3 @@ async function main() {
 }
 
 main();
-

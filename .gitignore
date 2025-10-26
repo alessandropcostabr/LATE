@@ -54,6 +54,7 @@ lighthouse-reports/
 backup_*/
 backup_*
 *.bak
+*.bk
 
 # Relatórios/artefatos locais
 lighthouse-reports/
