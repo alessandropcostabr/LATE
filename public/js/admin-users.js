@@ -50,6 +50,7 @@
     if (payload && Array.isArray(payload.items)) return payload.items;
     if (payload && payload.data) {
       if (Array.isArray(payload.data)) return payload.data;
+      if (Array.isArray(payload.data.users)) return payload.data.users;
       if (Array.isArray(payload.data.items)) return payload.data.items;
       if (Array.isArray(payload.data.data)) return payload.data.data;
       if (Array.isArray(payload.data.sectors)) return payload.data.sectors;
