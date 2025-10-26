@@ -24,13 +24,25 @@ let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
 
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT ?? 3000);          // garante número
-const TRUST_PROXY = Number(
-  process.env.TRUST_PROXY ?? (isProd ? 1 : 0)
-); // aceita "1"/"0" ou true/false já normalizados no helper
+const PORT = Number(process.env.PORT ?? 3000);
+// NÃO achatar para boolean. Preservar number/string conforme Express:
+// aceita: number (hops), true/false, 'loopback' | 'linklocal' | 'uniquelocal' | lista/CIDR.
+const rawTrustProxy = (process.env.TRUST_PROXY ?? (isProd ? '1' : '')).toString().trim();
 
 const app = express();
-app.set('trust proxy', TRUST_PROXY); // mantém semântica de hops: 0=desliga, 1=1º hop (ex.: Cloudflare), n=n hops
+app.set(
+  'trust proxy',
+  /^\d+$/.test(rawTrustProxy)
+    ? Number(rawTrustProxy)            // "1","2",...
+    : rawTrustProxy === '' 
+      ? false                          // vazio → desliga
+      : rawTrustProxy === 'true'
+        ? true
+        : rawTrustProxy === 'false'
+          ? false
+          : rawTrustProxy              // 'loopback'|'linklocal'|'uniquelocal' ou CIDR/IP
+);
+
 app.set('etag', false);
 app.use(helmet({
   contentSecurityPolicy: false,
