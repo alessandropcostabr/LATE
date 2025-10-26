@@ -74,7 +74,7 @@ logs/
 # local only
 data/*.db
 migrations/99999999_noop.sql
-*ecosystem*
+ecosystem*
 
 # ignore SQLite
 data/*.db
