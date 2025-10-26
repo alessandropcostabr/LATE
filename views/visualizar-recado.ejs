@@ -14,13 +14,43 @@
         data-can-update="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>"
         data-can-edit-own="<%= userRoleSlug === 'operator' ? 'true' : 'false' %>"
         data-user-role="<%= userRoleSlug || 'reader' %>"
+        data-user-id="<%= user ? user.id : '' %>"
         data-can-delete="<%= permissions && permissions.deleteMessages ? 'true' : 'false' %>"
       >
         <div class="card-header">
           <h2 class="card-title">Detalhes do Recado</h2>
         </div>
-        <div class="card-body" id="conteudoRecado">
-          <p>Carregando...</p>
+        <div class="card-body">
+          <div class="tab-container" data-tabs>
+            <div class="tab-nav" role="tablist">
+              <button type="button" class="tab-button active" data-tab-button="details" aria-controls="tab-details">Detalhes</button>
+              <button type="button" class="tab-button" data-tab-button="checklists" aria-controls="tab-checklists">Checklists</button>
+              <button type="button" class="tab-button" data-tab-button="comments" aria-controls="tab-comments">Comentários</button>
+              <button type="button" class="tab-button" data-tab-button="watchers" aria-controls="tab-watchers">Seguidores</button>
+              <button type="button" class="tab-button" data-tab-button="history" aria-controls="tab-history">Histórico</button>
+            </div>
+            <div class="tab-content">
+              <section id="tab-details" class="tab-panel active" data-tab-section="details">
+                <div data-details class="message-details mb-3">
+                  <p class="text-muted">Carregando detalhes...</p>
+                </div>
+                <%- include('partials/recados/labels-badges', { permissions }) %>
+              </section>
+              <section id="tab-checklists" class="tab-panel" data-tab-section="checklists" hidden>
+                <%- include('partials/recados/checklists', { permissions }) %>
+              </section>
+              <section id="tab-comments" class="tab-panel" data-tab-section="comments" hidden>
+                <%- include('partials/recados/comments-thread', { permissions }) %>
+              </section>
+              <section id="tab-watchers" class="tab-panel" data-tab-section="watchers" hidden>
+                <%- include('partials/recados/watchers', { permissions, activeUsers }) %>
+              </section>
+              <section id="tab-history" class="tab-panel" data-tab-section="history" hidden>
+                <div data-history-empty class="text-muted">Sem eventos registrados.</div>
+                <div data-history class="timeline"></div>
+              </section>
+            </div>
+          </div>
         </div>
         <div class="card-footer">
           <div style="display:flex;gap:1rem;flex-wrap:wrap;">
@@ -29,9 +59,6 @@
             <button type="button" class="btn btn-secondary" data-forward-button hidden>📤 Encaminhar</button>
             <button type="button" class="btn btn-progress" data-progress-button hidden>🚧 Em andamento</button>
             <button type="button" class="btn btn-success" data-resolve-button hidden>✅ Resolver</button>
-            <% if (userRoleSlug === 'admin' || userRoleSlug === 'supervisor') { %>
-              <button type="button" class="btn btn-neutral" data-timeline-button hidden>Histórico</button>
-            <% } %>
             <% if (permissions && permissions.deleteMessages) { %>
               <button type="button" class="btn btn-error" data-delete-button>🗑️ Excluir</button>
             <% } %>

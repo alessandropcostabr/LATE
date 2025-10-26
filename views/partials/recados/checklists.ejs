@@ -1,0 +1,21 @@
+<div class="card" data-checklists-panel data-can-manage="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>">
+  <div class="card-header">
+    <h3 class="card-title">Checklists</h3>
+    <p class="card-subtitle">Acompanhe tarefas relacionadas ao recado</p>
+  </div>
+  <div class="card-body">
+    <div data-checklists-empty class="text-muted">Nenhum checklist cadastrado.</div>
+    <div data-checklists-list class="checklists-list"></div>
+  </div>
+  <% if (permissions && permissions.updateMessages) { %>
+    <div class="card-footer">
+      <form data-checklist-form class="d-flex gap-2 flex-wrap align-items-center" autocomplete="off">
+        <div class="flex-grow-1">
+          <label for="checklistTitle" class="form-label">Novo checklist</label>
+          <input id="checklistTitle" name="title" type="text" class="form-input" placeholder="Título do checklist" maxlength="200" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Adicionar</button>
+      </form>
+    </div>
+  <% } %>
+</div>

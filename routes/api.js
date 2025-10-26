@@ -8,10 +8,16 @@ const router = Router();
 const messageController = require('../controllers/messageController');
 const statsController   = require('../controllers/statsController');
 const passwordController = require('../controllers/passwordController');
+const messageLabelController = require('../controllers/messageLabelController');
+const messageChecklistController = require('../controllers/messageChecklistController');
+const messageCommentController = require('../controllers/messageCommentController');
+const messageWatcherController = require('../controllers/messageWatcherController');
+const automationController = require('../controllers/automationController');
 const healthController = require('../controllers/healthController');
 const metaController = require('../controllers/metaController');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
+const validation = require('../middleware/validation');
 const {
   handleValidationErrors,
   validateCreateMessage,
@@ -22,8 +28,29 @@ const {
   validateQueryMessages,
   validatePasswordResetRequest,
   validatePasswordResetSubmit,
-  validateAccountPasswordChange
-} = require('../middleware/validation');
+  validateAccountPasswordChange,
+  validateMessageLabel,
+  validateMessageLabelsReplace,
+  validateChecklistCreate,
+  validateChecklistUpdate,
+  validateChecklistItemCreate,
+  validateChecklistItemUpdate,
+  validateChecklistIdParam,
+  validateChecklistItemIdParam,
+  validateCommentCreate,
+  validateWatcherAdd,
+  validateWatcherUserParam,
+  validateAutomationCreate,
+  validateAutomationUpdate,
+  validateAutomationToggle,
+  validateAutomationIdParam,
+  validateCommentIdParam,
+  validateUserCreate,
+  validateUserUpdate,
+  validateUserStatus,
+  validateUserPassword,
+  validateIdParam,
+} = validation;
 
 // Painel ADMIN de Usuários
 const {
@@ -33,13 +60,6 @@ const {
   requireMessageUpdatePermission,
 } = require('../middleware/auth');
 const UserController = require('../controllers/userController');
-const {
-  validateUserCreate,
-  validateUserUpdate,
-  validateUserStatus,
-  validateUserPassword,
-  validateIdParam
-} = require('../middleware/validation'); // não redeclarar handleValidationErrors
 
 // --------- Admin: Setores ---------
 const sectorController = require('../controllers/sectorController');
@@ -184,6 +204,118 @@ router.delete(
   messageController.remove
 );
 
+// ---- Labels ----
+router.get(
+  '/messages/:id/labels',
+  ...flatFns(canReadMessages, validateId, handleValidationErrors),
+  messageLabelController.list
+);
+
+router.post(
+  '/messages/:id/labels',
+  ...flatFns(canUpdateMessages, validateId, validateMessageLabel, handleValidationErrors),
+  messageLabelController.add
+);
+
+router.put(
+  '/messages/:id/labels',
+  ...flatFns(canUpdateMessages, validateId, validateMessageLabelsReplace, handleValidationErrors),
+  messageLabelController.replace
+);
+
+router.delete(
+  '/messages/:id/labels/:label',
+  ...flatFns(canUpdateMessages, validateId, handleValidationErrors),
+  messageLabelController.remove
+);
+
+// ---- Checklists ----
+router.get(
+  '/messages/:id/checklists',
+  ...flatFns(canReadMessages, validateId, handleValidationErrors),
+  messageChecklistController.list
+);
+
+router.post(
+  '/messages/:id/checklists',
+  ...flatFns(canUpdateMessages, validateId, validateChecklistCreate, handleValidationErrors),
+  messageChecklistController.create
+);
+
+router.put(
+  '/messages/:id/checklists/:checklistId',
+  ...flatFns(canUpdateMessages, validateId, validateChecklistIdParam, validateChecklistUpdate, handleValidationErrors),
+  messageChecklistController.update
+);
+
+router.delete(
+  '/messages/:id/checklists/:checklistId',
+  ...flatFns(canUpdateMessages, validateId, validateChecklistIdParam, handleValidationErrors),
+  messageChecklistController.remove
+);
+
+router.get(
+  '/messages/:id/checklists/:checklistId/items',
+  ...flatFns(canReadMessages, validateId, validateChecklistIdParam, handleValidationErrors),
+  messageChecklistController.listItems
+);
+
+router.post(
+  '/messages/:id/checklists/:checklistId/items',
+  ...flatFns(canUpdateMessages, validateId, validateChecklistIdParam, validateChecklistItemCreate, handleValidationErrors),
+  messageChecklistController.createItem
+);
+
+router.put(
+  '/messages/:id/checklists/:checklistId/items/:itemId',
+  ...flatFns(canUpdateMessages, validateId, validateChecklistIdParam, validateChecklistItemIdParam, validateChecklistItemUpdate, handleValidationErrors),
+  messageChecklistController.updateItem
+);
+
+router.delete(
+  '/messages/:id/checklists/:checklistId/items/:itemId',
+  ...flatFns(canUpdateMessages, validateId, validateChecklistIdParam, validateChecklistItemIdParam, handleValidationErrors),
+  messageChecklistController.removeItem
+);
+
+// ---- Comentários ----
+router.get(
+  '/messages/:id/comments',
+  ...flatFns(canReadMessages, validateId, handleValidationErrors),
+  messageCommentController.list
+);
+
+router.post(
+  '/messages/:id/comments',
+  ...flatFns(canUpdateMessages, validateId, validateCommentCreate, handleValidationErrors),
+  messageCommentController.create
+);
+
+router.delete(
+  '/messages/:id/comments/:commentId',
+  ...flatFns(canUpdateMessages, validateId, validateCommentIdParam, handleValidationErrors),
+  messageCommentController.remove
+);
+
+// ---- Watchers ----
+router.get(
+  '/messages/:id/watchers',
+  ...flatFns(canReadMessages, validateId, handleValidationErrors),
+  messageWatcherController.list
+);
+
+router.post(
+  '/messages/:id/watchers',
+  ...flatFns(canUpdateMessages, validateId, validateWatcherAdd, handleValidationErrors),
+  messageWatcherController.add
+);
+
+router.delete(
+  '/messages/:id/watchers/:userId',
+  ...flatFns(canUpdateMessages, validateId, validateWatcherUserParam, handleValidationErrors),
+  messageWatcherController.remove
+);
+
 // ========== Account Password ==========
 router.post(
   '/account/password',
@@ -202,6 +334,49 @@ router.post(
   '/password/reset',
   ...flatFns(csrfProtection, validatePasswordResetSubmit, handleValidationErrors),
   passwordController.resetWithToken
+);
+
+// ========== Automations ==========
+router.get(
+  '/automations',
+  ...flatFns([requireRole('ADMIN')]),
+  automationController.list
+);
+
+router.get(
+  '/automations/:id',
+  ...flatFns([requireRole('ADMIN')], validateAutomationIdParam, handleValidationErrors),
+  automationController.get
+);
+
+router.get(
+  '/automations/:id/logs',
+  ...flatFns([requireRole('ADMIN')], validateAutomationIdParam, handleValidationErrors),
+  automationController.listLogs
+);
+
+router.post(
+  '/automations',
+  ...flatFns([requireRole('ADMIN')], csrfProtection, validateAutomationCreate, handleValidationErrors),
+  automationController.create
+);
+
+router.put(
+  '/automations/:id',
+  ...flatFns([requireRole('ADMIN')], csrfProtection, validateAutomationIdParam, validateAutomationUpdate, handleValidationErrors),
+  automationController.update
+);
+
+router.patch(
+  '/automations/:id/toggle',
+  ...flatFns([requireRole('ADMIN')], csrfProtection, validateAutomationIdParam, validateAutomationToggle, handleValidationErrors),
+  automationController.toggle
+);
+
+router.delete(
+  '/automations/:id',
+  ...flatFns([requireRole('ADMIN')], csrfProtection, validateAutomationIdParam, handleValidationErrors),
+  automationController.remove
 );
 
 // ========== Stats (Relatórios) ==========

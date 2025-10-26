@@ -6,6 +6,10 @@ const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
 const UserSectorModel = require('../models/userSector');
 const MessageEvent = require('../models/messageEvent');
+const MessageLabelModel = require('../models/messageLabel');
+const MessageChecklistModel = require('../models/messageChecklist');
+const MessageCommentModel = require('../models/messageComment');
+const MessageWatcherModel = require('../models/messageWatcher');
 const { sendMail } = require('../services/mailer');
 
 function normalizeRecipientId(value) {
@@ -623,6 +627,19 @@ exports.getById = async (req, res) => {
       created_at: event.created_at,
     }));
     const data = toClient(row, viewer);
+
+    const [labels, checklists, comments, watchers] = await Promise.all([
+      MessageLabelModel.listByMessage(id),
+      MessageChecklistModel.listByMessage(id),
+      MessageCommentModel.listByMessage(id),
+      MessageWatcherModel.listForMessage(id),
+    ]);
+
+    data.labels = labels;
+    data.checklists = checklists;
+    data.comments = comments;
+    data.watchers = watchers;
+    data.watchersCount = watchers.length;
     data.timeline = timeline;
     data.timelineEvents = timeline;
 
