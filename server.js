@@ -30,7 +30,7 @@ const TRUST_PROXY = Number(
 ); // aceita "1"/"0" ou true/false já normalizados no helper
 
 const app = express();
-app.set('trust proxy', Boolean(TRUST_PROXY)); //Express precisa saber que está atrás de proxy para setar secure:'auto' corretamente
+app.set('trust proxy', TRUST_PROXY); // mantém semântica de hops: 0=desliga, 1=1º hop (ex.: Cloudflare), n=n hops
 app.set('etag', false);
 app.use(helmet({
   contentSecurityPolicy: false,
