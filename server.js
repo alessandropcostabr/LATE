@@ -47,6 +47,7 @@ app.set('etag', false);
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  hsts: isProd ? undefined : false, // Por quê: HSTS apenas em produção/HTTPS
 }));
 
 const apiCsp = helmet.contentSecurityPolicy({
@@ -86,11 +87,16 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, error: 'Muitas requisições. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: req => req.method !== 'POST'
 });
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Limite de requisições atingido. Aguarde antes de tentar novamente.' },
   skip: req => req.method === 'OPTIONS'
 });
 

@@ -70,8 +70,8 @@ describe('API message validation', () => {
       success: false,
       error: 'Dados inválidos',
     });
-    expect(Array.isArray(response.body.details)).toBe(true);
-    const limitError = response.body.details.find((err) => (err.param || err.path) === 'limit');
+    expect(Array.isArray(response.body.data?.details)).toBe(true);
+    const limitError = response.body.data.details.find((err) => (err.param || err.path) === 'limit');
     expect(limitError).toBeDefined();
     expect(limitError.msg).toBe('limit inválido');
     expect(messageController.list).not.toHaveBeenCalled();
@@ -89,8 +89,8 @@ describe('API message validation', () => {
       success: false,
       error: 'Dados inválidos',
     });
-    expect(Array.isArray(response.body.details)).toBe(true);
-    const statusError = response.body.details.find((err) => (err.param || err.path) === 'status');
+    expect(Array.isArray(response.body.data?.details)).toBe(true);
+    const statusError = response.body.data.details.find((err) => (err.param || err.path) === 'status');
     expect(statusError).toBeDefined();
     expect(statusError.msg).toMatch(/Status/);
     expect(messageController.updateStatus).not.toHaveBeenCalled();

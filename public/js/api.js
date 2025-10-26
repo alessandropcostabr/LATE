@@ -41,7 +41,7 @@ const API = (() => {
 
     if (!res.ok) {
       // Propaga erro com mensagem do backend quando disponível
-      const msg = body?.error || body?.message || body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
+      const msg = body?.error || body?.data?.message || body?.message || body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
       const err = new Error(msg);
       err.status = res.status;
       err.body = body;

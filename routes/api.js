@@ -8,6 +8,8 @@ const router = Router();
 const messageController = require('../controllers/messageController');
 const statsController   = require('../controllers/statsController');
 const passwordController = require('../controllers/passwordController');
+const healthController = require('../controllers/healthController');
+const metaController = require('../controllers/metaController');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
 const {
@@ -120,6 +122,10 @@ router.get('/csrf', csrfProtection, (req, res) => {
     return res.status(500).json({ success: false, error: 'Falha ao gerar token CSRF' });
   }
 });
+
+// Utilitários
+router.get('/health', healthController.apiCheck);
+router.get('/version', metaController.version);
 
 // ========== Messages ==========
 router.get(

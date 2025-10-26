@@ -763,6 +763,7 @@ exports.forward = async (req, res) => {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
     const viewer = await resolveViewerWithSectors(req);
+    const actor = getSessionActor(req);
 
     const current = await Message.findById(id);
     if (!current) {

@@ -56,7 +56,7 @@ function handleValidationErrors(req, res, next) {
     return res.status(400).json({
       success: false,
       error: 'Dados inválidos',
-      details: errors.array()
+      data: { details: errors.array() }
     });
   }
   next();

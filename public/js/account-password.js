@@ -107,7 +107,8 @@
           data: payload,
         });
 
-        showAlert('success', response?.message || 'Senha atualizada com sucesso.');
+        const successMessage = response?.data?.message || response?.message || 'Senha atualizada com sucesso.';
+        showAlert('success', successMessage);
         form.reset();
       } catch (err) {
         if (err?.status === 401) {

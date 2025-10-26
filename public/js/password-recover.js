@@ -51,7 +51,8 @@
           data: payload,
         });
 
-        showAlert('success', response?.message || 'Se encontrarmos o e-mail informado, enviaremos as instruções em instantes.');
+        const successMessage = response?.data?.message || response?.message || 'Se encontrarmos o e-mail informado, enviaremos as instruções em instantes.';
+        showAlert('success', successMessage);
         form.reset();
       } catch (err) {
         showAlert('danger', err?.message || 'Não foi possível processar a solicitação agora.');
