@@ -5,7 +5,7 @@
 //   ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD='SenhaForte!1' node scripts/seed-admin.js
 //   (as variáveis PG_* já vêm do ecosystem.config.js; este script lê ambos formatos PG_HOST/PGHOST etc.)
 
-require('dotenv').config(); // opcional: carrega .env se existir
+require('../config/loadEnv').loadEnv(); // Padronizar carregamento do .env/.env.prod
 const { Pool } = require('pg');
 const argon2 = require('argon2');
 const crypto = require('crypto');
@@ -55,13 +55,25 @@ function pick(...keys) {
   }
 
   // --- Conexão PG ---
+
+  const sslRequired = (process.env.PG_SSL === '1') || (String(process.env.PGSSLMODE || '').toLowerCase() === 'require');
+  console.info(
+    '[seed-admin] NODE_ENV=%s DB=%s USER=%s HOST=%s PORT=%s SSL=%s',
+    process.env.NODE_ENV,
+    pick('PG_DATABASE','PGDATABASE'),
+    pick('PG_USER','PGUSER'),
+    pick('PG_HOST','PGHOST') || '127.0.0.1',
+    pick('PG_PORT','PGPORT') || '5432',
+    sslRequired ? 'on' : 'off'
+  );
+
   const pool = new Pool({
     host:     pick('PG_HOST', 'PGHOST') || '127.0.0.1',
     port:     Number(pick('PG_PORT', 'PGPORT') || 5432),
     user:     pick('PG_USER', 'PGUSER'),
     password: pick('PG_PASSWORD', 'PGPASSWORD'),
     database: pick('PG_DATABASE', 'PGDATABASE'),
-    ssl:      process.env.PG_SSL === '1'
+    ssl:      sslRequired ? { rejectUnauthorized: false } : false
   });
 
   const client = await pool.connect();
@@ -82,6 +94,15 @@ function pick(...keys) {
         created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'users_email_lower_chk'
+        ) THEN
+          ALTER TABLE users ADD CONSTRAINT users_email_lower_chk CHECK (email = lower(email));
+        END IF;
+      END$$;
     `);
 
     // UPSERT por e-mail, força ADMIN e ativa o usuário

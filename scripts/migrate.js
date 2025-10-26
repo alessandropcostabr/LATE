@@ -12,12 +12,26 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 
+// Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
+require('../config/loadEnv').loadEnv();
+
 // Barrar drivers não suportados
 const driver = String(process.env.DB_DRIVER || 'pg').toLowerCase();
 if (driver !== 'pg') {
   console.error('[migrate] DB_DRIVER inválido:', process.env.DB_DRIVER, '→ use "pg".');
   process.exit(1);
 }
+
+// Diagnóstico: confirmar variáveis críticas antes de abrir conexão
+console.info(
+  '[migrate] NODE_ENV=%s DB=%s USER=%s HOST=%s PORT=%s SSL=%s',
+  process.env.NODE_ENV,
+  process.env.PGDATABASE,
+  process.env.PGUSER,
+  process.env.PGHOST,
+  process.env.PGPORT,
+  String(process.env.PG_SSL ?? process.env.PGSSLMODE ?? '0')
+);
 
 const pool = require('../config/database');
 
