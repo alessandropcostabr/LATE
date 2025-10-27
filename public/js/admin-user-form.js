@@ -186,7 +186,7 @@
         };
         await apiRequest('/api/users', { method: 'POST', data: payload });
         showAlert('Usuário criado com sucesso.', 'success');
-        setTimeout(() => { window.location.href = '/admin/users'; }, 1200);
+        setTimeout(() => { window.location.href = '/admin/usuarios'; }, 1200);
       } else {
         const payload = {
           name: payloadBase.name,
@@ -198,7 +198,7 @@
         await apiRequest(`/api/users/${userId}`, { method: 'PUT', data: payload });
         await apiRequest(`/api/users/${userId}/sectors`, { method: 'PUT', data: { sectorIds } });
         showAlert('Usuário atualizado com sucesso.', 'success');
-        setTimeout(() => { window.location.href = '/admin/users'; }, 1200);
+        setTimeout(() => { window.location.href = '/admin/usuarios'; }, 1200);
       }
     } catch (err) {
       console.error('[admin-user-form] Falha ao salvar usuário:', err);

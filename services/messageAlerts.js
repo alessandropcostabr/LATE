@@ -1,6 +1,7 @@
 // services/messageAlerts.js
 // Agendador para alertar recados pendentes e em andamento.
 
+const db = require('../config/database');
 const Message = require('../models/message');
 const NotificationSettings = require('../models/notificationSettings');
 const MessageAlert = require('../models/messageAlert');
@@ -10,6 +11,12 @@ const { sendMail } = require('./mailer');
 
 const ONE_MINUTE = 60 * 1000;
 const DEFAULT_CHECK_INTERVAL_MIN = 60;
+const DEFAULT_LOCK_KEY = 482901;
+
+function getLockKey() {
+  const raw = Number(process.env.ALERT_SCHEDULER_LOCK_KEY);
+  return Number.isInteger(raw) && raw !== 0 ? raw : DEFAULT_LOCK_KEY;
+}
 
 function buildRecadoUrl(id) {
   const base = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
@@ -190,6 +197,29 @@ async function alertEmAndamento(settings) {
 
 let schedulerStarted = false;
 
+async function withSchedulerLock(task) {
+  const client = await db.connect();
+  const lockKey = getLockKey();
+  let locked = false;
+  try {
+    const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [lockKey]);
+    locked = rows?.[0]?.ok === true;
+    if (!locked) {
+      return;
+    }
+    await task();
+  } finally {
+    if (locked) {
+      try {
+        await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+      } catch (err) {
+        console.warn('[alerts] falha ao liberar advisory lock', err);
+      }
+    }
+    client.release();
+  }
+}
+
 function startAlertScheduler() {
   if (schedulerStarted) return;
   schedulerStarted = true;
@@ -198,9 +228,11 @@ function startAlertScheduler() {
 
   const run = async () => {
     try {
-      const settings = await NotificationSettings.getSettings();
-      await alertPendentes(settings);
-      await alertEmAndamento(settings);
+      await withSchedulerLock(async () => {
+        const settings = await NotificationSettings.getSettings();
+        await alertPendentes(settings);
+        await alertEmAndamento(settings);
+      });
     } catch (err) {
       console.error('[alerts] ciclo de alertas falhou', err);
     }

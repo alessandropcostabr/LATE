@@ -321,6 +321,12 @@ function translateStatusForQuery(status) {
   };
 }
 
+function normalizeLabelFilter(value) {
+  const raw = trim(value).toLowerCase();
+  if (!raw) return null;
+  return raw;
+}
+
 // ---------------------------- Normalização de payload ----------------------
 function normalizePayload(payload = {}) {
   const messageContent = trim(payload.message || payload.notes || '');
@@ -411,7 +417,7 @@ function mapRow(row) {
 // date_ref: usa call_date (YYYY-MM-DD) válido; senão, created_at::date
 const DATE_REF_SQL = `
   CASE
-    WHEN call_date IS NOT NULL AND call_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    WHEN call_date IS NOT NULL AND call_date LIKE '____-__-__'
       THEN call_date::date
     ELSE created_at::date
   END
@@ -451,6 +457,73 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1)
     params,
     nextIndex: index,
   };
+}
+
+function appendCondition(baseClause, condition) {
+  if (!condition) return baseClause;
+  if (!baseClause) {
+    return `WHERE ${condition}`;
+  }
+  return `${baseClause} AND ${condition}`;
+}
+
+async function buildFilterClause(
+  { status, startDate, endDate, recipient, sectorId, label },
+  {
+    viewer,
+    includeCreatedBy,
+    recipientSectorEnabled,
+    supportsSectorMembership,
+    startIndex = 1,
+  } = {}
+) {
+  const baseFilters = buildFilters(
+    { status, startDate, endDate, recipient },
+    startIndex
+  );
+
+  let whereClause = baseFilters.clause;
+  const params = [...baseFilters.params];
+  let nextIndex = baseFilters.nextIndex;
+
+  if (sectorId) {
+    if (!recipientSectorEnabled) {
+      return { clause: 'WHERE 1=0', params: [], nextIndex: startIndex, emptyResult: true };
+    }
+    whereClause = appendCondition(whereClause, `recipient_sector_id = ${ph(nextIndex)}`);
+    params.push(sectorId);
+    nextIndex += 1;
+  }
+
+  if (label) {
+    const supportsLabels = await supportsTable('message_labels');
+    if (!supportsLabels) {
+      return { clause: 'WHERE 1=0', params: [], nextIndex: startIndex, emptyResult: true };
+    }
+    whereClause = appendCondition(
+      whereClause,
+      `id IN (
+        SELECT ml.message_id
+          FROM message_labels AS ml
+         WHERE ml.label = ${ph(nextIndex)}
+      )`
+    );
+    params.push(label);
+    nextIndex += 1;
+  }
+
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex, {
+    supportsCreator: includeCreatedBy,
+    supportsSectorMembership,
+  });
+
+  if (ownershipFilter.clause) {
+    whereClause = appendCondition(whereClause, ownershipFilter.clause);
+    params.push(...ownershipFilter.params);
+    nextIndex = ownershipFilter.nextIndex;
+  }
+
+  return { clause: whereClause, params, nextIndex, emptyResult: false };
 }
 
 // ---------------------------- CRUD / Listagem ------------------------------
@@ -779,44 +852,59 @@ async function list(options = {}, retrying = false) {
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
   const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
-  const orderByAllowed = ['created_at', 'updated_at', 'id', 'status'];
-  const orderBy = orderByAllowed.includes(String(order_by)) ? String(order_by) : 'created_at';
+  const orderByAllowed = ['created_at', 'updated_at', 'id', 'status', 'date_ref'];
+  const orderKey = orderByAllowed.includes(String(order_by)) ? String(order_by) : 'created_at';
   const sort = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const dateOrderSql = `(${DATE_REF_SQL.trim()})`;
+  const primaryOrderClause = orderKey === 'date_ref'
+    ? `${dateOrderSql} ${sort}`
+    : `${orderKey} ${sort}`;
 
   const statusFilter = translateStatusForQuery(status);
   const startDate = trim(start_date);
   const endDate = trim(end_date);
   const recipientFilter = trim(recipient);
+  const sectorId = normalizeRecipientSectorId(
+    options.sector_id ??
+    options.recipient_sector_id ??
+    options.sectorId
+  );
+  const labelFilter = normalizeLabelFilter(
+    options.label ??
+    (Array.isArray(options.labels) ? options.labels[0] : null)
+  );
 
-  const filtersResult = buildFilters({
-    status: statusFilter,
-    startDate: startDate || null,
-    endDate: endDate || null,
-    recipient: recipientFilter || null,
-  });
-  let whereClause = filtersResult.clause;
-  let queryParams = [...filtersResult.params];
-  let nextIndex = filtersResult.nextIndex;
-
-  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex, {
-    supportsCreator: includeCreatedBy,
-    supportsSectorMembership,
-  });
-  if (ownershipFilter.clause) {
-    if (whereClause) {
-      whereClause += ` AND ${ownershipFilter.clause}`;
-    } else {
-      whereClause = `WHERE ${ownershipFilter.clause}`;
+  const filterResult = await buildFilterClause(
+    {
+      status: statusFilter,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      recipient: recipientFilter || null,
+      sectorId,
+      label: labelFilter,
+    },
+    {
+      viewer,
+      includeCreatedBy,
+      recipientSectorEnabled,
+      supportsSectorMembership,
+      startIndex: 1,
     }
-    queryParams.push(...ownershipFilter.params);
-    nextIndex = ownershipFilter.nextIndex;
+  );
+
+  if (filterResult.emptyResult) {
+    return [];
   }
+
+  let whereClause = filterResult.clause;
+  const queryParams = [...filterResult.params];
+  let nextIndex = filterResult.nextIndex;
 
   const sql = `
     SELECT ${selectColumns}
       FROM messages
       ${whereClause}
-  ORDER BY ${orderBy} ${sort}, id DESC
+  ORDER BY ${primaryOrderClause}, id DESC
      LIMIT ${ph(nextIndex)} OFFSET ${ph(nextIndex + 1)}
   `;
 
@@ -956,6 +1044,85 @@ async function statsByMonth({ viewer } = {}) {
   return rows.map(r => ({ month: r.month, count: Number(r.count || 0) }));
 }
 
+async function widgetCounters(options = {}, retrying = false) {
+  const {
+    status,
+    start_date,
+    end_date,
+    recipient,
+    viewer,
+  } = options;
+
+  const { includeCreatedBy, includeRecipientSectorId } = await resolveSelectColumns();
+  const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
+
+  const statusFilter = translateStatusForQuery(status);
+  const startDate = trim(start_date);
+  const endDate = trim(end_date);
+  const recipientFilter = trim(recipient);
+  const sectorId = normalizeRecipientSectorId(
+    options.sector_id ??
+    options.recipient_sector_id ??
+    options.sectorId
+  );
+  const labelFilter = normalizeLabelFilter(
+    options.label ??
+    (Array.isArray(options.labels) ? options.labels[0] : null)
+  );
+
+  try {
+    const filterResult = await buildFilterClause(
+      {
+        status: statusFilter,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        recipient: recipientFilter || null,
+        sectorId,
+        label: labelFilter,
+      },
+      {
+        viewer,
+        includeCreatedBy,
+        recipientSectorEnabled,
+        supportsSectorMembership,
+        startIndex: 1,
+      }
+    );
+
+    if (filterResult.emptyResult) {
+      return { dueToday: 0, overdue: 0, sla48: 0 };
+    }
+
+    const whereClause = filterResult.clause;
+
+    const sql = `
+      SELECT
+        COUNT(*) FILTER (
+          WHERE status <> 'resolved' AND ${DATE_REF_SQL.trim()} = CURRENT_DATE
+        )::int AS due_today,
+        COUNT(*) FILTER (
+          WHERE status <> 'resolved' AND ${DATE_REF_SQL.trim()} < CURRENT_DATE
+        )::int AS overdue,
+        COUNT(*) FILTER (
+          WHERE status = 'pending' AND created_at <= NOW() - INTERVAL '48 hours'
+        )::int AS sla48
+      FROM messages
+      ${whereClause}
+    `;
+
+    const { rows } = await db.query(sql, [...filterResult.params]);
+    const row = rows?.[0] || {};
+    return {
+      dueToday: Number(row.due_today || 0),
+      overdue: Number(row.overdue || 0),
+      sla48: Number(row.sla48 || 0),
+    };
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => widgetCounters(options, true));
+  }
+}
+
 // ---------------------------- Exports --------------------------------------
 module.exports = {
   create,
@@ -969,6 +1136,7 @@ module.exports = {
   statsByRecipient,
   statsByStatus,
   statsByMonth,
+  widgetCounters,
   normalizeStatus,
   STATUS_VALUES,
   STATUS_LABELS_PT,

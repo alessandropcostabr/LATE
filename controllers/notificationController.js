@@ -35,13 +35,13 @@ exports.updateSettings = async (req, res) => {
     }
 
     req.flash?.('success', 'Configurações salvas com sucesso.');
-    return res.redirect('/notificacoes');
+    return res.redirect('/admin/notificacoes');
   } catch (err) {
     console.error('[notifications] erro ao atualizar configurações:', err);
     if (req.accepts('json') && !req.accepts('html')) {
       return res.status(500).json({ success: false, error: 'Falha ao atualizar configurações' });
     }
     req.flash?.('error', 'Falha ao atualizar configurações. Tente novamente.');
-    return res.redirect('/notificacoes');
+    return res.redirect('/admin/notificacoes');
   }
 };
