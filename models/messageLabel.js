@@ -114,8 +114,69 @@ exports.replaceLabels = async (messageId, labels) => {
 };
 
 exports.LABEL_REGEX = LABEL_REGEX;
+exports.normalizeLabel = normalizeLabel;
+
+exports.listByMessages = async (messageIds) => {
+  const ids = Array.isArray(messageIds)
+    ? Array.from(new Set(messageIds.filter((id) => Number.isInteger(Number(id)))))
+    : [];
+
+  if (!ids.length) {
+    return new Map();
+  }
+
+  try {
+    const { rows } = await db.query(
+      `SELECT message_id, label
+         FROM message_labels
+        WHERE message_id = ANY($1::bigint[])
+     ORDER BY message_id ASC, label ASC`,
+      [ids]
+    );
+
+    return rows.reduce((acc, row) => {
+      const key = row.message_id;
+      const current = acc.get(key) || [];
+      current.push(row.label);
+      acc.set(key, current);
+      return acc;
+    }, new Map());
+  } catch (err) {
+    if (isMissingRelation(err)) {
+      return new Map();
+    }
+    throw err;
+  }
+};
 
 const inMemoryLabels = new Map();
+
+exports.listDistinct = async ({ limit = 100 } = {}) => {
+  const parsedLimit = Number(limit);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0
+    ? Math.min(parsedLimit, 500)
+    : 100;
+
+  try {
+    const { rows } = await db.query(
+      `SELECT label, COUNT(*)::int AS usage
+         FROM message_labels
+     GROUP BY label
+     ORDER BY label ASC
+        LIMIT $1`,
+      [sanitizedLimit]
+    );
+    return rows.map((row) => ({
+      label: row.label,
+      count: Number(row.usage || 0),
+    }));
+  } catch (err) {
+    if (isMissingRelation(err)) {
+      return [];
+    }
+    throw err;
+  }
+};
 
 function fallbackStorage(messageId) {
   const key = String(messageId);

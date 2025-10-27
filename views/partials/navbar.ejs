@@ -59,6 +59,8 @@
 
       <% if (canReadMessages) { %>
         <li><a href="/recados" class="app-navbar__menu-link<%= title === 'Recados' ? ' is-active' : '' %>">Recados</a></li>
+        <li><a href="/recados/kanban" class="app-navbar__menu-link<%= title === 'Recados · Kanban' ? ' is-active' : '' %>">Kanban</a></li>
+        <li><a href="/recados/calendario" class="app-navbar__menu-link<%= title === 'Recados · Calendário' ? ' is-active' : '' %>">Calendário</a></li>
       <% } %>
 
       <% if (canCreateMessages) { %>
@@ -73,9 +75,9 @@
         <li class="app-navbar__menu-group">
           <span class="app-navbar__menu-group-label">Admin</span>
           <ul>
-            <li><a href="/admin/users" class="app-navbar__menu-link<%= title === 'Admin · Usuários' ? ' is-active' : '' %>">Usuários</a></li>
-            <li><a href="/admin/sectors" class="app-navbar__menu-link<%= title === 'Admin · Setores' ? ' is-active' : '' %>">Setores</a></li>
-            <li><a href="/notificacoes" class="app-navbar__menu-link<%= title === 'Configurações de Notificações' ? ' is-active' : '' %>">Notificações</a></li>
+            <li><a href="/admin/usuarios" class="app-navbar__menu-link<%= title === 'Admin · Usuários' ? ' is-active' : '' %>">Usuários</a></li>
+            <li><a href="/admin/setores" class="app-navbar__menu-link<%= title === 'Admin · Setores' ? ' is-active' : '' %>">Setores</a></li>
+            <li><a href="/admin/notificacoes" class="app-navbar__menu-link<%= title === 'Configurações de Notificações' ? ' is-active' : '' %>">Notificações</a></li>
           </ul>
         </li>
       <% } %>

@@ -5,7 +5,7 @@
   <main class="main" role="main">
     <div class="container" data-page-mode="<%= mode %>" data-user-id="<%= userId || '' %>">
       <div class="mb-4">
-        <a href="/admin/users" class="btn btn-link ps-0">&larr; Voltar para a lista</a>
+        <a href="/admin/usuarios" class="btn btn-link ps-0">&larr; Voltar para a lista</a>
       </div>
 
       <div class="card shadow-sm">
@@ -76,7 +76,7 @@
             </div>
 
             <div class="d-flex justify-content-end mt-4 gap-2">
-              <a href="/admin/users" class="btn btn-outline-secondary">Cancelar</a>
+              <a href="/admin/usuarios" class="btn btn-outline-secondary">Cancelar</a>
               <button type="submit" class="btn btn-primary">
                 <%= mode === 'edit' ? 'Salvar alterações' : 'Criar usuário' %>
               </button>

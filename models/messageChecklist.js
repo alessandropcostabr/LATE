@@ -271,3 +271,34 @@ exports.removeItem = async (id) => {
 };
 
 exports.recalculateProgress = recalcProgress;
+
+exports.progressByMessages = async (messageIds) => {
+  const ids = Array.isArray(messageIds)
+    ? Array.from(new Set(messageIds.filter((id) => Number.isInteger(Number(id)))))
+    : [];
+
+  if (!ids.length) {
+    return new Map();
+  }
+
+  try {
+    const { rows } = await db.query(
+      `SELECT message_id,
+              ROUND(AVG(progress_cached))::int AS progress
+         FROM message_checklists
+        WHERE message_id = ANY($1::bigint[])
+     GROUP BY message_id`,
+      [ids]
+    );
+
+    return rows.reduce((acc, row) => {
+      acc.set(row.message_id, Number(row.progress || 0));
+      return acc;
+    }, new Map());
+  } catch (err) {
+    if (isMissingRelation(err)) {
+      return new Map();
+    }
+    throw err;
+  }
+};

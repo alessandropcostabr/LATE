@@ -12,6 +12,7 @@ const {
 const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 const notificationController = require('../controllers/notificationController');
+const messageViewController = require('../controllers/messageViewController');
 
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -20,7 +21,7 @@ const router = express.Router();
 
 // ------------------------------ Admin --------------------------------------
 // Admin → Usuários (apenas ADMIN)
-router.get('/admin/users', requireAuth, requireRole('ADMIN'), (req, res) => {
+router.get('/admin/usuarios', requireAuth, requireRole('ADMIN'), (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   return res.render('admin-users', {
     title: 'Admin · Usuários',
@@ -30,7 +31,7 @@ router.get('/admin/users', requireAuth, requireRole('ADMIN'), (req, res) => {
   });
 });
 
-router.get('/admin/users/new', requireAuth, requireRole('ADMIN'), (req, res) => {
+router.get('/admin/usuarios/novo', requireAuth, requireRole('ADMIN'), (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   return res.render('admin-user-form', {
     title: 'Novo usuário',
@@ -42,7 +43,7 @@ router.get('/admin/users/new', requireAuth, requireRole('ADMIN'), (req, res) => 
   });
 });
 
-router.get('/admin/users/:id/edit', requireAuth, requireRole('ADMIN'), (req, res) => {
+router.get('/admin/usuarios/:id/editar', requireAuth, requireRole('ADMIN'), (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   return res.render('admin-user-form', {
     title: 'Editar usuário',
@@ -55,7 +56,7 @@ router.get('/admin/users/:id/edit', requireAuth, requireRole('ADMIN'), (req, res
 });
 
 // Admin → Setores (apenas ADMIN)
-router.get('/admin/sectors', requireAuth, requireRole('ADMIN'), (req, res) => {
+router.get('/admin/setores', requireAuth, requireRole('ADMIN'), (req, res) => {
   const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
   return res.render('admin-sectors', {
     title: 'Admin · Setores',
@@ -134,8 +135,17 @@ router.get('/help', requireAuth, (req, res) => {
   res.render('help', { title: 'Central de Ajuda', user: req.session.user || null });
 });
 
-router.get('/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.showSettings);
-router.post('/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.updateSettings);
+router.get('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.showSettings);
+router.post('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.updateSettings);
+
+// Redirecionamentos legados (manter compatibilidade)
+router.get('/admin', requireAuth, requireRole('ADMIN'), (_req, res) => res.redirect(302, '/admin/usuarios'));
+router.get('/admin/users', requireAuth, requireRole('ADMIN'), (_req, res) => res.redirect(301, '/admin/usuarios'));
+router.get('/admin/users/new', requireAuth, requireRole('ADMIN'), (_req, res) => res.redirect(301, '/admin/usuarios/novo'));
+router.get('/admin/users/:id/edit', requireAuth, requireRole('ADMIN'), (req, res) => res.redirect(301, `/admin/usuarios/${encodeURIComponent(req.params.id)}/editar`));
+router.get('/admin/sectors', requireAuth, requireRole('ADMIN'), (_req, res) => res.redirect(301, '/admin/setores'));
+router.get('/notificacoes', requireAuth, requireRole('ADMIN'), (_req, res) => res.redirect(301, '/admin/notificacoes'));
+router.post('/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, (req, res) => res.redirect(307, '/admin/notificacoes'));
 
 router.get('/manual-operacional', requireAuth, (req, res) => {
   res.render('manual-operacional', {
@@ -174,6 +184,10 @@ router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, a
     res.status(500).render('500', { title: 'Erro interno', user: req.session.user || null });
   }
 });
+
+router.get('/recados/kanban', requireAuth, requirePermission('read'), csrfProtection, messageViewController.kanbanPage);
+
+router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfProtection, messageViewController.calendarPage);
 
 router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
   try {

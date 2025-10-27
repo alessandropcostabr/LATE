@@ -110,6 +110,7 @@
   function renderUsers(users) {
     state.users = Array.isArray(users) ? users.slice() : [];
 
+
     if (!state.users.length) {
       tbody.innerHTML = '<tr><td colspan="7">Nenhum usuário encontrado.</td></tr>';
       return;
@@ -139,7 +140,7 @@
           <td>${scopeLabel}</td>
           <td class="js-status-cell">${badge}</td>
           <td class="d-flex flex-wrap gap-2 align-items-center">
-            <a href="/admin/users/${user.id}/edit" class="link-primary">Editar</a>
+            <a href="/admin/usuarios/${user.id}/editar" class="link-primary">Editar</a>
             <button type="button" class="btn btn-link p-0 link-secondary js-reset-password">Redefinir senha</button>
             <button type="button" class="btn btn-link p-0 ${toggleClass} js-toggle-status">${toggleLabel}</button>
             <button type="button" class="btn btn-link p-0 link-danger js-remove-user">Remover</button>

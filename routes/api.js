@@ -126,6 +126,7 @@ const csrfProtection = require('../middleware/csrf');
 const canReadMessages = [requireAuth, requirePermission('read')];
 const canCreateMessages = [requireAuth, requirePermission('create'), csrfProtection];
 const canUpdateMessages = [requireAuth, requirePermission('update'), csrfProtection];
+const canManageMessageAccess = [requireAuth, requireMessageUpdatePermission, csrfProtection];
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
 const canChangeOwnPassword = [requireAuth, csrfProtection];
 
@@ -287,13 +288,13 @@ router.get(
 
 router.post(
   '/messages/:id/comments',
-  ...flatFns(canUpdateMessages, validateId, validateCommentCreate, handleValidationErrors),
+  ...flatFns(canManageMessageAccess, validateId, validateCommentCreate, handleValidationErrors),
   messageCommentController.create
 );
 
 router.delete(
   '/messages/:id/comments/:commentId',
-  ...flatFns(canUpdateMessages, validateId, validateCommentIdParam, handleValidationErrors),
+  ...flatFns(canManageMessageAccess, validateId, validateCommentIdParam, handleValidationErrors),
   messageCommentController.remove
 );
 
