@@ -1,0 +1,153 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container">
+      <% const widgetsData = widgets || { dueToday: 0, overdue: 0, sla48: 0 }; %>
+      <%
+        function buildQuery(overrides) {
+          const params = [];
+          const next = overrides || {};
+          const startDate = Object.prototype.hasOwnProperty.call(next, 'start_date') ? next.start_date : filters.startDate;
+          const endDate = Object.prototype.hasOwnProperty.call(next, 'end_date') ? next.end_date : filters.endDate;
+          const recipient = Object.prototype.hasOwnProperty.call(next, 'recipient') ? next.recipient : filters.recipient;
+          const sectorId = Object.prototype.hasOwnProperty.call(next, 'sector_id') ? next.sector_id : filters.sectorId;
+          const label = Object.prototype.hasOwnProperty.call(next, 'label') ? next.label : filters.label;
+          const pageValue = Object.prototype.hasOwnProperty.call(next, 'page') ? next.page : pagination.page;
+
+          if (startDate) params.push('start_date=' + encodeURIComponent(startDate));
+          if (endDate) params.push('end_date=' + encodeURIComponent(endDate));
+          if (recipient) params.push('recipient=' + encodeURIComponent(recipient));
+          if (sectorId) params.push('sector_id=' + encodeURIComponent(sectorId));
+          if (label) params.push('label=' + encodeURIComponent(label));
+          if (pageValue && Number(pageValue) > 1) params.push('page=' + encodeURIComponent(pageValue));
+          return params.length ? '?' + params.join('&') : '';
+        }
+      %>
+
+      <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
+
+      <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap;">
+        <div>
+          <h1 class="page-title" style="font-size:2rem;font-weight:700;margin:0;">Kanban de Recados</h1>
+          <p class="page-subtitle" style="color:var(--text-secondary);margin:0;">Visualize o fluxo por situação e priorize com os widgets</p>
+        </div>
+        <div class="page-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <a class="btn btn-outline" href="/recados">Tabela</a>
+          <a class="btn btn-outline" href="/recados/calendario<%= buildQuery({ page: 1 }) %>">Calendário</a>
+          <% if (permissions && permissions.createMessages) { %>
+            <a class="btn btn-primary" href="/novo-recado">Novo Recado</a>
+          <% } %>
+        </div>
+      </div>
+
+      <section class="card" style="margin-bottom:2rem;">
+        <div class="card-header">
+          <h2 class="card-title">Filtros</h2>
+          <p class="card-subtitle">Refine os resultados do quadro</p>
+        </div>
+        <div class="card-body">
+          <form method="get" class="filters-grid" style="display:grid;gap:1rem;">
+            <input type="hidden" name="page" value="1">
+            <div class="filters-grid__row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+              <div class="form-group">
+                <label class="form-label" for="start_date">Data início</label>
+                <input id="start_date" name="start_date" type="date" class="form-input" value="<%= filters.startDate || '' %>">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="end_date">Data fim</label>
+                <input id="end_date" name="end_date" type="date" class="form-input" value="<%= filters.endDate || '' %>">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="recipient">Destinatário</label>
+                <select id="recipient" name="recipient" class="form-input">
+                  <option value="">Todos</option>
+                  <% if ((destinatariosUsuarios || []).length) { %>
+                    <optgroup label="Usuários">
+                      <% destinatariosUsuarios.forEach(function(user) { %>
+                        <option value="<%= user.name %>" <%= filters.recipient === user.name ? 'selected' : '' %>>
+                          👤 <%= user.name %>
+                        </option>
+                      <% }); %>
+                    </optgroup>
+                  <% } %>
+                  <% if ((destinatariosSetores || []).length) { %>
+                    <optgroup label="Setores">
+                      <% destinatariosSetores.forEach(function(sector) { %>
+                        <option value="<%= sector.name %>" <%= filters.recipient === sector.name ? 'selected' : '' %>>
+                          🏢 <%= sector.name %>
+                        </option>
+                      <% }); %>
+                    </optgroup>
+                  <% } %>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="sector_id">Setor destino</label>
+                <select id="sector_id" name="sector_id" class="form-input">
+                  <option value="">Todos</option>
+                  <% (destinatariosSetores || []).forEach(function(sector) { %>
+                    <option value="<%= sector.id %>" <%= Number(filters.sectorId) === Number(sector.id) ? 'selected' : '' %>>
+                      <%= sector.name %>
+                    </option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="label">Label</label>
+                <select id="label" name="label" class="form-input">
+                  <option value="">Todas</option>
+                  <% (labelsDisponiveis || []).forEach(function(item) { %>
+                    <option value="<%= item.label %>" <%= filters.label === item.label ? 'selected' : '' %>>
+                      <%= item.label %> (<%= item.count %>)
+                    </option>
+                  <% }); %>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions" style="display:flex;gap:1rem;flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+              <a class="btn btn-outline" href="/recados/kanban">Limpar</a>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="widgets-grid" style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:2rem;">
+        <%- include('partials/recados/widgets/today', { count: widgetsData.dueToday }) %>
+        <%- include('partials/recados/widgets/overdue', { count: widgetsData.overdue }) %>
+        <%- include('partials/recados/widgets/sla48', { count: widgetsData.sla48 }) %>
+      </section>
+
+      <section class="kanban-board" style="display:grid;gap:1.5rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:flex-start;">
+        <% if (!board || !board.length) { %>
+          <p class="text-muted">Nenhum recado encontrado com os filtros atuais.</p>
+        <% } else { %>
+          <% board.forEach(function(column) { %>
+            <%- include('partials/recados/kanban-column', { column }) %>
+          <% }); %>
+        <% } %>
+      </section>
+
+      <nav class="pagination" aria-label="Paginação" style="margin-top:2rem;display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;">
+        <% if (pagination.hasPrevious) { %>
+          <a class="btn btn-outline" href="<%= buildQuery({ page: pagination.previousPage }) %>">← Página anterior</a>
+        <% } else { %>
+          <span class="btn btn-outline disabled" aria-disabled="true">← Página anterior</span>
+        <% } %>
+        <span class="pagination__info text-muted">Página <%= pagination.page %></span>
+        <% if (pagination.hasNext) { %>
+          <a class="btn btn-outline" href="<%= buildQuery({ page: pagination.nextPage }) %>">Próxima página →</a>
+        <% } else { %>
+          <span class="btn btn-outline disabled" aria-disabled="true">Próxima página →</span>
+        <% } %>
+      </nav>
+
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>

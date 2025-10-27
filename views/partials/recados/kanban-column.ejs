@@ -1,0 +1,22 @@
+<section class="kanban-column card" data-status="<%= column.status %>">
+  <div class="card-header">
+    <h2 class="card-title"><%= column.statusLabel %></h2>
+    <span class="badge badge-secondary" aria-label="Total"><%= column.cards.length %></span>
+  </div>
+  <div class="card-body">
+    <% if (!column.cards.length) { %>
+      <p class="text-muted">Nenhum recado neste estágio com os filtros atuais.</p>
+    <% } else { %>
+      <div class="kanban-column__cards">
+        <% column.cards.forEach(function(card) { %>
+          <%- include('./message-card', { card }) %>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+  <% if (column.hasMore) { %>
+    <div class="card-footer">
+      <p class="text-muted small">Existem mais recados nesta coluna. Use a paginação abaixo para navegar.</p>
+    </div>
+  <% } %>
+</section>

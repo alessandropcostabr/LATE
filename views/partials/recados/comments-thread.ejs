@@ -1,0 +1,22 @@
+<div class="card" data-comments-panel data-can-manage="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>">
+  <div class="card-header">
+    <h3 class="card-title">Comentários</h3>
+    <p class="card-subtitle">Histórico textual e discussões internas</p>
+  </div>
+  <div class="card-body">
+    <div data-comments-empty class="text-muted">Ainda não há comentários.</div>
+    <ol class="comment-thread" data-comments-list></ol>
+  </div>
+  <div class="card-footer">
+    <form data-comment-form autocomplete="off">
+      <div class="form-group">
+        <label for="commentBody" class="form-label">Adicionar comentário</label>
+        <textarea id="commentBody" name="body" class="form-textarea" rows="3" maxlength="5000" placeholder="Escreva uma atualização ou observação."></textarea>
+        <p class="form-help">Comentário visível apenas internamente. Máximo de 5000 caracteres.</p>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Publicar comentário</button>
+      </div>
+    </form>
+  </div>
+</div>

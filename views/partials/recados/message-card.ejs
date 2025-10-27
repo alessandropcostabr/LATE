@@ -1,0 +1,64 @@
+<article class="kanban-card" data-message-id="<%= card.id %>" aria-labelledby="kanban-card-title-<%= card.id %>">
+  <header class="kanban-card__header">
+    <h3 id="kanban-card-title-<%= card.id %>" class="kanban-card__title"><%= card.subject || 'Sem assunto' %></h3>
+    <span class="badge badge-status"><%= card.statusLabel %></span>
+  </header>
+
+  <dl class="kanban-card__meta">
+    <div>
+      <dt>Destinatário</dt>
+      <dd><%= card.recipient || '—' %></dd>
+    </div>
+    <div>
+      <dt>Data/Hora</dt>
+      <dd>
+        <% if (card.callDate) { %>
+          <%= card.callDate %>
+        <% } else { %>
+          <span class="text-muted">Sem data</span>
+        <% } %>
+        <% if (card.callTime) { %>
+          · <%= card.callTime %>
+        <% } %>
+      </dd>
+    </div>
+    <div>
+      <dt>Prazo</dt>
+      <dd><%= card.callbackTime || '—' %></dd>
+    </div>
+  </dl>
+
+  <% if (card.labels && card.labels.length) { %>
+    <ul class="kanban-card__labels">
+      <% card.labels.forEach(function(label) { %>
+        <li><span class="badge badge-label"><%= label %></span></li>
+      <% }); %>
+    </ul>
+  <% } %>
+
+  <% if (card.checklistProgress !== null && card.checklistProgress !== undefined) { %>
+    <div class="kanban-card__progress">
+      <span class="text-muted">Checklist</span>
+      <div class="progress">
+        <div
+          class="progress-bar"
+          role="progressbar"
+          style="width:<%= card.checklistProgress %>%;"
+          aria-valuenow="<%= card.checklistProgress %>"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <%= card.checklistProgress %>%
+        </div>
+      </div>
+    </div>
+  <% } %>
+
+  <footer class="kanban-card__footer">
+    <a class="btn btn-link btn-sm" href="/visualizar-recado/<%= card.id %>">Detalhes</a>
+    <span class="text-muted">
+      Atualizado:
+      <%= card.updatedAt || '—' %>
+    </span>
+  </footer>
+</article>
