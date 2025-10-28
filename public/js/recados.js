@@ -8,6 +8,63 @@ const CAN_UPDATE_MESSAGE = permissionsEl?.dataset?.canUpdate === 'true';
 const CAN_DELETE_MESSAGE = permissionsEl?.dataset?.canDelete === 'true';
 const CAN_EDIT_OWN_MESSAGE = permissionsEl?.dataset?.canEditOwn === 'true';
 
+const STATUS_LABELS = {
+  pending: 'Pendente',
+  in_progress: 'Em andamento',
+  resolved: 'Resolvido'
+};
+
+const STATUS_OPTIONS = [
+  {
+    value: 'pending',
+    label: STATUS_LABELS.pending,
+    icon: '⏳',
+    badgeClass: 'badge-pendente',
+    themeClass: 'chip-pendente'
+  },
+  {
+    value: 'in_progress',
+    label: STATUS_LABELS.in_progress,
+    icon: '🚧',
+    badgeClass: 'badge-andamento',
+    themeClass: 'chip-andamento'
+  },
+  {
+    value: 'resolved',
+    label: STATUS_LABELS.resolved,
+    icon: '✅',
+    badgeClass: 'badge-resolvido',
+    themeClass: 'chip-resolvido'
+  }
+];
+
+const STATUS_ACTION_COPY = {
+  pending: {
+    confirm: 'Reabrir este recado como pendente?',
+    loading: 'Atualizando...',
+    success: 'Recado marcado como pendente.',
+    error: 'Erro ao atualizar recado.'
+  },
+  in_progress: {
+    confirm: 'Marcar este recado como em andamento?',
+    loading: 'Atualizando...',
+    success: 'Recado marcado como em andamento.',
+    error: 'Erro ao atualizar recado.'
+  },
+  resolved: {
+    confirm: 'Marcar este recado como resolvido?',
+    loading: 'Atualizando...',
+    success: 'Recado marcado como resolvido.',
+    error: 'Erro ao atualizar recado.'
+  },
+  default: {
+    confirm: 'Atualizar situação do recado?',
+    loading: 'Atualizando...',
+    success: 'Situação do recado atualizada.',
+    error: 'Erro ao atualizar recado.'
+  }
+};
+
 async function request(url, opts = {}) {
   const res = await fetch(url, {
     credentials: 'include',
@@ -115,6 +172,55 @@ function hydrateFormFromUrl(form, searchParams = new URLSearchParams(window.loca
   });
 }
 
+function renderStatusControls(message, canEditThis) {
+  const buttons = STATUS_OPTIONS.map((option) => {
+    const isCurrent = message.status === option.value;
+    const isInteractive = canEditThis && !isCurrent;
+    const classes = [
+      'message-status-btn',
+      option.themeClass,
+      isCurrent ? 'is-active' : ''
+    ].filter(Boolean).join(' ');
+    const ariaPressed = isCurrent ? 'true' : 'false';
+    const title = isCurrent
+      ? `Situação atual: ${option.label}`
+      : `Marcar recado como ${option.label.toLowerCase()}`;
+
+    const attrs = [
+      'type="button"',
+      `class="${classes}"`,
+      `data-status-value="${option.value}"`,
+      `aria-pressed="${ariaPressed}"`,
+      `title="${title}"`
+    ];
+
+    if (isInteractive) {
+      attrs.push('data-action="set-status"');
+      attrs.push(`data-target-status="${option.value}"`);
+      attrs.push(`data-message-id="${message.id}"`);
+    } else {
+      attrs.push('disabled');
+    }
+
+    return `
+      <button ${attrs.join(' ')}>
+        <span aria-hidden="true">${option.icon}</span>
+        <span class="message-status-label">${option.label}</span>
+      </button>
+    `;
+  }).join('');
+
+  return `
+    <div
+      class="message-status-group"
+      role="group"
+      aria-label="Alterar situação do recado"
+    >
+      ${buttons}
+    </div>
+  `;
+}
+
 async function carregarRecados() {
   const container = document.getElementById('listaRecados');
   const totalEl   = document.getElementById('totalResultados');
@@ -174,11 +280,9 @@ async function carregarRecados() {
 
     const html = list.map((m) => {
       const created = m.created_label || formatDateTimeBR(m.createdAt || m.created_at);
-      const statusLabel = m.status_label || ({
-        pending: 'Pendente',
-        in_progress: 'Em andamento',
-        resolved: 'Resolvido'
-      }[m.status] || m.status || '—');
+      const statusOption = STATUS_OPTIONS.find((opt) => opt.value === m.status);
+      const statusLabel = m.status_label || statusOption?.label || m.status || '—';
+      const badgeClasses = statusOption ? `badge ${statusOption.badgeClass}` : 'badge';
 
       const subject = m.subject || '(Sem assunto)';
       const sender  = m.sender_name || m.sender_email || '—';
@@ -197,28 +301,6 @@ async function carregarRecados() {
         actions.push(`
           <a class="btn btn-primary btn-sm" href="/editar-recado/${m.id}">✏️ Editar</a>
         `);
-
-        if (m.status !== 'resolved') {
-          actions.push(`
-            <button
-              type="button"
-              class="btn btn-success btn-sm"
-              data-action="resolve-message"
-              data-message-id="${m.id}"
-            >✅ Resolver</button>
-          `);
-        }
-
-        if (m.status !== 'in_progress') {
-          actions.push(`
-            <button
-              type="button"
-              class="btn btn-progress btn-sm"
-              data-action="progress-message"
-              data-message-id="${m.id}"
-            >🚧 Em andamento</button>
-          `);
-        }
       }
 
       if (CAN_DELETE_MESSAGE) {
@@ -233,8 +315,10 @@ async function carregarRecados() {
         `);
       }
 
+      const statusControls = renderStatusControls(m, canEditThis);
+
       return `
-        <div class="list-item" style="display:grid;grid-template-columns:1fr auto;gap:0.5rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
+        <div class="list-item" style="display:grid;grid-template-columns:1fr auto;gap:0.75rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
           <div style="min-width:0;">
             <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subject}</div>
             <div style="font-size:0.9rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
@@ -242,8 +326,9 @@ async function carregarRecados() {
             </div>
             <div style="font-size:0.85rem;color:var(--text-secondary);">Criado em: ${created}</div>
           </div>
-          <div style="text-align:right;align-self:center;">
-            <div style="margin-bottom:0.5rem;"><span class="badge">${statusLabel}</span></div>
+          <div style="text-align:right;align-self:center;display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;">
+            <div><span class="${badgeClasses}">${statusLabel}</span></div>
+            ${statusControls}
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
               ${actions.join('')}
             </div>
@@ -337,42 +422,44 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const statusButton = event.target.closest('[data-action="resolve-message"], [data-action="progress-message"]');
+      const statusButton = event.target.closest('[data-action="set-status"]');
       if (statusButton) {
         event.preventDefault();
+
+        if (!CAN_UPDATE_MESSAGE && !CAN_EDIT_OWN_MESSAGE) return;
 
         const messageId = statusButton.getAttribute('data-message-id');
         if (!messageId) return;
 
-        const action = statusButton.getAttribute('data-action');
-        const targetStatus = action === 'progress-message' ? 'in_progress' : 'resolved';
-        const confirmationText = action === 'progress-message'
-          ? 'Marcar este recado como em andamento?'
-          : 'Marcar este recado como resolvido?';
-        const loadingText = action === 'progress-message' ? 'Atualizando...' : 'Resolvendo...';
-        const successText = action === 'progress-message'
-          ? 'Recado marcado como em andamento.'
-          : 'Recado marcado como resolvido.';
-        const errorText = action === 'progress-message'
-          ? 'Erro ao atualizar recado.'
-          : 'Erro ao resolver recado.';
+        const targetStatus = statusButton.getAttribute('data-target-status');
+        if (!targetStatus) return;
 
-        if (!window.confirm(confirmationText)) return;
+        const statusCopy = STATUS_ACTION_COPY[targetStatus] || STATUS_ACTION_COPY.default;
+        if (statusCopy.confirm && !window.confirm(statusCopy.confirm)) return;
+
+        const group = statusButton.closest('.message-status-group');
+        const buttonsInGroup = group ? Array.from(group.querySelectorAll('button')) : [];
+        const originalStates = buttonsInGroup.map((btn) => ({ btn, disabled: btn.disabled }));
+        let requestSucceeded = false;
+
+        setButtonLoading(statusButton, true, statusCopy.loading || 'Atualizando...');
+        buttonsInGroup.forEach((btn) => { btn.disabled = true; });
+        if (group) {
+          group.setAttribute('aria-busy', 'true');
+        }
 
         try {
-          setButtonLoading(statusButton, true, loadingText);
-
           if (!window.API || typeof window.API.updateMessageStatus !== 'function') {
             throw new Error('API indisponível para atualizar recados.');
           }
 
           await window.API.updateMessageStatus(messageId, { status: targetStatus });
           if (window.Toast?.success) {
-            window.Toast.success(successText);
+            window.Toast.success(statusCopy.success || 'Situação do recado atualizada.');
           }
-          carregarRecados();
+          requestSucceeded = true;
         } catch (err) {
-          const msg = err?.message || errorText;
+          const msg = err?.message || statusCopy.error || 'Erro ao atualizar recado.';
           if (window.Toast?.error) {
             window.Toast.error(msg);
           } else {
@@ -381,6 +468,25 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } finally {
           setButtonLoading(statusButton, false);
+
+          if (requestSucceeded) {
+            buttonsInGroup.forEach((btn) => {
+              if (btn.isConnected) {
+                btn.disabled = true;
+              }
+            });
+            carregarRecados();
+          } else {
+            originalStates.forEach(({ btn, disabled }) => {
+              if (btn.isConnected) {
+                btn.disabled = disabled;
+              }
+            });
+          }
+
+          if (group && group.isConnected) {
+            group.removeAttribute('aria-busy');
+          }
         }
       }
     });

@@ -924,6 +924,59 @@ main.auth-layout {
   background: rgba(16, 185, 129, 0.1);
   color: #059669;
 }
+.message-status-group {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: 9999px;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+}
+.message-status-group[aria-busy="true"] {
+  opacity: 0.6;
+}
+.message-status-btn {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 9999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.message-status-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.message-status-btn:not(:disabled):hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+.message-status-btn.is-active {
+  color: var(--text-primary);
+}
+.message-status-btn.chip-pendente.is-active {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+.message-status-btn.chip-andamento.is-active {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+.message-status-btn.chip-resolvido.is-active {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+.message-status-btn .message-status-label {
+  white-space: nowrap;
+}
 .filters {
   background: var(--surface);
   border: 1px solid var(--border-light);
