@@ -7,6 +7,7 @@ const permissionsEl = document.querySelector('[data-message-permissions]');
 const CAN_UPDATE_MESSAGE = permissionsEl?.dataset?.canUpdate === 'true';
 const CAN_DELETE_MESSAGE = permissionsEl?.dataset?.canDelete === 'true';
 const CAN_EDIT_OWN_MESSAGE = permissionsEl?.dataset?.canEditOwn === 'true';
+const CAN_FORWARD_MESSAGE = permissionsEl?.dataset?.canForward === 'true';
 
 const STATUS_LABELS = {
   pending: 'Pendente',
@@ -117,6 +118,19 @@ function decodeAttr(value) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#39;';
+      default: return char;
+    }
+  });
+}
+
 function setButtonLoading(button, loading, textWhenLoading = 'Processando...') {
   if (!button) return;
   if (loading) {
@@ -172,7 +186,8 @@ function hydrateFormFromUrl(form, searchParams = new URLSearchParams(window.loca
   });
 }
 
-function renderStatusControls(message, canEditThis) {
+function renderStatusControls(message, canEditThis, currentStatusLabel) {
+  const statusLabelText = currentStatusLabel || STATUS_LABELS[message.status] || message.status || 'Situação desconhecida';
   const buttons = STATUS_OPTIONS.map((option) => {
     const isCurrent = message.status === option.value;
     const isInteractive = canEditThis && !isCurrent;
@@ -214,7 +229,7 @@ function renderStatusControls(message, canEditThis) {
     <div
       class="message-status-group"
       role="group"
-      aria-label="Alterar situação do recado"
+      aria-label="Situação atual: ${escapeHtml(statusLabelText)}. Use os botões para alterar."
     >
       ${buttons}
     </div>
@@ -282,7 +297,6 @@ async function carregarRecados() {
       const created = m.created_label || formatDateTimeBR(m.createdAt || m.created_at);
       const statusOption = STATUS_OPTIONS.find((opt) => opt.value === m.status);
       const statusLabel = m.status_label || statusOption?.label || m.status || '—';
-      const badgeClasses = statusOption ? `badge ${statusOption.badgeClass}` : 'badge';
 
       const subject = m.subject || '(Sem assunto)';
       const sender  = m.sender_name || m.sender_email || '—';
@@ -292,10 +306,19 @@ async function carregarRecados() {
       const isOwner = m.is_owner === true || m.isOwner === true;
       const isRecipient = m.is_recipient === true || m.isRecipient === true;
       const canEditThis = CAN_UPDATE_MESSAGE || (CAN_EDIT_OWN_MESSAGE && (isOwner || isRecipient));
+      const canForwardThis = CAN_FORWARD_MESSAGE && canEditThis;
+
+      const detailsUrl = `/visualizar-recado/${m.id}`;
 
       const actions = [`
-        <a class="btn btn-neutral btn-sm" href="/recados/${m.id}">Ver</a>
+        <a class="btn btn-neutral btn-sm" href="${detailsUrl}">Ver</a>
       `];
+
+      if (canForwardThis) {
+        actions.push(`
+          <a class="btn btn-secondary btn-sm" href="${detailsUrl}?forward=1">📤 Encaminhar</a>
+        `);
+      }
 
       if (canEditThis) {
         actions.push(`
@@ -315,25 +338,22 @@ async function carregarRecados() {
         `);
       }
 
-      const statusControls = renderStatusControls(m, canEditThis);
+      const statusControls = renderStatusControls(m, canEditThis, statusLabel);
 
       return `
-        <div class="list-item" style="display:grid;grid-template-columns:1fr auto;gap:0.75rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
-          <div style="min-width:0;">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subject}</div>
-            <div style="font-size:0.9rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              De: ${sender} • Para: ${recipient} • Visibilidade: ${visibilityLabel}
-            </div>
-            <div style="font-size:0.85rem;color:var(--text-secondary);">Criado em: ${created}</div>
-          </div>
-          <div style="text-align:right;align-self:center;display:flex;flex-direction:column;gap:0.5rem;align-items:flex-end;">
-            <div><span class="${badgeClasses}">${statusLabel}</span></div>
+        <article class="message-card list-item" data-message-id="${m.id}">
+          <a class="message-card__primary" href="${detailsUrl}" aria-label="Abrir recado ${escapeHtml(subject)}">
+            <div class="message-card__title">${escapeHtml(subject)}</div>
+            <div class="message-card__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)} • Visibilidade: ${escapeHtml(visibilityLabel)}</div>
+            <div class="message-card__meta">Criado em: ${escapeHtml(created)}</div>
+          </a>
+          <div class="message-card__side">
             ${statusControls}
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:flex-end;">
+            <div class="message-card__actions">
               ${actions.join('')}
             </div>
           </div>
-        </div>
+        </article>
       `;
     }).join('');
 

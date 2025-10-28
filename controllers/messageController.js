@@ -126,6 +126,35 @@ const STATUS_LABELS_PT = {
   resolved: 'Resolvido',
 };
 
+function reportBackgroundFailure(taskName, err) {
+  console.error('[messages] tarefa em segundo plano falhou', {
+    task: taskName,
+    err: err?.message || err,
+  });
+}
+
+function dispatchBackground(taskName, fn) {
+  if (process.env.NODE_ENV === 'test') {
+    return Promise.resolve().then(fn).catch((err) => {
+      reportBackgroundFailure(taskName, err);
+    });
+  }
+
+  const runner = () => {
+    Promise.resolve()
+      .then(fn)
+      .catch((err) => {
+        reportBackgroundFailure(taskName, err);
+      });
+  };
+
+  if (typeof setImmediate === 'function') {
+    setImmediate(runner);
+  } else {
+    setTimeout(runner, 0);
+  }
+}
+
 const CHANGE_FIELD_LABELS = {
   recipient: 'Destinatário',
   recipient_user_id: 'Destinatário (usuário)',
@@ -657,8 +686,10 @@ exports.create = async (req, res) => {
     const created = await Message.findById(id);
     await attachCreatorNames([created]);
 
-    await notifyRecipientUser(created, { template: 'new' });
-    await notifyRecipientSectorMembers(created);
+    if (created) {
+      dispatchBackground('notifyRecipientUser:new', () => notifyRecipientUser(created, { template: 'new' }));
+      dispatchBackground('notifyRecipientSectorMembers:new', () => notifyRecipientSectorMembers(created));
+    }
 
     await logMessageEvent(id, 'created', {
       user_id: actor.id,
@@ -794,11 +825,11 @@ exports.forward = async (req, res) => {
     const forwardedBy = req.session?.user?.name || null;
 
     if (updated) {
-      await notifyRecipientUser(updated, {
+      dispatchBackground('notifyRecipientUser:forward', () => notifyRecipientUser(updated, {
         template: 'forward',
         forwardedBy,
         reason: forwardNote,
-      });
+      }));
     }
 
     await logMessageEvent(id, 'forwarded', {

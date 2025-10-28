@@ -102,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHistory(recado);
     updateActionButtons(recado);
     activateTab(state.activeTab);
+    maybeOpenForwardFromQuery(recado);
   }
 
   function renderDetails(recado) {
@@ -383,6 +384,15 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.deleteButton.dataset.messageSubject = encodeAttr(recado?.subject || '');
       }
     }
+  }
+
+  function maybeOpenForwardFromQuery(recado) {
+    if (!recado || !forwardModal) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('forward')) return;
+    const canManage = state.canUpdate || (state.canEditOwn && isOwnerOrRecipient(recado));
+    if (!canManage) return;
+    forwardModal.show();
   }
 
   function initTabs() {
