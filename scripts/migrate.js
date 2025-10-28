@@ -13,6 +13,9 @@ const path = require('path');
 // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
 require('../config/loadEnv').loadEnv();
 
+// Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
+require('../config/loadEnv').loadEnv();
+
 // Barrar drivers não suportados
 const driver = String(process.env.DB_DRIVER || 'pg').toLowerCase();
 if (driver !== 'pg') {

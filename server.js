@@ -34,7 +34,7 @@ app.set(
   'trust proxy',
   /^\d+$/.test(rawTrustProxy)
     ? Number(rawTrustProxy)            // "1","2",...
-    : rawTrustProxy === '' 
+    : rawTrustProxy === ''
       ? false                          // vazio → desliga
       : rawTrustProxy === 'true'
         ? true
@@ -42,7 +42,6 @@ app.set(
           ? false
           : rawTrustProxy              // 'loopback'|'linklocal'|'uniquelocal' ou CIDR/IP
 );
-
 app.set('etag', false);
 app.use(helmet({
   contentSecurityPolicy: false,
