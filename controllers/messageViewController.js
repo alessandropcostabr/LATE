@@ -147,11 +147,11 @@ function mapCalendarEntry(row, labelsMap) {
   };
 }
 
-async function fetchFilterOptions() {
+async function fetchFilterOptions(viewer) {
   const [users, sectorsResult, labels] = await Promise.all([
     UserModel.getActiveUsersSelect(),
     SectorModel.list({ status: 'active', limit: 200 }),
-    MessageLabelModel.listDistinct({ limit: 200 }),
+    MessageLabelModel.listDistinct({ limit: 200, viewer }),
   ]);
 
   return {
@@ -213,7 +213,7 @@ exports.kanbanPage = async (req, res) => {
     const [labelsMap, progressMap, filterOptions, widgets] = await Promise.all([
       MessageLabelModel.listByMessages(messageIds),
       MessageChecklistModel.progressByMessages(messageIds),
-      fetchFilterOptions(),
+      fetchFilterOptions(viewer),
       Message.widgetCounters({
         start_date: filters.startDate,
         end_date: filters.endDate,
@@ -283,7 +283,7 @@ exports.calendarPage = async (req, res) => {
 
     const [labelsMap, filterOptions, widgets] = await Promise.all([
       MessageLabelModel.listByMessages(messageIds),
-      fetchFilterOptions(),
+      fetchFilterOptions(viewer),
       Message.widgetCounters({
         start_date: filters.startDate,
         end_date: filters.endDate,

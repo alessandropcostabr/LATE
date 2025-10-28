@@ -46,6 +46,28 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
     expect(titles).not.toContain('Atendimento Setorial');
   });
 
+  test('kanban lista somente labels visíveis ao operador com escopo own', async () => {
+    const app = createApp({
+      id: 1,
+      name: 'Ana Operadora',
+      role: 'OPERADOR',
+      viewScope: 'own',
+    });
+
+    const response = await supertest(app).get('/recados/kanban');
+    expect(response.status).toBe(200);
+
+    const dom = new JSDOM(response.text);
+    const labels = Array.from(
+      dom.window.document.querySelectorAll('select[name="label"] option')
+    )
+      .map((option) => option.value.trim())
+      .filter(Boolean);
+
+    expect(labels).toContain('priority');
+    expect(labels).not.toContain('followup');
+  });
+
   test('calendário aplica filtro de label corretamente', async () => {
     const app = createApp({
       id: 99,

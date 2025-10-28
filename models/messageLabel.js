@@ -2,6 +2,88 @@
 // Camada de acesso para labels associados aos recados.
 
 const db = require('../config/database');
+const { buildViewerOwnershipFilter, normalizeViewScope } = require('./helpers/viewerScope');
+
+const MESSAGE_TABLE = 'messages';
+const USER_SECTORS_TABLE = 'user_sectors';
+
+const columnSupportCache = new Map();
+const columnCheckPromises = new Map();
+const tableSupportCache = new Map();
+const tableCheckPromises = new Map();
+
+async function supportsColumn(column) {
+  if (columnSupportCache.has(column)) {
+    return columnSupportCache.get(column);
+  }
+  if (columnCheckPromises.has(column)) {
+    return columnCheckPromises.get(column);
+  }
+
+  const sql = `
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+       AND column_name = $2
+     LIMIT 1
+  `;
+
+  const promise = db
+    .query(sql, [MESSAGE_TABLE, column])
+    .then(({ rowCount }) => {
+      const exists = rowCount > 0;
+      columnSupportCache.set(column, exists);
+      return exists;
+    })
+    .catch((err) => {
+      console.warn(`[labels] não foi possível inspecionar coluna ${column}:`, err.message || err);
+      columnSupportCache.set(column, false);
+      return false;
+    })
+    .finally(() => {
+      columnCheckPromises.delete(column);
+    });
+
+  columnCheckPromises.set(column, promise);
+  return promise;
+}
+
+async function supportsTable(table) {
+  if (tableSupportCache.has(table)) {
+    return tableSupportCache.get(table);
+  }
+  if (tableCheckPromises.has(table)) {
+    return tableCheckPromises.get(table);
+  }
+
+  const sql = `
+    SELECT 1
+      FROM information_schema.tables
+     WHERE table_schema = current_schema()
+       AND table_name = $1
+     LIMIT 1
+  `;
+
+  const promise = db
+    .query(sql, [table])
+    .then(({ rowCount }) => {
+      const exists = rowCount > 0;
+      tableSupportCache.set(table, exists);
+      return exists;
+    })
+    .catch((err) => {
+      console.warn(`[labels] não foi possível inspecionar tabela ${table}:`, err.message || err);
+      tableSupportCache.set(table, false);
+      return false;
+    })
+    .finally(() => {
+      tableCheckPromises.delete(table);
+    });
+
+  tableCheckPromises.set(table, promise);
+  return promise;
+}
 
 const LABEL_REGEX = /^[a-z0-9\-_.]{2,32}$/i;
 
@@ -151,32 +233,103 @@ exports.listByMessages = async (messageIds) => {
 
 const inMemoryLabels = new Map();
 
-exports.listDistinct = async ({ limit = 100 } = {}) => {
+async function listDistinctInternal(options = {}, retrying = false) {
+  const { limit = 100, viewer } = options;
   const parsedLimit = Number(limit);
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0
     ? Math.min(parsedLimit, 500)
     : 100;
 
   try {
-    const { rows } = await db.query(
-      `SELECT label, COUNT(*)::int AS usage
-         FROM message_labels
-     GROUP BY label
-     ORDER BY label ASC
-        LIMIT $1`,
-      [sanitizedLimit]
-    );
+    const scope = normalizeViewScope(viewer?.viewScope || viewer?.view_scope);
+    let whereClause = '';
+    const params = [];
+    let nextIndex = 1;
+
+    if (scope === 'own') {
+      const [
+        supportsRecipientUser,
+        supportsCreator,
+        supportsRecipientSector,
+        supportsVisibility,
+      ] = await Promise.all([
+        supportsColumn('recipient_user_id'),
+        supportsColumn('created_by'),
+        supportsColumn('recipient_sector_id'),
+        supportsColumn('visibility'),
+      ]);
+
+      if (!supportsRecipientUser || !supportsVisibility) {
+        return [];
+      }
+
+      const supportsSectorMembership = supportsRecipientSector && await supportsTable(USER_SECTORS_TABLE);
+
+      const ownershipFilter = buildViewerOwnershipFilter(
+        viewer,
+        (i) => `$${i}`,
+        nextIndex,
+        {
+          alias: 'm',
+          supportsCreator,
+          supportsSectorMembership,
+        }
+      );
+
+      if (ownershipFilter.clause) {
+        whereClause = `WHERE ${ownershipFilter.clause}`;
+        params.push(...ownershipFilter.params);
+        nextIndex = ownershipFilter.nextIndex;
+      }
+    }
+
+    const limitIndex = nextIndex;
+    params.push(sanitizedLimit);
+
+    const sql = `
+      SELECT ml.label, COUNT(*)::int AS usage
+        FROM message_labels AS ml
+        JOIN messages AS m ON m.id = ml.message_id
+        ${whereClause}
+    GROUP BY ml.label
+    ORDER BY ml.label ASC
+       LIMIT $${limitIndex}
+    `;
+
+    const { rows } = await db.query(sql, params);
     return rows.map((row) => ({
       label: row.label,
       count: Number(row.usage || 0),
     }));
   } catch (err) {
+    if (!retrying) {
+      const message = String(err?.message || '').toLowerCase();
+      if (message.includes('recipient_sector_id')) {
+        columnSupportCache.set('recipient_sector_id', false);
+        return listDistinctInternal(options, true);
+      }
+      if (message.includes('created_by')) {
+        columnSupportCache.set('created_by', false);
+        return listDistinctInternal(options, true);
+      }
+      if (message.includes('recipient_user_id')) {
+        columnSupportCache.set('recipient_user_id', false);
+        return listDistinctInternal(options, true);
+      }
+      if (message.includes('visibility')) {
+        columnSupportCache.set('visibility', false);
+        return [];
+      }
+    }
+
     if (isMissingRelation(err)) {
       return [];
     }
     throw err;
   }
-};
+}
+
+exports.listDistinct = (options) => listDistinctInternal(options, false);
 
 function fallbackStorage(messageId) {
   const key = String(messageId);
