@@ -96,8 +96,8 @@ describe('GET /api/messages/:id', () => {
       success: false,
       error: 'Dados inválidos',
     });
-    expect(Array.isArray(response.body.details)).toBe(true);
-    const idError = response.body.details.find((err) => (err.param || err.path) === 'id');
+    expect(Array.isArray(response.body.data?.details)).toBe(true);
+    const idError = response.body.data.details.find((err) => (err.param || err.path) === 'id');
     expect(idError).toBeDefined();
     expect(idError.msg).toBe('ID inválido');
     expect(messageModel.findById).not.toHaveBeenCalled();

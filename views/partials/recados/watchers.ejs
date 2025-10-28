@@ -1,0 +1,26 @@
+<div class="card" data-watchers-panel data-can-manage="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>">
+  <div class="card-header">
+    <h3 class="card-title">Observadores</h3>
+    <p class="card-subtitle">Pessoas que acompanham atualizações deste recado</p>
+  </div>
+  <div class="card-body">
+    <div data-watchers-empty class="text-muted">Nenhum observador adicionado.</div>
+    <ul class="watchers-list" data-watchers-list></ul>
+  </div>
+  <% if (permissions && permissions.updateMessages) { %>
+    <div class="card-footer">
+      <form data-watcher-form class="d-flex gap-2 flex-wrap align-items-center">
+        <div class="flex-grow-1">
+          <label for="watcherUserId" class="form-label">Adicionar observador</label>
+          <select id="watcherUserId" name="userId" class="form-input" data-watcher-select required>
+            <option value="">Selecione um usuário</option>
+            <% (activeUsers || []).forEach(function(user) { %>
+              <option value="<%= user.id %>"> <%= user.name %> (<%= user.email %>)</option>
+            <% }); %>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Adicionar</button>
+      </form>
+    </div>
+  <% } %>
+</div>

@@ -41,7 +41,7 @@ const API = (() => {
 
     if (!res.ok) {
       // Propaga erro com mensagem do backend quando disponível
-      const msg = body?.error || body?.message || body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
+      const msg = body?.error || body?.data?.message || body?.message || body?.erro || body?.mensagem || `Falha na requisição (${res.status})`;
       const err = new Error(msg);
       err.status = res.status;
       err.body = body;
@@ -101,6 +101,85 @@ const API = (() => {
     return listMessages({ limit });
   }
 
+  async function addMessageLabel(messageId, label) {
+    return request(`/messages/${encodeURIComponent(messageId)}/labels`, {
+      method: 'POST',
+      data: { label },
+    });
+  }
+
+  async function removeMessageLabel(messageId, label) {
+    return request(`/messages/${encodeURIComponent(messageId)}/labels/${encodeURIComponent(label)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async function createChecklist(messageId, data) {
+    return request(`/messages/${encodeURIComponent(messageId)}/checklists`, {
+      method: 'POST',
+      data,
+    });
+  }
+
+  async function updateChecklist(messageId, checklistId, data) {
+    return request(`/messages/${encodeURIComponent(messageId)}/checklists/${encodeURIComponent(checklistId)}`, {
+      method: 'PUT',
+      data,
+    });
+  }
+
+  async function removeChecklist(messageId, checklistId) {
+    return request(`/messages/${encodeURIComponent(messageId)}/checklists/${encodeURIComponent(checklistId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async function createChecklistItem(messageId, checklistId, data) {
+    return request(`/messages/${encodeURIComponent(messageId)}/checklists/${encodeURIComponent(checklistId)}/items`, {
+      method: 'POST',
+      data,
+    });
+  }
+
+  async function updateChecklistItem(messageId, checklistId, itemId, data) {
+    return request(`/messages/${encodeURIComponent(messageId)}/checklists/${encodeURIComponent(checklistId)}/items/${encodeURIComponent(itemId)}`, {
+      method: 'PUT',
+      data,
+    });
+  }
+
+  async function removeChecklistItem(messageId, checklistId, itemId) {
+    return request(`/messages/${encodeURIComponent(messageId)}/checklists/${encodeURIComponent(checklistId)}/items/${encodeURIComponent(itemId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async function createComment(messageId, data) {
+    return request(`/messages/${encodeURIComponent(messageId)}/comments`, {
+      method: 'POST',
+      data,
+    });
+  }
+
+  async function removeComment(messageId, commentId) {
+    return request(`/messages/${encodeURIComponent(messageId)}/comments/${encodeURIComponent(commentId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async function addWatcher(messageId, userId) {
+    return request(`/messages/${encodeURIComponent(messageId)}/watchers`, {
+      method: 'POST',
+      data: { userId },
+    });
+  }
+
+  async function removeWatcher(messageId, userId) {
+    return request(`/messages/${encodeURIComponent(messageId)}/watchers/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+    });
+  }
+
   return {
     request,
     createMessage,
@@ -112,6 +191,18 @@ const API = (() => {
     updateMessageStatus,
     getMessageStats,
     listRecentMessages,
+    addMessageLabel,
+    removeMessageLabel,
+    createChecklist,
+    updateChecklist,
+    removeChecklist,
+    createChecklistItem,
+    updateChecklistItem,
+    removeChecklistItem,
+    createComment,
+    removeComment,
+    addWatcher,
+    removeWatcher,
 
     // aliases temporários para compatibilidade
     createRecado: createMessage,

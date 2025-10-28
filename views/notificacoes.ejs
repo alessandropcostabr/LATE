@@ -10,7 +10,7 @@
           <p class="card-subtitle">Defina a periodicidade dos alertas por e-mail para recados pendentes e em andamento.</p>
         </div>
         <div class="card-body">
-          <form method="POST" action="/notificacoes">
+          <form method="POST" action="/admin/notificacoes">
             <% if (typeof csrfToken !== 'undefined' && csrfToken) { %>
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <% } %>

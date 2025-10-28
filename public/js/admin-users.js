@@ -35,7 +35,7 @@
     }
 
     if (!response.ok || body.success === false) {
-      const message = body?.error || body?.message || `Falha na requisição (${response.status})`;
+      const message = body?.error || body?.data?.message || body?.message || `Falha na requisição (${response.status})`;
       const error = new Error(message);
       error.status = response.status;
       error.body = body;
@@ -50,6 +50,7 @@
     if (payload && Array.isArray(payload.items)) return payload.items;
     if (payload && payload.data) {
       if (Array.isArray(payload.data)) return payload.data;
+      if (Array.isArray(payload.data.users)) return payload.data.users;
       if (Array.isArray(payload.data.items)) return payload.data.items;
       if (Array.isArray(payload.data.data)) return payload.data.data;
       if (Array.isArray(payload.data.sectors)) return payload.data.sectors;
@@ -109,6 +110,7 @@
   function renderUsers(users) {
     state.users = Array.isArray(users) ? users.slice() : [];
 
+
     if (!state.users.length) {
       tbody.innerHTML = '<tr><td colspan="7">Nenhum usuário encontrado.</td></tr>';
       return;
@@ -138,7 +140,7 @@
           <td>${scopeLabel}</td>
           <td class="js-status-cell">${badge}</td>
           <td class="d-flex flex-wrap gap-2 align-items-center">
-            <a href="/admin/users/${user.id}/edit" class="link-primary">Editar</a>
+            <a href="/admin/usuarios/${user.id}/editar" class="link-primary">Editar</a>
             <button type="button" class="btn btn-link p-0 link-secondary js-reset-password">Redefinir senha</button>
             <button type="button" class="btn btn-link p-0 ${toggleClass} js-toggle-status">${toggleLabel}</button>
             <button type="button" class="btn btn-link p-0 link-danger js-remove-user">Remover</button>

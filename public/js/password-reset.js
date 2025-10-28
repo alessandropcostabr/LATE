@@ -77,7 +77,8 @@
           data: payload,
         });
 
-        showAlert('success', response?.message || 'Senha atualizada com sucesso. Você já pode fazer login.');
+        const successMessage = response?.data?.message || response?.message || 'Senha atualizada com sucesso. Você já pode fazer login.';
+        showAlert('success', successMessage);
         form.reset();
 
         setTimeout(() => {

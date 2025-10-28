@@ -1292,3 +1292,211 @@ main.auth-layout {
     display: block;
   }
 }
+
+/* --- Sprint A: Detalhes do recado --- */
+.tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tab-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tab-button {
+  background: var(--neutral);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 1.1rem;
+  transition: var(--transition);
+}
+
+.tab-button:hover,
+.tab-button:focus {
+  background: #e0e7ff;
+  border-color: var(--primary-light);
+  color: var(--primary-dark);
+  outline: none;
+}
+
+.tab-button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tab-panel[hidden] {
+  display: none !important;
+}
+
+.details-grid {
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  margin-bottom: 1.5rem;
+}
+
+.details-grid__row {
+  display: contents;
+}
+
+.details-grid__row dt {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.details-grid__row dd {
+  margin: 0;
+}
+
+.badge-label {
+  align-items: center;
+  background: var(--neutral);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.badge-label button {
+  background: none;
+  border: none;
+  color: var(--error);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
+
+.checklists-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.checklist-card {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.checklist-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.checklist-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checklist-item {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.checklist-item label {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 0.5rem;
+}
+
+.checklist-item span.done {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.comment {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.comment__header {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.comment__timestamp {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.comment__body {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+}
+
+.watchers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.watcher {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.watcher-email {
+  color: var(--text-secondary);
+  display: block;
+  font-size: 0.85rem;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline-entry {
+  margin: 0;
+}
+
+.is-loading {
+  opacity: 0.7;
+  pointer-events: none;
+}

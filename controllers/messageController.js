@@ -6,7 +6,12 @@ const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
 const UserSectorModel = require('../models/userSector');
 const MessageEvent = require('../models/messageEvent');
+const MessageLabelModel = require('../models/messageLabel');
+const MessageChecklistModel = require('../models/messageChecklist');
+const MessageCommentModel = require('../models/messageComment');
+const MessageWatcherModel = require('../models/messageWatcher');
 const { sendMail } = require('../services/mailer');
+const { getViewerFromRequest, resolveViewerWithSectors } = require('./helpers/viewer');
 
 function normalizeRecipientId(value) {
   const parsed = Number(value);
@@ -137,42 +142,6 @@ const CHANGE_FIELD_LABELS = {
   subject: 'Assunto',
   visibility: 'Visibilidade',
 };
-
-function getViewerFromRequest(req) {
-  const sessionUser = req.session?.user;
-  if (!sessionUser) return null;
-  return {
-    id: sessionUser.id,
-    name: sessionUser.name,
-    viewScope: sessionUser.viewScope || sessionUser.view_scope || 'all',
-  };
-}
-
-async function resolveViewerWithSectors(req) {
-  if (req._viewerCache) return req._viewerCache;
-
-  const base = getViewerFromRequest(req);
-  if (!base || !Number.isInteger(Number(base.id))) {
-    req._viewerCache = base;
-    return base;
-  }
-
-  try {
-    const sectors = await UserSectorModel.listUserSectors(base.id);
-    base.sectorIds = sectors
-      .map((sector) => Number(sector.id))
-      .filter((id) => Number.isInteger(id) && id > 0);
-  } catch (err) {
-    console.warn('[viewer] falha ao carregar setores do usuário', {
-      userId: base.id,
-      err: err?.message || err,
-    });
-    base.sectorIds = [];
-  }
-
-  req._viewerCache = base;
-  return base;
-}
 
 async function notifyRecipientUser(messageRow, { template = 'new', forwardedBy, reason } = {}) {
   const recipientUserId = messageRow?.recipient_user_id ?? null;
@@ -574,6 +543,8 @@ exports.list = async (req, res) => {
       end_date,
       status,
       recipient,
+      sector_id,
+      label,
       order_by,
       order,
     } = req.query;
@@ -588,6 +559,8 @@ exports.list = async (req, res) => {
       end_date,
       status,
       recipient,
+      sector_id,
+      label,
       order_by,
       order,
       viewer,
@@ -623,6 +596,19 @@ exports.getById = async (req, res) => {
       created_at: event.created_at,
     }));
     const data = toClient(row, viewer);
+
+    const [labels, checklists, comments, watchers] = await Promise.all([
+      MessageLabelModel.listByMessage(id),
+      MessageChecklistModel.listByMessage(id),
+      MessageCommentModel.listByMessage(id),
+      MessageWatcherModel.listForMessage(id),
+    ]);
+
+    data.labels = labels;
+    data.checklists = checklists;
+    data.comments = comments;
+    data.watchers = watchers;
+    data.watchersCount = watchers.length;
     data.timeline = timeline;
     data.timelineEvents = timeline;
 
@@ -763,6 +749,7 @@ exports.forward = async (req, res) => {
       return res.status(400).json({ success: false, error: 'ID inválido' });
     }
     const viewer = await resolveViewerWithSectors(req);
+    const actor = getSessionActor(req);
 
     const current = await Message.findById(id);
     if (!current) {

@@ -55,7 +55,7 @@ exports.list = async (req, res) => {
   try {
     const r = await UserModel.list({ q, page, limit, role, status });
     const users = Array.isArray(r.data) ? r.data.map(sanitizeUser) : [];
-    return res.json({ success: true, data: users, pagination: r.pagination });
+    return res.json({ success: true, data: { users, pagination: r.pagination } });
   } catch (err) {
     console.error('[users] list error:', err);
     return res.status(500).json({ success: false, error: 'Erro interno ao listar usuários.' });
@@ -80,7 +80,7 @@ exports.create = async (req, res) => {
     return res.status(400).json({
       success: false,
       error: 'Dados inválidos',
-      details: errors.array(),
+      data: { details: errors.array() },
     });
   }
 
@@ -139,7 +139,7 @@ exports.getById = async (req, res) => {
 exports.update = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, error: 'Dados inválidos', details: errors.array() });
+    return res.status(400).json({ success: false, error: 'Dados inválidos', data: { details: errors.array() } });
   }
 
   try {
@@ -196,7 +196,7 @@ exports.update = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, error: 'Dados inválidos', details: errors.array() });
+    return res.status(400).json({ success: false, error: 'Dados inválidos', data: { details: errors.array() } });
   }
 
   try {
@@ -234,7 +234,7 @@ exports.updateStatus = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, error: 'Dados inválidos', details: errors.array() });
+    return res.status(400).json({ success: false, error: 'Dados inválidos', data: { details: errors.array() } });
   }
 
   try {

@@ -13,6 +13,7 @@ const validationResult = expressValidator.validationResult;
 // -------------------------------------------------------------
 
 const ALLOWED_STATUS = ['pending', 'in_progress', 'resolved'];
+const LABEL_REGEX = /^[a-z0-9\-_.]{2,32}$/i;
 
 function normalizeStatus(s) {
   if (!s) return '';
@@ -56,7 +57,7 @@ function handleValidationErrors(req, res, next) {
     return res.status(400).json({
       success: false,
       error: 'Dados inválidos',
-      details: errors.array()
+      data: { details: errors.array() }
     });
   }
   next();
@@ -232,6 +233,132 @@ const validateUpdateMessage = [
     .customSanitizer((value) => String(value || '').trim().toLowerCase())
 ];
 
+// -------------------------------------------------------------
+// Validators Sprint A (labels, checklists, comentários, watchers, automations)
+// -------------------------------------------------------------
+
+const validateMessageLabel = [
+  body('label')
+    .isString().withMessage('Label é obrigatória')
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 32 }).withMessage('Label deve ter entre 2 e 32 caracteres')
+    .matches(LABEL_REGEX).withMessage('Label deve conter apenas letras, números, hífen, ponto ou underline'),
+];
+
+const validateMessageLabelsReplace = [
+  body('labels')
+    .isArray({ min: 0 }).withMessage('Lista de labels inválida'),
+  body('labels.*')
+    .optional({ nullable: true })
+    .isString().withMessage('Label inválida')
+    .bail()
+    .trim()
+    .isLength({ min: 2, max: 32 }).withMessage('Label deve ter entre 2 e 32 caracteres')
+    .matches(LABEL_REGEX).withMessage('Label deve conter apenas letras, números, hífen, ponto ou underline'),
+];
+
+const validateChecklistCreate = [
+  body('title')
+    .isString().withMessage('Título é obrigatório')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 200 }).withMessage('Título deve ter entre 1 e 200 caracteres'),
+];
+
+const validateChecklistUpdate = [
+  body('title')
+    .optional({ checkFalsy: false })
+    .isString().withMessage('Título inválido')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 200 }).withMessage('Título deve ter entre 1 e 200 caracteres'),
+];
+
+const validateChecklistItemCreate = [
+  body('title')
+    .isString().withMessage('Título é obrigatório')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 200 }).withMessage('Título deve ter entre 1 e 200 caracteres'),
+];
+
+const validateChecklistItemUpdate = [
+  body('title')
+    .optional({ checkFalsy: false })
+    .isString().withMessage('Título inválido')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 200 }).withMessage('Título deve ter entre 1 e 200 caracteres'),
+  body('done')
+    .optional()
+    .isBoolean().withMessage('done deve ser booleano')
+    .toBoolean(),
+  body('position')
+    .optional()
+    .isInt({ min: 0 }).withMessage('position deve ser inteiro >= 0')
+    .toInt(),
+];
+
+const validateChecklistIdParam = [
+  param('checklistId')
+    .isUUID('4').withMessage('Checklist inválido'),
+];
+
+const validateChecklistItemIdParam = [
+  param('itemId')
+    .isUUID('4').withMessage('Item inválido'),
+];
+
+const validateAutomationIdParam = [
+  param('id')
+    .isUUID('4').withMessage('Automation inválida'),
+];
+
+const validateWatcherUserParam = [
+  param('userId').isInt({ min: 1 }).withMessage('Usuário inválido').toInt(),
+];
+
+const validateCommentIdParam = [
+  param('commentId').isUUID('4').withMessage('Comentário inválido'),
+];
+
+const validateCommentCreate = [
+  body('body')
+    .isString().withMessage('Comentário obrigatório')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 5000 }).withMessage('Comentário deve ter entre 1 e 5000 caracteres'),
+];
+
+const validateWatcherAdd = [
+  body('userId').optional()
+    .isInt({ min: 1 }).withMessage('Usuário inválido')
+    .toInt(),
+  body('user_id').optional()
+    .isInt({ min: 1 }).withMessage('Usuário inválido')
+    .toInt(),
+];
+
+const validateAutomationCreate = [
+  body('event').isString().withMessage('Evento é obrigatório').bail().trim().notEmpty().withMessage('Evento é obrigatório'),
+  body('action').not().isEmpty().withMessage('Ação é obrigatória'),
+  body('condition').optional(),
+  body('description').optional().isString().withMessage('Descrição inválida'),
+];
+
+const validateAutomationUpdate = [
+  body('event').optional().isString().withMessage('Evento inválido').bail().trim().notEmpty().withMessage('Evento inválido'),
+  body('action').optional(),
+  body('condition').optional(),
+  body('description').optional().isString().withMessage('Descrição inválida'),
+  body('isActive').optional().isBoolean().withMessage('isActive deve ser booleano').toBoolean(),
+];
+
+const validateAutomationToggle = [
+  body('active').isBoolean().withMessage('active deve ser booleano').toBoolean(),
+];
+
 const validateUpdateStatus = [
   applyBodyNormalizers,
   body('status').notEmpty().withMessage('Status é obrigatório')
@@ -400,4 +527,22 @@ module.exports = {
   validatePasswordResetRequest,
   validatePasswordResetSubmit,
   validateAccountPasswordChange,
+
+  // Sprint A: labels/checklists/comments/watchers/automations
+  validateMessageLabel,
+  validateMessageLabelsReplace,
+  validateChecklistCreate,
+  validateChecklistUpdate,
+  validateChecklistItemCreate,
+  validateChecklistItemUpdate,
+  validateChecklistIdParam,
+  validateChecklistItemIdParam,
+  validateAutomationIdParam,
+  validateCommentCreate,
+  validateWatcherAdd,
+  validateWatcherUserParam,
+  validateAutomationCreate,
+  validateAutomationUpdate,
+  validateAutomationToggle,
+  validateCommentIdParam,
 };
