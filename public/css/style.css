@@ -924,6 +924,62 @@ main.auth-layout {
   background: rgba(16, 185, 129, 0.1);
   color: #059669;
 }
+.message-card {
+  border-bottom: 1px solid var(--border-light);
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.75rem 0;
+}
+.message-card:last-child {
+  border-bottom: none;
+}
+.message-card__primary {
+  color: inherit;
+  display: block;
+  min-width: 0;
+  text-decoration: none;
+}
+.message-card__primary:hover .message-card__title {
+  color: var(--primary);
+}
+.message-card__title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.message-card__meta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.message-card__side {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: center;
+}
+.message-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+@media (max-width: 768px) {
+  .message-card {
+    grid-template-columns: 1fr;
+  }
+  .message-card__side {
+    align-items: flex-start;
+  }
+  .message-card__actions {
+    justify-content: flex-start;
+  }
+}
 .message-status-group {
   align-items: center;
   background: var(--surface);
@@ -976,6 +1032,42 @@ main.auth-layout {
 }
 .message-status-btn .message-status-label {
   white-space: nowrap;
+}
+.recent-message {
+  align-items: center;
+  border-bottom: 1px solid var(--border-light);
+  color: inherit;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  text-decoration: none;
+}
+.recent-message:last-child {
+  border-bottom: none;
+}
+.recent-message:hover .recent-message__title {
+  color: var(--primary);
+}
+.recent-message__title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-message__meta {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .recent-message {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 }
 .filters {
   background: var(--surface);

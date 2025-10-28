@@ -12,12 +12,33 @@
     return String(el.value || '').trim();
   };
 
+  const form = document.getElementById('formNovoRecado') || document.querySelector('#form-novo-recado') || document.querySelector('form');
+  const saveButton = document.getElementById('btnSalvar');
   const recipientTypeSelect = document.getElementById('recipientType');
   const recipientUserSelect = document.getElementById('recipientUserId');
   const recipientSectorSelect = document.getElementById('recipientSectorId');
   const recipientUserGroup = document.getElementById('recipientUserGroup');
   const recipientSectorGroup = document.getElementById('recipientSectorGroup');
   const visibilitySelect = document.getElementById('visibility');
+  const originalButtonLabel = saveButton ? saveButton.innerHTML : null;
+  let isSubmitting = false;
+
+  function toggleSubmitState(locked) {
+    if (!saveButton) return;
+    if (locked) {
+      saveButton.disabled = true;
+      saveButton.setAttribute('aria-busy', 'true');
+      saveButton.classList.add('is-loading');
+      saveButton.innerHTML = '⏳ Salvando...';
+    } else {
+      saveButton.disabled = false;
+      saveButton.removeAttribute('aria-busy');
+      saveButton.classList.remove('is-loading');
+      if (originalButtonLabel !== null) {
+        saveButton.innerHTML = originalButtonLabel;
+      }
+    }
+  }
 
   function toggleRecipientFields() {
     const type = (recipientTypeSelect?.value || 'user').toLowerCase();
@@ -102,7 +123,13 @@
 
   async function handleSubmit(ev) {
     ev.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+    let keepLocked = false;
     try {
+      isSubmitting = true;
+      toggleSubmitState(true);
       const recado = coletarDados();
 
       // Validação mínima no front para UX (backend também valida)
@@ -125,18 +152,24 @@
 
       // Redireciona para lista/detalhe após criar (ajuste conforme sua navegação)
       if (resp?.success) {
+        keepLocked = true;
         window.location.href = '/recados';
+        return;
       } else {
         alert('Não foi possível criar o recado.');
       }
     } catch (err) {
       console.error('❌ Erro do servidor:', err?.message || err);
       alert(err?.message || 'Erro ao salvar recado. Tente novamente.');
+    } finally {
+      if (!keepLocked) {
+        toggleSubmitState(false);
+      }
+      isSubmitting = keepLocked;
     }
   }
 
   function iniciar() {
-    const form = document.querySelector('#formNovoRecado') || document.querySelector('#form-novo-recado') || document.querySelector('form');
     if (!form) {
       console.warn('⚠️ Formulário de novo recado não encontrado.');
       return;

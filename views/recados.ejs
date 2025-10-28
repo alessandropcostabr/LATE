@@ -9,6 +9,7 @@
       data-can-update="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>"
       data-can-delete="<%= permissions && permissions.deleteMessages ? 'true' : 'false' %>"
       data-can-edit-own="<%= userRoleSlug === 'operator' ? 'true' : 'false' %>"
+      data-can-forward="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>"
       data-user-role="<%= userRoleSlug || 'reader' %>"
     >
 

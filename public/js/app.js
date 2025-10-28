@@ -44,6 +44,34 @@ function formatDateTimeBR(iso) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#39;';
+      default: return char;
+    }
+  });
+}
+
+const STATUS_META = {
+  pending: {
+    label: 'Pendente',
+    badgeClass: 'badge badge-pendente',
+  },
+  in_progress: {
+    label: 'Em andamento',
+    badgeClass: 'badge badge-andamento',
+  },
+  resolved: {
+    label: 'Resolvido',
+    badgeClass: 'badge badge-resolvido',
+  },
+};
+
 // ---- Recados Recentes (somente) ----
 async function carregarRecadosRecentes() {
   const container = document.getElementById('recadosRecentes');
@@ -71,29 +99,21 @@ async function carregarRecadosRecentes() {
 
     const html = list.map((m) => {
       const created = m.created_label || formatDateTimeBR(m.createdAt || m.created_at);
-      const statusLabel = m.status_label || ({
-        pending: 'Pendente',
-        in_progress: 'Em andamento',
-        resolved: 'Resolvido'
-      }[m.status] || m.status || '—');
-
       const subject = m.subject || '(Sem assunto)';
       const sender  = m.sender_name || m.sender_email || '—';
       const recipient = m.recipient || 'Não informado';
+      const meta = STATUS_META[m.status] || { label: m.status || '—', badgeClass: 'badge' };
+      const statusLabel = m.status_label || meta.label;
 
       return `
-        <div class="list-item" style="display:flex;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--border-light);padding:0.75rem 0;">
+        <a class="recent-message" href="/visualizar-recado/${m.id}" aria-label="Abrir recado ${escapeHtml(subject)}">
           <div style="min-width:0;">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${subject}</div>
-            <div style="font-size:0.9rem; color:var(--text-secondary);">
-              De: ${sender} • Para: ${recipient}
-            </div>
-            <div style="font-size:0.85rem; color:var(--text-secondary);">Criado em: ${created}</div>
+            <div class="recent-message__title">${escapeHtml(subject)}</div>
+            <div class="recent-message__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)}</div>
+            <div class="recent-message__meta">Criado em: ${escapeHtml(created)}</div>
           </div>
-          <div style="white-space:nowrap;align-self:center;">
-            <span class="badge">${statusLabel}</span>
-          </div>
-        </div>
+          <span class="${meta.badgeClass}">${escapeHtml(statusLabel)}</span>
+        </a>
       `;
     }).join('');
 
@@ -141,4 +161,3 @@ document.addEventListener('DOMContentLoaded', () => {
   const isDashboard = h1 && /dashboard/i.test(h1.textContent || '');
   if (isDashboard) initDashboard();
 });
-
