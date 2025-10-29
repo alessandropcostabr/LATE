@@ -8,7 +8,7 @@ module.exports = {
       name: 'late-dev',
       cwd: __dirname,
       script: 'server.js',
-      instances: 1, // mantenha 1 até optar por cluster
+      instances: 1,
       exec_mode: 'fork',
       autorestart: true,
       watch: false,
