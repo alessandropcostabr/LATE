@@ -4,13 +4,13 @@ const express = require('express');
 const request = require('supertest');
 const { newDb } = require('pg-mem');
 
-jest.mock('../services/mailer', () => ({
-  sendMail: jest.fn().mockResolvedValue(true),
+jest.mock('../services/emailQueue', () => ({
+  enqueueTemplate: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock('../middleware/csrf', () => jest.fn((_req, _res, next) => next()));
 
-let sendMail;
+let enqueueTemplate;
 
 function createDatabase() {
   const mem = newDb({ autoCreateForeignKeyIndices: true });
@@ -142,8 +142,8 @@ describe('Mensagens direcionadas a setor', () => {
     dbManager = setup.dbManager;
     database = dbManager.getDatabase();
     await bootstrapSchema({ mem: setup.mem, db: database });
-    sendMail = require('../services/mailer').sendMail;
-    sendMail.mockClear();
+    enqueueTemplate = require('../services/emailQueue').enqueueTemplate;
+    enqueueTemplate.mockClear();
   });
 
   afterEach(async () => {
@@ -182,8 +182,8 @@ describe('Mensagens direcionadas a setor', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
-    expect(sendMail).toHaveBeenCalledTimes(2);
-    const recipients = sendMail.mock.calls.map((call) => call[0]?.to).sort();
+    expect(enqueueTemplate).toHaveBeenCalledTimes(2);
+    const recipients = enqueueTemplate.mock.calls.map((call) => call[0]?.to).sort();
     expect(recipients).toEqual(['alice@example.com', 'bruno@example.com']);
   });
 
@@ -207,7 +207,7 @@ describe('Mensagens direcionadas a setor', () => {
 
     const app = createApp({ id: 1, name: 'Setorista', role: 'OPERADOR' });
 
-    sendMail.mockClear();
+    enqueueTemplate.mockClear();
 
     const response = await request(app)
       .patch('/api/messages/1/status')
@@ -221,6 +221,6 @@ describe('Mensagens direcionadas a setor', () => {
     const { rows } = await database.query('SELECT recipient_user_id, recipient_sector_id FROM messages WHERE id = 1');
     expect(rows[0].recipient_user_id).toBe(1);
     expect(rows[0].recipient_sector_id).toBeNull();
-    expect(sendMail).not.toHaveBeenCalled();
+    expect(enqueueTemplate).not.toHaveBeenCalled();
   });
 });

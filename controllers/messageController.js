@@ -10,7 +10,7 @@ const MessageLabelModel = require('../models/messageLabel');
 const MessageChecklistModel = require('../models/messageChecklist');
 const MessageCommentModel = require('../models/messageComment');
 const MessageWatcherModel = require('../models/messageWatcher');
-const { sendMail } = require('../services/mailer');
+const { enqueueTemplate } = require('../services/emailQueue');
 const { getViewerFromRequest, resolveViewerWithSectors } = require('./helpers/viewer');
 
 function normalizeRecipientId(value) {
@@ -194,80 +194,27 @@ async function notifyRecipientUser(messageRow, { template = 'new', forwardedBy, 
     }
 
     const recipientName = recipient?.name || 'colega';
-    const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-    const openUrl = `${baseUrl}/recados/${messageRow.id}`;
     const messageSnippet = (messageRow.message || '').replace(/\s+/g, ' ').slice(0, 240);
     const messageTail = (messageRow.message || '').length > 240 ? '…' : '';
     const noteText = typeof reason === 'string' ? reason.trim() : '';
     const limitedNote = noteText ? noteText.slice(0, 500) : '';
 
-    const intro = (() => {
-      if (template === 'forward') {
-        if (forwardedBy) {
-          return {
-            text: `O contato foi encaminhado para você por ${forwardedBy}.`,
-            html: `<p><strong>O contato foi encaminhado para você por ${escapeHtml(forwardedBy)}.</strong></p>`,
-          };
-        }
-        return {
-          text: 'Você recebeu um contato encaminhado para você.',
-          html: '<p><strong>Você recebeu um contato encaminhado para você.</strong></p>',
-        };
-      }
-      return {
-        text: 'Você recebeu um novo contato.',
-        html: '<p><strong>Você recebeu um novo contato.</strong></p>',
-      };
-    })();
-
-    const textLines = [
-      `Olá, ${recipientName}!`,
-      '',
-      intro.text,
-      '',
-      `Data/Hora: ${messageRow.call_date || '-'} ${messageRow.call_time || ''}`,
-      `Remetente: ${messageRow.sender_name || '-'} (${messageRow.sender_phone || '—'} / ${messageRow.sender_email || '—'})`,
-      `Assunto: ${messageRow.subject || '-'}`,
-      `Mensagem: ${messageSnippet}${messageTail}`,
-    ];
-
-    if (limitedNote) {
-      textLines.push('', `Observação do encaminhamento: ${limitedNote}`);
-    }
-
-    textLines.push('', `Abrir contato: ${openUrl}`);
-    const text = textLines.join('\n');
-
-    const htmlRecipientName = escapeHtml(recipientName);
-    const htmlCallDate = escapeHtml(messageRow.call_date || '-');
-    const htmlCallTime = escapeHtml(messageRow.call_time || '');
-    const htmlSenderName = escapeHtml(messageRow.sender_name || '-');
-    const htmlSenderPhone = escapeHtml(messageRow.sender_phone || '—');
-    const htmlSenderEmail = escapeHtml(messageRow.sender_email || '—');
-    const htmlSubject = escapeHtml(messageRow.subject || '-');
-    const htmlMessageSnippet = escapeHtml(messageSnippet);
-    const htmlMessageTail = escapeHtml(messageTail);
-    const htmlOpenUrl = escapeHtml(openUrl);
-    const htmlNote = limitedNote ? `<p><em>Observação do encaminhamento:</em> ${escapeHtml(limitedNote)}</p>` : '';
-
-    const html = `
-<p>Olá, ${htmlRecipientName}!</p>
-${intro.html}
-<ul>
-  <li><strong>Data/Hora:</strong> ${htmlCallDate} ${htmlCallTime}</li>
-  <li><strong>Remetente:</strong> ${htmlSenderName} (${htmlSenderPhone} / ${htmlSenderEmail})</li>
-  <li><strong>Assunto:</strong> ${htmlSubject}</li>
-  <li><strong>Mensagem:</strong> ${htmlMessageSnippet}${htmlMessageTail}</li>
-</ul>
-${htmlNote}
-<p><a href="${htmlOpenUrl}">➜ Abrir contato</a></p>
-`;
-
-    const subject = template === 'forward'
-      ? '[LATE] Contato encaminhado para você'
-      : '[LATE] Novo contato para você';
-
-    await sendMail({ to: recipientEmail, subject, html, text });
+    const templateName = template === 'forward' ? 'contact-forward' : 'contact-new';
+    await enqueueTemplate({
+      to: recipientEmail,
+      template: templateName,
+      data: {
+        id: messageRow.id,
+        subject: messageRow.subject || '-',
+        sender_name: messageRow.sender_name || '-',
+        sender_phone: messageRow.sender_phone || '—',
+        sender_email: messageRow.sender_email || '—',
+        message_snippet: messageSnippet + messageTail,
+        recipient_name: recipientName,
+        forwarded_by: forwardedBy || null,
+        note: limitedNote || null,
+      },
+    });
     console.info('[MAIL:INFO] Notificação enviada', {
       to: recipientEmail,
       messageId: messageRow.id,
@@ -295,8 +242,6 @@ async function notifyRecipientSectorMembers(messageRow) {
       return;
     }
 
-    const baseUrl = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-    const openUrl = `${baseUrl}/recados/${messageRow.id}`;
     const messageSnippet = (messageRow.message || '').replace(/\s+/g, ' ').slice(0, 240);
     const messageTail = (messageRow.message || '').length > 240 ? '…' : '';
 
@@ -304,40 +249,19 @@ async function notifyRecipientSectorMembers(messageRow) {
       const recipientEmail = member?.email;
       if (!recipientEmail) continue;
 
-      const recipientName = member?.name || 'colega';
-      const textLines = [
-        `Olá, ${recipientName}!`,
-        '',
-        `Um novo contato foi criado para o setor ${messageRow.recipient || '(setor)'}.`,
-        '',
-        `Data/Hora: ${messageRow.call_date || '-'} ${messageRow.call_time || ''}`,
-        `Remetente: ${messageRow.sender_name || '-'} (${messageRow.sender_phone || '—'} / ${messageRow.sender_email || '—'})`,
-        `Assunto: ${messageRow.subject || '-'}`,
-        `Mensagem: ${messageSnippet}${messageTail}`,
-        '',
-        `Abrir contato: ${openUrl}`,
-      ];
-
-      const html = `
-        <p>Olá, <strong>${escapeHtml(recipientName)}</strong>!</p>
-        <p>Um novo contato foi criado para o setor <strong>${escapeHtml(messageRow.recipient || '(setor)')}</strong>.</p>
-        <ul>
-          <li><strong>Data/Hora:</strong> ${escapeHtml(messageRow.call_date || '-')} ${escapeHtml(messageRow.call_time || '')}</li>
-          <li><strong>Remetente:</strong> ${escapeHtml(messageRow.sender_name || '-')} (${escapeHtml(messageRow.sender_phone || '—')} / ${escapeHtml(messageRow.sender_email || '—')})</li>
-          <li><strong>Assunto:</strong> ${escapeHtml(messageRow.subject || '-')}</li>
-          <li><strong>Mensagem:</strong> ${escapeHtml(messageSnippet)}${messageTail}</li>
-        </ul>
-        <p><a href="${escapeHtml(openUrl)}">➜ Abrir contato</a></p>
-     `.trim();
-
-      const subject = `[LATE] Novo contato para o setor ${messageRow.recipient || ''}`.trim();
-
       try {
-        await sendMail({
+        await enqueueTemplate({
           to: recipientEmail,
-          subject,
-          html,
-          text: textLines.join('\n'),
+          template: 'contact-new-sector',
+          data: {
+            id: messageRow.id,
+            subject: messageRow.subject || '-',
+            sender_name: messageRow.sender_name || '-',
+            sender_phone: messageRow.sender_phone || '—',
+            sender_email: messageRow.sender_email || '—',
+            message_snippet: messageSnippet + messageTail,
+            recipient_name: messageRow.recipient || '(setor)',
+          },
         });
 
         if (process.env.MAIL_DEBUG === '1') {
@@ -984,4 +908,15 @@ exports.statsByMonth = async (_req, res) => {
     console.error('[messages] erro ao obter estatísticas por mês:', err);
     return res.status(500).json({ success: false, error: 'Erro ao obter estatísticas por mês.' });
   }
+};
+
+exports.__internals = {
+  sanitizePayload,
+  extractRecipientInput,
+  resolveRecipientTarget,
+  notifyRecipientUser,
+  notifyRecipientSectorMembers,
+  logMessageEvent,
+  dispatchBackground,
+  attachCreatorNames,
 };

@@ -7,7 +7,7 @@ const NotificationSettings = require('../models/notificationSettings');
 const MessageAlert = require('../models/messageAlert');
 const MessageEvent = require('../models/messageEvent');
 const UserModel = require('../models/user');
-const { sendMail } = require('./mailer');
+const { enqueueTemplate } = require('./emailQueue');
 
 const ONE_MINUTE = 60 * 1000;
 const DEFAULT_CHECK_INTERVAL_MIN = 60;
@@ -18,39 +18,17 @@ function getLockKey() {
   return Number.isInteger(raw) && raw !== 0 ? raw : DEFAULT_LOCK_KEY;
 }
 
-function buildContatoUrl(id) {
-  const base = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
-  return `${base}/recados/${id}`;
-}
-
-function formatEmail({ name, messageRow, intro }) {
-  const link = buildContatoUrl(messageRow.id);
-  const html = `
-    <p>Olá, <strong>${name || 'colega'}</strong>!</p>
-    <p>${intro}</p>
-    <ul>
-      <li><strong>Assunto:</strong> ${messageRow.subject || '-'}</li>
-      <li><strong>Remetente:</strong> ${messageRow.sender_name || '-'}</li>
-      <li><strong>Telefone:</strong> ${messageRow.sender_phone || '-'}</li>
-      <li><strong>Última atualização:</strong> ${messageRow.updated_at || '-'}</li>
-    </ul>
-    <p><a href="${link}">➜ Abrir contato</a></p>
-  `.trim();
-
-  const text = [
-    `Olá, ${name || 'colega'}!`,
-    '',
-    intro,
-    '',
-    `Assunto: ${messageRow.subject || '-'}`,
-    `Remetente: ${messageRow.sender_name || '-'}`,
-    `Telefone: ${messageRow.sender_phone || '-'}`,
-    `Última atualização: ${messageRow.updated_at || '-'}`,
-    '',
-    `Abrir contato: ${link}`,
-  ].join('\n');
-
-  return { html, text };
+function buildTemplateData(messageRow) {
+  const snippet = (messageRow.message || '').replace(/\s+/g, ' ').slice(0, 240);
+  return {
+    id: messageRow.id,
+    subject: messageRow.subject || '-',
+    sender_name: messageRow.sender_name || '-',
+    sender_phone: messageRow.sender_phone || '—',
+    sender_email: messageRow.sender_email || '—',
+    updated_at: messageRow.updated_at,
+    message_snippet: snippet,
+  };
 }
 
 async function logAlert(messageId, type, payload) {
@@ -101,17 +79,15 @@ async function alertPendentes(settings) {
         const user = await UserModel.findById(messageRow.recipient_user_id);
         const email = user?.email?.trim();
         if (!email) continue;
-        const { html, text } = formatEmail({
-          name: user?.name,
-          messageRow,
-          intro: 'Há um contato pendente aguardando retorno.',
-        });
+        const templateData = {
+          ...buildTemplateData(messageRow),
+          recipient_name: user?.name || 'colega',
+        };
         try {
-          await sendMail({
+          await enqueueTemplate({
             to: email,
-            subject: '[LATE] Contato pendente aguardando atendimento',
-            html,
-            text,
+            template: 'contact-pending',
+            data: templateData,
           });
           await logAlert(messageRow.id, 'pending', { email });
         } catch (err) {
@@ -123,18 +99,16 @@ async function alertPendentes(settings) {
         const members = await UserModel.getActiveUsersBySector(messageRow.recipient_sector_id);
         const recipients = members.map((m) => m.email?.trim()).filter(Boolean);
         if (!recipients.length) continue;
-        const { html, text } = formatEmail({
-          name: 'colega',
-          messageRow,
-          intro: `Há um contato pendente para o setor ${messageRow.recipient || '(setor)'}.`,
-        });
+        const templateData = {
+          ...buildTemplateData(messageRow),
+          recipient_name: messageRow.recipient || '(setor)',
+        };
         for (const email of recipients) {
           try {
-            await sendMail({
+            await enqueueTemplate({
               to: email,
-              subject: '[LATE] Contato pendente para o seu setor',
-              html,
-              text,
+              template: 'contact-pending-sector',
+              data: templateData,
             });
             await logAlert(messageRow.id, 'pending', { email, sector_id: messageRow.recipient_sector_id });
           } catch (err) {
@@ -172,18 +146,16 @@ async function alertEmAndamento(settings) {
       const email = user?.email?.trim();
       if (!email) continue;
 
-      const { html, text } = formatEmail({
-        name: user?.name,
-        messageRow,
-        intro: 'Este contato está em andamento. Atualize o status ou registre um retorno, se possível.',
-      });
+      const templateData = {
+        ...buildTemplateData(messageRow),
+        recipient_name: user?.name || 'colega',
+      };
 
       try {
-        await sendMail({
+        await enqueueTemplate({
           to: email,
-          subject: '[LATE] Contato em andamento aguardando atualização',
-          html,
-          text,
+          template: 'contact-in-progress',
+          data: templateData,
         });
         await logAlert(messageRow.id, 'in_progress', { email });
       } catch (err) {

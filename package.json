@@ -1,6 +1,6 @@
 {
   "name": "Late",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "description": "Central de Contatos e Acompanhamentos.",
   "main": "server.js",
   "scripts": {
@@ -11,7 +11,8 @@
     "build:css": "postcss public/css/style.css -o public/css/style.min.css",
     "build": "npm run build:css",
     "migrate": "node scripts/migrate.js",
-    "migrate:dry": "node scripts/migrate.js --dry-run"
+    "migrate:dry": "node scripts/migrate.js --dry-run",
+    "worker:emails": "node scripts/email-worker.js"
   },
   "keywords": [
     "recados",
