@@ -11,7 +11,8 @@ const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
-require('dotenv').config(); // carrega .env (silencioso o suficiente para runtime)
+const { execSync } = require('child_process');
+require('./config/loadEnv').loadEnv(); // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
 
 const db = require('./config/database'); // Pool do pg (PG-only)
 const apiRoutes = require('./routes/api');
@@ -19,20 +20,35 @@ const webRoutes = require('./routes/web');
 const healthController = require('./controllers/healthController');
 const { startAlertScheduler } = require('./services/messageAlerts');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
+const packageInfo = require('./package.json');
 
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
 
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = process.env.PORT || 3000;
-const TRUST_PROXY = Number(process.env.TRUST_PROXY ?? (isProd ? 1 : 0));
+const PORT = Number(process.env.PORT ?? 3000);
+// NÃO achatar para boolean. Preservar number/string conforme Express:
+// aceita: number (hops), true/false, 'loopback' | 'linklocal' | 'uniquelocal' | lista/CIDR.
+const rawTrustProxy = (process.env.TRUST_PROXY ?? (isProd ? '1' : '')).toString().trim();
 
 const app = express();
+app.set(
+  'trust proxy',
+  /^\d+$/.test(rawTrustProxy)
+    ? Number(rawTrustProxy)            // "1","2",...
+    : rawTrustProxy === ''
+      ? false                          // vazio → desliga
+      : rawTrustProxy === 'true'
+        ? true
+        : rawTrustProxy === 'false'
+          ? false
+          : rawTrustProxy              // 'loopback'|'linklocal'|'uniquelocal' ou CIDR/IP
+);
 app.set('etag', false);
-app.set('trust proxy', TRUST_PROXY);
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  hsts: isProd ? undefined : false, // Por quê: HSTS apenas em produção/HTTPS
 }));
 
 const apiCsp = helmet.contentSecurityPolicy({
@@ -56,6 +72,18 @@ console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.
 
 // caminho do CSS nas views (não altera layout, apenas escolhe o arquivo já existente)
 app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
+const packageVersion = packageInfo.version || '0.0.0';
+app.locals.appVersion = process.env.APP_VERSION || packageVersion;
+let resolvedBuild = process.env.APP_BUILD;
+if (!resolvedBuild) {
+  try {
+    resolvedBuild = execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (err) {
+    resolvedBuild = 'dev';
+    console.warn('[BOOT] não foi possível resolver git rev:', err?.message || err);
+  }
+}
+app.locals.appBuild = resolvedBuild;
 
 // EJS
 app.set('view engine', 'ejs');
@@ -72,11 +100,16 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, error: 'Muitas requisições. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: req => req.method !== 'POST'
 });
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Limite de requisições atingido. Aguarde antes de tentar novamente.' },
   skip: req => req.method === 'OPTIONS'
 });
 
@@ -90,9 +123,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Sessão (connect-pg-simple usando o mesmo Pool)
 const secureCookie = isProd ? 'auto' : false;
 const sessionPool = db;
+const sessionName = isProd ? 'late.sess' : 'late.dev.sess'; // nome distinto por ambiente
 
 app.use(session({
-  name: 'connect.sid',
+  name: sessionName, // Por quê: evitar colisão de cookie quando prod/dev compartilham domínio
   secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
   resave: false,
   rolling: true,
@@ -102,6 +136,7 @@ app.use(session({
     tableName: process.env.SESSION_TABLE || 'sessions',
     schemaName: process.env.SESSION_SCHEMA || 'public',
     createTableIfMissing: true, // cria tabela se não existir
+    pruneSessionInterval: 60 * 60 // em segundos (1h) // Por quê: coleta periódica de sessões expiradas p/ reduzir bloat
   }),
   cookie: {
     httpOnly: true,
@@ -112,6 +147,11 @@ app.use(session({
 }));
 
 // ⚠️ Importante: sem csurf global aqui. Proteção CSRF fica por rota no routes/web.js.
+app.use((req, res, next) => {
+  res.locals.appVersion = app.locals.appVersion;
+  res.locals.appBuild = app.locals.appBuild;
+  next();
+});
 
 // user e permissões disponíveis nas views
 app.use((req, res, next) => {
