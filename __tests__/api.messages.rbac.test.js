@@ -7,15 +7,44 @@ jest.mock('../models/message', () => ({
   findById: (...args) => mockFindById(...args),
 }));
 
-jest.mock('../controllers/messageController', () => ({
-  list: jest.fn((_req, res) => res.json({ success: true, data: 'list' })),
-  getById: jest.fn((_req, res) => res.json({ success: true, data: 'item' })),
-  create: jest.fn((_req, res) => res.status(201).json({ success: true })),
-  update: jest.fn((_req, res) => res.json({ success: true })),
-  forward: jest.fn((_req, res) => res.json({ success: true })),
-  updateStatus: jest.fn((_req, res) => res.json({ success: true })),
-  remove: jest.fn((_req, res) => res.json({ success: true })),
-}));
+jest.mock('../controllers/messageController', () => {
+  const dispatchBackground = jest.fn((_task, fn) => {
+    if (typeof fn === 'function') {
+      try {
+        const result = fn();
+        return result && typeof result.then === 'function' ? result : Promise.resolve(result);
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
+    return Promise.resolve();
+  });
+
+  return {
+    list: jest.fn((_req, res) => res.json({ success: true, data: 'list' })),
+    getById: jest.fn((_req, res) => res.json({ success: true, data: 'item' })),
+    create: jest.fn((_req, res) => res.status(201).json({ success: true })),
+    update: jest.fn((_req, res) => res.json({ success: true })),
+    forward: jest.fn((_req, res) => res.json({ success: true })),
+    updateStatus: jest.fn((_req, res) => res.json({ success: true })),
+    remove: jest.fn((_req, res) => res.json({ success: true })),
+    __internals: {
+      sanitizePayload: jest.fn((payload) => ({ ...payload })),
+      extractRecipientInput: jest.fn((body) => ({ ...body })),
+      resolveRecipientTarget: jest.fn(async (input = {}) => ({
+        recipient: input.recipient || null,
+        recipient_user_id: input.recipientUserId ?? input.recipient_user_id ?? null,
+        recipient_sector_id: input.recipientSectorId ?? input.recipient_sector_id ?? null,
+        error: null,
+      })),
+      notifyRecipientUser: jest.fn(),
+      notifyRecipientSectorMembers: jest.fn(),
+      logMessageEvent: jest.fn(),
+      dispatchBackground,
+      attachCreatorNames: jest.fn(async (rows) => rows),
+    },
+  };
+});
 
 jest.mock('../controllers/statsController', () => ({
   messagesStats: jest.fn((_req, res) => res.json({ success: true })),

@@ -8,6 +8,7 @@ jest.mock('../models/message', () => ({
 
 jest.mock('../models/user', () => ({
   findById: jest.fn(),
+  getActiveUsersBySector: jest.fn(),
   getActiveUsersSelect: jest.fn(),
 }));
 
@@ -16,8 +17,8 @@ jest.mock('../models/sector', () => ({
   list: jest.fn(),
 }));
 
-jest.mock('../services/mailer', () => ({
-  sendMail: jest.fn(() => Promise.resolve()),
+jest.mock('../services/emailQueue', () => ({
+  enqueueTemplate: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../middleware/csrf', () => jest.fn((req, _res, next) => next()));
@@ -25,7 +26,7 @@ jest.mock('../middleware/csrf', () => jest.fn((req, _res, next) => next()));
 const messageModel = require('../models/message');
 const userModel = require('../models/user');
 const sectorModel = require('../models/sector');
-const mailer = require('../services/mailer');
+const emailQueue = require('../services/emailQueue');
 
 function createApp(role = 'admin') {
   const app = express();
@@ -137,9 +138,9 @@ describe('POST /api/messages/:id/forward', () => {
       recipient_sector_id: null,
     });
     expect(userModel.findById).toHaveBeenCalledWith(2);
-    expect(mailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({
+    expect(emailQueue.enqueueTemplate).toHaveBeenCalledWith(expect.objectContaining({
       to: 'dest@example.com',
-      subject: '[LATE] Contato encaminhado para você',
+      template: 'contact-forward',
     }));
   });
 
@@ -168,7 +169,7 @@ describe('POST /api/messages/:id/forward', () => {
       error: expect.stringContaining('destinatário diferente'),
     });
     expect(messageModel.updateRecipient).not.toHaveBeenCalled();
-    expect(mailer.sendMail).not.toHaveBeenCalled();
+    expect(emailQueue.enqueueTemplate).not.toHaveBeenCalled();
   });
 
   it('encaminha recado para um setor sem enviar e-mail', async () => {
@@ -219,6 +220,6 @@ describe('POST /api/messages/:id/forward', () => {
       recipient_user_id: null,
       recipient_sector_id: 7,
     });
-    expect(mailer.sendMail).not.toHaveBeenCalled();
+    expect(emailQueue.enqueueTemplate).not.toHaveBeenCalled();
   });
 });

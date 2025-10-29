@@ -2,6 +2,7 @@
 // Comentários em pt-BR; identificadores em inglês.
 
 const Router = require('router');
+const rateLimit = require('express-rate-limit');
 const router = Router();
 
 // Controllers existentes
@@ -15,11 +16,13 @@ const messageWatcherController = require('../controllers/messageWatcherControlle
 const automationController = require('../controllers/automationController');
 const healthController = require('../controllers/healthController');
 const metaController = require('../controllers/metaController');
+const intakeController = require('../controllers/intakeController');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
 const validation = require('../middleware/validation');
 const {
   handleValidationErrors,
+  handleIntakeValidationErrors,
   validateCreateMessage,
   validateForwardMessage,
   validateUpdateMessage,
@@ -45,6 +48,7 @@ const {
   validateAutomationToggle,
   validateAutomationIdParam,
   validateCommentIdParam,
+  validateIntakeCreate,
   validateUserCreate,
   validateUserUpdate,
   validateUserStatus,
@@ -130,6 +134,15 @@ const canManageMessageAccess = [requireAuth, requireMessageUpdatePermission, csr
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
 const canChangeOwnPassword = [requireAuth, csrfProtection];
 
+const intakeLimiter = rateLimit({
+  windowMs: Number(process.env.INTAKE_RATE_WINDOW_MS || 60 * 1000),
+  max: Number(process.env.INTAKE_RATE_LIMIT || 20),
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const intakeRequiresCsrf = String(process.env.INTAKE_REQUIRE_CSRF || '').trim() === '1';
+const intakeGuards = intakeRequiresCsrf ? [intakeLimiter, csrfProtection] : [intakeLimiter];
+
 // CSRF refresh para clientes não autenticados (ex.: tela de login)
 router.get('/csrf', csrfProtection, (req, res) => {
   try {
@@ -147,6 +160,12 @@ router.get('/csrf', csrfProtection, (req, res) => {
 // Utilitários
 router.get('/health', healthController.apiCheck);
 router.get('/version', metaController.version);
+
+router.post(
+  '/intake',
+  ...flatFns(intakeGuards, validateIntakeCreate, handleIntakeValidationErrors),
+  intakeController.create
+);
 
 // ========== Messages ==========
 router.get(

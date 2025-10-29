@@ -136,12 +136,31 @@ Acesse: http://localhost:3000 ou http://<SEU-IP>:3000
 As notificações são configuradas via variáveis de ambiente:
 
 - `MAIL_DRIVER`: use `smtp` (padrão) para enviar e-mails reais ou `log` para apenas registrar no console.
-- `APP_BASE_URL`: URL pública do LATE (ex.: `https://late.miahchat.com`) usada no link “Abrir recado”.
+- `APP_BASE_URL`: URL pública do LATE (ex.: `https://late.miahchat.com` em PROD ou `https://late.miahchat.com:3001` na DEV) usada no link “Abrir recado”.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`: host, porta e modo (465 + `SMTP_SECURE=1` para SSL, 587 + `SMTP_SECURE=0` para STARTTLS).
 - `SMTP_USER`, `SMTP_PASS`: credenciais da caixa (ex.: `no-reply@seudominio.com.br`).
 - `SMTP_FROM`: remetente exibido (ex.: `LATE <no-reply@seudominio.com.br>`).
+- `EMAIL_WORKER_INTERVAL_MS` (opcional): intervalo entre execuções do worker (padrão 15000 ms).
+- `EMAIL_WORKER_BATCH` (opcional): quantidade máxima de e-mails processados por ciclo (padrão 10).
+- `EMAIL_QUEUE_MAX_ATTEMPTS` (opcional): número máximo de tentativas antes de marcar como `failed` (padrão 5).
+
+Os envios são inseridos na tabela `email_queue` e processados pelo worker dedicado. Para iniciar o worker localmente:
+
+```bash
+npm run worker:emails
+```
+
+Em produção utilize o PM2 (`pm2 start scripts/email-worker.js --name late-mails`).
 
 Falhas de envio são registradas em log e não impedem a criação do recado. Para homologação, defina `MAIL_DRIVER=log`.
+
+## 📥 Intake seguro
+
+- `POST /api/intake`
+- Protegido por `INTAKE_TOKEN` (enviar em `x-intake-token` ou `Authorization: Bearer`).
+- Rate-limit configurável via `INTAKE_RATE_LIMIT` (padrão 20 requisições/minuto) e `INTAKE_RATE_WINDOW_MS`.
+- Opcionalmente exija CSRF com `INTAKE_REQUIRE_CSRF=1` quando o intake for um formulário interno.
+- Todas as requisições são auditadas na tabela `intake_logs` com IP, user-agent, status e mensagem associada.
 
 Produção com PM2
 
@@ -218,6 +237,7 @@ GET    /api/recados
 GET    /api/recados/:id
 POST   /api/recados
 PUT    /api/recados/:id
+POST   /api/intake
 PATCH  /api/recados/:id/situacao
 DELETE /api/recados/:id
 GET    /api/stats
