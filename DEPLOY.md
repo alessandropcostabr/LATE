@@ -69,6 +69,9 @@ pm2 stop all
 # Iniciar o sistema de recados
 pm2 start server.js --name "late"
 
+# Worker responsável pela fila de e-mails
+pm2 start scripts/email-worker.js --name "late-mails"
+
 # Verificar status
 pm2 status
 
@@ -80,13 +83,19 @@ pm2 save
 
 ```bash
 export MAIL_DRIVER=smtp            # use log para homologação
-export APP_BASE_URL=https://late.miahchat.com
+# PROD: export APP_BASE_URL=https://late.miahchat.com
+# DEV (porta 3001 exposta em late.miahchat.com:3001): export APP_BASE_URL=https://late.miahchat.com:3001
 export SMTP_HOST=mail.seudominio.com.br
 export SMTP_PORT=465               # 465 com SSL (SMTP_SECURE=1) ou 587 com STARTTLS (SMTP_SECURE=0)
 export SMTP_SECURE=1
 export SMTP_USER=no-reply@seudominio.com.br
 export SMTP_PASS='senha-da-caixa'
 export SMTP_FROM="LATE <no-reply@seudominio.com.br>"
+# Intervalo/batch do worker opcional
+export EMAIL_WORKER_INTERVAL_MS=15000
+export EMAIL_WORKER_BATCH=10
+# Token de intake (requerido para POST /api/intake)
+export INTAKE_TOKEN='troque-este-token'
 ```
 
 Utilize uma caixa real (cPanel, Workspace, etc.) e mantenha SPF/DKIM atualizados para garantir entregabilidade. Falhas são registradas em `[MAIL:ERROR]` e não bloqueiam a criação do recado.
@@ -94,8 +103,9 @@ Utilize uma caixa real (cPanel, Workspace, etc.) e mantenha SPF/DKIM atualizados
 ### 6. Configurar Firewall (se necessário)
 
 ```bash
-# Permitir acesso à porta 3000
+# Permitir acesso às portas 3000 (PROD) e 3001 (DEV)
 sudo ufw allow 3000
+sudo ufw allow 3001
 
 # Verificar regras
 sudo ufw status

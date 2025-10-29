@@ -63,6 +63,54 @@ function handleValidationErrors(req, res, next) {
   next();
 }
 
+function extractIntakeToken(req) {
+  const headerToken = req.get?.('x-intake-token');
+  if (headerToken) return headerToken.trim();
+  const auth = req.get?.('authorization');
+  if (auth && auth.toLowerCase().startsWith('bearer ')) {
+    return auth.slice(7).trim();
+  }
+  if (typeof req.body?.token === 'string') {
+    return req.body.token.trim();
+  }
+  return '';
+}
+
+async function handleIntakeValidationErrors(req, res, next) {
+  const errors = validationResult(req);
+  if (errors.isEmpty()) {
+    return next();
+  }
+
+  const IntakeLog = require('../models/intakeLog');
+  const details = errors.array();
+  const providedToken = extractIntakeToken(req);
+  const payloadForLog = { ...req.body };
+  delete payloadForLog.token;
+
+  const ip = req.ip || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || null;
+  const userAgent = req.get?.('user-agent') || null;
+
+  try {
+    await IntakeLog.create({
+      status: 'error',
+      token: providedToken || null,
+      payload: payloadForLog,
+      ip,
+      userAgent,
+      error: 'Dados inválidos',
+    });
+  } catch (err) {
+    console.error('[intake] falha ao registrar erro de validação:', err?.message || err);
+  }
+
+  return res.status(400).json({
+    success: false,
+    error: 'Dados inválidos',
+    data: { details },
+  });
+}
+
 // -------------------------------------------------------------
 // Validators de Messages
 // -------------------------------------------------------------
@@ -139,6 +187,50 @@ const validateCreateMessage = [
     if (recipientUserId) req.body.recipientUserId = recipientUserId;
     if (recipientSectorId) req.body.recipientSectorId = recipientSectorId;
 
+    return true;
+  })
+];
+
+const validateIntakeCreate = [
+  applyBodyNormalizers,
+  body('subject').notEmpty().withMessage('Assunto é obrigatório')
+    .bail().isLength({ max: 255 }).withMessage('Assunto muito longo'),
+  body('message').notEmpty().withMessage('Mensagem é obrigatória')
+    .bail().isLength({ max: 5000 }).withMessage('Mensagem muito longa'),
+  body('sender_email').optional({ checkFalsy: true })
+    .isEmail().withMessage('Email inválido').normalizeEmail(),
+  body('sender_phone').optional({ checkFalsy: true })
+    .isLength({ max: 60 }).withMessage('Telefone inválido'),
+  body('recipientUserId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Usuário destinatário inválido')
+    .toInt(),
+  body('recipientSectorId').optional({ checkFalsy: true })
+    .isInt({ min: 1 }).withMessage('Setor destinatário inválido')
+    .toInt(),
+  body().custom((_, { req }) => {
+    const parseId = (value) => {
+      const raw = String(value ?? '').trim();
+      if (!raw) return null;
+      const parsed = Number(raw);
+      if (!Number.isInteger(parsed) || parsed < 1) return null;
+      return parsed;
+    };
+
+    const recipientUserId = parseId(
+      req.body.recipientUserId ??
+      req.body.recipient_user_id
+    );
+    const recipientSectorId = parseId(
+      req.body.recipientSectorId ??
+      req.body.recipient_sector_id
+    );
+
+    if (!recipientUserId && !recipientSectorId) {
+      throw new Error('Destinatário é obrigatório');
+    }
+
+    if (recipientUserId) req.body.recipientUserId = recipientUserId;
+    if (recipientSectorId) req.body.recipientSectorId = recipientSectorId;
     return true;
   })
 ];
@@ -504,6 +596,7 @@ const validateAccountPasswordChange = [
 module.exports = {
   // helpers
   handleValidationErrors,
+  handleIntakeValidationErrors,
   validateId,
   validateQueryMessages,
   normalizeStatus,
@@ -513,6 +606,7 @@ module.exports = {
   validateForwardMessage,
   validateUpdateMessage,
   validateUpdateStatus,
+  validateIntakeCreate,
 
   // aliases
   handleValidation: handleValidationErrors,

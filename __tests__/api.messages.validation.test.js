@@ -2,6 +2,17 @@ const express = require('express');
 const supertest = require('supertest');
 
 jest.mock('../controllers/messageController', () => {
+  const dispatchBackground = jest.fn((_task, fn) => {
+    if (typeof fn === 'function') {
+      try {
+        const result = fn();
+        return result && typeof result.then === 'function' ? result : Promise.resolve(result);
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
+    return Promise.resolve();
+  });
   const createResponder = (status = 200) => jest.fn((_req, res) => {
     res.status(status).json({ success: true });
   });
@@ -15,6 +26,21 @@ jest.mock('../controllers/messageController', () => {
     forward: createResponder(),
     updateStatus: createResponder(),
     remove: createResponder(),
+    __internals: {
+      sanitizePayload: jest.fn((payload) => ({ ...payload })),
+      extractRecipientInput: jest.fn((body) => ({ ...body })),
+      resolveRecipientTarget: jest.fn(async (input = {}) => ({
+        recipient: input.recipient || null,
+        recipient_user_id: input.recipientUserId ?? input.recipient_user_id ?? null,
+        recipient_sector_id: input.recipientSectorId ?? input.recipient_sector_id ?? null,
+        error: null,
+      })),
+      notifyRecipientUser: jest.fn(),
+      notifyRecipientSectorMembers: jest.fn(),
+      logMessageEvent: jest.fn(),
+      dispatchBackground,
+      attachCreatorNames: jest.fn(async (rows) => rows),
+    },
   };
 });
 

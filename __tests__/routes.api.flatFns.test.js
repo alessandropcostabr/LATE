@@ -17,19 +17,48 @@ jest.mock('router', () => {
   };
 });
 
-jest.mock('../controllers/messageController', () => ({
-  list: jest.fn(),
-  getById: jest.fn(),
-  create: jest.fn(),
-  update: jest.fn(),
-  updateStatus: jest.fn(),
-  remove: jest.fn()
-}));
+jest.mock('../controllers/messageController', () => {
+  const dispatchBackground = jest.fn((_task, fn) => {
+    if (typeof fn === 'function') {
+      try {
+        const result = fn();
+        return result && typeof result.then === 'function' ? result : Promise.resolve(result);
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
+    return Promise.resolve();
+  });
+  return {
+    list: jest.fn(),
+    getById: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateStatus: jest.fn(),
+    remove: jest.fn(),
+    __internals: {
+      sanitizePayload: jest.fn((payload) => ({ ...payload })),
+      extractRecipientInput: jest.fn((body) => ({ ...body })),
+      resolveRecipientTarget: jest.fn(async (input = {}) => ({
+        recipient: input.recipient || null,
+        recipient_user_id: input.recipientUserId ?? input.recipient_user_id ?? null,
+        recipient_sector_id: input.recipientSectorId ?? input.recipient_sector_id ?? null,
+        error: null,
+      })),
+      notifyRecipientUser: jest.fn(),
+      notifyRecipientSectorMembers: jest.fn(),
+      logMessageEvent: jest.fn(),
+      dispatchBackground,
+      attachCreatorNames: jest.fn(async (rows) => rows),
+    },
+  };
+});
 
 jest.mock('../controllers/statsController', () => ({}));
 
 jest.mock('../middleware/validation', () => ({
   handleValidationErrors: jest.fn((req, res, next) => next && next()),
+  handleIntakeValidationErrors: jest.fn((req, res, next) => next && next()),
   validateCreateMessage: jest.fn(),
   validateUpdateMessage: jest.fn(),
   validateUpdateStatus: jest.fn(),
