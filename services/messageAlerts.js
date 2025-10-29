@@ -1,5 +1,5 @@
 // services/messageAlerts.js
-// Agendador para alertar recados pendentes e em andamento.
+// Agendador para alertar contatos pendentes e em andamento.
 
 const db = require('../config/database');
 const Message = require('../models/message');
@@ -18,13 +18,13 @@ function getLockKey() {
   return Number.isInteger(raw) && raw !== 0 ? raw : DEFAULT_LOCK_KEY;
 }
 
-function buildRecadoUrl(id) {
+function buildContatoUrl(id) {
   const base = (process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
   return `${base}/recados/${id}`;
 }
 
 function formatEmail({ name, messageRow, intro }) {
-  const link = buildRecadoUrl(messageRow.id);
+  const link = buildContatoUrl(messageRow.id);
   const html = `
     <p>Olá, <strong>${name || 'colega'}</strong>!</p>
     <p>${intro}</p>
@@ -34,7 +34,7 @@ function formatEmail({ name, messageRow, intro }) {
       <li><strong>Telefone:</strong> ${messageRow.sender_phone || '-'}</li>
       <li><strong>Última atualização:</strong> ${messageRow.updated_at || '-'}</li>
     </ul>
-    <p><a href="${link}">➜ Abrir recado</a></p>
+    <p><a href="${link}">➜ Abrir contato</a></p>
   `.trim();
 
   const text = [
@@ -47,7 +47,7 @@ function formatEmail({ name, messageRow, intro }) {
     `Telefone: ${messageRow.sender_phone || '-'}`,
     `Última atualização: ${messageRow.updated_at || '-'}`,
     '',
-    `Abrir recado: ${link}`,
+    `Abrir contato: ${link}`,
   ].join('\n');
 
   return { html, text };
@@ -104,12 +104,12 @@ async function alertPendentes(settings) {
         const { html, text } = formatEmail({
           name: user?.name,
           messageRow,
-          intro: 'Há um recado pendente aguardando retorno.',
+          intro: 'Há um contato pendente aguardando retorno.',
         });
         try {
           await sendMail({
             to: email,
-            subject: '[LATE] Recado pendente aguardando atendimento',
+            subject: '[LATE] Contato pendente aguardando atendimento',
             html,
             text,
           });
@@ -126,13 +126,13 @@ async function alertPendentes(settings) {
         const { html, text } = formatEmail({
           name: 'colega',
           messageRow,
-          intro: `Há um recado pendente para o setor ${messageRow.recipient || '(setor)'}.`,
+          intro: `Há um contato pendente para o setor ${messageRow.recipient || '(setor)'}.`,
         });
         for (const email of recipients) {
           try {
             await sendMail({
               to: email,
-              subject: '[LATE] Recado pendente para o seu setor',
+              subject: '[LATE] Contato pendente para o seu setor',
               html,
               text,
             });
@@ -175,13 +175,13 @@ async function alertEmAndamento(settings) {
       const { html, text } = formatEmail({
         name: user?.name,
         messageRow,
-        intro: 'Este recado está em andamento. Atualize o status ou registre um retorno, se possível.',
+        intro: 'Este contato está em andamento. Atualize o status ou registre um retorno, se possível.',
       });
 
       try {
         await sendMail({
           to: email,
-          subject: '[LATE] Recado em andamento aguardando atualização',
+          subject: '[LATE] Contato em andamento aguardando atualização',
           html,
           text,
         });

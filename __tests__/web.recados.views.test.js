@@ -261,6 +261,8 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
     app.set('view engine', 'ejs');
     app.set('views', path.join(__dirname, '..', 'views'));
     app.locals.cssFile = '/css/style.min.css';
+    app.locals.appVersion = 'test';
+    app.locals.appBuild = 'test';
 
     app.use((req, res, next) => {
       req.session = { user: sessionUser };
@@ -273,6 +275,8 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
         updateMessages: hasPermission(roleSlug, 'update'),
         deleteMessages: hasPermission(roleSlug, 'delete'),
       };
+      res.locals.appVersion = app.locals.appVersion;
+      res.locals.appBuild = app.locals.appBuild;
       next();
     });
 

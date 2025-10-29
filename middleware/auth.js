@@ -119,9 +119,9 @@ async function requireMessageUpdatePermission(req, res, next) {
     const message = await MessageModel.findById(messageId);
     if (!message) {
       if (isApiRequest(req)) {
-        return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+        return res.status(404).json({ success: false, error: 'Contato não encontrado' });
       }
-      return res.status(404).render('404', { title: 'Recado não encontrado' });
+      return res.status(404).render('404', { title: 'Contato não encontrado' });
     }
 
     const sessionUserId = Number(req.session.user.id);
@@ -145,7 +145,7 @@ async function requireMessageUpdatePermission(req, res, next) {
 
     return respondForbidden(req, res);
   } catch (err) {
-    console.error('[auth] erro ao validar atualização de recado:', err);
+    console.error('[auth] erro ao validar atualização de contato:', err);
     if (isApiRequest(req)) {
       return res.status(500).json({ success: false, error: 'Falha ao validar permissão' });
     }

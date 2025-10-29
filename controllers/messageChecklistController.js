@@ -1,5 +1,5 @@
 // controllers/messageChecklistController.js
-// Operações de checklists e itens associados aos recados.
+// Operações de checklists e itens associados aos contatos.
 
 const MessageChecklistModel = require('../models/messageChecklist');
 

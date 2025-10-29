@@ -1,4 +1,4 @@
-# Instruções de Deploy - Sistema de Recados
+# Instruções de Deploy - Sistema de Contatos
 
 ## 🎯 Deploy no Seu Ambiente AWS EC2
 
@@ -307,7 +307,7 @@ Após o deploy bem-sucedido:
 - **URL Local**: http://localhost:3000
 - **URL Externa**: http://SEU-IP-EC2:3000
 - **Dashboard**: Página inicial com estatísticas
-- **Novo Recado**: /novo-recado
+- **Novo Contato**: /novo-recado
 - **Lista Completa**: /recados
 
 ## ✅ Checklist de Deploy
@@ -323,6 +323,6 @@ Após o deploy bem-sucedido:
 
 ---
 
-**🎉 Parabéns! Seu Sistema de Recados está no ar!**
+**🎉 Parabéns! Seu Sistema de Contatos está no ar!**
 
 Para suporte, consulte os logs do PM2 e a documentação principal no README.md.

@@ -106,18 +106,36 @@
 
           <section>
             <h2>6. Lista de recados e ações rápidas</h2>
-            <p>Em <code>/recados</code> você encontra:</p>
+            <p>Em <code>/recados</code> você encontra a fila principal do LATE:</p>
             <ul>
+              <li><strong>Cartões clicáveis:</strong> clique em qualquer recado para abrir a visualização detalhada.</li>
+              <li><strong>Chips de situação:</strong> cores e ícones (⏳🚧✅) mostram rapidamente o status atual.</li>
               <li><strong>✏️ Editar:</strong> corrige dados rapidamente.</li>
-              <li><strong>🚧 Em andamento:</strong> muda o status e registra o responsável.</li>
-              <li><strong>✅ Resolver:</strong> encerra o recado após o retorno.</li>
-              <li><strong>📤 Encaminhar:</strong> redireciona para outro usuário ou setor (disponível na visualização detalhada).</li>
+              <li><strong>🚧 Em andamento</strong> e <strong>✅ Resolver:</strong> atualizam o status sem sair da lista.</li>
+              <li><strong>📤 Encaminhar:</strong> redireciona para outro usuário ou setor diretamente da lista (o modal abre pré-preenchido).</li>
             </ul>
-            <p class="manual-hint">Os atalhos aparecem para quem criou o recado, para os perfis com permissão de edição e também para os destinatários — inclusive quando o recado foi atribuído a um setor.</p>
+            <p class="manual-hint">Os atalhos aparecem para quem criou o recado, para perfis com permissão de atualização e para os destinatários — inclusive quando o recado foi atribuído a um setor.</p>
           </section>
 
           <section>
-            <h2>7. Notificações</h2>
+            <h2>7. Kanban e Calendário</h2>
+            <h3>Kanban (<code>/recados/kanban</code>)</h3>
+            <ul>
+              <li>Colunas por status (Pendente, Em andamento, Resolvido), com paginação individual.</li>
+              <li>Widgets superiores destacam recados vencidos, em SLA e recebidos no dia.</li>
+              <li>Ideal para reuniões rápidas: arraste o mouse sobre os cartões para usar o botão “Ver” ou abrir ações.</li>
+            </ul>
+            <h3>Calendário (<code>/recados/calendario</code>)</h3>
+            <ul>
+              <li>Mostra recados agrupados por dia/hora de ligação.</li>
+              <li>Filtros por setor, label, status e período ajudam a planejar plantões.</li>
+              <li>Clique no cartão para abrir o recado e registrar retorno.</li>
+            </ul>
+            <p class="manual-hint">Use o Kanban para gerir a fila por status e o Calendário para organizar agendas e retornos planejados.</p>
+          </section>
+
+          <section>
+            <h2>8. Notificações</h2>
             <ul>
               <li>Recados destinados a um usuário disparam e-mail com o resumo e o botão “Abrir recado”.</li>
               <li>Recados destinados a um <strong>setor</strong> enviam e-mail para todos os membros ativos do setor.</li>
@@ -127,12 +145,12 @@
           </section>
 
           <section>
-            <h2>8. Dashboard e indicadores</h2>
+            <h2>9. Dashboard e indicadores</h2>
             <p>O painel mostra gráficos de recados por status, horários de pico e principais destinatários. Use essas informações para equilibrar a equipe e antecipar gargalos.</p>
           </section>
 
           <section>
-            <h2>9. Atalhos úteis</h2>
+            <h2>10. Atalhos úteis</h2>
             <ul>
               <li><kbd>Ctrl</kbd> + <kbd>F</kbd>: busca termos específicos na página.</li>
               <li>Filtros salvos (quando disponíveis) permitem alternar rapidamente entre setores ou períodos.</li>
@@ -141,7 +159,7 @@
           </section>
 
           <section>
-            <h2>10. Perguntas frequentes</h2>
+            <h2>11. Perguntas frequentes</h2>
             <dl>
               <dt>Preciso instalar algo?</dt>
               <dd>Não. Basta utilizar um navegador atualizado.</dd>
@@ -155,7 +173,7 @@
           </section>
 
           <section>
-            <h2>11. Suporte</h2>
+            <h2>12. Suporte</h2>
             <ul>
               <li>Dúvidas de uso: consulte o responsável interno ou a Central de Ajuda.</li>
               <li>Problemas de acesso: informe data, horário e captura de tela ao suporte técnico.</li>

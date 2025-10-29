@@ -1,9 +1,9 @@
 // public/js/novo-recado.js
-// Página "Novo Recado" — coleta do formulário, normalização e envio para a API.
+// Página "Novo Contato" — coleta do formulário, normalização e envio para a API.
 // Por quê: garantir JSON válido e presença de 'message' (fallback de 'notes').
 
 (() => {
-  console.log('✅ Novo Recado JS carregado');
+  console.log('✅ Novo Contato JS carregado');
 
   // Helper seguro para capturar valor de input/textarea
   const val = (sel) => {
@@ -148,7 +148,7 @@
       }
 
       const resp = await API.createMessage(recado);
-      console.log('✅ Recado criado:', resp);
+      console.log('✅ Contato criado:', resp);
 
       // Redireciona para lista/detalhe após criar (ajuste conforme sua navegação)
       if (resp?.success) {
@@ -156,11 +156,11 @@
         window.location.href = '/recados';
         return;
       } else {
-        alert('Não foi possível criar o recado.');
+        alert('Não foi possível criar o contato.');
       }
     } catch (err) {
       console.error('❌ Erro do servidor:', err?.message || err);
-      alert(err?.message || 'Erro ao salvar recado. Tente novamente.');
+      alert(err?.message || 'Erro ao salvar contato. Tente novamente.');
     } finally {
       if (!keepLocked) {
         toggleSubmitState(false);
@@ -171,11 +171,11 @@
 
   function iniciar() {
     if (!form) {
-      console.warn('⚠️ Formulário de novo recado não encontrado.');
+      console.warn('⚠️ Formulário de novo contato não encontrado.');
       return;
     }
     form.addEventListener('submit', handleSubmit);
-    console.log('✅ Manipuladores de evento configurados para Novo Recado');
+    console.log('✅ Manipuladores de evento configurados para Novo Contato');
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);

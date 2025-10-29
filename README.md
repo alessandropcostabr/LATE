@@ -1,4 +1,4 @@
-# LATE - Sistema de Registro de Ligações e Recados
+# LATE - Sistema de Registro de Ligações e Contatos
 
 Sistema web moderno para automatizar o registro e gerenciamento de recados de ligações, substituindo o modelo impresso por uma solução digital segura, responsiva e acessível de qualquer lugar.
 

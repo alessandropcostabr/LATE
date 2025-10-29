@@ -2,7 +2,7 @@
 
 ## Estrutura Identificada
 
-O arquivo "CadernodeRecados.xlsx" é um modelo estático para registro interno de ligações com a seguinte estrutura:
+O arquivo "CadernodeContatos.xlsx" é um modelo estático para registro interno de ligações com a seguinte estrutura:
 
 ### Campos Principais:
 1. **Data** - Campo para data da ligação (formato: ___/___/___)
@@ -35,7 +35,7 @@ O arquivo "CadernodeRecados.xlsx" é um modelo estático para registro interno d
 ## Funcionalidades Necessárias:
 
 ### Para o Sistema Web:
-1. **Cadastro de Recados:**
+1. **Cadastro de Contatos:**
    - Formulário com todos os campos identificados
    - Validação de dados
    - Timestamp automático

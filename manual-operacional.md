@@ -33,15 +33,15 @@ Bem-vinda(o)! Este guia apresenta o LATE (Livro de Anotações Telefônicas Elet
 
 ## 4. Conhecendo a tela inicial
 Ao entrar, você verá o **Painel de Controle**:
-- **Topo**: menu com atalhos para Registrar Recado, Filtrar, Dashboard e Sair.
+- **Topo**: menu com atalhos para Registrar Contato, Filtrar, Dashboard e Sair.
 - **Cartões de Resumo**: mostram recados abertos, atrasados e encerrados no dia.
-- **Lista de Recados**: apresenta os registros mais recentes e seus detalhes principais (remetente, destinatário, horário, status).
+- **Lista de Contatos**: apresenta os registros mais recentes e seus detalhes principais (remetente, destinatário, horário, status).
 - **Barra de pesquisa**: procure por nome, telefone ou palavra-chave.
 
 > Dica: utilize os filtros laterais para reduzir a lista a apenas um departamento, um status específico ou um período.
 
 ## 5. Como registrar um recado
-1. Clique em **Registrar Recado**.
+1. Clique em **Registrar Contato**.
 2. Preencha os campos obrigatórios:
    - **Quem ligou** (nome e telefone).
    - **Para quem é o recado** (selecione o destinatário ou equipe).
@@ -66,7 +66,7 @@ Ao entrar, você verá o **Painel de Controle**:
 
 ## 7. Dashboard e indicadores
 O card **Dashboard** mostra gráficos simples com:
-- Recados por status (abertos, em andamento, concluídos).
+- Contatos por status (abertos, em andamento, concluídos).
 - Picos por horário do dia.
 - Destinatários com mais pendências.
 

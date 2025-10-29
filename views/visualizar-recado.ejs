@@ -18,7 +18,7 @@
         data-can-delete="<%= permissions && permissions.deleteMessages ? 'true' : 'false' %>"
       >
         <div class="card-header">
-          <h2 class="card-title">Detalhes do Recado</h2>
+          <h2 class="card-title">Detalhes do Contato</h2>
         </div>
         <div class="card-body">
           <div class="tab-container" data-tabs>
@@ -73,7 +73,7 @@
           <div class="modal-dialog">
             <form class="modal-content" id="forwardForm">
               <div class="modal-header">
-                <h5 class="modal-title">Encaminhar recado</h5>
+                <h5 class="modal-title">Encaminhar contato</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
               </div>
               <div class="modal-body">
@@ -83,7 +83,7 @@
                     <option value="user" selected>Usuário específico</option>
                     <option value="sector" <%= forwardSectors.length ? '' : 'disabled' %>>Setor</option>
                   </select>
-                  <div class="form-help">Escolha se o recado será encaminhado para um usuário ou setor.</div>
+                  <div class="form-help">Escolha se o contato será encaminhado para um usuário ou setor.</div>
                 </div>
                 <div class="mb-3" id="forwardUserGroup">
                   <label for="forwardRecipientUserId" class="form-label required">Usuário destinatário</label>
@@ -103,7 +103,7 @@
                       <option value="<%= sector.id %>"><%= sector.name %></option>
                     <% }); %>
                   </select>
-                  <div class="form-help">Todos os integrantes do setor poderão visualizar o recado.</div>
+                  <div class="form-help">Todos os integrantes do setor poderão visualizar o contato.</div>
                 </div>
                 <div class="mb-3">
                   <label for="forwardNote" class="form-label">Observação para o destinatário (opcional)</label>

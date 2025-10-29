@@ -8,13 +8,13 @@
         <meta name="csrf-token" content="<%= csrfToken %>">
       <% } %>
       <div style="margin-bottom:2rem;">
-        <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;">Editar Recado</h1>
-        <p style="color:var(--text-secondary);">Atualize as informações do recado</p>
+        <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;">Editar Contato</h1>
+        <p style="color:var(--text-secondary);">Atualize as informações do contato</p>
       </div>
       <div style="max-width:800px;">
         <form id="formEditarRecado" class="card" data-id="<%= id %>">
           <div class="card-header">
-            <h2 class="card-title">Informações do Recado</h2>
+            <h2 class="card-title">Informações do Contato</h2>
             <p class="card-subtitle">Edite os campos necessários</p>
           </div>
           <div class="card-body">
@@ -38,7 +38,7 @@
                   <option value="user" selected>Usuário específico</option>
                   <option value="sector">Setor</option>
                 </select>
-                <div class="form-help">Defina se este recado pertence a um usuário ou a um setor.</div>
+                <div class="form-help">Defina se este contato pertence a um usuário ou a um setor.</div>
               </div>
 
               <div class="form-group" id="recipientUserGroup">
@@ -49,7 +49,7 @@
                     <option value="<%= user.id %>"><%= user.name %></option>
                   <% }); %>
                 </select>
-                <div class="form-help">Pessoa que deve receber e acompanhar este recado.</div>
+                <div class="form-help">Pessoa que deve receber e acompanhar este contato.</div>
               </div>
 
               <div class="form-group d-none" id="recipientSectorGroup">
@@ -60,7 +60,7 @@
                     <option value="<%= sector.id %>"><%= sector.name %></option>
                   <% }); %>
                 </select>
-                <div class="form-help">Todos os integrantes do setor selecionado poderão visualizar o recado.</div>
+                <div class="form-help">Todos os integrantes do setor selecionado poderão visualizar o contato.</div>
               </div>
 
               <div class="form-group">
@@ -69,7 +69,7 @@
                   <option value="private">Privado (apenas destinatário)</option>
                   <option value="public">Público (todos com acesso)</option>
                 </select>
-                <div class="form-help">Recados públicos ficam visíveis para todos com permissão de leitura.</div>
+                <div class="form-help">Contatos públicos ficam visíveis para todos com permissão de leitura.</div>
               </div>
             </fieldset>
 
@@ -99,7 +99,7 @@
             </fieldset>
 
             <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
-              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Recado</legend>
+              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Contato</legend>
               <div class="form-group">
                 <label for="subject" class="form-label required">Assunto</label>
                 <input id="subject" name="subject" type="text" class="form-input" placeholder="Resumo do motivo da ligação" required data-label="Assunto" autocomplete="off" />
@@ -107,7 +107,7 @@
               </div>
               <div class="form-group">
                 <label for="notes" class="form-label">Observações</label>
-                <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="Detalhes adicionais, contexto ou informações importantes sobre o recado..." autocomplete="off"></textarea>
+                <textarea id="notes" name="notes" class="form-textarea" rows="4" placeholder="Detalhes adicionais, contexto ou informações importantes sobre o contato..." autocomplete="off"></textarea>
                 <div class="form-help">Informações adicionais que possam ser úteis (opcional)</div>
               </div>
               <div class="form-group">
@@ -117,7 +117,7 @@
                   <option value="in_progress">Em Andamento</option>
                   <option value="resolved">Resolvido</option>
                 </select>
-                <div class="form-help">Status atual do recado</div>
+                <div class="form-help">Status atual do contato</div>
               </div>
             </fieldset>
           </div>

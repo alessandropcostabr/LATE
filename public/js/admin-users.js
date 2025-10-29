@@ -117,8 +117,8 @@
     }
 
     const viewScopeLabels = {
-      all: 'Todos os recados',
-      own: 'Recados destinados',
+      all: 'Todos os contatos',
+      own: 'Contatos destinados',
     };
 
     const rows = state.users.map((user) => {
@@ -129,7 +129,7 @@
       const toggleLabel = user.is_active ? 'Inativar' : 'Ativar';
       const toggleClass = user.is_active ? 'link-warning' : 'link-success';
       const scope = String(user.view_scope || 'all').toLowerCase();
-      const scopeLabel = viewScopeLabels[scope] || 'Todos os recados';
+      const scopeLabel = viewScopeLabels[scope] || 'Todos os contatos';
 
       return `
         <tr data-user-id="${user.id}" data-user-name="${escapeHtml(user.name || '')}" data-user-email="${escapeHtml(user.email || '')}" data-user-role="${role}" data-user-active="${user.is_active ? 'true' : 'false'}" data-user-view-scope="${scope}">
@@ -381,7 +381,7 @@
       const conflict = err?.status === 409 || /não pode ser excluído/i.test(message);
 
       if (conflict) {
-        const promptMessage = `${message || 'Usuário possui recados associados e não pode ser excluído.'}\n\nDeseja inativar este usuário agora?`;
+        const promptMessage = `${message || 'Usuário possui contatos associados e não pode ser excluído.'}\n\nDeseja inativar este usuário agora?`;
         const shouldInactivate = window.confirm(promptMessage);
 
         if (shouldInactivate) {
@@ -400,7 +400,7 @@
             removeUserAlertEl.classList.remove('d-none');
           }
         } else {
-          removeUserAlertEl.textContent = message || 'Usuário possui recados associados e não pode ser excluído.';
+          removeUserAlertEl.textContent = message || 'Usuário possui contatos associados e não pode ser excluído.';
           removeUserAlertEl.classList.remove('d-none');
         }
 

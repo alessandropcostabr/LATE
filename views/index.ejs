@@ -8,10 +8,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
                 <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Dashboard</h1>
-                <p style="color: var(--text-secondary);">Visão geral dos recados</p>
+                <p style="color: var(--text-secondary);">Visão geral dos contatos</p>
             </div>
             <a href="/novo-recado" class="btn btn-primary btn-lg">
-                <span aria-hidden="true">➕</span> Novo Recado
+                <span aria-hidden="true">➕</span> Novo Contato
             </a>
         </div>
 
@@ -19,7 +19,7 @@
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card total">
                 <div class="stat-number" id="totalRecados">-</div>
-                <div class="stat-label">Total de Recados</div>
+                <div class="stat-label">Total de Contatos</div>
             </div>
             <div class="stat-card pendente">
                 <div class="stat-number" id="totalPendentes">-</div>
@@ -39,7 +39,7 @@
         <div class="card" style="margin-bottom: 2rem;">
             <div class="card-header">
                 <h2 class="card-title">Filtros Rápidos</h2>
-                <p class="card-subtitle">Acesso rápido aos recados mais importantes</p>
+                <p class="card-subtitle">Acesso rápido aos contatos mais importantes</p>
             </div>
             <div class="card-body">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
@@ -62,21 +62,21 @@
             </div>
         </div>
 
-        <!-- Recados Recentes -->
+        <!-- Contatos Recentes -->
         <div class="card">
             <div class="card-header">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <h2 class="card-title">Recados Recentes</h2>
-                        <p class="card-subtitle">Últimos 10 recados registrados</p>
+                        <h2 class="card-title">Contatos Recentes</h2>
+                        <p class="card-subtitle">Últimos 10 contatos registrados</p>
                     </div>
                 </div>
             </div>
             <div class="card-body">
-                <div id="recadosRecentes" role="region" aria-live="polite" aria-label="Recados Recentes">
+                <div id="recadosRecentes" role="region" aria-live="polite" aria-label="Contatos Recentes">
                     <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
                         <div class="loading" style="margin: 0 auto 1rem;"></div>
-                        Carregando recados...
+                        Carregando contatos...
                     </div>
                 </div>
             </div>

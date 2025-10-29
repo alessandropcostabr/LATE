@@ -77,7 +77,7 @@ describe('GET /api/messages/:id', () => {
     expect(response.status).toBe(404);
     expect(response.body).toMatchObject({
       success: false,
-      error: 'Recado não encontrado',
+      error: 'Contato não encontrado',
     });
     expect(messageModel.findById).toHaveBeenCalledWith(
       999,

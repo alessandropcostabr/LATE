@@ -1,6 +1,6 @@
 // public/js/app.js
 // Comentários em pt-BR; identificadores em inglês.
-// Este arquivo agora cuida APENAS de "Recados Recentes" no Dashboard.
+// Este arquivo agora cuida APENAS de "Contatos Recentes" no Dashboard.
 // As estatísticas de cards ficam a cargo do utils.js para evitar chamadas duplicadas.
 
 // Helpers de requisição (compatível com a API atual)
@@ -72,7 +72,7 @@ const STATUS_META = {
   },
 };
 
-// ---- Recados Recentes (somente) ----
+// ---- Contatos Recentes (somente) ----
 async function carregarRecadosRecentes() {
   const container = document.getElementById('recadosRecentes');
   if (!container) return;
@@ -80,7 +80,7 @@ async function carregarRecadosRecentes() {
   container.innerHTML = `
     <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
       <div class="loading" style="margin: 0 auto 1rem;"></div>
-      Carregando recados...
+      Carregando contatos...
     </div>
   `;
 
@@ -92,7 +92,7 @@ async function carregarRecadosRecentes() {
     if (!list.length) {
       container.innerHTML = `
         <div style="text-align:center; padding: 1.5rem; color: var(--text-secondary);">
-          Nenhum recado encontrado.
+          Nenhum contato encontrado.
         </div>`;
       return;
     }
@@ -106,7 +106,7 @@ async function carregarRecadosRecentes() {
       const statusLabel = m.status_label || meta.label;
 
       return `
-        <a class="recent-message" href="/visualizar-recado/${m.id}" aria-label="Abrir recado ${escapeHtml(subject)}">
+        <a class="recent-message" href="/visualizar-recado/${m.id}" aria-label="Abrir contato ${escapeHtml(subject)}">
           <div style="min-width:0;">
             <div class="recent-message__title">${escapeHtml(subject)}</div>
             <div class="recent-message__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)}</div>
@@ -119,10 +119,10 @@ async function carregarRecadosRecentes() {
 
     container.innerHTML = html;
   } catch (err) {
-    console.error('Erro ao carregar recados recentes:', err);
+    console.error('Erro ao carregar contatos recentes:', err);
     container.innerHTML = `
       <div class="alert alert-danger" role="alert">
-        Erro ao carregar recados recentes
+        Erro ao carregar contatos recentes
       </div>`;
   }
 }
