@@ -11,6 +11,7 @@ const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
+const { execSync } = require('child_process');
 require('./config/loadEnv').loadEnv(); // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
 
 const db = require('./config/database'); // Pool do pg (PG-only)
@@ -19,6 +20,7 @@ const webRoutes = require('./routes/web');
 const healthController = require('./controllers/healthController');
 const { startAlertScheduler } = require('./services/messageAlerts');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
+const packageInfo = require('./package.json');
 
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
@@ -70,6 +72,18 @@ console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.
 
 // caminho do CSS nas views (não altera layout, apenas escolhe o arquivo já existente)
 app.locals.cssFile = isProd ? '/css/style.min.css' : '/css/style.css';
+const packageVersion = packageInfo.version || '0.0.0';
+app.locals.appVersion = process.env.APP_VERSION || packageVersion;
+let resolvedBuild = process.env.APP_BUILD;
+if (!resolvedBuild) {
+  try {
+    resolvedBuild = execSync('git rev-parse --short HEAD').toString().trim();
+  } catch (err) {
+    resolvedBuild = 'dev';
+    console.warn('[BOOT] não foi possível resolver git rev:', err?.message || err);
+  }
+}
+app.locals.appBuild = resolvedBuild;
 
 // EJS
 app.set('view engine', 'ejs');
@@ -133,6 +147,11 @@ app.use(session({
 }));
 
 // ⚠️ Importante: sem csurf global aqui. Proteção CSRF fica por rota no routes/web.js.
+app.use((req, res, next) => {
+  res.locals.appVersion = app.locals.appVersion;
+  res.locals.appBuild = app.locals.appBuild;
+  next();
+});
 
 // user e permissões disponíveis nas views
 app.use((req, res, next) => {
