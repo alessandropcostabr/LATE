@@ -139,7 +139,7 @@ describe('POST /api/messages/:id/forward', () => {
     expect(userModel.findById).toHaveBeenCalledWith(2);
     expect(mailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({
       to: 'dest@example.com',
-      subject: '[LATE] Recado encaminhado para você',
+      subject: '[LATE] Contato encaminhado para você',
     }));
   });
 

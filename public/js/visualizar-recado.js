@@ -1,5 +1,5 @@
 // public/js/visualizar-recado.js
-// Controla o painel de detalhes do recado (abas, labels, checklists, comentários e watchers).
+// Controla o painel de detalhes do contato (abas, labels, checklists, comentários e watchers).
 
 document.addEventListener('DOMContentLoaded', () => {
   const wrapper = document.getElementById('detalhesRecado');
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadMessage() {
     if (!state.id) {
-      showToast('Identificador do recado não encontrado.', 'error');
+      showToast('Identificador do contato não encontrado.', 'error');
       return;
     }
     setLoading(true);
@@ -311,27 +311,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
       switch (event?.type) {
         case 'created':
-          return `Recado criado por ${actor}.`;
+          return `Contato criado por ${actor}.`;
         case 'updated': {
           const changes = Array.isArray(payload.changes) ? payload.changes : [];
-          if (!changes.length) return `${actor} atualizou o recado.`;
+          if (!changes.length) return `${actor} atualizou o contato.`;
           const details = changes.map((change) => {
             const label = change.label || change.field;
             const from = formatValue(change.from);
             const to = formatValue(change.to);
             return `${label}: ${from} → ${to}`;
           }).join('; ');
-          return `${actor} atualizou o recado (${details}).`;
+          return `${actor} atualizou o contato (${details}).`;
         }
         case 'status_changed':
           return `${actor} alterou a situação de ${statusLabels[payload.from] || payload.from || '—'} para ${statusLabels[payload.to] || payload.to || '—'}.`;
         case 'forwarded': {
           const from = formatValue(payload.from?.recipient);
           const to = formatValue(payload.to?.recipient);
-          return `${actor} encaminhou o recado (${from} → ${to}).`;
+          return `${actor} encaminhou o contato (${from} → ${to}).`;
         }
         case 'adopted':
-          return `${actor} assumiu o recado.`;
+          return `${actor} assumiu o contato.`;
         case 'email_failure': {
           const email = payload.email || 'destinatário desconhecido';
           const reason = payload.reason || 'falha não informada';
@@ -502,12 +502,12 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.forwardSubmit.textContent = 'Encaminhando...';
       }
       await API.forwardMessage(state.id, payload);
-      showToast('Recado encaminhado com sucesso!', 'success');
+      showToast('Contato encaminhado com sucesso!', 'success');
       forwardModal?.hide();
       resetForwardForm();
       await loadMessage();
     } catch (err) {
-      showToast(err?.message || err?.body?.error || 'Erro ao encaminhar recado.', 'error');
+      showToast(err?.message || err?.body?.error || 'Erro ao encaminhar contato.', 'error');
     } finally {
       if (elements.forwardSubmit) {
         elements.forwardSubmit.disabled = false;
@@ -537,16 +537,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const messages = status === 'in_progress'
       ? {
-          confirm: 'Marcar este recado como em andamento?',
+          confirm: 'Marcar este contato como em andamento?',
           loading: 'Atualizando...',
-          success: 'Recado marcado como em andamento.',
-          error: 'Erro ao atualizar recado.',
+          success: 'Contato marcado como em andamento.',
+          error: 'Erro ao atualizar contato.',
         }
       : {
-          confirm: 'Marcar este recado como resolvido?',
+          confirm: 'Marcar este contato como resolvido?',
           loading: 'Atualizando...',
-          success: 'Recado marcado como resolvido.',
-          error: 'Erro ao atualizar recado.',
+          success: 'Contato marcado como resolvido.',
+          error: 'Erro ao atualizar contato.',
         };
 
     if (!window.confirm(messages.confirm)) return;
@@ -575,8 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try { subject = decodeAttr(subjectEncoded); } catch (_err) { subject = subjectEncoded; }
 
     const confirmation = subject
-      ? `Tem certeza de que deseja excluir o recado "${subject}"?`
-      : 'Tem certeza de que deseja excluir este recado?';
+      ? `Tem certeza de que deseja excluir o contato "${subject}"?`
+      : 'Tem certeza de que deseja excluir este contato?';
 
     if (!window.confirm(confirmation)) return;
 
@@ -585,10 +585,10 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.deleteButton.disabled = true;
       elements.deleteButton.textContent = 'Excluindo...';
       await API.deleteMessage(state.id);
-      showToast('Recado excluído com sucesso.', 'success');
+      showToast('Contato excluído com sucesso.', 'success');
       setTimeout(() => { window.location.href = '/recados'; }, 600);
     } catch (err) {
-      showToast(err?.message || 'Erro ao excluir recado.', 'error');
+      showToast(err?.message || 'Erro ao excluir contato.', 'error');
       elements.deleteButton.disabled = false;
       elements.deleteButton.textContent = originalText;
     }
@@ -760,7 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       const userId = Number(elements.watcherSelect?.value || 0);
       if (!userId) {
-        showToast('Selecione um usuário para acompanhar o recado.', 'error');
+        showToast('Selecione um usuário para acompanhar o contato.', 'error');
         return;
       }
       const submitBtn = elements.watcherForm.querySelector('button[type="submit"]');
@@ -824,8 +824,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showError(err) {
     const message = err?.status === 404
-      ? 'Recado não encontrado.'
-      : (err?.message || err?.body?.error || 'Erro ao carregar recado.');
+      ? 'Contato não encontrado.'
+      : (err?.message || err?.body?.error || 'Erro ao carregar contato.');
 
     if (elements.details) {
       elements.details.innerHTML = `<p class="text-danger">${escapeHtml(message)}</p>`;

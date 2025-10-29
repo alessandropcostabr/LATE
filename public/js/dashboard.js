@@ -50,7 +50,7 @@ export async function carregarRecadosRecentes(limit = 10) {
       noData.style.textAlign = 'center';
       noData.style.padding = '2rem';
       noData.style.color = 'var(--text-secondary)';
-      noData.textContent = '📝 Nenhum recado encontrado';
+      noData.textContent = '📝 Nenhum contato encontrado';
       container.appendChild(noData);
       return;
     }
@@ -63,7 +63,7 @@ export async function carregarRecadosRecentes(limit = 10) {
 
     const caption = document.createElement('caption');
     caption.className = 'sr-only';
-    caption.textContent = 'Recados Recentes';
+    caption.textContent = 'Contatos Recentes';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
@@ -155,6 +155,6 @@ export async function carregarRecadosRecentes(limit = 10) {
     wrapper.appendChild(table);
     container.appendChild(wrapper);
   } catch {
-    Toast.error('Erro ao carregar recados recentes');
+    Toast.error('Erro ao carregar contatos recentes');
   }
 }

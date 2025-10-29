@@ -6,7 +6,7 @@
         <img src="/assets/logo.png" alt="LATE">
       </div>
       <h1 id="loginTitle" class="auth-title">Entrar</h1>
-      <p class="auth-subtitle">Acesse o painel e acompanhe os recados da sua equipe.</p>
+      <p class="auth-subtitle">Acesse o painel e acompanhe os contatos da sua equipe.</p>
 
       <form method="POST" action="/login" class="auth-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -55,8 +55,8 @@
         <h2 class="auth-inline-title">Central de ajuda</h2>
         <ul class="auth-inline-list">
           <li>Entre com seu e-mail corporativo. Se esqueceu a senha, peça um reset ao administrador.</li>
-          <li>Após o login, use o menu superior para acessar Dashboard, Recados e Novo Recado.</li>
-          <li>Para suporte, abra um recado para o setor responsável com horário e detalhes da ocorrência.</li>
+          <li>Após o login, use o menu superior para acessar Dashboard, Contatos e Novo Contato.</li>
+          <li>Para suporte, registre um contato para o setor responsável com horário e detalhes da ocorrência.</li>
         </ul>
         <p class="auth-inline-footnote">Dica: mantenha usuários e setores atualizados para que as notificações por e-mail cheguem ao responsável certo.</p>
       </section>
@@ -64,7 +64,7 @@
 
     <section class="auth-hero" aria-hidden="true">
       <div class="auth-hero-content">
-        <h2 class="auth-hero-title">Simplifique a gestão de recados</h2>
+        <h2 class="auth-hero-title">Simplifique a gestão de contatos</h2>
         <p class="auth-hero-text">
           Centralize informações, acompanhe status em tempo real e mantenha sua equipe alinhada.
         </p>
@@ -80,10 +80,10 @@
 
   <section id="loginNewsContent" class="auth-inline-card auth-inline-card--floating" hidden aria-live="polite">
     <h2 class="auth-inline-title">Novidade recente</h2>
-    <p>Ativamos a notificação automática por e-mail sempre que um recado é registrado. O destinatário recebe um resumo com o botão <strong>“Abrir recado”</strong> para responder rapidamente.</p>
+    <p>Ativamos a notificação automática por e-mail sempre que um contato é registrado. O destinatário recebe um resumo com o botão <strong>“Abrir contato”</strong> para responder rapidamente.</p>
     <ul class="auth-inline-list">
       <li>O fluxo de cadastro permanece igual: sem novos campos obrigatórios.</li>
-      <li>Se o envio falhar, o recado continua salvo e o time técnico recebe um alerta.</li>
+      <li>Se o envio falhar, o contato continua salvo e o time técnico recebe um alerta.</li>
       <li>Garanta que os setores e usuários estejam corretos para que as mensagens cheguem ao responsável certo.</li>
     </ul>
   </section>

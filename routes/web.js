@@ -173,7 +173,7 @@ router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, a
 
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('recados', {
-      title: 'Recados',
+      title: 'Contatos',
       user: req.session.user || null,
       csrfToken,
       destinatariosUsuarios: activeUsers,
@@ -197,7 +197,7 @@ router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtect
     ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('novo-recado', {
-      title: 'Novo Recado',
+      title: 'Novo Contato',
       user: req.session.user || null,
       csrfToken,
       activeUsers,
@@ -217,7 +217,7 @@ router.get('/editar-recado/:id', requireAuth, requireMessageUpdatePermission, cs
     ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('editar-recado', {
-      title: 'Editar Recado',
+      title: 'Editar Contato',
       id: req.params.id,
       user: req.session.user || null,
       csrfToken,
@@ -250,7 +250,7 @@ router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csr
   }
 
   res.render('visualizar-recado', {
-    title: 'Visualizar Recado',
+    title: 'Visualizar Contato',
     id: req.params.id,
     user: req.session.user || null,
     csrfToken,

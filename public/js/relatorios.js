@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Gráficos
   await Promise.all([
-    renderChart('/stats/by-recipient', 'graficoPorDestinatario', 'Recados por Destinatário'),
-    renderChart('/stats/by-status', 'graficoPorStatus', 'Recados por Status', 'pie'),
-    renderChart('/stats/by-month', 'graficoPorMes', 'Recados por Mês', 'line')
+    renderChart('/stats/by-recipient', 'graficoPorDestinatario', 'Contatos por Destinatário'),
+    renderChart('/stats/by-status', 'graficoPorStatus', 'Contatos por Status', 'pie'),
+    renderChart('/stats/by-month', 'graficoPorMes', 'Contatos por Mês', 'line')
   ]);
 });
 
@@ -69,4 +69,3 @@ function generateColors(count) {
   }
   return colors;
 }
-

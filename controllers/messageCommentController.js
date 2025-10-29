@@ -1,5 +1,5 @@
 // controllers/messageCommentController.js
-// CRUD de comentários na timeline dos recados.
+// CRUD de comentários na timeline dos contatos.
 
 const MessageCommentModel = require('../models/messageComment');
 
@@ -54,7 +54,7 @@ exports.remove = async (req, res) => {
     }
 
     if (Number(comment.message_id) !== Number(req.params.id)) {
-      return res.status(400).json({ success: false, error: 'Comentário não pertence a este recado.' });
+      return res.status(400).json({ success: false, error: 'Comentário não pertence a este contato.' });
     }
 
     const isOwner = Number(comment.user_id) === Number(sessionUser.id);

@@ -32,14 +32,14 @@
 
       <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap;">
         <div>
-          <h1 class="page-title" style="font-size:2rem;font-weight:700;margin:0;">Calendário de Recados</h1>
+          <h1 class="page-title" style="font-size:2rem;font-weight:700;margin:0;">Calendário de Contatos</h1>
           <p class="page-subtitle" style="color:var(--text-secondary);margin:0;">Organize-se pelos prazos e horários de retorno</p>
         </div>
         <div class="page-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
           <a class="btn btn-outline" href="/recados">Tabela</a>
           <a class="btn btn-outline" href="/recados/kanban<%= buildQuery({ page: 1 }) %>">Kanban</a>
           <% if (permissions && permissions.createMessages) { %>
-            <a class="btn btn-primary" href="/novo-recado">Novo Recado</a>
+            <a class="btn btn-primary" href="/novo-recado">Novo Contato</a>
           <% } %>
         </div>
       </div>
@@ -124,7 +124,7 @@
 
       <section class="calendar-board" style="display:grid;gap:1.5rem;">
         <% if (!calendar || !calendar.length) { %>
-          <p class="text-muted">Nenhum recado encontrado no período informado.</p>
+          <p class="text-muted">Nenhum contato encontrado no período informado.</p>
         <% } else { %>
           <% calendar.forEach(function(day) { %>
             <article class="card calendar-day">

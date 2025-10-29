@@ -1,6 +1,6 @@
 // public/js/recados.js
 // Comentários em pt-BR; identificadores em inglês.
-// Lista de recados com filtros; tolera formatos de payload da API.
+// Lista de contatos com filtros; tolera formatos de payload da API.
 
 // Helpers (iguais ao app.js — duplicados localmente para evitar dependências implícitas)
 const permissionsEl = document.querySelector('[data-message-permissions]');
@@ -41,28 +41,28 @@ const STATUS_OPTIONS = [
 
 const STATUS_ACTION_COPY = {
   pending: {
-    confirm: 'Reabrir este recado como pendente?',
+    confirm: 'Reabrir este contato como pendente?',
     loading: 'Atualizando...',
-    success: 'Recado marcado como pendente.',
-    error: 'Erro ao atualizar recado.'
+    success: 'Contato marcado como pendente.',
+    error: 'Erro ao atualizar contato.'
   },
   in_progress: {
-    confirm: 'Marcar este recado como em andamento?',
+    confirm: 'Marcar este contato como em andamento?',
     loading: 'Atualizando...',
-    success: 'Recado marcado como em andamento.',
-    error: 'Erro ao atualizar recado.'
+    success: 'Contato marcado como em andamento.',
+    error: 'Erro ao atualizar contato.'
   },
   resolved: {
-    confirm: 'Marcar este recado como resolvido?',
+    confirm: 'Marcar este contato como resolvido?',
     loading: 'Atualizando...',
-    success: 'Recado marcado como resolvido.',
-    error: 'Erro ao atualizar recado.'
+    success: 'Contato marcado como resolvido.',
+    error: 'Erro ao atualizar contato.'
   },
   default: {
-    confirm: 'Atualizar situação do recado?',
+    confirm: 'Atualizar situação do contato?',
     loading: 'Atualizando...',
-    success: 'Situação do recado atualizada.',
-    error: 'Erro ao atualizar recado.'
+    success: 'Situação do contato atualizada.',
+    error: 'Erro ao atualizar contato.'
   }
 };
 
@@ -77,7 +77,7 @@ async function request(url, opts = {}) {
     throw new Error('Resposta inválida do servidor');
   }
   if (!res.ok || (json && json.success === false)) {
-    throw new Error((json && json.error) || 'Falha ao listar recados');
+    throw new Error((json && json.error) || 'Falha ao listar contatos');
   }
   return json;
 }
@@ -199,7 +199,7 @@ function renderStatusControls(message, canEditThis, currentStatusLabel) {
     const ariaPressed = isCurrent ? 'true' : 'false';
     const title = isCurrent
       ? `Situação atual: ${option.label}`
-      : `Marcar recado como ${option.label.toLowerCase()}`;
+      : `Marcar contato como ${option.label.toLowerCase()}`;
 
     const attrs = [
       'type="button"',
@@ -244,7 +244,7 @@ async function carregarRecados() {
   if (container) {
     container.innerHTML = `
       <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
-        <span class="loading"></span> Carregando recados...
+        <span class="loading"></span> Carregando contatos...
       </div>`;
   }
 
@@ -288,7 +288,7 @@ async function carregarRecados() {
     if (!list.length) {
       if (container) container.innerHTML = `
         <div style="text-align:center;padding:1.5rem;color:var(--text-secondary);">
-          Nenhum recado encontrado.
+          Nenhum contato encontrado.
         </div>`;
       return;
     }
@@ -342,7 +342,7 @@ async function carregarRecados() {
 
       return `
         <article class="message-card list-item" data-message-id="${m.id}">
-          <a class="message-card__primary" href="${detailsUrl}" aria-label="Abrir recado ${escapeHtml(subject)}">
+          <a class="message-card__primary" href="${detailsUrl}" aria-label="Abrir contato ${escapeHtml(subject)}">
             <div class="message-card__title">${escapeHtml(subject)}</div>
             <div class="message-card__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)} • Visibilidade: ${escapeHtml(visibilityLabel)}</div>
             <div class="message-card__meta">Criado em: ${escapeHtml(created)}</div>
@@ -359,11 +359,11 @@ async function carregarRecados() {
 
     if (container) container.innerHTML = html;
   } catch (err) {
-    console.error('❌ Erro ao carregar recados:', err);
+    console.error('❌ Erro ao carregar contatos:', err);
     if (container) {
       container.innerHTML = `
         <div class="alert alert-danger" role="alert">
-          Falha ao listar recados
+          Falha ao listar contatos
         </div>`;
     }
   }
@@ -411,8 +411,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const subject = decodeAttr(deleteButton.getAttribute('data-message-subject') || '');
         const confirmation = subject
-          ? `Tem certeza de que deseja excluir o recado "${subject}"?`
-          : 'Tem certeza de que deseja excluir este recado?';
+          ? `Tem certeza de que deseja excluir o contato "${subject}"?`
+          : 'Tem certeza de que deseja excluir este contato?';
 
         if (!window.confirm(confirmation)) return;
 
@@ -420,20 +420,20 @@ document.addEventListener('DOMContentLoaded', () => {
           setButtonLoading(deleteButton, true, 'Excluindo...');
 
           if (!window.API || typeof window.API.deleteMessage !== 'function') {
-            throw new Error('API indisponível para excluir recados.');
+            throw new Error('API indisponível para excluir contatos.');
           }
 
           await window.API.deleteMessage(messageId);
           if (window.Toast?.success) {
-            window.Toast.success('Recado excluído com sucesso.');
+            window.Toast.success('Contato excluído com sucesso.');
           }
           carregarRecados();
         } catch (err) {
-          const msg = err?.message || 'Erro ao excluir recado.';
+          const msg = err?.message || 'Erro ao excluir contato.';
           if (window.Toast?.error) {
             window.Toast.error(msg);
           } else {
-            console.error('[recados] Falha ao excluir recado:', err);
+            console.error('[recados] Falha ao excluir contato:', err);
             alert(msg);
           }
         } finally {
@@ -470,20 +470,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
           if (!window.API || typeof window.API.updateMessageStatus !== 'function') {
-            throw new Error('API indisponível para atualizar recados.');
+            throw new Error('API indisponível para atualizar contatos.');
           }
 
           await window.API.updateMessageStatus(messageId, { status: targetStatus });
           if (window.Toast?.success) {
-            window.Toast.success(statusCopy.success || 'Situação do recado atualizada.');
+            window.Toast.success(statusCopy.success || 'Situação do contato atualizada.');
           }
           requestSucceeded = true;
         } catch (err) {
-          const msg = err?.message || statusCopy.error || 'Erro ao atualizar recado.';
+          const msg = err?.message || statusCopy.error || 'Erro ao atualizar contato.';
           if (window.Toast?.error) {
             window.Toast.error(msg);
           } else {
-            console.error('[recados] Falha ao atualizar recado:', err);
+            console.error('[recados] Falha ao atualizar contato:', err);
             alert(msg);
           }
         } finally {

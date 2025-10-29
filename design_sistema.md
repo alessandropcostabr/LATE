@@ -93,11 +93,11 @@ CREATE INDEX idx_created_at ON messages(created_at);
   - Em andamento
   - Resolvidos hoje
 - **Ações Rápidas:**
-  - Botão "Novo Recado"
+  - Botão "Novo Contato"
   - Filtros rápidos
 - **Lista de Mensagens Recentes**
 
-### 2. Formulário de Novo Recado
+### 2. Formulário de Novo Contato
 - **Campos Obrigatórios:**
   - Data da ligação (auto-preenchida com hoje)
   - Hora da ligação (auto-preenchida com agora)
@@ -128,7 +128,7 @@ CREATE INDEX idx_created_at ON messages(created_at);
 - **Paginação**
 - **Ordenação por colunas**
 
-### 4. Visualização de Recado
+### 4. Visualização de Contato
 - **Modal ou página dedicada**
 - **Todos os dados do recado**
 - **Histórico de alterações**

@@ -1,5 +1,5 @@
 // controllers/messageViewController.js
-// Views Kanban e Calendário dos recados, respeitando RBAC e filtros server-side.
+// Views Kanban e Calendário dos contatos, respeitando RBAC e filtros server-side.
 
 const Message = require('../models/message');
 const UserModel = require('../models/user');
@@ -239,7 +239,7 @@ exports.kanbanPage = async (req, res) => {
       pagination,
       widgets,
       {
-        title: 'Recados · Kanban',
+        title: 'Contatos · Kanban',
         board,
         pageSize: KANBAN_PAGE_SIZE,
         destinatariosUsuarios: filterOptions.destinatariosUsuarios,
@@ -326,7 +326,7 @@ exports.calendarPage = async (req, res) => {
       pagination,
       widgets,
       {
-        title: 'Recados · Calendário',
+        title: 'Contatos · Calendário',
         calendar,
         pageSize: CALENDAR_PAGE_SIZE,
         destinatariosUsuarios: filterOptions.destinatariosUsuarios,

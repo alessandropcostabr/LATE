@@ -205,18 +205,18 @@ async function notifyRecipientUser(messageRow, { template = 'new', forwardedBy, 
       if (template === 'forward') {
         if (forwardedBy) {
           return {
-            text: `O recado foi encaminhado para você por ${forwardedBy}.`,
-            html: `<p><strong>O recado foi encaminhado para você por ${escapeHtml(forwardedBy)}.</strong></p>`,
+            text: `O contato foi encaminhado para você por ${forwardedBy}.`,
+            html: `<p><strong>O contato foi encaminhado para você por ${escapeHtml(forwardedBy)}.</strong></p>`,
           };
         }
         return {
-          text: 'Você recebeu um recado encaminhado para você.',
-          html: '<p><strong>Você recebeu um recado encaminhado para você.</strong></p>',
+          text: 'Você recebeu um contato encaminhado para você.',
+          html: '<p><strong>Você recebeu um contato encaminhado para você.</strong></p>',
         };
       }
       return {
-        text: 'Você recebeu um novo recado.',
-        html: '<p><strong>Você recebeu um novo recado.</strong></p>',
+        text: 'Você recebeu um novo contato.',
+        html: '<p><strong>Você recebeu um novo contato.</strong></p>',
       };
     })();
 
@@ -235,7 +235,7 @@ async function notifyRecipientUser(messageRow, { template = 'new', forwardedBy, 
       textLines.push('', `Observação do encaminhamento: ${limitedNote}`);
     }
 
-    textLines.push('', `Abrir recado: ${openUrl}`);
+    textLines.push('', `Abrir contato: ${openUrl}`);
     const text = textLines.join('\n');
 
     const htmlRecipientName = escapeHtml(recipientName);
@@ -260,12 +260,12 @@ ${intro.html}
   <li><strong>Mensagem:</strong> ${htmlMessageSnippet}${htmlMessageTail}</li>
 </ul>
 ${htmlNote}
-<p><a href="${htmlOpenUrl}">➜ Abrir recado</a></p>
+<p><a href="${htmlOpenUrl}">➜ Abrir contato</a></p>
 `;
 
     const subject = template === 'forward'
-      ? '[LATE] Recado encaminhado para você'
-      : '[LATE] Novo recado para você';
+      ? '[LATE] Contato encaminhado para você'
+      : '[LATE] Novo contato para você';
 
     await sendMail({ to: recipientEmail, subject, html, text });
     console.info('[MAIL:INFO] Notificação enviada', {
@@ -308,29 +308,29 @@ async function notifyRecipientSectorMembers(messageRow) {
       const textLines = [
         `Olá, ${recipientName}!`,
         '',
-        `Um novo recado foi criado para o setor ${messageRow.recipient || '(setor)'}.`,
+        `Um novo contato foi criado para o setor ${messageRow.recipient || '(setor)'}.`,
         '',
         `Data/Hora: ${messageRow.call_date || '-'} ${messageRow.call_time || ''}`,
         `Remetente: ${messageRow.sender_name || '-'} (${messageRow.sender_phone || '—'} / ${messageRow.sender_email || '—'})`,
         `Assunto: ${messageRow.subject || '-'}`,
         `Mensagem: ${messageSnippet}${messageTail}`,
         '',
-        `Abrir recado: ${openUrl}`,
+        `Abrir contato: ${openUrl}`,
       ];
 
       const html = `
         <p>Olá, <strong>${escapeHtml(recipientName)}</strong>!</p>
-        <p>Um novo recado foi criado para o setor <strong>${escapeHtml(messageRow.recipient || '(setor)')}</strong>.</p>
+        <p>Um novo contato foi criado para o setor <strong>${escapeHtml(messageRow.recipient || '(setor)')}</strong>.</p>
         <ul>
           <li><strong>Data/Hora:</strong> ${escapeHtml(messageRow.call_date || '-')} ${escapeHtml(messageRow.call_time || '')}</li>
           <li><strong>Remetente:</strong> ${escapeHtml(messageRow.sender_name || '-')} (${escapeHtml(messageRow.sender_phone || '—')} / ${escapeHtml(messageRow.sender_email || '—')})</li>
           <li><strong>Assunto:</strong> ${escapeHtml(messageRow.subject || '-')}</li>
           <li><strong>Mensagem:</strong> ${escapeHtml(messageSnippet)}${messageTail}</li>
         </ul>
-        <p><a href="${escapeHtml(openUrl)}">➜ Abrir recado</a></p>
-      `.trim();
+        <p><a href="${escapeHtml(openUrl)}">➜ Abrir contato</a></p>
+     `.trim();
 
-      const subject = `[LATE] Novo recado para o setor ${messageRow.recipient || ''}`.trim();
+      const subject = `[LATE] Novo contato para o setor ${messageRow.recipient || ''}`.trim();
 
       try {
         await sendMail({
@@ -599,7 +599,7 @@ exports.list = async (req, res) => {
     return res.json({ success: true, data: rows.map((row) => toClient(row, viewer)) });
   } catch (err) {
     console.error('[messages] erro ao listar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao listar recados' });
+    return res.status(500).json({ success: false, error: 'Falha ao listar contatos' });
   }
 };
 
@@ -614,7 +614,7 @@ exports.getById = async (req, res) => {
     const actor = getSessionActor(req);
     const row = await Message.findById(id, { viewer });
     if (!row) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
     await attachCreatorNames([row]);
     const events = await MessageEvent.listByMessage(id);
@@ -644,7 +644,7 @@ exports.getById = async (req, res) => {
     return res.json({ success: true, data });
   } catch (err) {
     console.error('[messages] erro ao obter por id:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao obter recado' });
+    return res.status(500).json({ success: false, error: 'Falha ao obter contato' });
   }
 };
 
@@ -699,7 +699,7 @@ exports.create = async (req, res) => {
     return res.status(201).json({ success: true, data: toClient(created, viewer) });
   } catch (err) {
     console.error('[messages] erro ao criar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao criar recado' });
+    return res.status(500).json({ success: false, error: 'Falha ao criar contato' });
   }
 };
 
@@ -716,7 +716,7 @@ exports.update = async (req, res) => {
     const payload = sanitizePayload(req.body);
     const before = await Message.findById(id);
     if (!before) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
 
     const recipientInput = extractRecipientInput(req.body);
@@ -750,7 +750,7 @@ exports.update = async (req, res) => {
 
     const ok = await Message.update(id, payload);
     if (!ok) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
@@ -768,7 +768,7 @@ exports.update = async (req, res) => {
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao atualizar recado' });
+    return res.status(500).json({ success: false, error: 'Falha ao atualizar contato' });
   }
 };
 
@@ -784,7 +784,7 @@ exports.forward = async (req, res) => {
 
     const current = await Message.findById(id);
     if (!current) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
 
     const recipientInput = extractRecipientInput(req.body);
@@ -804,7 +804,7 @@ exports.forward = async (req, res) => {
     if (unchangedRecipient) {
       return res.status(400).json({
         success: false,
-        error: 'Selecione um destinatário diferente para encaminhar o recado.',
+        error: 'Selecione um destinatário diferente para encaminhar o contato.',
       });
     }
 
@@ -815,7 +815,7 @@ exports.forward = async (req, res) => {
     });
 
     if (!ok) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
 
     const updated = await Message.findById(id);
@@ -850,7 +850,7 @@ exports.forward = async (req, res) => {
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao encaminhar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao encaminhar recado' });
+    return res.status(500).json({ success: false, error: 'Falha ao encaminhar contato' });
   }
 };
 
@@ -867,13 +867,13 @@ exports.updateStatus = async (req, res) => {
     const { status } = req.body || {};
     const before = await Message.findById(id);
     if (!before) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
     const ok = await Message.updateStatus(id, status, {
       updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
     });
     if (!ok) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
@@ -904,12 +904,12 @@ exports.remove = async (req, res) => {
     }
     const ok = await Message.remove(id);
     if (!ok) {
-      return res.status(404).json({ success: false, error: 'Recado não encontrado' });
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
-    return res.json({ success: true, data: 'Recado removido com sucesso' });
+    return res.json({ success: true, data: 'Contato removido com sucesso' });
   } catch (err) {
     console.error('[messages] erro ao remover:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao remover recado' });
+    return res.status(500).json({ success: false, error: 'Falha ao remover contato' });
   }
 };
 

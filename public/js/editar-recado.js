@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       deleteButton.dataset.messageSubject = encodeURIComponent(safeData.subject || '');
     }
   } catch (e) {
-    Toast.error('Erro ao carregar recado');
+    Toast.error('Erro ao carregar contato');
   }
 
   form.addEventListener('submit', async e => {
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         payload.status = (payload.status || '').toLowerCase().replace(/\s+/g, '_');
       }
       await API.updateMessage(id, payload);
-      Toast.success('Recado atualizado com sucesso!');
+      Toast.success('Contato atualizado com sucesso!');
       setTimeout(() => (window.location.href = `/visualizar-recado/${id}`), 1000);
     } catch (err) {
       const validationError = err.body?.data?.details?.[0]
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         || err.details?.[0]
         || err.body?.errors?.[0]
         || err.errors?.[0];
-      const msg = validationError?.msg || validationError?.message || err.message || 'Erro ao atualizar recado';
+      const msg = validationError?.msg || validationError?.message || err.message || 'Erro ao atualizar contato';
       Toast.error(msg);
     } finally {
       Loading.hide('btnSalvar');
@@ -150,8 +150,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       let subject = '';
       try { subject = decodeURIComponent(subjectEncoded); } catch (_err) { subject = subjectEncoded; }
       const confirmation = subject
-        ? `Tem certeza de que deseja excluir o recado "${subject}"?`
-        : 'Tem certeza de que deseja excluir este recado?';
+        ? `Tem certeza de que deseja excluir o contato "${subject}"?`
+        : 'Tem certeza de que deseja excluir este contato?';
 
       if (!window.confirm(confirmation)) return;
 
@@ -161,13 +161,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         deleteButton.textContent = 'Excluindo...';
         await API.deleteMessage(id);
         if (window.Toast?.success) {
-          window.Toast.success('Recado excluído com sucesso.');
+          window.Toast.success('Contato excluído com sucesso.');
         }
         setTimeout(() => (window.location.href = '/recados'), 600);
       } catch (err) {
         deleteButton.disabled = false;
         deleteButton.textContent = originalLabel;
-        const msg = err?.message || 'Erro ao excluir recado.';
+        const msg = err?.message || 'Erro ao excluir contato.';
         if (window.Toast?.error) {
           window.Toast.error(msg);
         } else {
