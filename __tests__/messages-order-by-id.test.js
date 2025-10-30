@@ -70,6 +70,7 @@ async function ensureSchema() {
       message TEXT,
       status TEXT,
       visibility TEXT NOT NULL DEFAULT 'private',
+      callback_at TIMESTAMPTZ,
       callback_time TEXT,
       notes TEXT,
       created_by INTEGER,
@@ -79,13 +80,13 @@ async function ensureSchema() {
     );
   `);
 
-  const valuePlaceholders = Array.from({ length: 13 }, (_, index) => dbManager.placeholder(index + 1)).join(', ');
+  const valuePlaceholders = Array.from({ length: 14 }, (_, index) => dbManager.placeholder(index + 1)).join(', ');
 
   const insert = db.prepare(`
     INSERT INTO messages (
       call_date, call_time, recipient, sender_name,
       sender_phone, sender_email, subject, message,
-      status, callback_time, notes, created_by, updated_by, created_at, updated_at
+      status, callback_at, callback_time, notes, created_by, updated_by, created_at, updated_at
     ) VALUES (${valuePlaceholders}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     RETURNING id
   `);
@@ -96,8 +97,8 @@ async function ensureSchema() {
     ON CONFLICT (id) DO NOTHING;
   `);
 
-  await insert.get(['2025-01-01', '09:00', 'Equipe A', 'João', null, null, 'Aviso', 'Mensagem 1', 'pending', null, null, 1, 1]);
-  await insert.get(['2025-01-02', '10:30', 'Equipe B', 'Maria', null, null, 'Aviso', 'Mensagem 2', 'resolved', null, null, 1, 1]);
+  await insert.get(['2025-01-01', '09:00', 'Equipe A', 'João', null, null, 'Aviso', 'Mensagem 1', 'pending', null, null, null, 1, 1]);
+  await insert.get(['2025-01-02', '10:30', 'Equipe B', 'Maria', null, null, 'Aviso', 'Mensagem 2', 'resolved', null, null, null, 1, 1]);
 }
 
 beforeAll(async () => {

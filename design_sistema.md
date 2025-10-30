@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS messages (
   subject       TEXT NOT NULL,
   message       TEXT NOT NULL,
   status        TEXT NOT NULL DEFAULT 'pending',
+  callback_at TIMESTAMPTZ,
   callback_time TEXT,
   notes         TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -215,4 +216,3 @@ late/
     ├── messages.html      # Lista de messages
     └── components/       # Componentes HTML
 ```
-

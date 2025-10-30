@@ -178,6 +178,7 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
         message TEXT,
         status TEXT,
         visibility TEXT DEFAULT 'private',
+        callback_at TIMESTAMPTZ,
         callback_time TEXT,
         notes TEXT,
         created_at TIMESTAMP DEFAULT NOW(),
@@ -238,14 +239,14 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
     db.none(`
       INSERT INTO messages (
         id, call_date, call_time, recipient, recipient_user_id, recipient_sector_id,
-        subject, message, status, visibility, callback_time, created_at, updated_at
+        subject, message, status, visibility, callback_at, callback_time, created_at, updated_at
       ) VALUES
         (1, '2025-01-15', '09:00', 'Ana Operadora', 1, NULL,
-         'Retorno Ana', 'Detalhes 1', 'pending', 'private', '14:00', NOW(), NOW()),
+         'Retorno Ana', 'Detalhes 1', 'pending', 'private', '2025-01-15 14:00:00', NULL, NOW(), NOW()),
         (2, '2025-01-16', '10:30', 'Bruno Operador', 2, NULL,
-         'Retorno Bruno', 'Detalhes 2', 'pending', 'private', '15:00', NOW(), NOW()),
+         'Retorno Bruno', 'Detalhes 2', 'pending', 'private', '2025-01-16 15:00:00', NULL, NOW(), NOW()),
         (3, '2025-01-17', '11:00', 'Setor Atendimento', NULL, 1,
-         'Atendimento Setorial', 'Detalhes 3', 'in_progress', 'private', '16:00', NOW(), NOW());
+         'Atendimento Setorial', 'Detalhes 3', 'in_progress', 'private', '2025-01-17 16:00:00', NULL, NOW(), NOW());
     `);
 
     db.none(`

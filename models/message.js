@@ -158,6 +158,7 @@ const BASE_SELECT_FIELDS = [
   'message',
   'status',
   'visibility',
+  'callback_at',
   'callback_time',
   'notes',
   'created_at',
@@ -327,6 +328,54 @@ function normalizeLabelFilter(value) {
   return raw;
 }
 
+function parseBaseDate(dateInput) {
+  const raw = trim(dateInput);
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const parsed = Date.parse(`${raw}T00:00:00`);
+    if (!Number.isNaN(parsed)) return new Date(parsed);
+  }
+  const parsed = Date.parse(raw);
+  if (!Number.isNaN(parsed)) return new Date(parsed);
+  return null;
+}
+
+function normalizeCallbackAt(input, baseDateInput) {
+  const raw = trim(input).toLowerCase();
+  if (!raw) return null;
+
+  const baseDate = parseBaseDate(baseDateInput);
+
+  const matchHour = raw.match(/^(\d{1,2})h$/);
+  if (matchHour) {
+    const hour = Number.parseInt(matchHour[1], 10);
+    if (Number.isInteger(hour) && hour >= 0 && hour < 24) {
+      const reference = baseDate ? new Date(baseDate) : new Date();
+      reference.setHours(hour, 0, 0, 0);
+      return reference;
+    }
+  }
+
+  const matchHourMinute = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (matchHourMinute) {
+    const hour = Number.parseInt(matchHourMinute[1], 10);
+    const minute = Number.parseInt(matchHourMinute[2], 10);
+    if ([hour, minute].every((value) => Number.isInteger(value)) && hour >= 0 && hour < 24 && minute >= 0 && minute < 60) {
+      const reference = baseDate ? new Date(baseDate) : new Date();
+      reference.setHours(hour, minute, 0, 0);
+      return reference;
+    }
+  }
+
+  const normalizedInput = trim(input).replace(' ', 'T');
+  const parsed = Date.parse(normalizedInput);
+  if (!Number.isNaN(parsed)) {
+    return new Date(parsed);
+  }
+
+  return null;
+}
+
 // ---------------------------- Normalização de payload ----------------------
 function normalizePayload(payload = {}) {
   const messageContent = trim(payload.message || payload.notes || '');
@@ -344,6 +393,9 @@ function normalizePayload(payload = {}) {
     ? normalizeRecipientSectorId(payload.recipient_sector_id ?? payload.recipientSectorId)
     : null;
 
+  const callbackInput = payload.callback_at ?? payload.callbackAt ?? payload.callback_time;
+  const callbackAt = normalizeCallbackAt(callbackInput, payload.call_date ?? payload.callDate);
+
   const data = {
     call_date: emptyToNull(payload.call_date),
     call_time: emptyToNull(payload.call_time),
@@ -355,7 +407,8 @@ function normalizePayload(payload = {}) {
     message: messageContent || '(sem mensagem)',
     status: statusProvided ? ensureStatus(payload.status) : null,
     visibility: visibilityProvided ? normalizeVisibility(payload.visibility) : undefined,
-    callback_time: emptyToNull(payload.callback_time),
+    callback_time: null,
+    callback_at: callbackAt ? new Date(callbackAt) : null,
     notes: emptyToNull(payload.notes),
   };
 
@@ -402,6 +455,8 @@ function mapRow(row) {
     message: row.message ?? null,
     status: ensureStatus(row.status),
     visibility: normalizeVisibility(row.visibility),
+    callback_at: row.callback_at ?? null,
+    callbackAt: row.callback_at ?? null,
     callback_time: row.callback_time ?? null,
     notes: row.notes ?? null,
     created_at: row.created_at ?? null,
@@ -423,10 +478,14 @@ const DATE_REF_SQL = `
   END
 `;
 
-function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1) {
+function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1, { dateMode = 'date_ref' } = {}) {
   let index = startIndex;
   const clauses = [];
   const params = [];
+
+  const dateExpression = dateMode === 'callback'
+    ? 'callback_at::date'
+    : `(${DATE_REF_SQL.trim()})`;
 
   if (status) {
     clauses.push(`status IN (${ph(index)}, ${ph(index + 1)})`);
@@ -435,13 +494,13 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1)
   }
 
   if (startDate) {
-    clauses.push(`${DATE_REF_SQL} >= ${ph(index)}::date`);
+    clauses.push(`${dateExpression} >= ${ph(index)}::date`);
     params.push(startDate);
     index += 1;
   }
 
   if (endDate) {
-    clauses.push(`${DATE_REF_SQL} <= ${ph(index)}::date`);
+    clauses.push(`${dateExpression} <= ${ph(index)}::date`);
     params.push(endDate);
     index += 1;
   }
@@ -468,7 +527,7 @@ function appendCondition(baseClause, condition) {
 }
 
 async function buildFilterClause(
-  { status, startDate, endDate, recipient, sectorId, label },
+  { status, startDate, endDate, recipient, sectorId, label, dateMode = 'date_ref' },
   {
     viewer,
     includeCreatedBy,
@@ -479,12 +538,17 @@ async function buildFilterClause(
 ) {
   const baseFilters = buildFilters(
     { status, startDate, endDate, recipient },
-    startIndex
+    startIndex,
+    { dateMode }
   );
 
   let whereClause = baseFilters.clause;
   const params = [...baseFilters.params];
   let nextIndex = baseFilters.nextIndex;
+
+  if (dateMode === 'callback') {
+    whereClause = appendCondition(whereClause, 'callback_at IS NOT NULL');
+  }
 
   if (sectorId) {
     if (!recipientSectorEnabled) {
@@ -585,6 +649,7 @@ async function create(payload) {
     'message',
     'status',
     'visibility',
+    'callback_at',
     'callback_time',
     'notes',
   ];
@@ -686,6 +751,7 @@ async function update(id, payload, retrying = false) {
     'sender_email',
     'subject',
     'message',
+    'callback_at',
     'callback_time',
     'notes',
   ];
@@ -841,6 +907,7 @@ async function list(options = {}, retrying = false) {
     order_by = 'created_at',
     order = 'desc',
     viewer,
+    use_callback_date = false,
   } = options;
 
   const { selectColumns, includeCreatedBy, includeRecipientSectorId } = await resolveSelectColumns();
@@ -852,13 +919,18 @@ async function list(options = {}, retrying = false) {
   const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
   const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
-  const orderByAllowed = ['created_at', 'updated_at', 'id', 'status', 'date_ref'];
+  const orderByAllowed = ['created_at', 'updated_at', 'id', 'status', 'date_ref', 'callback_at'];
   const orderKey = orderByAllowed.includes(String(order_by)) ? String(order_by) : 'created_at';
   const sort = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
   const dateOrderSql = `(${DATE_REF_SQL.trim()})`;
-  const primaryOrderClause = orderKey === 'date_ref'
-    ? `${dateOrderSql} ${sort}`
-    : `${orderKey} ${sort}`;
+  let primaryOrderClause;
+  if (orderKey === 'date_ref') {
+    primaryOrderClause = `${dateOrderSql} ${sort}`;
+  } else if (orderKey === 'callback_at') {
+    primaryOrderClause = `callback_at ${sort} NULLS LAST`;
+  } else {
+    primaryOrderClause = `${orderKey} ${sort}`;
+  }
 
   const statusFilter = translateStatusForQuery(status);
   const startDate = trim(start_date);
@@ -882,6 +954,7 @@ async function list(options = {}, retrying = false) {
       recipient: recipientFilter || null,
       sectorId,
       label: labelFilter,
+      dateMode: use_callback_date ? 'callback' : 'date_ref',
     },
     {
       viewer,

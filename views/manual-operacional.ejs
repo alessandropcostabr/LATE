@@ -93,14 +93,16 @@
                 </ul>
               </li>
               <li>Ajuste data/hora se a ligação não ocorreu no momento do registro.</li>
-              <li>Informe a urgência caso seja crítico.</li>
-              <li>Salve. O recado entra na lista e os destinatários são notificados automaticamente.</li>
+              <li>Informe etiquetas e urgência quando o caso exigir prioridade.</li>
+              <li>Inclua watchers caso outras pessoas precisem acompanhar o andamento.</li>
+              <li>Salve. O recado entra na lista, dispara notificações e fica pronto para checklist ou comentários.</li>
             </ol>
             <h3>Boas práticas</h3>
             <ul>
               <li>Mensagem clara, objetiva e sem siglas desconhecidas.</li>
               <li>Use observações para detalhes extras (ex.: horário ideal de retorno).</li>
               <li>Confirme telefone/e-mail com quem ligou para facilitar follow-up.</li>
+              <li>Pesquise por telefone ou etiqueta antes de registrar para evitar recados duplicados.</li>
             </ul>
           </section>
 
@@ -118,48 +120,91 @@
           </section>
 
           <section>
-            <h2>7. Kanban e Calendário</h2>
+            <h2>7. Etiquetas, checklists e comentários</h2>
+            <h3>Etiquetas</h3>
+            <ul>
+              <li>Padronize termos simples (ex.: <code>urgente</code>, <code>financeiro</code>, <code>retorno-amanha</code>).</li>
+              <li>As cores destacam prioridades e liberam filtros em Kanban, Calendário e Dashboard.</li>
+              <li>Etiquetas duplicadas são consolidadas automaticamente para manter a taxonomia enxuta.</li>
+            </ul>
+            <h3>Checklists</h3>
+            <ul>
+              <li>Divida o recado em etapas claras e marque cada item quando finalizar.</li>
+              <li>O progresso aparece nos cartões e widgets, facilitando monitoramento em reuniões.</li>
+              <li>Edite títulos e itens para manter o contexto atualizado para toda a equipe.</li>
+            </ul>
+            <h3>Comentários</h3>
+            <ul>
+              <li>Registre atualizações diretamente no recado e mantenha histórico auditável.</li>
+              <li>Use <code>@nome.sobrenome</code> para mencionar alguém e disparar uma notificação direcionada.</li>
+              <li>Comentários obedecem ao controle de acesso: apenas quem vê o recado enxerga as mensagens.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>8. Watchers e responsabilidade compartilhada</h2>
+            <ul>
+              <li><strong>Watchers</strong> recebem as mesmas notificações enviadas ao destinatário principal.</li>
+              <li>Inclua supervisores, backups de plantão ou outras áreas que precisam acompanhar o caso.</li>
+              <li>Quando alguém altera o status para <strong>Em andamento</strong> ou <strong>Resolvido</strong>, o responsável é atualizado automaticamente e o histórico registra a mudança.</li>
+              <li>Remova watchers que não precisam mais acompanhar para reduzir o volume de alertas.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>9. Kanban e Calendário</h2>
             <h3>Kanban (<code>/recados/kanban</code>)</h3>
             <ul>
               <li>Colunas por status (Pendente, Em andamento, Resolvido), com paginação individual.</li>
-              <li>Widgets superiores destacam recados vencidos, em SLA e recebidos no dia.</li>
-              <li>Ideal para reuniões rápidas: arraste o mouse sobre os cartões para usar o botão “Ver” ou abrir ações.</li>
+              <li>Widgets superiores destacam recados vencidos, em SLA, recebidos no dia e com checklist pendente.</li>
+              <li>Ideal para reuniões rápidas: passe o mouse nos cartões para usar “Ver”, “Encaminhar” ou atualizar status.</li>
             </ul>
             <h3>Calendário (<code>/recados/calendario</code>)</h3>
             <ul>
-              <li>Mostra recados agrupados por dia/hora de ligação.</li>
-              <li>Filtros por setor, label, status e período ajudam a planejar plantões.</li>
-              <li>Clique no cartão para abrir o recado e registrar retorno.</li>
+              <li>Mostra recados agrupados por dia/hora de ligação ou retorno combinado.</li>
+              <li>Filtros por setor, label, status e período ajudam a planejar plantões e callbacks.</li>
+              <li>Clique no cartão para abrir o recado e registrar retorno na hora.</li>
             </ul>
             <p class="manual-hint">Use o Kanban para gerir a fila por status e o Calendário para organizar agendas e retornos planejados.</p>
           </section>
 
           <section>
-            <h2>8. Notificações</h2>
+            <h2>10. Intake externo (formulário e e-mail)</h2>
             <ul>
-              <li>Recados destinados a um usuário disparam e-mail com o resumo e o botão “Abrir recado”.</li>
-              <li>Recados destinados a um <strong>setor</strong> enviam e-mail para todos os membros ativos do setor.</li>
-              <li>Quando alguém do setor altera o status para <strong>Em andamento</strong> ou <strong>Resolvido</strong>, o recado passa a ter esse usuário como destinatário único e os próximos avisos são direcionados somente a ele.</li>
-              <li>Administradores podem ajustar a periodicidade em <strong>Configurações de Notificações</strong> (menu Admin).</li>
+              <li><strong>Endpoint seguro:</strong> parceiros podem enviar recados via <code>POST /api/intake</code> com token dedicado e rate limit.</li>
+              <li><strong>Logs de auditoria:</strong> cada submissão gera registro em <code>intake_logs</code>, permitindo rastrear origem e resultado.</li>
+              <li><strong>Caixa de e-mail dedicada:</strong> mensagens recebidas podem ser convertidas em recados preservando remetente, assunto e corpo.</li>
+              <li>Consulte o cheatsheet em <code>~/LATE/_reports</code> para revisar tokens, envs e processos no PM2.</li>
             </ul>
           </section>
 
           <section>
-            <h2>9. Dashboard e indicadores</h2>
-            <p>O painel mostra gráficos de recados por status, horários de pico e principais destinatários. Use essas informações para equilibrar a equipe e antecipar gargalos.</p>
+            <h2>11. Notificações e automações</h2>
+            <ul>
+              <li>Recados destinados a um usuário disparam e-mail com resumo e botão “Abrir recado”.</li>
+              <li>Envios para um <strong>setor</strong> notificam todos os membros ativos; ao assumir o recado, o responsável passa a ser quem mudou o status.</li>
+              <li>Watchers, @menções, resoluções e prazos próximos utilizam a fila de e-mails com retentativas automáticas e log dedicado.</li>
+              <li>Administradores ajustam a periodicidade dos lembretes em <strong>Configurações de Notificações</strong> (menu Admin) e acompanham o histórico para auditoria.</li>
+            </ul>
           </section>
 
           <section>
-            <h2>10. Atalhos úteis</h2>
+            <h2>12. Dashboard e indicadores</h2>
+            <p>O painel mostra widgets como <strong>Vencem Hoje</strong>, <strong>Atrasados</strong>, <strong>SLA 48h</strong>, além de gráficos por setor e destinatário. Use essas informações para equilibrar a equipe e antecipar gargalos.</p>
+          </section>
+
+          <section>
+            <h2>13. Atalhos úteis</h2>
             <ul>
               <li><kbd>Ctrl</kbd> + <kbd>F</kbd>: busca termos específicos na página.</li>
               <li>Filtros salvos (quando disponíveis) permitem alternar rapidamente entre setores ou períodos.</li>
               <li>Reordene colunas (em telas largas) arrastando para priorizar as que você mais usa.</li>
+              <li>Use o botão <strong>Encaminhar</strong> para trocar o destinatário mantendo histórico e notificações.</li>
             </ul>
           </section>
 
           <section>
-            <h2>11. Perguntas frequentes</h2>
+            <h2>14. Perguntas frequentes</h2>
             <dl>
               <dt>Preciso instalar algo?</dt>
               <dd>Não. Basta utilizar um navegador atualizado.</dd>
@@ -169,11 +214,13 @@
               <dd>O status muda conforme a ação do destinatário e o histórico registra cada interação.</dd>
               <dt>Quem vê todos os recados?</dt>
               <dd>Somente perfis autorizados (ex.: supervisão ou admin).</dd>
+              <dt>Como confirmar que a notificação foi enviada?</dt>
+              <dd>Acompanhe o histórico do recado ou consulte os registros da fila de e-mails em Configurações &gt; Notificações.</dd>
             </dl>
           </section>
 
           <section>
-            <h2>12. Suporte</h2>
+            <h2>15. Suporte</h2>
             <ul>
               <li>Dúvidas de uso: consulte o responsável interno ou a Central de Ajuda.</li>
               <li>Problemas de acesso: informe data, horário e captura de tela ao suporte técnico.</li>

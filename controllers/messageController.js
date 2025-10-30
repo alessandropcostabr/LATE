@@ -164,6 +164,7 @@ const CHANGE_FIELD_LABELS = {
   notes: 'Observações',
   call_date: 'Data da ligação',
   call_time: 'Hora da ligação',
+  callback_at: 'Horário de retorno',
   callback_time: 'Horário de retorno',
   sender_name: 'Remetente',
   sender_phone: 'Telefone',
@@ -462,6 +463,7 @@ function computeChanges(before, after) {
     'notes',
     'call_date',
     'call_time',
+    'callback_at',
     'callback_time',
     'sender_name',
     'sender_phone',
@@ -471,8 +473,23 @@ function computeChanges(before, after) {
   ];
 
   return trackedFields.reduce((acc, field) => {
-    const beforeValue = before[field] ?? null;
-    const afterValue = after[field] ?? null;
+    const formatValue = (value) => {
+      if (value === undefined || value === null) return null;
+      if (field === 'callback_at') {
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) {
+          try {
+            return date.toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+          } catch (err) {
+            return date.toISOString();
+          }
+        }
+      }
+      return value;
+    };
+
+    const beforeValue = formatValue(before[field]);
+    const afterValue = formatValue(after[field]);
     if ((beforeValue ?? null) === (afterValue ?? null)) {
       return acc;
     }
