@@ -60,6 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let forwardModal = null;
 
+  function formatCallbackDisplay(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    try {
+      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (_err) {
+      return null;
+    }
+  }
+
   if (elements.backButton) {
     elements.backButton.href = '/recados';
   }
@@ -121,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ['Remetente', recado?.sender_name || '—'],
       ['Telefone', recado?.sender_phone || '—'],
       ['E-mail', recado?.sender_email || '—'],
-      ['Horário de retorno', recado?.callback_time || '—'],
+      ['Horário de retorno', recado?.callback_time || formatCallbackDisplay(recado?.callback_at) || '—'],
       ['Assunto', recado?.subject || '—'],
       ['Visibilidade', recado?.visibility === 'public' ? 'Público' : 'Privado'],
       ['Situação', statusLabel],

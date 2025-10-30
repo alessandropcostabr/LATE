@@ -31,6 +31,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const recipientSectorGroup = document.getElementById('recipientSectorGroup');
   const visibilitySelect = document.getElementById('visibility');
 
+  function formatCallbackInput(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes();
+    if (minutes === 0) {
+      return `${hours}h`;
+    }
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+  }
+
   function updateRecipientHidden() {
     const type = (recipientTypeSelect?.value || 'user').toLowerCase();
     let text = '';
@@ -76,6 +88,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     allFields.forEach(f => {
       if (data[f] !== undefined) safeData[f] = data[f] ?? '';
     });
+    if (!safeData.callback_time && data.callback_at) {
+      safeData.callback_time = formatCallbackInput(data.callback_at);
+    }
     Form.populate(form, safeData);
     const recipientType = (data.recipient_sector_id ? 'sector' : 'user');
     if (recipientTypeSelect) {

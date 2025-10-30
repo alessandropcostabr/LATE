@@ -57,7 +57,30 @@ function resolveStatusLabel(status) {
   return STATUS_LABELS_PT[status] || status;
 }
 
+function formatCallbackLabel(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  } catch (_err) {
+    return null;
+  }
+}
+
 function resolveDateInfo(row) {
+  if (row.callback_at) {
+    const date = new Date(row.callback_at);
+    if (!Number.isNaN(date.getTime())) {
+      const key = date.toISOString().slice(0, 10);
+      return {
+        key,
+        label: formatDateLabel(key),
+        sortValue: date.getTime(),
+      };
+    }
+  }
+
   const rawDate = String(row.call_date || '').trim();
   if (rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
     const timestamp = Date.parse(`${rawDate}T00:00:00Z`);
@@ -116,6 +139,7 @@ function extractFilters(query = {}) {
 function mapKanbanCard(row, labelsMap, progressMap) {
   const labels = labelsMap.get(row.id) || [];
   const progress = progressMap.get(row.id);
+  const callbackLabel = formatCallbackLabel(row.callback_at);
   return {
     id: row.id,
     subject: row.subject,
@@ -124,7 +148,8 @@ function mapKanbanCard(row, labelsMap, progressMap) {
     statusLabel: resolveStatusLabel(row.status),
     callDate: row.call_date,
     callTime: row.call_time,
-    callbackTime: row.callback_time,
+    callbackAt: row.callback_at,
+    callbackTime: callbackLabel,
     updatedAt: row.updated_at,
     labels,
     checklistProgress: Number.isInteger(progress) ? progress : null,
@@ -134,12 +159,20 @@ function mapKanbanCard(row, labelsMap, progressMap) {
 function mapCalendarEntry(row, labelsMap) {
   const labels = labelsMap.get(row.id) || [];
   const dateInfo = resolveDateInfo(row);
+  const callbackLabel = formatCallbackLabel(row.callback_at);
+  const callbackSortValue = (() => {
+    if (!row.callback_at) return Number.MAX_SAFE_INTEGER;
+    const date = new Date(row.callback_at);
+    return Number.isNaN(date.getTime()) ? Number.MAX_SAFE_INTEGER : date.getTime();
+  })();
   return {
     id: row.id,
     subject: row.subject,
     recipient: row.recipient,
     callTime: row.call_time,
-    callbackTime: row.callback_time,
+    callbackAt: row.callback_at,
+    callbackTime: callbackLabel,
+    callbackSortValue,
     status: row.status,
     statusLabel: resolveStatusLabel(row.status),
     labels,
@@ -188,7 +221,7 @@ exports.kanbanPage = async (req, res) => {
       sector_id: filters.sectorId,
       label: filters.label,
       viewer,
-      order_by: 'updated_at',
+      order_by: 'callback_at',
       order: 'desc',
       offset,
       limit: KANBAN_PAGE_SIZE + 1,
@@ -269,8 +302,9 @@ exports.calendarPage = async (req, res) => {
       sector_id: filters.sectorId,
       label: filters.label,
       viewer,
-      order_by: 'date_ref',
+      order_by: 'callback_at',
       order: 'asc',
+      use_callback_date: true,
       offset,
       limit: CALENDAR_PAGE_SIZE + 1,
     };
@@ -314,7 +348,9 @@ exports.calendarPage = async (req, res) => {
         key,
         label: info.label,
         sortValue: info.sortValue,
-        items: info.items.sort((a, b) => (a.callTime || '').localeCompare(b.callTime || '')),
+        items: info.items
+          .sort((a, b) => a.callbackSortValue - b.callbackSortValue)
+          .map(({ callbackSortValue, ...rest }) => rest),
       }))
       .sort((a, b) => a.sortValue - b.sortValue || a.key.localeCompare(b.key));
 

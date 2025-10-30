@@ -4,6 +4,38 @@
 
   <main class="main" role="main">
     <div class="container">
+      <article class="card" aria-labelledby="news-2025-11-04">
+        <div class="card-header">
+          <h1 class="card-title" id="news-2025-11-04">🗞️ Novidades — 04/11/2025</h1>
+          <p class="card-subtitle">Checklists, comentários, intake seguro e guia operacional revisado</p>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+            Publicado em 04/11/2025 · Sprint 0 + A + B + C consolidadas
+          </p>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Base reforçada</h2>
+            <p>Refatoramos a infraestrutura do LATE com carregamento seguro de variáveis, <code>trust proxy</code> preservando o valor correto e scripts de operação (<code>migrate</code>, <code>seed-admin</code>) mais verbosos. Rate limit em <code>/login</code> e <code>/api</code>, CSP endurecida e respostas JSON padronizadas reduzem riscos e deixam suporte mais simples.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📝 Checklists, etiquetas e comentários</h2>
+            <p>Agora cada recado pode ter etiquetas com cores consistentes, checklists com progresso automático e comentários com @menção. Watchers garantem que interessados acompanhem alterações sem precisar ser destinatários diretos.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📊 Painéis e visões</h2>
+            <p>Kanban, Calendário e widgets de dashboard foram enriquecidos com filtros por setor/label, cartões com progresso e indicadores de SLA (Hoje, Atrasados, 48h). A triagem ficou mais visual e adequada para reuniões rápidas.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Intake e notificações</h2>
+            <p>O endpoint seguro <code>POST /api/intake</code> recebe recados externos com token dedicado e rate limit. A fila de e-mails entrega avisos para novos recados, resoluções, @menções e prazos próximos, com logs de auditoria para cada disparo.</p>
+          </section>
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Documentação e operação</h2>
+            <p>Atualizamos esta página, a Central de Ajuda e o Manual Operacional com o novo fluxo. O cheatsheet de DEV/PROD, instruções de worktree e lista de pendências futuras estão disponíveis para a equipe técnica em <code>~/LATE/_reports</code>.</p>
+          </section>
+        </div>
+      </article>
+
       <article class="card" aria-labelledby="news-2025-10-28">
         <div class="card-header">
           <h1 class="card-title" id="news-2025-10-28">🗞️ Novidades — 28/10/2025</h1>

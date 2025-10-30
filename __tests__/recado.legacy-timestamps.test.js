@@ -31,6 +31,7 @@ function setupDatabase() {
         message TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         visibility TEXT NOT NULL DEFAULT 'private',
+        callback_at TIMESTAMPTZ,
         callback_time TEXT,
         notes TEXT,
         created_by INTEGER,
@@ -73,7 +74,7 @@ describe('message model with modern schema', () => {
       sender_email: 'bob@example.com',
       subject: 'Teste',
       message: 'Mensagem de teste',
-      callback_time: 'Após 12h',
+      callback_time: '14h',
       notes: 'Observações iniciais'
     });
     expect(typeof id).toBe('number');
@@ -81,7 +82,9 @@ describe('message model with modern schema', () => {
     const fetched = await MessageModel.findById(id);
     expect(fetched.recipient).toBe('Alice');
     expect(fetched.message).toBe('Mensagem de teste');
-    expect(fetched.callback_time).toBe('Após 12h');
+    expect(fetched.callback_time).toBeNull();
+    expect(fetched.callback_at).toBeTruthy();
+    expect(new Date(fetched.callback_at).getHours()).toBe(14);
     expect(fetched.notes).toBe('Observações iniciais');
     expect(fetched.status).toBe('pending');
 
@@ -94,7 +97,7 @@ describe('message model with modern schema', () => {
       sender_email: 'bob@update.com',
       subject: 'Teste',
       message: 'Mensagem atualizada',
-      callback_time: 'Após 18h',
+      callback_time: '18h',
       notes: 'Observações atualizadas',
       status: 'resolved'
     });
@@ -103,7 +106,9 @@ describe('message model with modern schema', () => {
     const updated = await MessageModel.findById(id);
     expect(updated.status).toBe('resolved');
     expect(updated.message).toBe('Mensagem atualizada');
-    expect(updated.callback_time).toBe('Após 18h');
+    expect(updated.callback_time).toBeNull();
+    expect(updated.callback_at).toBeTruthy();
+    expect(new Date(updated.callback_at).getHours()).toBe(18);
     expect(updated.notes).toBe('Observações atualizadas');
 
     const removed = await MessageModel.remove(id);

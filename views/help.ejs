@@ -12,33 +12,43 @@
         <div class="card-body">
           <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Primeiros passos</h2>
           <ol style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;">
-            <li>Entre com seu e-mail e senha. Se esqueceu, peça reset ao administrador.</li>
-            <li>Use o menu sanduíche para acessar Dashboard, Contatos e Novo Contato.</li>
-            <li>Revise contatos na lista, filtre por status e clique para visualizar detalhes.</li>
+            <li>Acesse <code>https://late.miahchat.com</code> (ou o endereço interno) e faça login com seu e-mail corporativo.</li>
+            <li>Use o menu superior para entrar em <strong>Recados</strong>, <strong>Kanban</strong>, <strong>Calendário</strong>, <strong>Dashboard</strong> ou <strong>Ajuda</strong>.</li>
+            <li>Revise a fila principal, aplique filtros por status, setor ou etiqueta e clique no cartão para abrir o recado completo.</li>
           </ol>
 
-          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Como registrar um novo contato</h2>
+          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Como registrar um novo recado</h2>
           <ul style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;list-style:disc;">
-            <li>Acesse <strong>Novo Contato</strong> pelo menu.</li>
-            <li>Preencha quem ligou, para quem é o contato e o resumo da mensagem.</li>
-            <li>Escolha a visibilidade adequada: público (todos com permissão) ou privado (somente destinatário).</li>
-            <li>Salve para que o destinatário receba a notificação e o contato entre na fila.</li>
+            <li>Clique em <strong>Novo Recado</strong> e preencha quem ligou, mensagem e destinatário (usuário ou setor).</li>
+            <li>Inclua telefone e dados relevantes; utilize o campo “Observações” para combinações ou horários de retorno.</li>
+            <li>Selecione etiquetas (ex.: urgente, financeiro) para facilitar filtros futuros.</li>
+            <li>Salve. O destinatário e os watchers receberão notificação por e-mail e o recado entra na fila.</li>
           </ul>
 
-          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Dicas rápidas</h2>
+          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Etiquetas, checklists e comentários</h2>
           <ul style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;list-style:disc;">
-            <li>Dashboard mostra métricas em tempo real — excelente para acompanhar o volume da equipe.</li>
-            <li>Use filtros de status para priorizar contatos pendentes.</li>
-            <li>Registre atualizações no próprio contato para manter o histórico organizado.</li>
-            <li>Destinatários recebem um e-mail com o botão <strong>Abrir contato</strong>; mantenha os cadastros atualizados para garantir a entrega.</li>
+            <li>Adicione etiquetas padronizadas para agrupar recados por assunto ou prioridade.</li>
+            <li>Crie checklists para dividir a tarefa em etapas; o progresso é calculado automaticamente à medida que marca cada item.</li>
+            <li>Use comentários para registrar atualizações e @mencionar pessoas que precisam acompanhar.</li>
+            <li>Watchers garantem que outros usuários recebam notificações mesmo sem serem destinatários diretos.</li>
           </ul>
 
-          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Configurações de notificações</h2>
-          <p style="margin-bottom:1.5rem;line-height:1.6;">Perfis administradores podem ajustar a periodicidade dos lembretes automáticos em <strong>Notificações</strong> (menu Admin). Defina quando enviar alertas para contatos pendentes e em andamento.</p>
+          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Visões Kanban e Calendário</h2>
+          <ul style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;list-style:disc;">
+            <li><strong>Kanban</strong>: colunas por status, cartões com progresso do checklist e filtros dinâmicos por setor e etiquetas.</li>
+            <li><strong>Calendário</strong>: agenda recados por data/hora de retorno; ideal para distribuir plantões e callbacks.</li>
+            <li>Ambas as visões respeitam filtros salvos e permitem abrir o recado direto pelo cartão.</li>
+          </ul>
+
+          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Notificações e intake</h2>
+          <p style="margin-bottom:1.5rem;line-height:1.6;">O LATE dispara e-mails para novos recados, resoluções, @menções e prazos próximos. Equipes externas podem enviar recados via endpoint seguro <code>POST /api/intake</code> (token + rate limit), mantendo auditoria em <strong>Notificações &gt; Fila de E-mails</strong>.</p>
+
+          <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Configurações administrativas</h2>
+          <p style="margin-bottom:1.5rem;line-height:1.6;">Administradores ajustam a periodicidade dos lembretes em <strong>Notificações</strong>, gerenciam páginas de Kanban/Calendário e podem consultar o Manual Operacional atualizado para passos detalhados e fluxos de escalonamento.</p>
 
           <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Precisa de suporte?</h2>
-          <p style="margin-bottom:0.75rem;">Registre um contato para o setor de suporte ou contate o responsável interno pelo sistema. Inclua screenshots e o horário do ocorrido para agilizar a análise.</p>
-          <p style="margin:0;">Para dúvidas sobre acesso ou permissões, valide com o administrador do LATE.</p>
+          <p style="margin-bottom:0.75rem;">Abra um recado para o setor de suporte ou contate o responsável interno pelo sistema. Descreva o fluxo, inclua horários e, se possível, anexos ou prints para acelerar o atendimento.</p>
+          <p style="margin:0;">Dificuldades de acesso ou permissões devem ser direcionadas ao administrador do LATE.</p>
 
           <hr style="margin:2rem 0;">
           <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Sobre o LATE</h2>
