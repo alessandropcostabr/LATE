@@ -404,6 +404,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const canManage = state.canUpdate || (state.canEditOwn && isOwnerOrRecipient(recado));
     if (!canManage) return;
     forwardModal.show();
+    params.delete('forward');
+    const search = params.toString();
+    const hash = window.location.hash || '';
+    const newUrl = `${window.location.pathname}${search ? `?${search}` : ''}${hash}`;
+    try {
+      window.history.replaceState(null, document.title, newUrl);
+    } catch (_err) {
+      // ignore history API failures (ex.: browsers antigos)
+    }
   }
 
   function initTabs() {

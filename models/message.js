@@ -385,6 +385,11 @@ function normalizePayload(payload = {}) {
     Object.prototype.hasOwnProperty.call(payload, 'recipientUserId');
   const recipientSectorProvided = Object.prototype.hasOwnProperty.call(payload, 'recipient_sector_id') ||
     Object.prototype.hasOwnProperty.call(payload, 'recipientSectorId');
+  const callbackProvided = (
+    Object.prototype.hasOwnProperty.call(payload, 'callback_at') ||
+    Object.prototype.hasOwnProperty.call(payload, 'callbackAt') ||
+    Object.prototype.hasOwnProperty.call(payload, 'callback_time')
+  );
 
   const recipientUserId = recipientUserProvided
     ? normalizeRecipientUserId(payload.recipient_user_id ?? payload.recipientUserId)
@@ -393,8 +398,12 @@ function normalizePayload(payload = {}) {
     ? normalizeRecipientSectorId(payload.recipient_sector_id ?? payload.recipientSectorId)
     : null;
 
-  const callbackInput = payload.callback_at ?? payload.callbackAt ?? payload.callback_time;
-  const callbackAt = normalizeCallbackAt(callbackInput, payload.call_date ?? payload.callDate);
+  let callbackAtValue;
+  if (callbackProvided) {
+    const callbackInput = payload.callback_at ?? payload.callbackAt ?? payload.callback_time;
+    const parsed = normalizeCallbackAt(callbackInput, payload.call_date ?? payload.callDate);
+    callbackAtValue = parsed ? new Date(parsed) : null;
+  }
 
   const data = {
     call_date: emptyToNull(payload.call_date),
@@ -407,8 +416,8 @@ function normalizePayload(payload = {}) {
     message: messageContent || '(sem mensagem)',
     status: statusProvided ? ensureStatus(payload.status) : null,
     visibility: visibilityProvided ? normalizeVisibility(payload.visibility) : undefined,
-    callback_time: null,
-    callback_at: callbackAt ? new Date(callbackAt) : null,
+    callback_time: callbackProvided ? null : undefined,
+    callback_at: callbackProvided ? callbackAtValue ?? null : undefined,
     notes: emptyToNull(payload.notes),
   };
 
@@ -425,6 +434,7 @@ function normalizePayload(payload = {}) {
     visibilityProvided,
     recipientUserProvided,
     recipientSectorProvided,
+    callbackProvided,
   };
 }
 
@@ -613,6 +623,14 @@ async function create(payload) {
     status: normalized.statusProvided && normalized.data.status ? normalized.data.status : 'pending',
   };
 
+  if (normalized.callbackProvided) {
+    data.callback_at = normalized.data.callback_at ?? null;
+    data.callback_time = null;
+  } else {
+    data.callback_at = data.callback_at ?? null;
+    data.callback_time = null;
+  }
+
   if (data.visibility === undefined) {
     data.visibility = 'private';
   }
@@ -654,6 +672,16 @@ async function create(payload) {
     'notes',
   ];
   const fields = [...baseFields];
+
+  if (!normalized.callbackProvided) {
+    const callbackIndex = fields.indexOf('callback_at');
+    if (callbackIndex !== -1) fields.splice(callbackIndex, 1);
+    const legacyIndex = fields.indexOf('callback_time');
+    if (legacyIndex !== -1) fields.splice(legacyIndex, 1);
+  } else {
+    normalized.data.callback_time = null;
+    normalized.data.callback_at = normalized.data.callback_at ?? null;
+  }
 
   if (shouldIncludeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
