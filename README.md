@@ -136,7 +136,7 @@ Acesse: http://localhost:3000 ou http://<SEU-IP>:3000
 As notificações são configuradas via variáveis de ambiente:
 
 - `MAIL_DRIVER`: use `smtp` (padrão) para enviar e-mails reais ou `log` para apenas registrar no console.
-- `APP_BASE_URL`: URL pública do LATE (ex.: `https://late.miahchat.com` em PROD ou `https://late.miahchat.com:3001` na DEV) usada no link “Abrir recado”.
+- `APP_BASE_URL`: URL pública do LATE (ex.: `https://late.miahchat.com` em PROD; em DEV local use `http://127.0.0.1:3001`) usada no link “Abrir recado”.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`: host, porta e modo (465 + `SMTP_SECURE=1` para SSL, 587 + `SMTP_SECURE=0` para STARTTLS).
 - `SMTP_USER`, `SMTP_PASS`: credenciais da caixa (ex.: `no-reply@seudominio.com.br`).
 - `SMTP_FROM`: remetente exibido (ex.: `LATE <no-reply@seudominio.com.br>`).
