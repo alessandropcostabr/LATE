@@ -52,11 +52,22 @@ async function processJob(job) {
 function startEmailQueueWorker() {
   if (timer) return;
   const interval = DEFAULT_INTERVAL;
-  timer = setInterval(processBatch, interval);
-  processBatch().catch((err) => {
-    console.error('[email-worker] falha na execução inicial', err);
-  });
-  console.info('[email-worker] iniciado', { intervalMs: interval, batchSize: DEFAULT_BATCH });
+  EmailQueueModel.requeueStuckProcessing()
+    .then((count) => {
+      if (count > 0) {
+        console.info('[email-worker] jobs reprocessados após reinício', { count });
+      }
+    })
+    .catch((err) => {
+      console.error('[email-worker] falha ao reprocessar jobs pendentes', err);
+    })
+    .finally(() => {
+      timer = setInterval(processBatch, interval);
+      processBatch().catch((err) => {
+        console.error('[email-worker] falha na execução inicial', err);
+      });
+      console.info('[email-worker] iniciado', { intervalMs: interval, batchSize: DEFAULT_BATCH });
+    });
 }
 
 function stopEmailQueueWorker() {
@@ -64,6 +75,15 @@ function stopEmailQueueWorker() {
     clearInterval(timer);
     timer = null;
   }
+  EmailQueueModel.requeueStuckProcessing()
+    .then((count) => {
+      if (count > 0) {
+        console.info('[email-worker] jobs devolvidos para fila durante desligamento', { count });
+      }
+    })
+    .catch((err) => {
+      console.error('[email-worker] falha ao devolver jobs durante desligamento', err);
+    });
 }
 
 module.exports = {

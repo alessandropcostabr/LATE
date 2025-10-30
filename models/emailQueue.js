@@ -5,6 +5,10 @@ const db = require('../config/database');
 
 const DEFAULT_STATUS = 'pending';
 const MAX_ATTEMPTS = Number(process.env.EMAIL_QUEUE_MAX_ATTEMPTS || 5);
+const PROCESSING_TIMEOUT_MINUTES = Math.max(
+  1,
+  Number(process.env.EMAIL_QUEUE_PROCESSING_TIMEOUT_MINUTES || 10)
+);
 
 function mapRow(row) {
   if (!row) return null;
@@ -116,4 +120,17 @@ exports.release = async (id) => {
       WHERE id = $1`,
     [id]
   );
+};
+
+exports.requeueStuckProcessing = async () => {
+  const { rowCount } = await db.query(
+    `UPDATE email_queue
+        SET status = 'pending',
+            next_run_at = NOW(),
+            updated_at = NOW()
+      WHERE status = 'processing'
+        AND updated_at <= NOW() - (interval '1 minute' * $1)`,
+    [PROCESSING_TIMEOUT_MINUTES]
+  );
+  return rowCount;
 };

@@ -94,6 +94,7 @@ export SMTP_FROM="LATE <no-reply@seudominio.com.br>"
 # Intervalo/batch do worker opcional
 export EMAIL_WORKER_INTERVAL_MS=15000
 export EMAIL_WORKER_BATCH=10
+export EMAIL_QUEUE_PROCESSING_TIMEOUT_MINUTES=10
 # Token de intake (requerido para POST /api/intake)
 export INTAKE_TOKEN='troque-este-token'
 ```
