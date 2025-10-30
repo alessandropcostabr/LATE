@@ -84,7 +84,7 @@ pm2 save
 ```bash
 export MAIL_DRIVER=smtp            # use log para homologação
 # PROD: export APP_BASE_URL=https://late.miahchat.com
-# DEV (porta 3001 exposta em late.miahchat.com:3001): export APP_BASE_URL=https://late.miahchat.com:3001
+# DEV (uso local em http://127.0.0.1:3001): export APP_BASE_URL=http://127.0.0.1:3001
 export SMTP_HOST=mail.seudominio.com.br
 export SMTP_PORT=465               # 465 com SSL (SMTP_SECURE=1) ou 587 com STARTTLS (SMTP_SECURE=0)
 export SMTP_SECURE=1
