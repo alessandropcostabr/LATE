@@ -143,6 +143,7 @@ As notificações são configuradas via variáveis de ambiente:
 - `EMAIL_WORKER_INTERVAL_MS` (opcional): intervalo entre execuções do worker (padrão 15000 ms).
 - `EMAIL_WORKER_BATCH` (opcional): quantidade máxima de e-mails processados por ciclo (padrão 10).
 - `EMAIL_QUEUE_MAX_ATTEMPTS` (opcional): número máximo de tentativas antes de marcar como `failed` (padrão 5).
+- `EMAIL_QUEUE_PROCESSING_TIMEOUT_MINUTES` (opcional): tempo para reencaminhar jobs travados em `processing` de volta para a fila (padrão 10 minutos).
 
 Os envios são inseridos na tabela `email_queue` e processados pelo worker dedicado. Para iniciar o worker localmente:
 
