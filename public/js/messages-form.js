@@ -198,7 +198,7 @@
         historyLink.hidden = true;
         return;
       }
-      const url = new URL(`${historyBase.replace(/\\/$/, '')}/${encodeURIComponent(phone)}/historico`, window.location.origin);
+      const url = new URL(`${historyBase.replace(/\/$/, '')}/${encodeURIComponent(phone)}/historico`, window.location.origin);
       const email = normalizeEmail(emailRaw);
       if (email) {
         url.searchParams.set('email', emailRaw.trim());
