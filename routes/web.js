@@ -212,7 +212,6 @@ router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtect
       csrfToken,
       activeUsers,
       activeSectors: sectorsResult?.data || [],
-      detectRelatedMessages: features.detectRelatedMessages,
     });
   } catch (err) {
     console.error('[web] erro ao carregar /novo-recado:', err);
@@ -234,7 +233,6 @@ router.get('/editar-recado/:id', requireAuth, requireMessageUpdatePermission, cs
       csrfToken,
       activeUsers,
       activeSectors: sectorsResult?.data || [],
-      detectRelatedMessages: features.detectRelatedMessages,
     });
   } catch (err) {
     console.error('[web] erro ao carregar /editar-recado:', err);

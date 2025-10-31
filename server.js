@@ -329,7 +329,8 @@ app.use((err, req, res, _next) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Diferencia resposta entre API (JSON) e Web (HTML)
-  if (req.path.startsWith('/api/')) {
+  // Usa req.originalUrl pois req.path pode estar sem o prefixo /api/ após roteamento
+  if (req.originalUrl.startsWith('/api/')) {
     res.status(status).json({
       success: false,
       error: isDevelopment && err.message ? err.message : 'Erro interno'
