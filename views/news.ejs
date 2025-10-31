@@ -4,14 +4,42 @@
 
   <main class="main" role="main">
     <div class="container">
-      <article class="card" aria-labelledby="news-2025-11-04">
+      <article class="card" aria-labelledby="news-2025-10-31">
         <div class="card-header">
-          <h1 class="card-title" id="news-2025-11-04">🗞️ Novidades — 04/11/2025</h1>
+          <h1 class="card-title" id="news-2025-10-31">🗞️ Novidades — 31/10/2025</h1>
+          <p class="card-subtitle">Histórico de contatos e registros relacionados</p>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+            Publicado em 31/10/2025 · Sprint D (Relacionamento) · PRs #238, #240, #241
+          </p>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Registros relacionados</h2>
+            <p>Ao criar ou editar um registro em <code>/novo-recado</code>, o sistema agora detecta automaticamente até 5 registros anteriores do mesmo contato (por telefone ou e-mail). Isso evita retrabalho e mantém a continuidade do atendimento, mostrando histórico de interações passadas.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Histórico completo por contato</h2>
+            <p>Nova página <code>/contatos/:phone/historico</code> permite visualizar todos os registros de um contato específico, com filtros por status, etiquetas e destinatário. Acesse diretamente pelo link "Ver histórico completo" exibido na seção de registros relacionados.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧱 Vinculação entre registros</h2>
+            <p>Implementamos o campo <code>parent_message_id</code> que permite criar vínculos lógicos entre registros, indicando continuidade de atendimento. Registros "filhos" exibem link para o original, facilitando rastreamento de casos complexos.</p>
+          </section>
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🎯 Experiência aprimorada</h2>
+            <p>Correções de bugs e melhorias de UX garantem que o link de histórico apareça corretamente mesmo quando informado apenas o e-mail do contato, sem necessidade de telefone. A detecção funciona de forma não intrusiva — você pode ignorar as sugestões sem travar o formulário.</p>
+          </section>
+        </div>
+      </article>
+
+      <article class="card" aria-labelledby="news-2025-10-30">
+        <div class="card-header">
+          <h1 class="card-title" id="news-2025-10-30">🗞️ Novidades — 30/10/2025</h1>
           <p class="card-subtitle">Checklists, comentários, intake seguro e guia operacional revisado</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-            Publicado em 04/11/2025 · Sprint 0 + A + B + C consolidadas
+            Publicado em 30/10/2025 · Sprint 0 + A + B + C consolidadas
           </p>
           <section style="margin-bottom:1.5rem;">
             <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Base reforçada</h2>
