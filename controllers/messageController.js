@@ -622,10 +622,6 @@ exports.getById = async (req, res) => {
 
 // GET /api/messages/related
 exports.listRelated = async (req, res) => {
-  if (!features.detectRelatedMessages) {
-    return res.status(404).json({ success: false, error: 'Recurso indisponível' });
-  }
-
   try {
     const viewer = await resolveViewerWithSectors(req);
     const phone = String(req.query.phone || '').trim();

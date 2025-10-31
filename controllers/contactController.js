@@ -56,13 +56,6 @@ async function loadFilterOptions(viewer) {
 }
 
 exports.showHistory = async (req, res) => {
-  if (!features.detectRelatedMessages) {
-    return res.status(404).render('404', {
-      title: 'Histórico indisponível',
-      user: req.session.user || null,
-    });
-  }
-
   try {
     const viewer = await resolveViewerWithSectors(req);
     const phone = normalizeIdentifier(req.params.sender_phone);

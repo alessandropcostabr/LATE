@@ -34,6 +34,17 @@
                 <div data-details class="message-details mb-3">
                   <p class="text-muted">Carregando detalhes...</p>
                 </div>
+                
+                <!-- Histórico do contato -->
+                <div class="mb-3" id="contact-history-section" style="display:none;">
+                  <h3 class="text-sm font-semibold mb-2">Histórico do contato:</h3>
+                  <p class="text-muted mb-2">
+                    <a href="#" id="contact-history-link" target="_blank" class="btn btn-sm btn-outline">
+                      Ver histórico completo
+                    </a>
+                  </p>
+                </div>
+                
                 <%- include('partials/recados/labels-badges', { permissions }) %>
               </section>
               <section id="tab-checklists" class="tab-panel" data-tab-section="checklists" hidden>

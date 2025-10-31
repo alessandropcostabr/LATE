@@ -6,10 +6,6 @@ jest.mock('../models/contact', () => ({
   updateFromMessage: jest.fn(),
 }));
 
-jest.mock('../config/features', () => ({
-  detectRelatedMessages: true,
-}));
-
 jest.mock('../controllers/helpers/viewer', () => ({
   resolveViewerWithSectors: jest.fn(async (req) => ({
     id: req.session?.user?.id ?? null,
@@ -92,7 +88,6 @@ async function runValidation(req, res) {
 describe('GET /api/messages/related', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    features.detectRelatedMessages = true;
   });
 
   it('retorna a lista de registros relacionados quando feature está ativa', async () => {
@@ -160,21 +155,5 @@ describe('GET /api/messages/related', () => {
     expect(messageModel.listRelatedMessages).not.toHaveBeenCalled();
   });
 
-  it('retorna 404 quando a feature está desativada', async () => {
-    features.detectRelatedMessages = false;
-    const req = createMockReq({ email: 'teste@late.dev' });
-    const res = createMockRes();
-
-    await runValidation(req, res);
-    expect(res._ended).toBe(false);
-
-    await messageController.listRelated(req, res);
-
-    expect(res.statusCode).toBe(404);
-    expect(res.body).toMatchObject({
-      success: false,
-      error: 'Recurso indisponível',
-    });
-    expect(messageModel.listRelatedMessages).not.toHaveBeenCalled();
-  });
+  // Teste de feature desativada removido - funcionalidade sempre ativa
 });
