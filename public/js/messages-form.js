@@ -193,16 +193,30 @@
 
     function updateHistoryLink(phoneRaw, emailRaw) {
       if (!historyLink) return;
+      
       const phone = normalizePhone(phoneRaw);
-      if (!phone) {
+      const email = normalizeEmail(emailRaw);
+      
+      // Se não há telefone nem email, esconde o link
+      if (!phone && !email) {
         historyLink.hidden = true;
         return;
       }
-      const url = new URL(`${historyBase.replace(/\/$/, '')}/${encodeURIComponent(phone)}/historico`, window.location.origin);
-      const email = normalizeEmail(emailRaw);
-      if (email) {
+      
+      // Constrói URL baseada em telefone (se houver) ou email
+      let url;
+      if (phone) {
+        // Usa telefone como identificador principal
+        url = new URL(`${historyBase.replace(/\/$/, '')}/${encodeURIComponent(phone)}/historico`, window.location.origin);
+        if (email) {
+          url.searchParams.set('email', emailRaw.trim());
+        }
+      } else {
+        // Usa placeholder quando não há telefone
+        url = new URL(`${historyBase.replace(/\/$/, '')}/email/historico`, window.location.origin);
         url.searchParams.set('email', emailRaw.trim());
       }
+      
       historyLink.href = url.pathname + (url.search || '');
       historyLink.hidden = false;
     }
