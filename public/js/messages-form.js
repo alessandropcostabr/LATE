@@ -33,7 +33,6 @@
     const historyLink = container.querySelector('[data-related-history]');
     const limit = Number(container.dataset.limit) || DEFAULT_LIMIT;
     const historyBase = form.dataset.contactHistoryBase || '/contatos';
-    const messageId = form.dataset.id ? Number(form.dataset.id) : null;
 
     let debounceTimer = null;
     let currentRequest = null;
@@ -83,7 +82,6 @@
       if (phone) params.set('phone', phoneRaw.trim());
       if (email) params.set('email', emailRaw.trim());
       params.set('limit', String(limit));
-      if (messageId) params.set('excludeId', String(messageId));
 
       if (currentRequest?.abort) currentRequest.abort();
       const controller = new AbortController();
