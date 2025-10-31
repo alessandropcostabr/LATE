@@ -212,8 +212,8 @@
           url.searchParams.set('email', emailRaw.trim());
         }
       } else {
-        // Usa email como identificador quando não há telefone
-        url = new URL(`${historyBase.replace(/\/$/, '')}//historico`, window.location.origin);
+        // Usa placeholder quando não há telefone
+        url = new URL(`${historyBase.replace(/\/$/, '')}/email/historico`, window.location.origin);
         url.searchParams.set('email', emailRaw.trim());
       }
       
