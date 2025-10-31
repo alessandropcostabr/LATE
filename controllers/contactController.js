@@ -58,7 +58,11 @@ async function loadFilterOptions(viewer) {
 exports.showHistory = async (req, res) => {
   try {
     const viewer = await resolveViewerWithSectors(req);
-    const phone = normalizeIdentifier(req.params.sender_phone);
+    let phone = normalizeIdentifier(req.params.sender_phone);
+    // Se o parâmetro phone é 'email', significa que é busca apenas por email
+    if (phone === 'email') {
+      phone = '';
+    }
     const email = normalizeIdentifier(req.query.email);
     const {
       status = '',

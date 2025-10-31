@@ -199,6 +199,15 @@ router.get(
   contactController.showHistory
 );
 
+// Rota para histórico apenas com email (sem telefone)
+router.get(
+  '/contatos/email/historico',
+  requireAuth,
+  requirePermission('read'),
+  csrfProtection,
+  contactController.showHistory
+);
+
 router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
   try {
     const [activeUsers, sectorsResult] = await Promise.all([
