@@ -5,6 +5,10 @@ jest.mock('../models/message', () => ({
   findById: jest.fn(),
 }));
 
+jest.mock('../models/contact', () => ({
+  updateFromMessage: jest.fn(),
+}));
+
 const messageModel = require('../models/message');
 
 function createApp(role = 'reader') {
@@ -77,7 +81,7 @@ describe('GET /api/messages/:id', () => {
     expect(response.status).toBe(404);
     expect(response.body).toMatchObject({
       success: false,
-      error: 'Contato não encontrado',
+      error: 'Registro não encontrado',
     });
     expect(messageModel.findById).toHaveBeenCalledWith(
       999,

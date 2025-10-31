@@ -11,14 +11,14 @@
       <% } %>
 
       <div style="margin-bottom: 2rem;">
-        <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Novo Contato</h1>
-        <p style="color: var(--text-secondary);">Registre uma nova ligação ou contato</p>
+        <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Novo Registro</h1>
+        <p style="color: var(--text-secondary);">Registre uma nova ligação</p>
       </div>
 
       <div style="max-width: 800px;">
-        <form id="formNovoRecado" class="card">
+        <form id="formNovoRecado" class="card" data-related-messages data-contact-history-base="/contatos">
           <div class="card-header">
-            <h2 class="card-title">Informações do Contato</h2>
+            <h2 class="card-title">Informações do Registro</h2>
             <p class="card-subtitle">Preencha todos os campos obrigatórios</p>
           </div>
 
@@ -42,7 +42,7 @@
                   <option value="user" selected>Usuário específico</option>
                   <option value="sector">Setor</option>
                 </select>
-                <div class="form-help">Escolha se o contato será direcionado a uma pessoa específica ou a todo um setor.</div>
+                <div class="form-help">Escolha se o registro será direcionado a uma pessoa específica ou a todo um setor.</div>
               </div>
 
               <div class="form-group" id="recipientUserGroup">
@@ -53,7 +53,7 @@
                     <option value="<%= user.id %>"><%= user.name %></option>
                   <% }); %>
                 </select>
-                <div class="form-help">Pessoa responsável por receber este contato.</div>
+                <div class="form-help">Pessoa responsável por receber este registro.</div>
               </div>
 
               <div class="form-group d-none" id="recipientSectorGroup">
@@ -64,7 +64,7 @@
                     <option value="<%= sector.id %>"><%= sector.name %></option>
                   <% }); %>
                 </select>
-                <div class="form-help">Escolha o setor que deve visualizar este contato.</div>
+                <div class="form-help">Escolha o setor que deve visualizar este registro.</div>
               </div>
 
               <div class="form-group">
@@ -73,7 +73,7 @@
                   <option value="private" selected>Privado (apenas destinatário)</option>
                   <option value="public">Público (todos com acesso)</option>
                 </select>
-                <div class="form-help">Contatos públicos ficam visíveis para todos com permissão de leitura.</div>
+                <div class="form-help">Registros públicos ficam visíveis para todos com permissão de leitura.</div>
               </div>
             </fieldset>
 
@@ -100,10 +100,28 @@
                 <input id="callback_time" name="callback_time" type="text" class="form-input" placeholder="Ex: Das 9h às 17h, Após 14h, etc." autocomplete="off" />
                 <div class="form-help">Melhor horário para retornar a ligação (opcional)</div>
               </div>
+              <input type="hidden" name="parent_message_id" id="parent_message_id" />
+              <div class="card related-card" data-related-container data-feature="<%= detectRelatedMessages ? 'on' : 'off' %>" data-limit="5">
+                <div class="card-header">
+                  <h3 class="card-title">Registros relacionados</h3>
+                  <p class="card-subtitle">Até cinco registros anteriores com mesmo contato são exibidos aqui.</p>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted" data-related-feedback>Informe telefone ou e-mail para verificar registros anteriores.</p>
+                  <ul class="related-list" data-related-list hidden></ul>
+                </div>
+                <div class="card-footer related-card__footer d-none" data-related-footer>
+                  <p class="text-muted" data-related-selection hidden>
+                    Registro atual vinculado ao histórico <strong>#<span data-related-selection-id></span></strong>.
+                    <button type="button" class="btn btn-link" data-related-clear>Remover vínculo</button>
+                  </p>
+                  <a class="btn btn-link" data-related-history hidden target="_blank" rel="noopener">Ver histórico completo</a>
+                </div>
+              </div>
             </fieldset>
 
             <fieldset style="border: 1px solid var(--border-light); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;">
-              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Contato</legend>
+              <legend style="padding: 0 0.5rem; font-weight: 600; color: var(--text-primary);">📝 Conteúdo do Registro</legend>
               <div class="form-group">
                 <label for="subject" class="form-label required">Assunto</label>
                 <input id="subject" name="subject" type="text" class="form-input" placeholder="Resumo do motivo da ligação" required data-label="Assunto" autocomplete="off" />
@@ -121,7 +139,7 @@
                   <option value="in_progress">Em Andamento</option>
                   <option value="resolved">Resolvido</option>
                 </select>
-                <div class="form-help">Status atual do contato</div>
+                <div class="form-help">Status atual do registro</div>
               </div>
             </fieldset>
           </div>
@@ -130,7 +148,7 @@
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
               <a href="/recados" class="btn btn-outline">Cancelar</a>
               <button type="submit" class="btn btn-primary" id="btnSalvar">
-                💾 Salvar Contato
+                💾 Salvar Registro
               </button>
             </div>
           </div>
@@ -140,4 +158,4 @@
     </div>
   </main>
 
-  <%- include('partials/footer', { scripts: ['/js/novo-recado.js'] }) %>
+  <%- include('partials/footer', { scripts: ['/js/messages-form.js', '/js/novo-recado.js'] }) %>

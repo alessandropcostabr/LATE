@@ -1,5 +1,5 @@
 // public/js/visualizar-recado.js
-// Controla o painel de detalhes do contato (abas, labels, checklists, comentários e watchers).
+// Controla o painel de detalhes do registro (abas, labels, checklists, comentários e watchers).
 
 document.addEventListener('DOMContentLoaded', () => {
   const wrapper = document.getElementById('detalhesRecado');
@@ -71,6 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function normalizePhone(value) {
+    if (!value) return '';
+    return String(value).replace(/[^0-9]+/g, '');
+  }
+
   if (elements.backButton) {
     elements.backButton.href = '/recados';
   }
@@ -87,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadMessage() {
     if (!state.id) {
-      showToast('Identificador do contato não encontrado.', 'error');
+      showToast('Identificador do registro não encontrado.', 'error');
       return;
     }
     setLoading(true);
@@ -143,17 +148,50 @@ document.addEventListener('DOMContentLoaded', () => {
       lines.splice(1, 0, ['Criado por', recado.createdByName || recado.created_by_name]);
     }
 
+    if (recado?.parent_message_id) {
+      const parentId = String(recado.parent_message_id);
+      lines.splice(1, 0, ['Relacionado a', {
+        __html: `<a href="/visualizar-recado/${parentId}" class="btn btn-link btn-sm">Registro #${escapeHtml(parentId)}</a>`
+      }]);
+    }
+
+    const historyLink = buildHistoryLink(recado);
+    if (historyLink) {
+      lines.push(['Histórico do contato', { __html: historyLink }]);
+    }
+
+    const formatValue = (value) => {
+      if (value && typeof value === 'object' && value.__html) {
+        return value.__html;
+      }
+      return escapeHtml(value ?? '—');
+    };
+
     const html = [
       '<dl class="details-grid">',
       ...lines.map(([label, value]) => `
         <div class="details-grid__row">
           <dt>${label}</dt>
-          <dd>${escapeHtml(value)}</dd>
+          <dd>${formatValue(value)}</dd>
         </div>`),
       '</dl>',
     ].join('');
 
     elements.details.innerHTML = html;
+  }
+
+  function buildHistoryLink(recado) {
+    const phone = normalizePhone(recado?.sender_phone);
+    if (!phone) return null;
+    try {
+      const url = new URL(`/contatos/${encodeURIComponent(phone)}/historico`, window.location.origin);
+      if (recado?.sender_email) {
+        url.searchParams.set('email', recado.sender_email);
+      }
+      return `<a href="${url.pathname + url.search}" target="_blank" rel="noopener" class="btn btn-link btn-sm">Ver histórico completo</a>`;
+    } catch (_err) {
+      return null;
+    }
   }
 
   function renderLabels(recado) {
@@ -322,27 +360,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
       switch (event?.type) {
         case 'created':
-          return `Contato criado por ${actor}.`;
+          return `Registro criado por ${actor}.`;
         case 'updated': {
           const changes = Array.isArray(payload.changes) ? payload.changes : [];
-          if (!changes.length) return `${actor} atualizou o contato.`;
+          if (!changes.length) return `${actor} atualizou o registro.`;
           const details = changes.map((change) => {
             const label = change.label || change.field;
             const from = formatValue(change.from);
             const to = formatValue(change.to);
             return `${label}: ${from} → ${to}`;
           }).join('; ');
-          return `${actor} atualizou o contato (${details}).`;
+          return `${actor} atualizou o registro (${details}).`;
         }
         case 'status_changed':
           return `${actor} alterou a situação de ${statusLabels[payload.from] || payload.from || '—'} para ${statusLabels[payload.to] || payload.to || '—'}.`;
         case 'forwarded': {
           const from = formatValue(payload.from?.recipient);
           const to = formatValue(payload.to?.recipient);
-          return `${actor} encaminhou o contato (${from} → ${to}).`;
+          return `${actor} encaminhou o registro (${from} → ${to}).`;
         }
         case 'adopted':
-          return `${actor} assumiu o contato.`;
+          return `${actor} assumiu o registro.`;
         case 'email_failure': {
           const email = payload.email || 'destinatário desconhecido';
           const reason = payload.reason || 'falha não informada';
@@ -522,12 +560,12 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.forwardSubmit.textContent = 'Encaminhando...';
       }
       await API.forwardMessage(state.id, payload);
-      showToast('Contato encaminhado com sucesso!', 'success');
+      showToast('Registro encaminhado com sucesso!', 'success');
       forwardModal?.hide();
       resetForwardForm();
       await loadMessage();
     } catch (err) {
-      showToast(err?.message || err?.body?.error || 'Erro ao encaminhar contato.', 'error');
+      showToast(err?.message || err?.body?.error || 'Erro ao encaminhar registro.', 'error');
     } finally {
       if (elements.forwardSubmit) {
         elements.forwardSubmit.disabled = false;
@@ -557,16 +595,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const messages = status === 'in_progress'
       ? {
-          confirm: 'Marcar este contato como em andamento?',
+          confirm: 'Marcar este registro como em andamento?',
           loading: 'Atualizando...',
-          success: 'Contato marcado como em andamento.',
-          error: 'Erro ao atualizar contato.',
+          success: 'Registro marcado como em andamento.',
+          error: 'Erro ao atualizar registro.',
         }
       : {
-          confirm: 'Marcar este contato como resolvido?',
+          confirm: 'Marcar este registro como resolvido?',
           loading: 'Atualizando...',
-          success: 'Contato marcado como resolvido.',
-          error: 'Erro ao atualizar contato.',
+          success: 'Registro marcado como resolvido.',
+          error: 'Erro ao atualizar registro.',
         };
 
     if (!window.confirm(messages.confirm)) return;
@@ -595,8 +633,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try { subject = decodeAttr(subjectEncoded); } catch (_err) { subject = subjectEncoded; }
 
     const confirmation = subject
-      ? `Tem certeza de que deseja excluir o contato "${subject}"?`
-      : 'Tem certeza de que deseja excluir este contato?';
+      ? `Tem certeza de que deseja excluir o registro "${subject}"?`
+      : 'Tem certeza de que deseja excluir este registro?';
 
     if (!window.confirm(confirmation)) return;
 
@@ -605,10 +643,10 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.deleteButton.disabled = true;
       elements.deleteButton.textContent = 'Excluindo...';
       await API.deleteMessage(state.id);
-      showToast('Contato excluído com sucesso.', 'success');
+      showToast('Registro excluído com sucesso.', 'success');
       setTimeout(() => { window.location.href = '/recados'; }, 600);
     } catch (err) {
-      showToast(err?.message || 'Erro ao excluir contato.', 'error');
+      showToast(err?.message || 'Erro ao excluir registro.', 'error');
       elements.deleteButton.disabled = false;
       elements.deleteButton.textContent = originalText;
     }
@@ -780,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       const userId = Number(elements.watcherSelect?.value || 0);
       if (!userId) {
-        showToast('Selecione um usuário para acompanhar o contato.', 'error');
+        showToast('Selecione um usuário para acompanhar o registro.', 'error');
         return;
       }
       const submitBtn = elements.watcherForm.querySelector('button[type="submit"]');
@@ -844,8 +882,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showError(err) {
     const message = err?.status === 404
-      ? 'Contato não encontrado.'
-      : (err?.message || err?.body?.error || 'Erro ao carregar contato.');
+      ? 'Registro não encontrado.'
+      : (err?.message || err?.body?.error || 'Erro ao carregar registro.');
 
     if (elements.details) {
       elements.details.innerHTML = `<p class="text-danger">${escapeHtml(message)}</p>`;

@@ -1,6 +1,6 @@
 // public/js/recados.js
 // Comentários em pt-BR; identificadores em inglês.
-// Lista de contatos com filtros; tolera formatos de payload da API.
+// Lista de registros com filtros; tolera formatos de payload da API.
 
 // Helpers (iguais ao app.js — duplicados localmente para evitar dependências implícitas)
 const permissionsEl = document.querySelector('[data-message-permissions]');
@@ -41,28 +41,28 @@ const STATUS_OPTIONS = [
 
 const STATUS_ACTION_COPY = {
   pending: {
-    confirm: 'Reabrir este contato como pendente?',
+    confirm: 'Reabrir este registro como pendente?',
     loading: 'Atualizando...',
-    success: 'Contato marcado como pendente.',
-    error: 'Erro ao atualizar contato.'
+    success: 'Registro marcado como pendente.',
+    error: 'Erro ao atualizar registro.'
   },
   in_progress: {
-    confirm: 'Marcar este contato como em andamento?',
+    confirm: 'Marcar este registro como em andamento?',
     loading: 'Atualizando...',
-    success: 'Contato marcado como em andamento.',
-    error: 'Erro ao atualizar contato.'
+    success: 'Registro marcado como em andamento.',
+    error: 'Erro ao atualizar registro.'
   },
   resolved: {
-    confirm: 'Marcar este contato como resolvido?',
+    confirm: 'Marcar este registro como resolvido?',
     loading: 'Atualizando...',
-    success: 'Contato marcado como resolvido.',
-    error: 'Erro ao atualizar contato.'
+    success: 'Registro marcado como resolvido.',
+    error: 'Erro ao atualizar registro.'
   },
   default: {
-    confirm: 'Atualizar situação do contato?',
+    confirm: 'Atualizar situação do registro?',
     loading: 'Atualizando...',
-    success: 'Situação do contato atualizada.',
-    error: 'Erro ao atualizar contato.'
+    success: 'Situação do registro atualizada.',
+    error: 'Erro ao atualizar registro.'
   }
 };
 
@@ -77,7 +77,7 @@ async function request(url, opts = {}) {
     throw new Error('Resposta inválida do servidor');
   }
   if (!res.ok || (json && json.success === false)) {
-    throw new Error((json && json.error) || 'Falha ao listar contatos');
+    throw new Error((json && json.error) || 'Falha ao listar registros');
   }
   return json;
 }
@@ -199,7 +199,7 @@ function renderStatusControls(message, canEditThis, currentStatusLabel) {
     const ariaPressed = isCurrent ? 'true' : 'false';
     const title = isCurrent
       ? `Situação atual: ${option.label}`
-      : `Marcar contato como ${option.label.toLowerCase()}`;
+      : `Marcar registro como ${option.label.toLowerCase()}`;
 
     const attrs = [
       'type="button"',
@@ -244,7 +244,7 @@ async function carregarRecados() {
   if (container) {
     container.innerHTML = `
       <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
-        <span class="loading"></span> Carregando contatos...
+        <span class="loading"></span> Carregando registros...
       </div>`;
   }
 
@@ -288,7 +288,7 @@ async function carregarRecados() {
     if (!list.length) {
       if (container) container.innerHTML = `
         <div style="text-align:center;padding:1.5rem;color:var(--text-secondary);">
-          Nenhum contato encontrado.
+          Nenhum registro encontrado.
         </div>`;
       return;
     }
@@ -342,7 +342,7 @@ async function carregarRecados() {
 
       return `
         <article class="message-card list-item" data-message-id="${m.id}">
-          <a class="message-card__primary" href="${detailsUrl}" aria-label="Abrir contato ${escapeHtml(subject)}">
+        <a class="message-card__primary" href="${detailsUrl}" aria-label="Abrir registro ${escapeHtml(subject)}">
             <div class="message-card__title">${escapeHtml(subject)}</div>
             <div class="message-card__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)} • Visibilidade: ${escapeHtml(visibilityLabel)}</div>
             <div class="message-card__meta">Criado em: ${escapeHtml(created)}</div>
@@ -359,11 +359,11 @@ async function carregarRecados() {
 
     if (container) container.innerHTML = html;
   } catch (err) {
-    console.error('❌ Erro ao carregar contatos:', err);
+    console.error('❌ Erro ao carregar registros:', err);
     if (container) {
       container.innerHTML = `
         <div class="alert alert-danger" role="alert">
-          Falha ao listar contatos
+          Falha ao listar registros
         </div>`;
     }
   }
@@ -411,8 +411,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const subject = decodeAttr(deleteButton.getAttribute('data-message-subject') || '');
         const confirmation = subject
-          ? `Tem certeza de que deseja excluir o contato "${subject}"?`
-          : 'Tem certeza de que deseja excluir este contato?';
+          ? `Tem certeza de que deseja excluir o registro "${subject}"?`
+          : 'Tem certeza de que deseja excluir este registro?';
 
         if (!window.confirm(confirmation)) return;
 
@@ -420,20 +420,20 @@ document.addEventListener('DOMContentLoaded', () => {
           setButtonLoading(deleteButton, true, 'Excluindo...');
 
           if (!window.API || typeof window.API.deleteMessage !== 'function') {
-            throw new Error('API indisponível para excluir contatos.');
+            throw new Error('API indisponível para excluir registros.');
           }
 
           await window.API.deleteMessage(messageId);
           if (window.Toast?.success) {
-            window.Toast.success('Contato excluído com sucesso.');
+            window.Toast.success('Registro excluído com sucesso.');
           }
           carregarRecados();
         } catch (err) {
-          const msg = err?.message || 'Erro ao excluir contato.';
+          const msg = err?.message || 'Erro ao excluir registro.';
           if (window.Toast?.error) {
             window.Toast.error(msg);
           } else {
-            console.error('[recados] Falha ao excluir contato:', err);
+            console.error('[recados] Falha ao excluir registro:', err);
             alert(msg);
           }
         } finally {
@@ -470,20 +470,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
           if (!window.API || typeof window.API.updateMessageStatus !== 'function') {
-            throw new Error('API indisponível para atualizar contatos.');
+            throw new Error('API indisponível para atualizar registros.');
           }
 
           await window.API.updateMessageStatus(messageId, { status: targetStatus });
           if (window.Toast?.success) {
-            window.Toast.success(statusCopy.success || 'Situação do contato atualizada.');
+            window.Toast.success(statusCopy.success || 'Situação do registro atualizada.');
           }
           requestSucceeded = true;
         } catch (err) {
-          const msg = err?.message || statusCopy.error || 'Erro ao atualizar contato.';
+          const msg = err?.message || statusCopy.error || 'Erro ao atualizar registro.';
           if (window.Toast?.error) {
             window.Toast.error(msg);
           } else {
-            console.error('[recados] Falha ao atualizar contato:', err);
+            console.error('[recados] Falha ao atualizar registro:', err);
             alert(msg);
           }
         } finally {

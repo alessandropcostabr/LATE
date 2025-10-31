@@ -1,9 +1,9 @@
 // public/js/novo-recado.js
-// Página "Novo Contato" — coleta do formulário, normalização e envio para a API.
+// Página "Novo Registro" — coleta do formulário, normalização e envio para a API.
 // Por quê: garantir JSON válido e presença de 'message' (fallback de 'notes').
 
 (() => {
-  console.log('✅ Novo Contato JS carregado');
+  console.log('✅ Novo Registro JS carregado');
 
   // Helper seguro para capturar valor de input/textarea
   const val = (sel) => {
@@ -20,6 +20,7 @@
   const recipientUserGroup = document.getElementById('recipientUserGroup');
   const recipientSectorGroup = document.getElementById('recipientSectorGroup');
   const visibilitySelect = document.getElementById('visibility');
+  const parentMessageInput = document.getElementById('parent_message_id');
   const originalButtonLabel = saveButton ? saveButton.innerHTML : null;
   let isSubmitting = false;
 
@@ -90,6 +91,7 @@
     const status = val('#status') || 'pending';
     const callback_time = val('#callback_time');
     const notes = val('#notes');
+    const parentMessageId = parentMessageInput ? Number(parentMessageInput.value) : null;
 
     // 'message' pode não existir no template atual; tentamos capturar, senão criamos fallback
     const messageRaw = val('#message'); // se não existir, retorna ''
@@ -110,7 +112,8 @@
       status,
       callback_time,
       visibility: (visibilitySelect?.value || 'private').toLowerCase(),
-      notes
+      notes,
+      parent_message_id: Number.isInteger(parentMessageId) && parentMessageId > 0 ? parentMessageId : null
     };
 
     const payload = (typeof Form !== 'undefined' && Form && typeof Form.prepareMessagePayload === 'function')
@@ -148,7 +151,7 @@
       }
 
       const resp = await API.createMessage(recado);
-      console.log('✅ Contato criado:', resp);
+      console.log('✅ Registro criado:', resp);
 
       // Redireciona para lista/detalhe após criar (ajuste conforme sua navegação)
       if (resp?.success) {
@@ -156,11 +159,11 @@
         window.location.href = '/recados';
         return;
       } else {
-        alert('Não foi possível criar o contato.');
+        alert('Não foi possível criar o registro.');
       }
     } catch (err) {
       console.error('❌ Erro do servidor:', err?.message || err);
-      alert(err?.message || 'Erro ao salvar contato. Tente novamente.');
+      alert(err?.message || 'Erro ao salvar registro. Tente novamente.');
     } finally {
       if (!keepLocked) {
         toggleSubmitState(false);
@@ -175,7 +178,7 @@
       return;
     }
     form.addEventListener('submit', handleSubmit);
-    console.log('✅ Manipuladores de evento configurados para Novo Contato');
+    console.log('✅ Manipuladores de evento configurados para Novo Registro');
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);

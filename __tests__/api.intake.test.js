@@ -138,7 +138,7 @@ describe('POST /api/intake', () => {
     emailQueue = null;
   });
 
-  test('cria contato via intake e registra log', async () => {
+  test('cria registro via intake e registra log', async () => {
     const database = dbManager.getDatabase();
     await database.exec(`
       INSERT INTO users (id, name, email) VALUES (10, 'Atendente', 'atendente@example.com');
@@ -150,8 +150,8 @@ describe('POST /api/intake', () => {
       .post('/api/intake')
       .set('x-intake-token', 'secret-token')
       .send({
-        subject: 'Contato via intake',
-        message: 'Detalhes do contato',
+        subject: 'Registro via intake',
+        message: 'Detalhes do registro',
         recipientUserId: 10,
       });
 

@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Gráficos
   await Promise.all([
-    renderChart('/stats/by-recipient', 'graficoPorDestinatario', 'Contatos por Destinatário'),
-    renderChart('/stats/by-status', 'graficoPorStatus', 'Contatos por Status', 'pie'),
-    renderChart('/stats/by-month', 'graficoPorMes', 'Contatos por Mês', 'line')
+    renderChart('/stats/by-recipient', 'graficoPorDestinatario', 'Registros por Destinatário'),
+    renderChart('/stats/by-status', 'graficoPorStatus', 'Registros por Status', 'pie'),
+    renderChart('/stats/by-month', 'graficoPorMes', 'Registros por Mês', 'line')
   ]);
 });
 
