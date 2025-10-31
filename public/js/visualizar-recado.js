@@ -155,10 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }]);
     }
 
-    const historyLink = buildHistoryLink(recado);
-    if (historyLink) {
-      lines.push(['Histórico do contato', { __html: historyLink }]);
-    }
+    // Link de histórico do contato removido daqui - agora está apenas na seção HTML abaixo dos detalhes
 
     const formatValue = (value) => {
       if (value && typeof value === 'object' && value.__html) {
@@ -183,31 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateContactHistorySection(recado);
   }
 
-  function buildHistoryLink(recado) {
-    const phone = normalizePhone(recado?.sender_phone);
-    const email = recado?.sender_email;
-    
-    // Precisa ter telefone OU email
-    if (!phone && !email) return null;
-    
-    try {
-      let url;
-      if (phone) {
-        url = new URL(`/contatos/${encodeURIComponent(phone)}/historico`, window.location.origin);
-        if (email) {
-          url.searchParams.set('email', email);
-        }
-      } else {
-        // Apenas email
-        url = new URL(`/contatos/email/historico`, window.location.origin);
-        url.searchParams.set('email', email);
-      }
-      return `<a href="${url.pathname + url.search}" target="_blank" rel="noopener" class="btn btn-link btn-sm">Ver histórico completo</a>`;
-    } catch (_err) {
-      return null;
-    }
-  }
-  
+
   function updateContactHistorySection(recado) {
     const section = document.getElementById('contact-history-section');
     const link = document.getElementById('contact-history-link');
@@ -231,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
           url.searchParams.set('email', email);
         }
       } else {
-        // Apenas email
+        // Apenas email - usa placeholder 'email' no lugar do telefone
         url = new URL(`/contatos/email/historico`, window.location.origin);
         url.searchParams.set('email', email);
       }
