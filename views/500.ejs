@@ -1,0 +1,29 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container">
+      <div style="text-align: center; padding: 4rem 0;">
+        <div aria-hidden="true" style="font-size: 6rem; margin-bottom: 1rem;">⚠️</div>
+        <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 1rem; color: var(--text-primary);">500</h1>
+        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-secondary);">Erro interno do servidor</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+          Ocorreu um erro inesperado ao processar sua solicitação. Nossa equipe foi notificada e está trabalhando para resolver o problema.
+        </p>
+        <% if (error) { %>
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin: 2rem auto; max-width: 600px; text-align: left;">
+          <strong style="color: var(--text-primary);">Detalhes do erro (modo desenvolvimento):</strong>
+          <pre style="margin-top: 0.5rem; color: var(--text-secondary); white-space: pre-wrap; word-wrap: break-word;"><%= error %></pre>
+        </div>
+        <% } %>
+        <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <a href="/" class="btn btn-primary btn-lg">🏠 Ir para o Dashboard</a>
+          <a href="/recados" class="btn btn-outline btn-lg">📋 Ver Registros</a>
+          <a href="javascript:history.back()" class="btn btn-outline btn-lg">⬅️ Voltar</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
