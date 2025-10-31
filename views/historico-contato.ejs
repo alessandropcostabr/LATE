@@ -1,0 +1,156 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container">
+      <header class="page-header">
+        <h1 class="page-title">Histórico do Registro</h1>
+        <p class="page-subtitle">Acompanhe todos os registros associados ao contato informado.</p>
+      </header>
+
+      <section class="card" aria-labelledby="contact-summary">
+        <div class="card-header">
+          <h2 id="contact-summary" class="card-title">Dados do contato</h2>
+        </div>
+        <div class="card-body contact-summary">
+          <div>
+            <span class="label">Nome</span>
+            <strong><%= (contact && contact.name) ? contact.name : 'Não informado' %></strong>
+          </div>
+          <div>
+            <span class="label">Telefone</span>
+            <% if (identifier && identifier.phone) { %>
+              <strong><%= identifier.phone %></strong>
+            <% } else if (contact && contact.phone) { %>
+              <strong><%= contact.phone %></strong>
+            <% } else { %>
+              <strong>Não informado</strong>
+            <% } %>
+          </div>
+          <div>
+            <span class="label">E-mail</span>
+            <% if (identifier && identifier.email) { %>
+              <strong><%= identifier.email %></strong>
+            <% } else if (contact && contact.email) { %>
+              <strong><%= contact.email %></strong>
+            <% } else { %>
+              <strong>Não informado</strong>
+            <% } %>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="filters-title">
+        <div class="card-header">
+          <h2 id="filters-title" class="card-title">Filtros</h2>
+          <p class="card-subtitle">Ajuste os critérios para refinar os resultados.</p>
+        </div>
+        <div class="card-body">
+          <form method="get" class="filters-form" data-filters>
+            <div class="form-grid-4">
+              <div class="form-group">
+                <label for="filter-status" class="form-label">Situação</label>
+                <select id="filter-status" name="status" class="form-select">
+                  <% statusOptions.forEach(function(option) { %>
+                    <option value="<%= option.value %>" <%= (filters.status === option.value ? 'selected' : '') %>><%= option.label %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="filter-label" class="form-label">Etiqueta</label>
+                <select id="filter-label" name="label" class="form-select">
+                  <option value="">Todas</option>
+                  <% (labelOptions || []).forEach(function(item) { %>
+                    <option value="<%= item.label %>" <%= (filters.label === item.label ? 'selected' : '') %>><%= item.label %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="filter-recipient" class="form-label">Destinatário</label>
+                <input id="filter-recipient" name="recipient" type="text" class="form-input" value="<%= filters.recipient || '' %>" placeholder="Nome ou setor" />
+              </div>
+              <div class="form-group">
+                <label for="filter-sector" class="form-label">Setor destinatário</label>
+                <select id="filter-sector" name="recipient_sector_id" class="form-select">
+                  <option value="">Todos</option>
+                  <% (sectorOptions || []).forEach(function(sector) { %>
+                    <option value="<%= sector.id %>" <%= (String(filters.recipient_sector_id) === String(sector.id) ? 'selected' : '') %>><%= sector.name %></option>
+                  <% }); %>
+                </select>
+              </div>
+            </div>
+            <% if (identifier && identifier.email) { %>
+              <input type="hidden" name="email" value="<%= identifier.email %>" />
+            <% } %>
+            <div class="filters-actions">
+              <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+              <a href="?" class="btn btn-outline">Limpar</a>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="history-title">
+        <div class="card-header">
+          <h2 id="history-title" class="card-title">Registros encontrados</h2>
+          <p class="card-subtitle">
+            <% if (records && records.length) { %>
+              <%= records.length %> registro(s) relacionado(s) ao contato.
+            <% } else { %>
+              Nenhum registro localizado para os filtros informados.
+            <% } %>
+          </p>
+        </div>
+        <div class="card-body">
+          <% if (records && records.length) { %>
+            <div class="table-responsive">
+              <table class="table" role="grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Assunto</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col">Destinatário</th>
+                    <th scope="col" class="actions-col">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% records.forEach(function(entry) { %>
+                    <tr>
+                      <td data-column="Data">
+                        <% if (entry.call_date) { %>
+                          <%= entry.call_date %>
+                        <% } else if (entry.created_at) { %>
+                          <%= new Date(entry.created_at).toLocaleString('pt-BR') %>
+                        <% } else { %>
+                          -
+                        <% } %>
+                      </td>
+                      <td data-column="Assunto"><%= entry.subject %></td>
+                      <td data-column="Situação"><span class="status-badge status-<%= entry.status %>"><%= entry.status_label %></span></td>
+                      <td data-column="Destinatário"><%= entry.recipient || '-' %></td>
+                      <td data-column="Ações">
+                        <div class="table-actions">
+                          <a class="btn btn-link" href="/visualizar-recado/<%= entry.id %>">Abrir</a>
+                          <% if (entry.parent_message_id) { %>
+                            <a class="btn btn-link" href="/visualizar-recado/<%= entry.parent_message_id %>">Origem</a>
+                          <% } %>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          <% } else { %>
+            <p class="empty-state">Nenhum registro encontrado para este contato.</p>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <%- include('partials/footer') %>
+</body>
+</html>

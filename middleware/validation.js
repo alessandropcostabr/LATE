@@ -208,6 +208,21 @@ const validateIntakeCreate = [
     .isInt({ min: 1 }).withMessage('Setor destinatário inválido')
     .toInt(),
   body().custom((_, { req }) => {
+    const rawParent = req.body.parent_message_id ?? req.body.parentMessageId;
+    if (rawParent === undefined || rawParent === null || rawParent === '') {
+      req.body.parent_message_id = null;
+      req.body.parentMessageId = null;
+      return true;
+    }
+    const parsed = Number(rawParent);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new Error('Registro relacionado inválido');
+    }
+    req.body.parent_message_id = parsed;
+    req.body.parentMessageId = parsed;
+    return true;
+  }),
+  body().custom((_, { req }) => {
     const parseId = (value) => {
       const raw = String(value ?? '').trim();
       if (!raw) return null;
@@ -323,6 +338,22 @@ const validateUpdateMessage = [
       return true;
     })
     .customSanitizer((value) => String(value || '').trim().toLowerCase())
+    ,
+  body().custom((_, { req }) => {
+    const rawParent = req.body.parent_message_id ?? req.body.parentMessageId;
+    if (rawParent === undefined || rawParent === null || rawParent === '') {
+      req.body.parent_message_id = null;
+      req.body.parentMessageId = null;
+      return true;
+    }
+    const parsed = Number(rawParent);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new Error('Registro relacionado inválido');
+    }
+    req.body.parent_message_id = parsed;
+    req.body.parentMessageId = parsed;
+    return true;
+  })
 ];
 
 // -------------------------------------------------------------
@@ -504,6 +535,42 @@ const validateQueryMessages = [
     .customSanitizer((v) => (String(v || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc'))
 ];
 
+const validateRelatedMessagesQuery = [
+  applyQueryNormalizers,
+  query('phone').optional({ checkFalsy: true, nullable: true })
+    .isLength({ min: 4, max: 60 }).withMessage('Telefone inválido'),
+  query('email').optional({ checkFalsy: true, nullable: true })
+    .isEmail().withMessage('E-mail inválido')
+    .customSanitizer((value) => value ? value.toLowerCase() : value),
+  query('limit').optional({ checkFalsy: true, nullable: true })
+    .isInt({ min: 1, max: 20 }).withMessage('Limite inválido')
+    .toInt()
+    .customSanitizer((value) => {
+      if (!value) return 5;
+      if (value < 1) return 1;
+      if (value > 20) return 20;
+      return value;
+    }),
+  query().custom((_, { req }) => {
+    const phone = String(req.query.phone || '').trim();
+    const email = String(req.query.email || '').trim();
+    if (!phone && !email) {
+      throw new Error('Informe telefone ou e-mail');
+    }
+
+    const excludeRaw = req.query.exclude ?? req.query.excludeId ?? req.query.exclude_id;
+    if (excludeRaw !== undefined && excludeRaw !== null && excludeRaw !== '') {
+      const parsed = Number(excludeRaw);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        throw new Error('ID de exclusão inválido');
+      }
+      req.query.excludeId = parsed;
+    }
+
+    return true;
+  }),
+];
+
 // -----------------------------
 // Validators de Users (Admin)
 // -----------------------------
@@ -607,6 +674,7 @@ module.exports = {
   validateUpdateMessage,
   validateUpdateStatus,
   validateIntakeCreate,
+  validateRelatedMessagesQuery,
 
   // aliases
   handleValidation: handleValidationErrors,

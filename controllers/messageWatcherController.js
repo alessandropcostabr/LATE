@@ -1,5 +1,5 @@
 // controllers/messageWatcherController.js
-// Administração dos watchers (observadores) de um contato.
+// Administração dos watchers (observadores) de um registro.
 
 const MessageWatcherModel = require('../models/messageWatcher');
 

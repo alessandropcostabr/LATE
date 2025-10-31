@@ -6,6 +6,10 @@ jest.mock('../models/message', () => ({
   updateRecipient: jest.fn(),
 }));
 
+jest.mock('../models/contact', () => ({
+  updateFromMessage: jest.fn(),
+}));
+
 jest.mock('../models/user', () => ({
   findById: jest.fn(),
   getActiveUsersBySector: jest.fn(),

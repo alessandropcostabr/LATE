@@ -58,13 +58,13 @@
       <li><a href="/" class="app-navbar__menu-link<%= title === 'Dashboard' ? ' is-active' : '' %>">Dashboard</a></li>
 
       <% if (canReadMessages) { %>
-        <li><a href="/recados" class="app-navbar__menu-link<%= title === 'Contatos' ? ' is-active' : '' %>">Contatos</a></li>
-        <li><a href="/recados/kanban" class="app-navbar__menu-link<%= title === 'Contatos · Kanban' ? ' is-active' : '' %>">Kanban</a></li>
-        <li><a href="/recados/calendario" class="app-navbar__menu-link<%= title === 'Contatos · Calendário' ? ' is-active' : '' %>">Calendário</a></li>
+        <li><a href="/recados" class="app-navbar__menu-link<%= title === 'Registros' ? ' is-active' : '' %>">Registros</a></li>
+        <li><a href="/recados/kanban" class="app-navbar__menu-link<%= title === 'Registros · Kanban' ? ' is-active' : '' %>">Kanban</a></li>
+        <li><a href="/recados/calendario" class="app-navbar__menu-link<%= title === 'Registros · Calendário' ? ' is-active' : '' %>">Calendário</a></li>
       <% } %>
 
       <% if (canCreateMessages) { %>
-        <li><a href="/novo-recado" class="app-navbar__menu-link<%= title === 'Novo Contato' ? ' is-active' : '' %>">Novo Contato</a></li>
+        <li><a href="/novo-recado" class="app-navbar__menu-link<%= title === 'Novo Registro' ? ' is-active' : '' %>">Novo Registro</a></li>
       <% } %>
 
       <% if (showReports) { %>

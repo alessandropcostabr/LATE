@@ -280,7 +280,7 @@ exports.remove = async (req, res) => {
     if (err && err.code === 'HAS_MESSAGES') {
       return res.status(409).json({
         success: false,
-        error: 'Usuário possui contatos associados e não pode ser excluído. Você pode inativá-lo.',
+        error: 'Usuário possui registros associados e não pode ser excluído. Você pode inativá-lo.',
       });
     }
     if (err && err.code === 'SECTOR_MIN_ONE') {
