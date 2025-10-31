@@ -853,7 +853,7 @@ async function update(id, payload, retrying = false) {
     delete normalized.data.parent_message_id;
   }
 
-  const fields = [
+  const baseFields = [
     'call_date',
     'call_time',
     'recipient',
@@ -866,6 +866,18 @@ async function update(id, payload, retrying = false) {
     'callback_time',
     'notes',
   ];
+  const fields = [...baseFields];
+
+  if (!normalized.callbackProvided) {
+    const callbackIndex = fields.indexOf('callback_at');
+    if (callbackIndex !== -1) fields.splice(callbackIndex, 1);
+    const legacyIndex = fields.indexOf('callback_time');
+    if (legacyIndex !== -1) fields.splice(legacyIndex, 1);
+  } else {
+    normalized.data.callback_at = normalized.data.callback_at ?? null;
+    normalized.data.callback_time = null;
+  }
+
   if (shouldIncludeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
