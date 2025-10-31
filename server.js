@@ -339,7 +339,8 @@ app.use((err, req, res, _next) => {
     // Rotas web devem renderizar página de erro
     res.status(status).render('500', {
       title: 'Erro interno',
-      user: req.session?.user || null
+      user: req.session?.user || null,
+      error: isDevelopment && err.message ? err.message : null
     });
   }
 });
