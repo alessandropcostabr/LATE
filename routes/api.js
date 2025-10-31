@@ -49,6 +49,7 @@ const {
   validateAutomationIdParam,
   validateCommentIdParam,
   validateIntakeCreate,
+  validateRelatedMessagesQuery,
   validateUserCreate,
   validateUserUpdate,
   validateUserStatus,
@@ -175,6 +176,12 @@ router.get(
 );
 
 router.get('/messages/stats', ...flatFns(canReadMessages, statsController.messagesStats));
+
+router.get(
+  '/messages/related',
+  ...flatFns(canReadMessages, validateRelatedMessagesQuery, handleValidationErrors),
+  messageController.listRelated
+);
 
 router.get(
   '/messages/:id',

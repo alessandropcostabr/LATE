@@ -35,6 +35,7 @@ jest.mock('../controllers/messageController', () => {
     create: jest.fn(),
     update: jest.fn(),
     updateStatus: jest.fn(),
+    listRelated: jest.fn(),
     remove: jest.fn(),
     __internals: {
       sanitizePayload: jest.fn((payload) => ({ ...payload })),

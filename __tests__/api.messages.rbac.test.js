@@ -27,6 +27,7 @@ jest.mock('../controllers/messageController', () => {
     update: jest.fn((_req, res) => res.json({ success: true })),
     forward: jest.fn((_req, res) => res.json({ success: true })),
     updateStatus: jest.fn((_req, res) => res.json({ success: true })),
+    listRelated: jest.fn((_req, res) => res.json({ success: true, data: [] })),
     remove: jest.fn((_req, res) => res.json({ success: true })),
     __internals: {
       sanitizePayload: jest.fn((payload) => ({ ...payload })),

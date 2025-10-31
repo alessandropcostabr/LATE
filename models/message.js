@@ -3,6 +3,10 @@
 
 const db = require('../config/database'); // Pool do pg
 const { buildViewerOwnershipFilter } = require('./helpers/viewerScope');
+const {
+  normalizePhone,
+  normalizeEmail,
+} = require('../utils/normalizeContact');
 
 // ---------------------------- Metadados dinâmicos --------------------------
 const TABLE_NAME = 'messages';
@@ -12,6 +16,7 @@ const CREATED_BY_COLUMN = 'created_by';
 const UPDATED_BY_COLUMN = 'updated_by';
 const VISIBILITY_COLUMN = 'visibility';
 const USER_SECTORS_TABLE = 'user_sectors';
+const PARENT_MESSAGE_COLUMN = 'parent_message_id';
 let recipientSectorFeatureDisabled = false;
 
 const columnSupportCache = new Map();
@@ -172,9 +177,10 @@ const OPTIONAL_COLUMNS = new Set([
   RECIPIENT_SECTOR_COLUMN,
   CREATED_BY_COLUMN,
   UPDATED_BY_COLUMN,
+  PARENT_MESSAGE_COLUMN,
 ]);
 
-function composeSelectFields(includeRecipientUserId, includeRecipientSectorId, includeCreatedBy, includeUpdatedBy) {
+function composeSelectFields(includeRecipientUserId, includeRecipientSectorId, includeCreatedBy, includeUpdatedBy, includeParentMessageId) {
   const fields = [...BASE_SELECT_FIELDS];
   if (includeRecipientUserId) {
     const recipientIndex = fields.indexOf('recipient');
@@ -194,6 +200,14 @@ function composeSelectFields(includeRecipientUserId, includeRecipientSectorId, i
     const idx = fields.indexOf(UPDATED_BY_COLUMN);
     if (idx !== -1) fields.splice(idx, 1);
   }
+  if (includeParentMessageId) {
+    const idx = fields.indexOf(CREATED_BY_COLUMN);
+    if (idx !== -1) {
+      fields.splice(idx, 0, PARENT_MESSAGE_COLUMN);
+    } else {
+      fields.push(PARENT_MESSAGE_COLUMN);
+    }
+  }
   return fields;
 }
 
@@ -203,11 +217,13 @@ async function resolveSelectColumns() {
     includeRecipientSectorId,
     includeCreatedBy,
     includeUpdatedBy,
+    includeParentMessageId,
   ] = await Promise.all([
     supportsColumn(RECIPIENT_USER_COLUMN),
     supportsColumn(RECIPIENT_SECTOR_COLUMN),
     supportsColumn(CREATED_BY_COLUMN),
     supportsColumn(UPDATED_BY_COLUMN),
+    supportsColumn(PARENT_MESSAGE_COLUMN),
   ]);
   const effectiveRecipientSectorId = !recipientSectorFeatureDisabled && includeRecipientSectorId;
   return {
@@ -215,11 +231,13 @@ async function resolveSelectColumns() {
     includeRecipientSectorId: effectiveRecipientSectorId,
     includeCreatedBy,
     includeUpdatedBy,
+    includeParentMessageId,
     selectColumns: composeSelectFields(
       includeRecipientUserId,
       effectiveRecipientSectorId,
       includeCreatedBy,
       includeUpdatedBy,
+      includeParentMessageId,
     ).join(',\n      '),
   };
 }
@@ -390,6 +408,10 @@ function normalizePayload(payload = {}) {
     Object.prototype.hasOwnProperty.call(payload, 'callbackAt') ||
     Object.prototype.hasOwnProperty.call(payload, 'callback_time')
   );
+  const parentProvided = (
+    Object.prototype.hasOwnProperty.call(payload, 'parent_message_id') ||
+    Object.prototype.hasOwnProperty.call(payload, 'parentMessageId')
+  );
 
   const recipientUserId = recipientUserProvided
     ? normalizeRecipientUserId(payload.recipient_user_id ?? payload.recipientUserId)
@@ -397,6 +419,8 @@ function normalizePayload(payload = {}) {
   const recipientSectorId = recipientSectorProvided
     ? normalizeRecipientSectorId(payload.recipient_sector_id ?? payload.recipientSectorId)
     : null;
+  const parentId = parentProvided ? Number(payload.parent_message_id ?? payload.parentMessageId) : null;
+  const parentMessageId = Number.isInteger(parentId) && parentId > 0 ? parentId : null;
 
   let callbackAtValue;
   if (callbackProvided) {
@@ -427,6 +451,9 @@ function normalizePayload(payload = {}) {
   if (recipientSectorProvided) {
     data.recipient_sector_id = recipientSectorId;
   }
+  if (parentProvided) {
+    data.parent_message_id = parentMessageId;
+  }
 
   return {
     data,
@@ -435,6 +462,7 @@ function normalizePayload(payload = {}) {
     recipientUserProvided,
     recipientSectorProvided,
     callbackProvided,
+    parentProvided,
   };
 }
 
@@ -475,6 +503,8 @@ function mapRow(row) {
     createdBy: row.created_by ?? null,
     updated_by: row.updated_by ?? null,
     updatedBy: row.updated_by ?? null,
+    parent_message_id: row.parent_message_id ?? null,
+    parentMessageId: row.parent_message_id ?? null,
   };
 }
 
@@ -525,6 +555,42 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1,
     clause: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
     params,
     nextIndex: index,
+  };
+}
+
+function buildContactMatchConditions({ phone, email }, startIndex = 1) {
+  let index = startIndex;
+  const clauses = [];
+  const params = [];
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedEmail = normalizeEmail(email);
+
+  if (normalizedPhone) {
+    clauses.push(`regexp_replace(COALESCE(sender_phone, ''), '[^0-9]+', '', 'g') = ${ph(index)}`);
+    params.push(normalizedPhone);
+    index += 1;
+  }
+
+  if (normalizedEmail) {
+    clauses.push(`LOWER(TRIM(sender_email)) = ${ph(index)}`);
+    params.push(normalizedEmail);
+    index += 1;
+  }
+
+  if (clauses.length === 0) {
+    return {
+      clause: '',
+      params: [],
+      nextIndex: startIndex,
+      empty: true,
+    };
+  }
+
+  return {
+    clause: clauses.length === 1 ? clauses[0] : `(${clauses.join(' OR ')})`,
+    params,
+    nextIndex: index,
+    empty: false,
   };
 }
 
@@ -607,6 +673,7 @@ async function create(payload) {
     includeRecipientSectorId,
     includeCreatedBy,
     includeUpdatedBy,
+    includeParentMessageId,
     selectColumns,
   } = await resolveSelectColumns();
 
@@ -648,12 +715,19 @@ async function create(payload) {
   const hasRecipientSectorId = Object.prototype.hasOwnProperty.call(data, 'recipient_sector_id');
   const shouldIncludeRecipientSectorId = includeRecipientSectorId && hasRecipientSectorId;
 
+  const hasParentMessageId = Object.prototype.hasOwnProperty.call(data, PARENT_MESSAGE_COLUMN);
+  const shouldIncludeParentMessageId = includeParentMessageId && hasParentMessageId;
+
   if (!includeRecipientUserId && hasRecipientUserId) {
     delete data.recipient_user_id;
   }
 
   if (!includeRecipientSectorId && hasRecipientSectorId) {
     delete data.recipient_sector_id;
+  }
+
+  if (!includeParentMessageId && hasParentMessageId) {
+    delete data.parent_message_id;
   }
 
   const baseFields = [
@@ -693,6 +767,9 @@ async function create(payload) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, 'recipient_sector_id');
+  }
+  if (shouldIncludeParentMessageId) {
+    fields.push(PARENT_MESSAGE_COLUMN);
   }
 
   if (includeCreatedBy) {
@@ -756,18 +833,24 @@ async function update(id, payload, retrying = false) {
     includeRecipientUserId,
     includeRecipientSectorId,
     includeUpdatedBy,
+    includeParentMessageId,
   } = await resolveSelectColumns();
   const normalized = normalizePayload(payload);
   const hasRecipientUserId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_user_id');
   const shouldIncludeRecipientUserId = includeRecipientUserId && hasRecipientUserId;
   const hasRecipientSectorId = Object.prototype.hasOwnProperty.call(normalized.data, 'recipient_sector_id');
   const shouldIncludeRecipientSectorId = includeRecipientSectorId && hasRecipientSectorId;
+  const hasParentMessageId = Object.prototype.hasOwnProperty.call(normalized.data, PARENT_MESSAGE_COLUMN);
+  const shouldIncludeParentMessageId = includeParentMessageId && hasParentMessageId;
 
   if (!includeRecipientUserId && hasRecipientUserId) {
     delete normalized.data.recipient_user_id;
   }
   if (!includeRecipientSectorId && hasRecipientSectorId) {
     delete normalized.data.recipient_sector_id;
+  }
+  if (!includeParentMessageId && hasParentMessageId) {
+    delete normalized.data.parent_message_id;
   }
 
   const baseFields = [
@@ -804,6 +887,9 @@ async function update(id, payload, retrying = false) {
     const recipientIndex = fields.indexOf('recipient');
     const insertAt = recipientIndex >= 0 ? recipientIndex + 1 : fields.length;
     fields.splice(insertAt, 0, 'recipient_sector_id');
+  }
+  if (shouldIncludeParentMessageId) {
+    fields.push(PARENT_MESSAGE_COLUMN);
   }
   const values = fields.map((field) => normalized.data[field]);
   const assignments = fields.map((field, idx) => `${field} = ${ph(idx + 1)}`);
@@ -933,6 +1019,188 @@ async function remove(id, retrying = false) {
     return rowCount > 0;
   } catch (err) {
     return handleSchemaError(err, retrying, () => remove(id, true));
+  }
+}
+
+async function listRelatedMessages(options = {}, retrying = false) {
+  const {
+    phone,
+    email,
+    excludeId,
+    viewer,
+    limit = 5,
+  } = options;
+
+  const contactMatch = buildContactMatchConditions({ phone, email }, 1);
+  if (contactMatch.empty) {
+    return [];
+  }
+
+  const {
+    selectColumns,
+    includeCreatedBy,
+    includeRecipientSectorId,
+  } = await resolveSelectColumns();
+  const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
+
+  let whereClause = `WHERE ${contactMatch.clause}`;
+  const params = [...contactMatch.params];
+  let nextIndex = contactMatch.nextIndex;
+
+  if (excludeId) {
+    whereClause = appendCondition(whereClause, `id <> ${ph(nextIndex)}`);
+    params.push(excludeId);
+    nextIndex += 1;
+  }
+
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex, {
+    supportsCreator: includeCreatedBy,
+    supportsSectorMembership,
+  });
+
+  if (ownershipFilter.clause) {
+    whereClause = appendCondition(whereClause, ownershipFilter.clause);
+    params.push(...ownershipFilter.params);
+    nextIndex = ownershipFilter.nextIndex;
+  }
+
+  const parsedLimit = Number(limit);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 20) : 5;
+
+  const sql = `
+    SELECT ${selectColumns}
+      FROM messages
+      ${whereClause}
+  ORDER BY created_at DESC, id DESC
+     LIMIT ${ph(nextIndex)}
+  `;
+  params.push(sanitizedLimit);
+
+  try {
+    const { rows } = await db.query(sql, params);
+    return rows.map(mapRow);
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => listRelatedMessages(options, true));
+  }
+}
+
+async function listContactHistory(options = {}, retrying = false) {
+  const {
+    phone,
+    email,
+    viewer,
+    limit = 50,
+    offset = 0,
+    status,
+    recipient,
+    label,
+    labels,
+    sectorId,
+  } = options;
+
+  const contactMatch = buildContactMatchConditions({ phone, email }, 1);
+  if (contactMatch.empty) {
+    return [];
+  }
+
+  const {
+    selectColumns,
+    includeCreatedBy,
+    includeRecipientSectorId,
+  } = await resolveSelectColumns();
+  const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
+
+  let whereClause = '';
+  const params = [];
+  let nextIndex = 1;
+
+  whereClause = appendCondition(whereClause, contactMatch.clause);
+  params.push(...contactMatch.params);
+  nextIndex = contactMatch.nextIndex;
+
+  const statusFilter = translateStatusForQuery(status);
+  if (statusFilter) {
+    const clause = `status IN (${ph(nextIndex)}, ${ph(nextIndex + 1)})`;
+    whereClause = appendCondition(whereClause, clause);
+    params.push(statusFilter.current, statusFilter.legacy);
+    nextIndex += 2;
+  }
+
+  const trimmedRecipient = trim(recipient);
+  if (trimmedRecipient) {
+    const clause = `LOWER(COALESCE(TRIM(recipient), '')) LIKE ${ph(nextIndex)}`;
+    whereClause = appendCondition(whereClause, clause);
+    params.push(`%${trimmedRecipient.toLowerCase()}%`);
+    nextIndex += 1;
+  }
+
+  const sectorNormalized = normalizeRecipientSectorId(
+    sectorId ??
+    options.recipient_sector_id ??
+    options.recipientSectorId
+  );
+
+  if (sectorNormalized && recipientSectorEnabled) {
+    const clause = `recipient_sector_id = ${ph(nextIndex)}`;
+    whereClause = appendCondition(whereClause, clause);
+    params.push(sectorNormalized);
+    nextIndex += 1;
+  }
+
+  let labelFilter = label;
+  if (!labelFilter && Array.isArray(labels) && labels.length) {
+    labelFilter = labels[0];
+  }
+  const normalizedLabel = normalizeLabelFilter(labelFilter);
+  if (normalizedLabel) {
+    const supportsLabels = await supportsTable('message_labels');
+    if (supportsLabels) {
+      const clause = `
+        id IN (
+          SELECT ml.message_id
+            FROM message_labels AS ml
+           WHERE ml.label = ${ph(nextIndex)}
+        )
+      `;
+      whereClause = appendCondition(whereClause, clause);
+      params.push(normalizedLabel);
+      nextIndex += 1;
+    }
+  }
+
+  const ownershipFilter = buildViewerOwnershipFilter(viewer, ph, nextIndex, {
+    supportsCreator: includeCreatedBy,
+    supportsSectorMembership,
+  });
+
+  if (ownershipFilter.clause) {
+    whereClause = appendCondition(whereClause, ownershipFilter.clause);
+    params.push(...ownershipFilter.params);
+    nextIndex = ownershipFilter.nextIndex;
+  }
+
+  const parsedLimit = Number(limit);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50;
+  const parsedOffset = Number(offset);
+  const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+
+  const sql = `
+    SELECT ${selectColumns}
+      FROM messages
+      ${whereClause}
+  ORDER BY created_at DESC, id DESC
+     LIMIT ${ph(nextIndex)} OFFSET ${ph(nextIndex + 1)}
+  `;
+
+  params.push(sanitizedLimit, sanitizedOffset);
+
+  try {
+    const { rows } = await db.query(sql, params);
+    return rows.map(mapRow);
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => listContactHistory(options, true));
   }
 }
 
@@ -1244,6 +1512,8 @@ module.exports = {
   updateStatus,
   remove,
   list,
+  listRelatedMessages,
+  listContactHistory,
   listRecent,
   stats,
   statsByRecipient,

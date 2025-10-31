@@ -20,11 +20,11 @@
       <!-- Cabeçalho da página -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2rem;">
         <div>
-          <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;"><%= title || 'Contatos' %></h1>
-          <p style="color:var(--text-secondary);margin:0;">Filtre, visualize e gerencie os contatos</p>
+          <h1 style="font-size:2rem;font-weight:700;margin-bottom:0.5rem;"><%= title || 'Registros' %></h1>
+          <p style="color:var(--text-secondary);margin:0;">Filtre, visualize e gerencie os registros</p>
         </div>
         <% if (permissions && permissions.createMessages) { %>
-          <a href="/novo-recado" class="btn btn-primary btn-lg">➕ Novo Contato</a>
+          <a href="/novo-recado" class="btn btn-primary btn-lg">➕ Novo Registro</a>
         <% } %>
       </div>
 
@@ -96,7 +96,7 @@
         <div class="card-body">
           <div id="listaRecados" role="region" aria-live="polite">
             <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
-              <span class="loading"></span> Carregando contatos...
+              <span class="loading"></span> Carregando registros...
             </div>
           </div>
         </div>

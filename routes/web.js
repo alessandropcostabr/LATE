@@ -13,6 +13,8 @@ const csrfProtection = require('../middleware/csrf');
 const authController = require('../controllers/authController');
 const notificationController = require('../controllers/notificationController');
 const messageViewController = require('../controllers/messageViewController');
+const contactController = require('../controllers/contactController');
+const features = require('../config/features');
 
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -173,7 +175,7 @@ router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, a
 
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('recados', {
-      title: 'Contatos',
+      title: 'Registros',
       user: req.session.user || null,
       csrfToken,
       destinatariosUsuarios: activeUsers,
@@ -189,6 +191,14 @@ router.get('/recados/kanban', requireAuth, requirePermission('read'), csrfProtec
 
 router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfProtection, messageViewController.calendarPage);
 
+router.get(
+  '/contatos/:sender_phone/historico',
+  requireAuth,
+  requirePermission('read'),
+  csrfProtection,
+  contactController.showHistory
+);
+
 router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtection, async (req, res) => {
   try {
     const [activeUsers, sectorsResult] = await Promise.all([
@@ -197,11 +207,12 @@ router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtect
     ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('novo-recado', {
-      title: 'Novo Contato',
+      title: 'Novo Registro',
       user: req.session.user || null,
       csrfToken,
       activeUsers,
       activeSectors: sectorsResult?.data || [],
+      detectRelatedMessages: features.detectRelatedMessages,
     });
   } catch (err) {
     console.error('[web] erro ao carregar /novo-recado:', err);
@@ -217,12 +228,13 @@ router.get('/editar-recado/:id', requireAuth, requireMessageUpdatePermission, cs
     ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('editar-recado', {
-      title: 'Editar Contato',
+      title: 'Editar Registro',
       id: req.params.id,
       user: req.session.user || null,
       csrfToken,
       activeUsers,
       activeSectors: sectorsResult?.data || [],
+      detectRelatedMessages: features.detectRelatedMessages,
     });
   } catch (err) {
     console.error('[web] erro ao carregar /editar-recado:', err);

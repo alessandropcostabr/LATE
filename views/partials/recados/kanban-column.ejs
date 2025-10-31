@@ -5,7 +5,7 @@
   </div>
   <div class="card-body">
     <% if (!column.cards.length) { %>
-      <p class="text-muted">Nenhum contato neste estágio com os filtros atuais.</p>
+      <p class="text-muted">Nenhum registro neste estágio com os filtros atuais.</p>
     <% } else { %>
       <div class="kanban-column__cards">
         <% column.cards.forEach(function(card) { %>
@@ -16,7 +16,7 @@
   </div>
   <% if (column.hasMore) { %>
     <div class="card-footer">
-      <p class="text-muted small">Existem mais contatos nesta coluna. Use a paginação abaixo para navegar.</p>
+      <p class="text-muted small">Existem mais registros nesta coluna. Use a paginação abaixo para navegar.</p>
     </div>
   <% } %>
 </section>

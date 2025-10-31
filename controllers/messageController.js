@@ -12,6 +12,8 @@ const MessageCommentModel = require('../models/messageComment');
 const MessageWatcherModel = require('../models/messageWatcher');
 const { enqueueTemplate } = require('../services/emailQueue');
 const { getViewerFromRequest, resolveViewerWithSectors } = require('./helpers/viewer');
+const features = require('../config/features');
+const ContactModel = require('../models/contact');
 
 function normalizeRecipientId(value) {
   const parsed = Number(value);
@@ -355,7 +357,36 @@ function toClient(row, viewer) {
     createdByName: row.created_by_name ?? null,
     // rótulo amigável
     status_label: STATUS_LABELS_PT[row.status] || row.status,
+    parent_message_id: row.parent_message_id ?? row.parentMessageId ?? null,
+    parentMessageId: row.parent_message_id ?? row.parentMessageId ?? null,
   };
+}
+
+function toRelatedItem(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    call_date: row.call_date ?? null,
+    callDate: row.call_date ?? null,
+    subject: row.subject ?? null,
+    status: row.status ?? null,
+    status_label: STATUS_LABELS_PT[row.status] || row.status,
+    recipient_name: row.recipient ?? null,
+    recipientName: row.recipient ?? null,
+    parent_message_id: row.parent_message_id ?? null,
+    parentMessageId: row.parent_message_id ?? null,
+    created_at: row.created_at ?? null,
+    createdAt: row.created_at ?? null,
+  };
+}
+
+async function syncContactFromMessage(row) {
+  if (!row) return;
+  try {
+    await ContactModel.updateFromMessage(row);
+  } catch (err) {
+    console.warn('[contacts] falha ao sincronizar contato', err?.message || err);
+  }
 }
 
 async function maybeAdoptSectorMessage(messageRow, sessionUser, viewer, actor = {}) {
@@ -540,7 +571,7 @@ exports.list = async (req, res) => {
     return res.json({ success: true, data: rows.map((row) => toClient(row, viewer)) });
   } catch (err) {
     console.error('[messages] erro ao listar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao listar contatos' });
+    return res.status(500).json({ success: false, error: 'Falha ao listar registros' });
   }
 };
 
@@ -555,7 +586,7 @@ exports.getById = async (req, res) => {
     const actor = getSessionActor(req);
     const row = await Message.findById(id, { viewer });
     if (!row) {
-      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
     await attachCreatorNames([row]);
     const events = await MessageEvent.listByMessage(id);
@@ -585,7 +616,38 @@ exports.getById = async (req, res) => {
     return res.json({ success: true, data });
   } catch (err) {
     console.error('[messages] erro ao obter por id:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao obter contato' });
+    return res.status(500).json({ success: false, error: 'Falha ao obter registro' });
+  }
+};
+
+// GET /api/messages/related
+exports.listRelated = async (req, res) => {
+  if (!features.detectRelatedMessages) {
+    return res.status(404).json({ success: false, error: 'Recurso indisponível' });
+  }
+
+  try {
+    const viewer = await resolveViewerWithSectors(req);
+    const phone = String(req.query.phone || '').trim();
+    const email = String(req.query.email || '').trim();
+    const limit = Number(req.query.limit) || 5;
+    const excludeRaw = req.query.excludeId ?? req.query.exclude ?? req.query.exclude_id;
+    const excludeId = Number.isInteger(excludeRaw) ? excludeRaw : Number(excludeRaw);
+    const sanitizedExcludeId = Number.isInteger(excludeId) && excludeId > 0 ? excludeId : null;
+
+    const related = await Message.listRelatedMessages({
+      phone,
+      email,
+      excludeId: sanitizedExcludeId,
+      limit,
+      viewer,
+    });
+
+    const data = related.map(toRelatedItem);
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('[messages] erro ao buscar relacionados:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao buscar registros relacionados' });
   }
 };
 
@@ -626,6 +688,7 @@ exports.create = async (req, res) => {
     const id = await Message.create(payload);
     const created = await Message.findById(id);
     await attachCreatorNames([created]);
+    await syncContactFromMessage(created);
 
     if (created) {
       dispatchBackground('notifyRecipientUser:new', () => notifyRecipientUser(created, { template: 'new' }));
@@ -640,7 +703,7 @@ exports.create = async (req, res) => {
     return res.status(201).json({ success: true, data: toClient(created, viewer) });
   } catch (err) {
     console.error('[messages] erro ao criar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao criar contato' });
+    return res.status(500).json({ success: false, error: 'Falha ao criar registro' });
   }
 };
 
@@ -657,7 +720,7 @@ exports.update = async (req, res) => {
     const payload = sanitizePayload(req.body);
     const before = await Message.findById(id);
     if (!before) {
-      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
 
     const recipientInput = extractRecipientInput(req.body);
@@ -691,10 +754,11 @@ exports.update = async (req, res) => {
 
     const ok = await Message.update(id, payload);
     if (!ok) {
-      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
+    await syncContactFromMessage(updated);
     const changes = computeChanges(before, updated);
 
     updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer, actor);
@@ -709,7 +773,7 @@ exports.update = async (req, res) => {
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao atualizar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao atualizar contato' });
+    return res.status(500).json({ success: false, error: 'Falha ao atualizar registro' });
   }
 };
 
@@ -725,7 +789,7 @@ exports.forward = async (req, res) => {
 
     const current = await Message.findById(id);
     if (!current) {
-      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
 
     const recipientInput = extractRecipientInput(req.body);
@@ -745,7 +809,7 @@ exports.forward = async (req, res) => {
     if (unchangedRecipient) {
       return res.status(400).json({
         success: false,
-        error: 'Selecione um destinatário diferente para encaminhar o contato.',
+        error: 'Selecione um destinatário diferente para encaminhar o registro.',
       });
     }
 
@@ -756,7 +820,7 @@ exports.forward = async (req, res) => {
     });
 
     if (!ok) {
-      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
 
     const updated = await Message.findById(id);
@@ -791,7 +855,7 @@ exports.forward = async (req, res) => {
     return res.json({ success: true, data: toClient(updated, viewer) });
   } catch (err) {
     console.error('[messages] erro ao encaminhar:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao encaminhar contato' });
+    return res.status(500).json({ success: false, error: 'Falha ao encaminhar registro' });
   }
 };
 
@@ -808,7 +872,7 @@ exports.updateStatus = async (req, res) => {
     const { status } = req.body || {};
     const before = await Message.findById(id);
     if (!before) {
-      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
+      return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
     const ok = await Message.updateStatus(id, status, {
       updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
@@ -847,10 +911,10 @@ exports.remove = async (req, res) => {
     if (!ok) {
       return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
-    return res.json({ success: true, data: 'Contato removido com sucesso' });
+    return res.json({ success: true, data: 'Registro removido com sucesso' });
   } catch (err) {
     console.error('[messages] erro ao remover:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao remover contato' });
+    return res.status(500).json({ success: false, error: 'Falha ao remover registro' });
   }
 };
 
