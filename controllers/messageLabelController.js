@@ -1,5 +1,5 @@
 // controllers/messageLabelController.js
-// Operações de labels (tags) associadas aos contatos.
+// Operações de labels (tags) associadas aos registros.
 
 const MessageLabelModel = require('../models/messageLabel');
 

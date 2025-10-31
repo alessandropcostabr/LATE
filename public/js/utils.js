@@ -97,6 +97,9 @@ const Form = {
     if (Object.prototype.hasOwnProperty.call(out, 'recipient_sector_id')) {
       out.recipient_sector_id = toPositiveInt(out.recipient_sector_id);
     }
+    if (Object.prototype.hasOwnProperty.call(out, 'parent_message_id')) {
+      out.parent_message_id = toPositiveInt(out.parent_message_id);
+    }
 
     if (out.recipientType !== undefined) {
       out.recipientType = Normalizer.toNullIfEmpty(out.recipientType)?.toLowerCase() || undefined;

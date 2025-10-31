@@ -20,7 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     'status',
     'visibility',
     'notes',
-    'message'
+    'message',
+    'parent_message_id'
   ];
 
   const recipientTypeSelect = document.getElementById('recipientType');
@@ -30,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const recipientUserGroup = document.getElementById('recipientUserGroup');
   const recipientSectorGroup = document.getElementById('recipientSectorGroup');
   const visibilitySelect = document.getElementById('visibility');
+  const parentInput = document.getElementById('parent_message_id');
 
   function formatCallbackInput(value) {
     if (!value) return '';
@@ -106,6 +108,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (recipientHiddenInput) {
       recipientHiddenInput.value = data.recipient || '';
     }
+    if (parentInput) {
+      parentInput.value = data.parent_message_id || '';
+    }
     if (visibilitySelect) {
       visibilitySelect.value = (data.visibility || 'private');
     }
@@ -118,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       deleteButton.dataset.messageSubject = encodeURIComponent(safeData.subject || '');
     }
   } catch (e) {
-    Toast.error('Erro ao carregar contato');
+    Toast.error('Erro ao carregar registro');
   }
 
   form.addEventListener('submit', async e => {
@@ -131,6 +136,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const formData = Form.getData(form);
       const payload = {};
       fields.forEach(f => {
+        if (f === 'parent_message_id') {
+          if (formData[f] !== undefined) {
+            const numericParent = Number(formData[f]);
+            payload[f] = Number.isInteger(numericParent) && numericParent > 0 ? numericParent : null;
+          } else if (safeData[f] !== undefined) {
+            payload[f] = safeData[f];
+          }
+          return;
+        }
         if (formData[f] !== undefined && formData[f] !== '') {
           payload[f] = formData[f];
         } else if (safeData[f] !== undefined) {
@@ -143,7 +157,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         payload.status = (payload.status || '').toLowerCase().replace(/\s+/g, '_');
       }
       await API.updateMessage(id, payload);
-      Toast.success('Contato atualizado com sucesso!');
+      Toast.success('Registro atualizado com sucesso!');
       setTimeout(() => (window.location.href = `/visualizar-recado/${id}`), 1000);
     } catch (err) {
       const validationError = err.body?.data?.details?.[0]
@@ -151,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         || err.details?.[0]
         || err.body?.errors?.[0]
         || err.errors?.[0];
-      const msg = validationError?.msg || validationError?.message || err.message || 'Erro ao atualizar contato';
+      const msg = validationError?.msg || validationError?.message || err.message || 'Erro ao atualizar registro';
       Toast.error(msg);
     } finally {
       Loading.hide('btnSalvar');
@@ -165,8 +179,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       let subject = '';
       try { subject = decodeURIComponent(subjectEncoded); } catch (_err) { subject = subjectEncoded; }
       const confirmation = subject
-        ? `Tem certeza de que deseja excluir o contato "${subject}"?`
-        : 'Tem certeza de que deseja excluir este contato?';
+        ? `Tem certeza de que deseja excluir o registro "${subject}"?`
+        : 'Tem certeza de que deseja excluir este registro?';
 
       if (!window.confirm(confirmation)) return;
 
@@ -176,13 +190,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         deleteButton.textContent = 'Excluindo...';
         await API.deleteMessage(id);
         if (window.Toast?.success) {
-          window.Toast.success('Contato excluído com sucesso.');
+        window.Toast.success('Registro excluído com sucesso.');
         }
         setTimeout(() => (window.location.href = '/recados'), 600);
       } catch (err) {
         deleteButton.disabled = false;
         deleteButton.textContent = originalLabel;
-        const msg = err?.message || 'Erro ao excluir contato.';
+        const msg = err?.message || 'Erro ao excluir registro.';
         if (window.Toast?.error) {
           window.Toast.error(msg);
         } else {

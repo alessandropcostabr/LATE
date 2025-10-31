@@ -1,6 +1,6 @@
 // public/js/app.js
 // Comentários em pt-BR; identificadores em inglês.
-// Este arquivo agora cuida APENAS de "Contatos Recentes" no Dashboard.
+// Este arquivo agora cuida APENAS de "Registros Recentes" no Dashboard.
 // As estatísticas de cards ficam a cargo do utils.js para evitar chamadas duplicadas.
 
 // Helpers de requisição (compatível com a API atual)
@@ -72,7 +72,7 @@ const STATUS_META = {
   },
 };
 
-// ---- Contatos Recentes (somente) ----
+// ---- Registros Recentes (somente) ----
 async function carregarRecadosRecentes() {
   const container = document.getElementById('recadosRecentes');
   if (!container) return;
@@ -80,7 +80,7 @@ async function carregarRecadosRecentes() {
   container.innerHTML = `
     <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
       <div class="loading" style="margin: 0 auto 1rem;"></div>
-      Carregando contatos...
+      Carregando registros...
     </div>
   `;
 
@@ -92,7 +92,7 @@ async function carregarRecadosRecentes() {
     if (!list.length) {
       container.innerHTML = `
         <div style="text-align:center; padding: 1.5rem; color: var(--text-secondary);">
-          Nenhum contato encontrado.
+          Nenhum registro encontrado.
         </div>`;
       return;
     }
@@ -106,7 +106,7 @@ async function carregarRecadosRecentes() {
       const statusLabel = m.status_label || meta.label;
 
       return `
-        <a class="recent-message" href="/visualizar-recado/${m.id}" aria-label="Abrir contato ${escapeHtml(subject)}">
+        <a class="recent-message" href="/visualizar-recado/${m.id}" aria-label="Abrir registro ${escapeHtml(subject)}">
           <div style="min-width:0;">
             <div class="recent-message__title">${escapeHtml(subject)}</div>
             <div class="recent-message__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)}</div>

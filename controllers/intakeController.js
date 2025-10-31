@@ -139,7 +139,7 @@ exports.create = async (req, res) => {
       userAgent,
       error: err?.message || String(err),
     });
-    console.error('[intake] erro ao registrar contato via intake:', err);
-    return res.status(500).json({ success: false, error: 'Falha ao registrar contato' });
+    console.error('[intake] erro ao registrar registro via intake:', err);
+    return res.status(500).json({ success: false, error: 'Falha ao registrar registro' });
   }
 };

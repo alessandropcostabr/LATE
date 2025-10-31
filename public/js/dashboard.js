@@ -63,7 +63,7 @@ export async function carregarRecadosRecentes(limit = 10) {
 
     const caption = document.createElement('caption');
     caption.className = 'sr-only';
-    caption.textContent = 'Contatos Recentes';
+    caption.textContent = 'Registros Recentes';
 
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
