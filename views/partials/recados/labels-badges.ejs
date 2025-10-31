@@ -1,18 +1,18 @@
 <div class="card" data-labels-panel data-can-manage="<%= permissions && permissions.updateMessages ? 'true' : 'false' %>">
   <div class="card-header">
-    <h3 class="card-title">Labels</h3>
+    <h3 class="card-title">Etiquetas</h3>
     <p class="card-subtitle">Organize o registro com etiquetas rápidas</p>
   </div>
   <div class="card-body">
     <div class="labels-wrapper" data-labels-list>
-      <p class="text-muted mb-0">Nenhuma label aplicada.</p>
+      <p class="text-muted mb-0">Nenhuma etiqueta aplicada.</p>
     </div>
   </div>
   <% if (permissions && permissions.updateMessages) { %>
     <div class="card-footer">
       <form class="label-form" data-labels-form autocomplete="off">
         <div class="label-form__group">
-          <label for="labelInput" class="form-label">Adicionar label</label>
+          <label for="labelInput" class="form-label">Adicionar etiqueta</label>
           <div class="label-form__input">
             <input id="labelInput" name="label" type="text" class="form-input" placeholder="Ex.: urgente, financeiro" maxlength="32" data-label-input>
             <button type="submit" class="btn btn-primary btn-sm">Adicionar</button>

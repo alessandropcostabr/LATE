@@ -11,8 +11,9 @@ function parseBoolean(value, defaultValue = false) {
   return defaultValue;
 }
 
-const detectRelatedMessages = parseBoolean(process.env.FEATURE_DETECT_RELATED_MESSAGES, true);
+// Feature flags removidas:
+// - detectRelatedMessages: Funcionalidade de registros relacionados está sempre ativa
 
 module.exports = {
-  detectRelatedMessages,
+  // Adicione novas feature flags aqui quando necessário
 };
