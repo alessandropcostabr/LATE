@@ -328,10 +328,19 @@ app.use((err, req, res, _next) => {
   const status = err.status || 500;
   const isDevelopment = process.env.NODE_ENV === 'development';
 
-  res.status(status).json({
-    success: false,
-    error: isDevelopment && err.message ? err.message : 'Erro interno'
-  });
+  // Diferencia resposta entre API (JSON) e Web (HTML)
+  if (req.path.startsWith('/api/')) {
+    res.status(status).json({
+      success: false,
+      error: isDevelopment && err.message ? err.message : 'Erro interno'
+    });
+  } else {
+    // Rotas web devem renderizar página de erro
+    res.status(status).render('500', {
+      title: 'Erro interno',
+      user: req.session?.user || null
+    });
+  }
 });
 
 // 404

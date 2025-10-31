@@ -178,19 +178,68 @@ document.addEventListener('DOMContentLoaded', () => {
     ].join('');
 
     elements.details.innerHTML = html;
+    
+    // Atualizar seção de histórico do contato
+    updateContactHistorySection(recado);
   }
 
   function buildHistoryLink(recado) {
     const phone = normalizePhone(recado?.sender_phone);
-    if (!phone) return null;
+    const email = recado?.sender_email;
+    
+    // Precisa ter telefone OU email
+    if (!phone && !email) return null;
+    
     try {
-      const url = new URL(`/contatos/${encodeURIComponent(phone)}/historico`, window.location.origin);
-      if (recado?.sender_email) {
-        url.searchParams.set('email', recado.sender_email);
+      let url;
+      if (phone) {
+        url = new URL(`/contatos/${encodeURIComponent(phone)}/historico`, window.location.origin);
+        if (email) {
+          url.searchParams.set('email', email);
+        }
+      } else {
+        // Apenas email
+        url = new URL(`/contatos/email/historico`, window.location.origin);
+        url.searchParams.set('email', email);
       }
       return `<a href="${url.pathname + url.search}" target="_blank" rel="noopener" class="btn btn-link btn-sm">Ver histórico completo</a>`;
     } catch (_err) {
       return null;
+    }
+  }
+  
+  function updateContactHistorySection(recado) {
+    const section = document.getElementById('contact-history-section');
+    const link = document.getElementById('contact-history-link');
+    
+    if (!section || !link) return;
+    
+    const phone = normalizePhone(recado?.sender_phone);
+    const email = recado?.sender_email;
+    
+    // Precisa ter telefone OU email
+    if (!phone && !email) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    try {
+      let url;
+      if (phone) {
+        url = new URL(`/contatos/${encodeURIComponent(phone)}/historico`, window.location.origin);
+        if (email) {
+          url.searchParams.set('email', email);
+        }
+      } else {
+        // Apenas email
+        url = new URL(`/contatos/email/historico`, window.location.origin);
+        url.searchParams.set('email', email);
+      }
+      
+      link.href = url.pathname + url.search;
+      section.style.display = 'block';
+    } catch (_err) {
+      section.style.display = 'none';
     }
   }
 
