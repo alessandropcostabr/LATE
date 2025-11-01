@@ -340,7 +340,7 @@ app.use((err, req, res, _next) => {
     res.status(status).render('500', {
       title: 'Erro interno',
       user: req.session?.user || null,
-      error: isDevelopment && err.message ? err.message : null
+      error: isDevelopment ? (err.stack || err.message || String(err)) : null
     });
   }
 });
