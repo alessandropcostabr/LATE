@@ -1,0 +1,83 @@
+<h2>🎯 Objetivo</h2>
+<p>Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Triagem Eficiente) por equipes operacionais e administrativas.</p>
+<h2>🧑‍💼 Perfis de Acesso</h2>
+<ul>
+<li><strong>Leitor:</strong> Apenas leitura</li>
+<li><strong>Operador:</strong> Cria recados, atualiza seus próprios</li>
+<li><strong>Supervisor:</strong> Pode editar e reatribuir recados do setor</li>
+<li><strong>Administrador:</strong> Acesso completo</li>
+</ul>
+<h2>📬 Tipos de Registro</h2>
+<ul>
+<li><strong>Normal:</strong> Pendências comuns com destinatário</li>
+<li><strong>Comunicado:</strong> Leitura obrigatória com confirmação</li>
+<li><strong>Incidente:</strong> Ocorrência não-clínica com categoria e severidade</li>
+<li><strong>Ideia:</strong> Sugestão de melhoria</li>
+</ul>
+<h2>🛠️ Funcionalidades</h2>
+<h3>Criar Recado</h3>
+<ul>
+<li>Campos: remetente, assunto, mensagem, status, prazo (callback), setor/destinatário, etiquetas</li>
+<li>Pode usar modelo pré-configurado com checklists</li>
+</ul>
+<h3>Comentários e Menções</h3>
+<ul>
+<li>Comentários visíveis por todos com permissão</li>
+<li>Use <code>@nome</code> para alertar usuários específicos</li>
+</ul>
+<h3>Checklists</h3>
+<ul>
+<li>Itens marcáveis por progresso</li>
+<li>Útil para ações pós-ligação ou playbooks</li>
+</ul>
+<h3>Etiquetas (Labels)</h3>
+<ul>
+<li>Cores e nomes livres, mas recomenda-se padrão por setor</li>
+<li>Exemplo: <code>urgente</code>, <code>suprimentos</code>, <code>financeiro</code></li>
+</ul>
+<h3>Encaminhar</h3>
+<ul>
+<li>Muda o destinatário mantendo o histórico</li>
+</ul>
+<h2>📊 Visões</h2>
+<ul>
+<li><strong>Lista padrão:</strong> ordenável e com filtros</li>
+<li><strong>Kanban:</strong> colunas por status, ideal para triagem</li>
+<li><strong>Calendário:</strong> prazos e ligações por data</li>
+<li><strong>Widgets (Dashboard):</strong> hoje, atrasados, SLAs, por setor</li>
+</ul>
+<h2>🔔 Notificações</h2>
+<ul>
+<li>Envio por e-mail para:<ul>
+<li>Novo recado</li>
+<li>Resolução</li>
+<li>@menções</li>
+<li>Vencimento próximo (data/hora agendada)</li>
+</ul>
+</li>
+</ul>
+<h2>🔐 Segurança</h2>
+<ul>
+<li>Login com sessão segura (cookies httpOnly, regeneração de sessão)</li>
+<li>Tokens de intake armazenados como hash + expiração opcional</li>
+<li>Rate-limit e CSRF ativos</li>
+<li>Ações críticas registradas em log/auditoria</li>
+</ul>
+<h2>📥 Integração via /intake</h2>
+<ul>
+<li>Envio seguro via token</li>
+<li>Formulário público externo ou e-mail gateway</li>
+</ul>
+<h2>📚 Ajuda</h2>
+<ul>
+<li>Página <code>/ajuda</code> com atalhos e guias rápidos</li>
+<li>Links para SOPs e Playbooks no Notion</li>
+</ul>
+<h3>Quando acionar o diagnóstico técnico</h3>
+<ul>
+<li>Ao notar lentidão ou falhas repetidas, rode <code>node scripts/dev-info.js --json --output=diagnostics.json</code> (via time técnico) para registrar o estado do sistema.</li>
+<li>O arquivo gerado (<code>diagnostics.json</code>, por padrão) deve ser enviado junto ao chamado para agilizar a análise.</li>
+<li>Para homologação, a rota <code>/api/debug/info</code> (apenas em DEV/TEST e com usuário logado) retorna o mesmo resumo. Sem sessão válida o endpoint responde 401.</li>
+</ul>
+<hr>
+<p>📩 Dúvidas? Fale com a coordenação ou veja <code>/ajuda</code> dentro do sistema.</p>

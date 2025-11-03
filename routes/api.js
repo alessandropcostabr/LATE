@@ -17,6 +17,7 @@ const automationController = require('../controllers/automationController');
 const healthController = require('../controllers/healthController');
 const metaController = require('../controllers/metaController');
 const intakeController = require('../controllers/intakeController');
+const { collectDevInfo } = require('../utils/devInfo');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
 const validation = require('../middleware/validation');
@@ -161,6 +162,23 @@ router.get('/csrf', csrfProtection, (req, res) => {
 // Utilitários
 router.get('/health', healthController.apiCheck);
 router.get('/version', metaController.version);
+
+const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
+if (nodeEnv === 'development' || nodeEnv === 'test') {
+  router.get(
+    '/debug/info',
+    ...flatFns(requireAuth),
+    async (req, res) => {
+      try {
+        const info = await collectDevInfo();
+        return res.json({ success: true, data: info });
+      } catch (err) {
+        console.error('[debug/info] falha ao coletar diagnóstico:', err);
+        return res.status(500).json({ success: false, error: 'Falha ao coletar diagnóstico' });
+      }
+    }
+  );
+}
 
 router.post(
   '/intake',
