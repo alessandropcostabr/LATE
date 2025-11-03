@@ -19,12 +19,28 @@ exports.listByAutomation = async (automationId, { limit = 100, offset = 0 } = {}
   return rows;
 };
 
-exports.create = async ({ automationId, messageId, status, error, payload }) => {
-  const { rows } = await db.query(
-    `INSERT INTO automation_logs (automation_id, message_id, status, error, payload)
-         VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, automation_id, message_id, status, error, payload, created_at`,
-    [automationId, messageId || null, status, error || null, payload || null]
-  );
-  return rows[0];
+function truncateToMinute(date) {
+  if (!date) return null;
+  const copy = new Date(date);
+  copy.setSeconds(0, 0);
+  return copy;
+}
+
+exports.create = async ({ automationId, messageId, status, error, payload, createdAt = null }) => {
+  const createdAtValue = createdAt ? new Date(createdAt) : null;
+  const minuteBucket = truncateToMinute(createdAtValue || new Date());
+  try {
+    const { rows } = await db.query(
+      `INSERT INTO automation_logs (automation_id, message_id, status, error, payload, created_at, created_at_minute)
+           VALUES ($1, $2, $3, $4, $5, COALESCE($6, NOW()), COALESCE($7, date_trunc('minute', COALESCE($6, NOW()))))
+        RETURNING id, automation_id, message_id, status, error, payload, created_at`,
+      [automationId, messageId || null, status, error || null, payload || null, createdAtValue, minuteBucket]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    if (err?.code === '23505') {
+      return null;
+    }
+    throw err;
+  }
 };

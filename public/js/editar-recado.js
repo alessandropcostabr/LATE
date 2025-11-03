@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     'sender_name',
     'sender_phone',
     'sender_email',
-    'callback_time',
+    'callback_at',
     'subject',
     'status',
     'visibility',
@@ -37,12 +37,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!value) return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes();
-    if (minutes === 0) {
-      return `${hours}h`;
-    }
-    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    const pad = (num) => String(num).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 
   function updateRecipientHidden() {
@@ -90,8 +91,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     allFields.forEach(f => {
       if (data[f] !== undefined) safeData[f] = data[f] ?? '';
     });
-    if (!safeData.callback_time && data.callback_at) {
-      safeData.callback_time = formatCallbackInput(data.callback_at);
+    if (data.callback_at) {
+      safeData.callback_at = formatCallbackInput(data.callback_at);
     }
     Form.populate(form, safeData);
     const recipientType = (data.recipient_sector_id ? 'sector' : 'user');

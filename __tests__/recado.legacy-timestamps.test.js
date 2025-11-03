@@ -32,7 +32,6 @@ function setupDatabase() {
         status TEXT NOT NULL DEFAULT 'pending',
         visibility TEXT NOT NULL DEFAULT 'private',
         callback_at TIMESTAMPTZ,
-        callback_time TEXT,
         notes TEXT,
         created_by INTEGER,
         updated_by INTEGER,
@@ -82,7 +81,7 @@ describe('message model with modern schema', () => {
     const fetched = await MessageModel.findById(id);
     expect(fetched.recipient).toBe('Alice');
     expect(fetched.message).toBe('Mensagem de teste');
-    expect(fetched.callback_time).toBeNull();
+    expect(fetched.callback_time).toBeUndefined();
     expect(fetched.callback_at).toBeTruthy();
     expect(new Date(fetched.callback_at).getHours()).toBe(14);
     expect(fetched.notes).toBe('Observações iniciais');
@@ -106,7 +105,7 @@ describe('message model with modern schema', () => {
     const updated = await MessageModel.findById(id);
     expect(updated.status).toBe('resolved');
     expect(updated.message).toBe('Mensagem atualizada');
-    expect(updated.callback_time).toBeNull();
+    expect(updated.callback_time).toBeUndefined();
     expect(updated.callback_at).toBeTruthy();
     expect(new Date(updated.callback_at).getHours()).toBe(18);
     expect(updated.notes).toBe('Observações atualizadas');

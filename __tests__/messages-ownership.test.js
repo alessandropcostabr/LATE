@@ -38,7 +38,6 @@ describe('messages ownership metadata', () => {
         status TEXT NOT NULL DEFAULT 'pending',
         visibility TEXT NOT NULL DEFAULT 'private',
         callback_at TIMESTAMPTZ,
-        callback_time TEXT,
         notes TEXT,
         created_by INTEGER,
         updated_by INTEGER,

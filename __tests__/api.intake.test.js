@@ -3,6 +3,7 @@ process.env.NODE_ENV = 'test';
 const express = require('express');
 const request = require('supertest');
 const { newDb } = require('pg-mem');
+const { hashToken } = require('../utils/hashToken');
 
 jest.mock('../services/emailQueue', () => ({
   enqueueTemplate: jest.fn().mockResolvedValue(null),
@@ -64,7 +65,6 @@ async function bootstrapSchema(db) {
       status TEXT DEFAULT 'pending',
       visibility TEXT DEFAULT 'private',
       callback_at TIMESTAMPTZ,
-      callback_time TEXT,
       notes TEXT,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
@@ -94,7 +94,7 @@ async function bootstrapSchema(db) {
     CREATE TABLE intake_logs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
-      token TEXT,
+      token_hash TEXT,
       payload JSONB,
       ip TEXT,
       user_agent TEXT,
@@ -123,6 +123,7 @@ describe('POST /api/intake', () => {
 
   beforeEach(async () => {
     process.env.INTAKE_TOKEN = 'secret-token';
+    process.env.INTAKE_TOKEN_PEPPER = 'pepper-test';
     const setup = createDatabase();
     dbManager = setup.dbManager;
     await bootstrapSchema(dbManager.getDatabase());
@@ -135,6 +136,8 @@ describe('POST /api/intake', () => {
     jest.resetModules();
     delete global.__LATE_POOL_FACTORY;
     process.env.INTAKE_TOKEN = originalToken;
+    delete process.env.INTAKE_TOKEN_PEPPER;
+    delete process.env.INTAKE_TOKEN_EXPIRES_AT;
     emailQueue = null;
   });
 
@@ -164,8 +167,10 @@ describe('POST /api/intake', () => {
     expect(rows[0].recipient_user_id).toBe(10);
     expect(rows[0].status).toBe('pending');
 
-    const logRows = await database.query('SELECT status FROM intake_logs');
-    expect(logRows.rows).toEqual([{ status: 'success' }]);
+    const logRows = await database.query('SELECT status, token_hash FROM intake_logs');
+    expect(logRows.rows).toEqual([
+      { status: 'success', token_hash: hashToken('secret-token') }
+    ]);
   });
 
   test('recusa token inválido', async () => {
@@ -179,8 +184,31 @@ describe('POST /api/intake', () => {
     expect(response.status).toBe(401);
     expect(emailQueue.enqueueTemplate).not.toHaveBeenCalled();
 
-    const { rows } = await database.query('SELECT status FROM intake_logs');
-    expect(rows).toEqual([{ status: 'unauthorized' }]);
+    const { rows } = await database.query('SELECT status, token_hash FROM intake_logs');
+    expect(rows).toEqual([
+      { status: 'unauthorized', token_hash: hashToken('wrong') }
+    ]);
+  });
+
+  test('expira token conforme configuração', async () => {
+    process.env.INTAKE_TOKEN_EXPIRES_AT = '2020-01-01T00:00:00Z';
+    const database = dbManager.getDatabase();
+    const app = createApp(dbManager);
+
+    const response = await request(app)
+      .post('/api/intake')
+      .set('x-intake-token', 'secret-token')
+      .send({ subject: 'Teste', message: 'Mensagem', recipientUserId: 1 });
+
+    expect(response.status).toBe(401);
+    const { rows } = await database.query('SELECT status, token_hash, error FROM intake_logs');
+    expect(rows).toEqual([
+      {
+        status: 'unauthorized',
+        token_hash: hashToken('secret-token'),
+        error: 'Token expirado',
+      },
+    ]);
   });
 
   test('valida campos obrigatórios', async () => {
@@ -195,7 +223,9 @@ describe('POST /api/intake', () => {
     expect(response.body.success).toBe(false);
     expect(emailQueue.enqueueTemplate).not.toHaveBeenCalled();
 
-    const { rows } = await database.query('SELECT status FROM intake_logs');
-    expect(rows).toEqual([{ status: 'error' }]);
+    const { rows } = await database.query('SELECT status, token_hash FROM intake_logs');
+    expect(rows).toEqual([
+      { status: 'error', token_hash: hashToken('secret-token') }
+    ]);
   });
 });

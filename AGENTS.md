@@ -77,6 +77,7 @@ Sempre que alterar schema ou assets:
 - Rede: `CORS_ORIGINS`, `TRUST_PROXY` (número ou palavra-chave; obrigatório em produção)
 - Mailer: `MAIL_DRIVER` (`smtp` ou `log`), `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 - Aplicação: `APP_BASE_URL`, `APP_VERSION`, `APP_BUILD`, `MAIL_DEBUG`
+- Intake: `INTAKE_TOKEN`, `INTAKE_TOKEN_PEPPER`, `INTAKE_TOKEN_EXPIRES_AT`, `INTAKE_RATE_LIMIT`, `INTAKE_RATE_WINDOW_MS`, `INTAKE_REQUIRE_CSRF`
 - Scripts: `ADMIN_EMAIL`, `ADMIN_PASSWORD` para `seed-admin`
 
 ---
@@ -111,6 +112,9 @@ Sempre que alterar schema ou assets:
   - Setores e permissões (`20251006_add_sectors.sql`, `20251107_add_users_view_scope.sql`)
   - Alertas e notificações (`20251114_create_notification_settings.sql`, `20251115_create_message_alerts.sql`)
   - Recuperação de senha (`20251110_add_password_reset_tokens.sql`)
+  - Idempotência das automations (`20251211_add_automation_logs_unique_idx.sql`)
+  - Intake: hash de token e auditoria (`20251211_update_intake_logs_token_hash.sql`)
+  - Remoção de legado `callback_time` (`20251211_drop_callback_time.sql`)
 - Scripts:
   - `npm run migrate` / `npm run migrate:dry`
   - `scripts/backup-simple.sh` → usa `pg_dump`
@@ -151,6 +155,7 @@ Sempre que alterar schema ou assets:
 
 - `scripts/migrate.js [--dry-run]`
 - `scripts/seed-admin.js`
+- `scripts/security-check.sh [BASE_URL]` — gera relatório do checklist de segurança
 - `scripts/generate-artifacts.sh` → gera `_reports/inventario_*.txt`, tree e dump textual (sem subir para o Git)
 - `scripts/generate-inventory.sh`
 - `scripts/backup-simple.sh`

@@ -164,7 +164,6 @@ const BASE_SELECT_FIELDS = [
   'status',
   'visibility',
   'callback_at',
-  'callback_time',
   'notes',
   'created_at',
   'updated_at',
@@ -440,7 +439,6 @@ function normalizePayload(payload = {}) {
     message: messageContent || '(sem mensagem)',
     status: statusProvided ? ensureStatus(payload.status) : null,
     visibility: visibilityProvided ? normalizeVisibility(payload.visibility) : undefined,
-    callback_time: callbackProvided ? null : undefined,
     callback_at: callbackProvided ? callbackAtValue ?? null : undefined,
     notes: emptyToNull(payload.notes),
   };
@@ -495,7 +493,6 @@ function mapRow(row) {
     visibility: normalizeVisibility(row.visibility),
     callback_at: row.callback_at ?? null,
     callbackAt: row.callback_at ?? null,
-    callback_time: row.callback_time ?? null,
     notes: row.notes ?? null,
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
@@ -692,10 +689,8 @@ async function create(payload) {
 
   if (normalized.callbackProvided) {
     data.callback_at = normalized.data.callback_at ?? null;
-    data.callback_time = null;
   } else {
     data.callback_at = data.callback_at ?? null;
-    data.callback_time = null;
   }
 
   if (data.visibility === undefined) {
@@ -742,7 +737,6 @@ async function create(payload) {
     'status',
     'visibility',
     'callback_at',
-    'callback_time',
     'notes',
   ];
   const fields = [...baseFields];
@@ -750,10 +744,7 @@ async function create(payload) {
   if (!normalized.callbackProvided) {
     const callbackIndex = fields.indexOf('callback_at');
     if (callbackIndex !== -1) fields.splice(callbackIndex, 1);
-    const legacyIndex = fields.indexOf('callback_time');
-    if (legacyIndex !== -1) fields.splice(legacyIndex, 1);
   } else {
-    normalized.data.callback_time = null;
     normalized.data.callback_at = normalized.data.callback_at ?? null;
   }
 
@@ -863,7 +854,6 @@ async function update(id, payload, retrying = false) {
     'subject',
     'message',
     'callback_at',
-    'callback_time',
     'notes',
   ];
   const fields = [...baseFields];
@@ -871,11 +861,8 @@ async function update(id, payload, retrying = false) {
   if (!normalized.callbackProvided) {
     const callbackIndex = fields.indexOf('callback_at');
     if (callbackIndex !== -1) fields.splice(callbackIndex, 1);
-    const legacyIndex = fields.indexOf('callback_time');
-    if (legacyIndex !== -1) fields.splice(legacyIndex, 1);
   } else {
     normalized.data.callback_at = normalized.data.callback_at ?? null;
-    normalized.data.callback_time = null;
   }
 
   if (shouldIncludeRecipientUserId) {
