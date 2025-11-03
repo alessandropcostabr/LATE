@@ -5,6 +5,7 @@ const Message = require('../models/message');
 const IntakeLog = require('../models/intakeLog');
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
+const { hashToken } = require('../utils/hashToken');
 const { __internals } = require('./messageController');
 
 const {
@@ -52,22 +53,44 @@ async function resolveRecipientName({ recipient_user_id, recipient_sector_id, fa
   return fallback || 'Central de Relacionamento';
 }
 
+const intakeTokenExpiresAt = (() => {
+  const raw = (process.env.INTAKE_TOKEN_EXPIRES_AT || '').trim();
+  if (!raw) return null;
+  const parsed = Date.parse(raw);
+  if (Number.isNaN(parsed)) {
+    console.warn('[intake] valor inválido para INTAKE_TOKEN_EXPIRES_AT (ignorado):', raw);
+    return null;
+  }
+  return parsed;
+})();
+
+function isTokenExpired() {
+  if (!intakeTokenExpiresAt) return false;
+  return Date.now() > intakeTokenExpiresAt;
+}
+
 exports.create = async (req, res) => {
   const expectedToken = (process.env.INTAKE_TOKEN || '').trim();
   const providedToken = extractToken(req);
+  const providedTokenHash = providedToken ? hashToken(providedToken) : null;
   const ip = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || null;
   const userAgent = req.get('user-agent') || null;
 
-  if (!expectedToken || providedToken !== expectedToken) {
+  if (!expectedToken || providedToken !== expectedToken || isTokenExpired()) {
+    const errorReason = !expectedToken
+      ? 'Token não configurado'
+      : providedToken !== expectedToken
+        ? 'Token inválido'
+        : 'Token expirado';
     await IntakeLog.create({
       status: 'unauthorized',
-      token: providedToken || null,
+      tokenHash: providedTokenHash,
       payload: null,
       ip,
       userAgent,
-      error: 'Token inválido',
+      error: errorReason,
     });
-    return res.status(401).json({ success: false, error: 'Token inválido' });
+    return res.status(401).json({ success: false, error: errorReason });
   }
 
   const payloadForLog = { ...req.body };
@@ -82,7 +105,7 @@ exports.create = async (req, res) => {
     if (resolved.error) {
       await IntakeLog.create({
         status: 'error',
-        token: providedToken,
+        tokenHash: providedTokenHash,
         payload: payloadForLog,
         ip,
         userAgent,
@@ -119,7 +142,7 @@ exports.create = async (req, res) => {
     await IntakeLog.create({
       messageId,
       status: 'success',
-      token: providedToken,
+      tokenHash: providedTokenHash,
       payload: payloadForLog,
       ip,
       userAgent,
@@ -133,7 +156,7 @@ exports.create = async (req, res) => {
   } catch (err) {
     await IntakeLog.create({
       status: 'error',
-      token: providedToken,
+      tokenHash: providedTokenHash,
       payload: payloadForLog,
       ip,
       userAgent,

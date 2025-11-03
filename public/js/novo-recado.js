@@ -89,7 +89,7 @@
     const sender_email = val('#sender_email');
     const subject = val('#subject');
     const status = val('#status') || 'pending';
-    const callback_time = val('#callback_time');
+    const callback_at = val('#callback_at');
     const notes = val('#notes');
     const parentMessageId = parentMessageInput ? Number(parentMessageInput.value) : null;
 
@@ -110,7 +110,7 @@
       subject,
       message,            // <- obrigatório no banco; garantimos aqui
       status,
-      callback_time,
+      callback_at,
       visibility: (visibilitySelect?.value || 'private').toLowerCase(),
       notes,
       parent_message_id: Number.isInteger(parentMessageId) && parentMessageId > 0 ? parentMessageId : null

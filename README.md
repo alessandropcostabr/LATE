@@ -162,6 +162,7 @@ Falhas de envio são registradas em log e não impedem a criação do recado. Pa
 - Rate-limit configurável via `INTAKE_RATE_LIMIT` (padrão 20 requisições/minuto) e `INTAKE_RATE_WINDOW_MS`.
 - Opcionalmente exija CSRF com `INTAKE_REQUIRE_CSRF=1` quando o intake for um formulário interno.
 - Todas as requisições são auditadas na tabela `intake_logs` com IP, user-agent, status e mensagem associada.
+- Os logs armazenam apenas o hash (`sha256`) do token; defina `INTAKE_TOKEN_PEPPER` para adicionar um pepper secreto e `INTAKE_TOKEN_EXPIRES_AT` (ISO 8601) para expiração automática.
 
 Produção com PM2
 

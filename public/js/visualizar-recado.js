@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ['Remetente', recado?.sender_name || '—'],
       ['Telefone', recado?.sender_phone || '—'],
       ['E-mail', recado?.sender_email || '—'],
-      ['Horário de retorno', recado?.callback_time || formatCallbackDisplay(recado?.callback_at) || '—'],
+      ['Horário de retorno', formatCallbackDisplay(recado?.callback_at) || '—'],
       ['Assunto', recado?.subject || '—'],
       ['Visibilidade', recado?.visibility === 'public' ? 'Público' : 'Privado'],
       ['Situação', statusLabel],

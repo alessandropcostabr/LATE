@@ -170,7 +170,6 @@ describe('Sprint A endpoints', () => {
         status TEXT DEFAULT 'pending',
         visibility TEXT DEFAULT 'private',
         callback_at TIMESTAMPTZ,
-        callback_time TEXT,
         notes TEXT,
         created_by INTEGER,
         updated_by INTEGER,

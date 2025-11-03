@@ -7,6 +7,7 @@ const body   = expressValidator.body;
 const param  = expressValidator.param;
 const query  = expressValidator.query;
 const validationResult = expressValidator.validationResult;
+const { hashToken } = require('../utils/hashToken');
 
 // -------------------------------------------------------------
 // Helpers comuns
@@ -30,7 +31,7 @@ function applyBodyNormalizers(req, _res, next) {
   [
     'recipient', 'recipientId', 'sender_name', 'sender_phone', 'sender_email',
     'subject', 'message', 'status', 'call_date', 'call_time',
-    'callback_time', 'notes'
+    'callback_at', 'callback_time', 'notes'
   ].forEach((k) => {
     if (b[k] === undefined || b[k] === null) return;
     if (typeof b[k] !== 'string') b[k] = String(b[k]);
@@ -94,7 +95,7 @@ async function handleIntakeValidationErrors(req, res, next) {
   try {
     await IntakeLog.create({
       status: 'error',
-      token: providedToken || null,
+      tokenHash: providedToken ? hashToken(providedToken) : null,
       payload: payloadForLog,
       ip,
       userAgent,
@@ -148,9 +149,14 @@ const validateCreateMessage = [
     .matches(dateRegex).withMessage('Data da chamada inválida (YYYY-MM-DD)'),
   body('call_time').optional({ checkFalsy: true })
     .isLength({ max: 10 }).withMessage('Horário inválido'),
-  body('callback_time').optional({ checkFalsy: true })
-    .isLength({ max: 30 }).withMessage('Horário de retorno inválido')
-    ,
+  body('callback_at').optional({ checkFalsy: true })
+    .custom((value) => {
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) {
+        throw new Error('Horário de retorno inválido');
+      }
+      return true;
+    }),
   body('visibility').optional({ checkFalsy: true })
     .custom((value) => {
       const v = String(value || '').trim().toLowerCase();
@@ -326,9 +332,14 @@ const validateUpdateMessage = [
     .matches(dateRegex).withMessage('Data da chamada inválida (YYYY-MM-DD)'),
   body('call_time').optional({ checkFalsy: true })
     .isLength({ max: 10 }).withMessage('Horário inválido'),
-  body('callback_time').optional({ checkFalsy: true })
-    .isLength({ max: 30 }).withMessage('Horário de retorno inválido')
-    ,
+  body('callback_at').optional({ checkFalsy: true })
+    .custom((value) => {
+      const parsed = Date.parse(value);
+      if (Number.isNaN(parsed)) {
+        throw new Error('Horário de retorno inválido');
+      }
+      return true;
+    }),
   body('visibility').optional({ checkFalsy: true })
     .custom((value) => {
       const v = String(value || '').trim().toLowerCase();

@@ -82,7 +82,7 @@ const Form = {
     // Campos opcionais: vazio -> null
     out.sender_email  = Normalizer.toNullIfEmpty(out.sender_email);
     out.sender_phone  = Normalizer.toNullIfEmpty(out.sender_phone);
-    out.callback_time = Normalizer.toNullIfEmpty(out.callback_time);
+    out.callback_at   = Normalizer.toNullIfEmpty(out.callback_at);
     out.notes         = Normalizer.toNullIfEmpty(out.notes);
 
     if (Object.prototype.hasOwnProperty.call(out, 'recipientUserId')) {
