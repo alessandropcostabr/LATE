@@ -24,10 +24,17 @@ function wantsJson(req) {
 }
 
 exports.showLogin = (req, res) => {
+  const rawError = String(req.query?.error || '').trim();
+  let flashError;
+  if (rawError === 'session_invalidada') {
+    flashError = 'Sua sessão foi encerrada porque outro login foi realizado. Faça login novamente.';
+  }
+
   return res.render('login', {
     title: 'Login',
     csrfToken: req.csrfToken(),
     scripts: ['/js/login.js'],
+    error: flashError,
   });
 };
 
@@ -96,11 +103,24 @@ exports.login = async (req, res) => {
       viewScope: user.view_scope || 'all',
     };
 
+    const sessionVersion = await UserModel.bumpSessionVersion(user.id);
+    if (!sessionVersion) {
+      console.error('[auth] falha ao incrementar session_version', { userId: user.id });
+      if (wants) {
+        return res.status(500).json({ success: false, error: 'Erro interno' });
+      }
+      return res.status(500).render('login', buildViewData({
+        title: 'Login',
+        error: 'Erro interno',
+      }));
+    }
+
     await new Promise((resolve, reject) => {
       req.session.regenerate(err => {
         if (err) return reject(err);
 
-        req.session.user = sessionUser;
+        req.session.user = { ...sessionUser, sessionVersion };
+        req.session.sessionVersion = sessionVersion;
         if (req.session.usuario) delete req.session.usuario;
 
         req.session.save(saveErr => {

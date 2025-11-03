@@ -1,5 +1,6 @@
 const MessageModel = require('../models/message');
 const UserSectorModel = require('../models/userSector');
+const UserModel = require('../models/user');
 
 const ROLE_ALIASES = {
   admin: 'admin',
@@ -53,12 +54,79 @@ function respondForbidden(req, res) {
   return res.status(403).render('403', { title: 'Acesso negado' });
 }
 
-function requireAuth(req, res, next) {
-  if (req.session && req.session.user) {
-    req.userRoleSlug = normalizeRoleSlug(req.session.user.role);
-    return next();
+function getSessionCookieName() {
+  return (process.env.NODE_ENV || '').trim() === 'production' ? 'late.sess' : 'late.dev.sess';
+}
+
+async function destroySessionAndRespond(req, res) {
+  const cookieName = getSessionCookieName();
+
+  await new Promise((resolve) => {
+    if (req.session && typeof req.session.destroy === 'function') {
+      req.session.destroy(() => resolve());
+    } else {
+      resolve();
+    }
+  });
+
+  res.clearCookie(cookieName);
+
+  if (isApiRequest(req)) {
+    return res.status(401).json({ success: false, error: 'Sessão expirada. Faça login novamente.' });
   }
-  return respondUnauthorized(req, res);
+
+  return res.redirect('/login?error=session_invalidada');
+}
+
+async function requireAuth(req, res, next) {
+  if (!req.session || !req.session.user) {
+    return respondUnauthorized(req, res);
+  }
+
+  try {
+    const sessionUserId = Number(req.session.user.id);
+    if (!Number.isInteger(sessionUserId) || sessionUserId <= 0) {
+      return destroySessionAndRespond(req, res);
+    }
+
+    const user = await UserModel.findById(sessionUserId);
+    if (!user || user.is_active !== true) {
+      console.warn('[auth] sessão invalidada: usuário inexistente ou inativo', { userId: sessionUserId });
+      return destroySessionAndRespond(req, res);
+    }
+
+    const dbVersion = Number(user.session_version || 1);
+    const storedVersion = Number(req.session.sessionVersion || req.session.user.sessionVersion || 0);
+
+    if (storedVersion === 0) {
+      req.session.sessionVersion = dbVersion;
+    } else if (storedVersion !== dbVersion) {
+      console.warn('[auth] sessão invalidada por versão divergente', {
+        userId: sessionUserId,
+        storedVersion,
+        dbVersion,
+      });
+      return destroySessionAndRespond(req, res);
+    }
+
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      viewScope: user.view_scope,
+      sessionVersion: dbVersion,
+    };
+
+    req.userRoleSlug = normalizeRoleSlug(user.role);
+    return next();
+  } catch (err) {
+    console.error('[auth] erro ao validar sessão:', err);
+    if (isApiRequest(req)) {
+      return res.status(500).json({ success: false, error: 'Erro ao validar sessão.' });
+    }
+    return res.status(500).render('500', { title: 'Erro interno' });
+  }
 }
 
 function requireRole(...roles) {

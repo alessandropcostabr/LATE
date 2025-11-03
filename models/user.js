@@ -35,6 +35,7 @@ function mapRow(row, { includePassword = false } = {}) {
     role: row.role,
     is_active: row.is_active === true || row.is_active === 1 || row.is_active === 't',
     view_scope: normalizeViewScope(row.view_scope),
+    session_version: Number(row.session_version || 1),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -51,6 +52,7 @@ const BASE_SELECT = `
     role,
     is_active,
     view_scope,
+    session_version,
     created_at,
     updated_at
   FROM users
@@ -128,6 +130,20 @@ class UserModel {
   // Alias compatível com controller
   async resetPassword(id, password_hash, options) {
     return this.updatePassword(id, password_hash, options);
+  }
+
+  async bumpSessionVersion(id, { client } = {}) {
+    const executor = getExecutor(client);
+    const sql = `
+      UPDATE users
+         SET session_version = COALESCE(session_version, 1) + 1,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE id = ${ph(1)}
+       RETURNING session_version
+    `;
+    const { rows } = await executor.query(sql, [id]);
+    const version = rows?.[0]?.session_version;
+    return Number.isInteger(version) ? Number(version) : null;
   }
 
   async update(id, { name, email, role, active, view_scope }) {
@@ -287,11 +303,14 @@ class UserModel {
     const sql = `
       UPDATE users
          SET is_active = ${ph(1)},
+             session_version = COALESCE(session_version, 1) + 1,
              updated_at = CURRENT_TIMESTAMP
        WHERE id = ${ph(2)}
+       RETURNING session_version
     `;
-    const { rowCount } = await db.query(sql, [value, id]);
-    return rowCount > 0;
+    const { rowCount, rows } = await db.query(sql, [value, id]);
+    const version = rows?.[0]?.session_version;
+    return rowCount > 0 ? { updated: true, sessionVersion: Number(version) || null } : { updated: false };
   }
 
   async countActiveAdmins({ excludeId } = {}) {

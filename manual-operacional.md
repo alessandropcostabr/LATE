@@ -54,6 +54,7 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 ## 🔐 Segurança
 
 - Login com sessão segura (cookies httpOnly, regeneração de sessão)
+- Sessão única: novo login invalida automaticamente sessões anteriores
 - Tokens de intake armazenados como hash + expiração opcional
 - Rate-limit e CSRF ativos
 - Ações críticas registradas em log/auditoria
