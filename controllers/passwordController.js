@@ -159,6 +159,8 @@ exports.resetWithToken = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Token inválido ou expirado.' });
     }
 
+    await UserModel.bumpSessionVersion(user.id, { client });
+
     await client.query('COMMIT');
 
     return res.json({ success: true, data: { message: 'Senha atualizada com sucesso.' } });
@@ -225,6 +227,15 @@ exports.changePassword = async (req, res) => {
     }
 
     await PasswordResetTokenModel.invalidateForUser(user.id);
+
+    const version = await UserModel.bumpSessionVersion(user.id);
+    if (version) {
+      req.session.sessionVersion = version;
+      req.session.user = {
+        ...req.session.user,
+        sessionVersion: version,
+      };
+    }
 
     return res.json({ success: true, data: { message: 'Senha atualizada com sucesso.' } });
   } catch (err) {
