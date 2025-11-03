@@ -4,30 +4,54 @@
 
   <main class="main" role="main">
     <div class="container">
+      <article class="card" aria-labelledby="news-2025-11-02">
+        <div class="card-header">
+          <h1 class="card-title" id="news-2025-11-02">🗞️ Novidades — 02/11/2025</h1>
+          <p class="card-subtitle">Tela de login com arte exclusiva</p>
+        </div>
+        <div class="card-body">
+          <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+            Publicado em 02/11/2025 · PR #257
+          </p>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🎨 Arte em tela cheia</h2>
+            <p>A tela de login ganhou uma nova identidade visual em tela cheia, com foco na nossa marca e em deixar o acesso mais acolhedor para quem usa o sistema todos os dias.</p>
+          </section>
+          <section style="margin-bottom:1.5rem;">
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📱 Acessível em qualquer viewport</h2>
+            <p>Revisamos a experiência para que o login funcione bem em qualquer dispositivo: o contraste está mais forte, o foco ficou mais evidente e o layout prioriza o formulário em telas menores.</p>
+          </section>
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Documentação</h2>
+            <p>O <strong>Manual Operacional</strong> recebeu capturas atualizadas e dicas de acessibilidade para orientar novas pessoas da equipe.</p>
+          </section>
+        </div>
+      </article>
+
       <article class="card" aria-labelledby="news-2025-10-31">
         <div class="card-header">
           <h1 class="card-title" id="news-2025-10-31">🗞️ Novidades — 31/10/2025</h1>
-          <p class="card-subtitle">Histórico de contatos e registros relacionados</p>
+          <p class="card-subtitle">Histórico de contatos e continuidade de atendimento</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
             Publicado em 31/10/2025 · Sprint D (Relacionamento) · PRs #238, #240, #241
           </p>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Registros relacionados</h2>
-            <p>Ao criar ou editar um registro em <code>/novo-recado</code>, o sistema agora detecta automaticamente até 5 registros anteriores do mesmo contato (por telefone ou e-mail). Isso evita retrabalho e mantém a continuidade do atendimento, mostrando histórico de interações passadas.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Registros relacionados no formulário</h2>
+            <p>Ao começar um novo recado, o sistema sugere até cinco mensagens anteriores do mesmo contato. Isso ajuda a retomar conversas abertas e evita que alguém da equipe faça perguntas repetidas.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Histórico completo por contato</h2>
-            <p>Nova página <code>/contatos/:phone/historico</code> permite visualizar todos os registros de um contato específico, com filtros por status, etiquetas e destinatário. Acesse diretamente pelo link "Ver histórico completo" exibido na seção de registros relacionados.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Histórico completo em um só lugar</h2>
+            <p>Na visualização do recado você encontra o link “Ver histórico completo”, que mostra todas as interações daquele telefone ou e-mail, com filtros por status, etiqueta e destinatário. Ideal para entender rapidamente o que já foi combinado.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧱 Vinculação entre registros</h2>
-            <p>Implementamos o campo <code>parent_message_id</code> que permite criar vínculos lógicos entre registros, indicando continuidade de atendimento. Registros "filhos" exibem link para o original, facilitando rastreamento de casos complexos.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧱 Recados encadeados</h2>
+            <p>Agora é possível marcar um recado como continuação de outro. O vínculo aparece para toda a equipe, permitindo acompanhar casos complexos sem perder o fio da conversa.</p>
           </section>
           <section>
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🎯 Experiência aprimorada</h2>
-            <p>Correções de bugs e melhorias de UX garantem que o link de histórico apareça corretamente mesmo quando informado apenas o e-mail do contato, sem necessidade de telefone. A detecção funciona de forma não intrusiva — você pode ignorar as sugestões sem travar o formulário.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🎯 Experiência guiada</h2>
+            <p>O assistente de sugestões é discreto: se preferir, é só ignorar e seguir com o cadastro. Corrigimos também situações em que o histórico não aparecia quando só o e-mail estava preenchido.</p>
           </section>
         </div>
       </article>
@@ -35,63 +59,31 @@
       <article class="card" aria-labelledby="news-2025-10-30">
         <div class="card-header">
           <h1 class="card-title" id="news-2025-10-30">🗞️ Novidades — 30/10/2025</h1>
-          <p class="card-subtitle">Checklists, comentários, intake seguro e guia operacional revisado</p>
+          <p class="card-subtitle">Checklists, comentários e operação reforçada</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-            Publicado em 30/10/2025 · Sprint 0 + A + B + C consolidadas
+            Publicado em 30/10/2025 · Sprints 0 + A + B + C consolidadas
           </p>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Base reforçada</h2>
-            <p>Refatoramos a infraestrutura do LATE com carregamento seguro de variáveis, <code>trust proxy</code> preservando o valor correto e scripts de operação (<code>migrate</code>, <code>seed-admin</code>) mais verbosos. Rate limit em <code>/login</code> e <code>/api</code>, CSP endurecida e respostas JSON padronizadas reduzem riscos e deixam suporte mais simples.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Base mais segura</h2>
+            <p>Fortalecemos o backend com validações adicionais, limites de acesso e logs mais claros para os scripts de migração e criação de usuários. O objetivo é deixar as rotinas do time de suporte mais previsíveis e seguras.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📝 Checklists, etiquetas e comentários</h2>
-            <p>Agora cada recado pode ter etiquetas com cores consistentes, checklists com progresso automático e comentários com @menção. Watchers garantem que interessados acompanhem alterações sem precisar ser destinatários diretos.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📝 Etiquetas, checklists e comentários</h2>
+            <p>Cada recado pode receber etiquetas coloridas, listas de tarefas com progresso automático e comentários com @menção. Assim, quem precisa acompanhar recebe alertas e sabe exatamente em que etapa a demanda está.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📊 Painéis e visões</h2>
-            <p>Kanban, Calendário e widgets de dashboard foram enriquecidos com filtros por setor/label, cartões com progresso e indicadores de SLA (Hoje, Atrasados, 48h). A triagem ficou mais visual e adequada para reuniões rápidas.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📊 Visões Kanban e Calendário fortalecidas</h2>
+            <p>As visões ganharam filtros por setor e etiqueta, cartões com progresso do checklist e indicadores sobre o que precisa de atenção imediata. Perfeito para organizar o dia ou conduzir reuniões de status.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Intake e notificações</h2>
-            <p>O endpoint seguro <code>POST /api/intake</code> recebe recados externos com token dedicado e rate limit. A fila de e-mails entrega avisos para novos recados, resoluções, @menções e prazos próximos, com logs de auditoria para cada disparo.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Intake e notificações automáticas</h2>
+            <p>Integrações externas enviam recados por token dedicado e contam com proteção contra excesso de chamadas. Cada mudança relevante dispara e-mails com registro em auditoria, garantindo rastreabilidade.</p>
           </section>
           <section>
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Documentação e operação</h2>
-            <p>Atualizamos esta página, a Central de Ajuda e o Manual Operacional com o novo fluxo. O cheatsheet de DEV/PROD, instruções de worktree e lista de pendências futuras estão disponíveis para a equipe técnica em <code>~/LATE/_reports</code>.</p>
-          </section>
-        </div>
-      </article>
-
-      <article class="card" aria-labelledby="news-2025-10-28">
-        <div class="card-header">
-          <h1 class="card-title" id="news-2025-10-28">🗞️ Novidades — 28/10/2025</h1>
-          <p class="card-subtitle">Kanban, Calendário e nova experiência em /recados</p>
-        </div>
-        <div class="card-body">
-          <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-            Publicado em 28/10/2025 · PRs #220 e #221
-          </p>
-          <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🗂️ Visão Kanban</h2>
-            <p>Lançamos a página <code>/recados/kanban</code> com colunas por status, paginação dedicada e widgets de SLA. Ideal para reuniões rápidas e acompanhamento visual da fila.</p>
-          </section>
-          <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📅 Calendário de recados</h2>
-            <p>O novo <code>/recados/calendario</code> permite enxergar ligações por dia e horário. Use filtros para setor, labels e status, facilitando escalas e plantões.</p>
-          </section>
-          <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">⚡ Lista clicável e encaminhamento rápido</h2>
-            <p>Em <code>/recados</code> os cartões estão clicáveis, os chips de situação têm cores consistentes e adicionamos o botão <strong>📤 Encaminhar</strong> ao lado de <strong>Ver</strong>, <strong>Editar</strong> e <strong>Excluir</strong>. O redirecionamento abre o modal já preparado para o novo destinatário.</p>
-          </section>
-          <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">ℹ️ Versão e build visíveis</h2>
-            <p>O rodapé mostra a versão ativa do LATE e a página Ajuda ganhou a seção “Sobre o LATE” com o hash do build, apoiando suporte e auditoria.</p>
-          </section>
-          <section>
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Manual atualizado</h2>
-            <p>O Manual Operacional descreve as novas visões, os atalhos da lista e orienta quando usar Kanban, Calendário ou a lista tradicional.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Material de apoio</h2>
+            <p>Revimos esta página, a Central de Ajuda e o Manual Operacional para orientar os novos fluxos. Aproveite para compartilhar com quem está chegando agora ao LATE.</p>
           </section>
         </div>
       </article>
@@ -103,19 +95,19 @@
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-            Publicado em 24/10/2025 · PR #209
+            Publicado em 24/10/2025 · PRs #215, #217
           </p>
           <section style="margin-bottom:1.5rem;">
             <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">⏰ Lembretes automáticos</h2>
-            <p>O LATE passou a enviar e-mails recorrentes para recados <strong>pendentes</strong> (a cada 24h) e <strong>em andamento</strong> (a cada 48h), mantendo o destinatário ou responsável sempre atualizado.</p>
+            <p>Recados pendentes ou sem retorno programado passam a gerar lembretes automáticos. Você escolhe a periodicidade e o sistema cuida de avisar quem precisa agir.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">⚙️ Painel “Notificações”</h2>
-            <p>Usuários administradores agora contam com a página <strong>Configurações de Notificações</strong> para ativar/desativar os alertas e ajustar os intervalos.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📋 Painel de notificações</h2>
+            <p>Administradores têm um painel dedicado para enxergar o status de cada e-mail enviado. Assim fica fácil confirmar se o aviso chegou ou se é preciso reenviar.</p>
           </section>
-          <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Documentação</h2>
-            <p>O Manual Operacional foi atualizado com as novas regras de envio e o endereço oficial do LATE (<code>https://late.miahchat.com</code>).</p>
+          <section>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🤝 Integração com setores</h2>
+            <p>Quando um recado é direcionado a um setor, os integrantes daquele grupo também aparecem como destinatários elegíveis para novos lembretes automáticos.</p>
           </section>
         </div>
       </article>
@@ -123,23 +115,23 @@
       <article class="card" aria-labelledby="news-2025-10-23">
         <div class="card-header">
           <h1 class="card-title" id="news-2025-10-23">🗞️ Novidades — 23/10/2025</h1>
-          <p class="card-subtitle">Notificações para setores e adoção automática do recado</p>
+          <p class="card-subtitle">Notificações por setor e adoção automática</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
             Publicado em 23/10/2025 · PR #208
           </p>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Aviso por e-mail para todo o setor</h2>
-            <p>Quando o recado é direcionado a um setor, todos os usuários ativos associados a ele recebem um e-mail com o resumo da mensagem e o atalho “Abrir recado”.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 E-mail para toda a equipe</h2>
+            <p>Recados enviados a um setor disparam e-mail para todos os integrantes ativos, garantindo que ninguém fique de fora do atendimento.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧭 Quem assume vira o destinatário</h2>
-            <p>O primeiro membro do setor que altera o status para <strong>Em andamento</strong> ou <strong>Resolvido</strong> passa a ser o novo destinatário do recado. A partir daí, as notificações seguem apenas para esse responsável.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧭 Quem assume passa a ser o responsável</h2>
+            <p>Ao mover o recado para “Em andamento” ou “Resolvido”, o membro do setor automaticamente vira responsável pelo caso. A partir daí, os alertas seguem apenas para essa pessoa.</p>
           </section>
           <section>
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Manual Operacional</h2>
-            <p>O guia do LATE foi atualizado explicando como funcionam as notificações por setor e a adoção automática do recado.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Manual atualizado</h2>
+            <p>O guia do LATE explica em detalhes como funcionam as notificações por setor e como repassar o atendimento quando necessário.</p>
           </section>
         </div>
       </article>
@@ -147,7 +139,7 @@
       <article class="card" aria-labelledby="news-2025-10-22">
         <div class="card-header">
           <h1 class="card-title" id="news-2025-10-22">🗞️ Novidades — 22/10/2025</h1>
-          <p class="card-subtitle">Atalhos rápidos na lista e na visualização de recados</p>
+          <p class="card-subtitle">Atalhos rápidos na lista e na visualização</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
@@ -155,39 +147,39 @@
           </p>
           <section style="margin-bottom:1.5rem;">
             <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">⚡ Ações direto na lista</h2>
-            <p>Incluímos os botões <strong>✏️ Editar</strong>, <strong>🚧 Em andamento</strong> e <strong>✅ Resolver</strong> em <code>/recados</code>. Operadores enxergam os atalhos sempre que forem donos ou destinatários da mensagem.</p>
+            <p>A página principal ganhou botões para editar, assumir ou resolver um recado sem precisar abrir a visualização completa. Uma forma rápida de avançar na fila.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
             <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🗂️ Visualização com contexto</h2>
-            <p>A página <code>/visualizar-recado/:id</code> ganhou os mesmos atalhos, além do botão de encaminhar. As ações são exibidas automaticamente para quem tem permissão ou recebeu o recado.</p>
+            <p>Dentro do recado você pode encaminhar, alterar status e ver o histórico sem sair da tela. Tudo ajustado para quem tem as permissões necessárias.</p>
           </section>
           <section>
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧑‍💼 Operador destinatário pode editar</h2>
-            <p>Operadores que recebem o recado agora conseguem atualizar dados e status, mesmo que não tenham sido os criadores originais.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧑‍💼 Destinatários com mais autonomia</h2>
+            <p>Operadores que recebem um recado passaram a editar informações e status, mesmo que não tenham sido os autores originais.</p>
           </section>
         </div>
       </article>
 
       <article class="card" aria-labelledby="news-2025-10-10">
         <div class="card-header">
-          <h1 class="card-title" id="news-2025-10-10">🗞️ Implantação 10/10/2025</h1>
-          <p class="card-subtitle">Release inicial de notificações por e-mail</p>
+          <h1 class="card-title" id="news-2025-10-10">🗞️ Implantação — 10/10/2025</h1>
+          <p class="card-subtitle">Release inicial com notificações por e-mail</p>
         </div>
         <div class="card-body">
           <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-            Publicado em 10/10/2025 · Release inaugural do LATE com alertas por e-mail.
+            Publicado em 10/10/2025 · Lançamento oficial do LATE
           </p>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✨ Principais entregas</h2>
-            <p>Lançamento do aviso por e-mail com o botão <strong>“Abrir recado”</strong> e destaque das melhorias mais pedidas para o fluxo de atendimento.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✨ Destaques do lançamento</h2>
+            <p>Entrou no ar o e-mail com o botão <strong>“Abrir recado”</strong>, pensado para levar a pessoa usuária direto ao atendimento. Também resolvemos os filtros que exibiam resultados duplicados.</p>
           </section>
           <section style="margin-bottom:1.5rem;">
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Filtros de recados</h2>
-            <p>Correção do filtro por setor e status, eliminação de resultados duplicados e exibição correta dos recados resolvidos quando solicitado.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Filtros refinados</h2>
+            <p>Os filtros por setor, status e responsável ficaram mais precisos, inclusive para encontrar recados já resolvidos quando necessário.</p>
           </section>
           <section>
-            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Encaminhar recados</h2>
-            <p>Inclusão do recurso <strong>Encaminhar</strong> na visualização, permitindo redirecionar mensagens e preservar o histórico com alertas atualizados.</p>
+            <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📨 Encaminhar sem perder o histórico</h2>
+            <p>O recurso de encaminhar recados mantém todo o histórico visível para quem recebe, reforçando a transparência no atendimento.</p>
           </section>
         </div>
       </article>

@@ -1,24 +1,206 @@
-# Repository Guidelines
+# 🤖 AGENTS.md — LATE + CODEX CLI
 
-## Project Structure & Module Organization
-The Express server boots in `server.js`, wiring middleware, session storage, and the EJS view layer. Domain logic lives in `controllers/`, persistence in `models/` via `config/database.js`, and routing in `routes/` split between API and web. Templates reside in `views/`, static assets in `public/`, and PostCSS outputs to `public/css/style.min.css`. Database assets live in `migrations/`, automation scripts in `scripts/`, and Jest specs in `__tests__/` near the feature under test.
+Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **LATE**. Consulte antes de investigar arquivos ou rodar comandos.
 
-## Build, Test, and Development Commands
-- `npm run dev` — start the app with Nodemon reloading on file changes.
-- `npm start` — production boot (honors `NODE_ENV=production` and compression).
-- `npm run build` — run PostCSS (autoprefixer + cssnano) to refresh `style.min.css`.
-- `npm test` — execute Jest in-band with coverage output under `coverage/`.
-- `npm run migrate` / `npm run migrate:dry` — apply or preview SQL files in `migrations/`.
-- `node scripts/seed-admin.js` — create the initial admin; requires `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+> 📍 Visão consolidada do backlog: `/roadmap`  
+> 📘 Ajuda para pessoas usuárias: `/help`
 
-## Coding Style & Naming Conventions
-Use Node.js ≥22, CommonJS modules, and two-space indentation as shown in the controllers. Keep semicolons and prefer `const`/`let`. Export handlers with descriptive names (`exports.login = …`). Maintain the language split: identifiers in English, user copy and comments in pt-BR. Stick to `kebab-case` filenames and ensure shell scripts stay executable.
+---
 
-## Testing Guidelines
-Place new specs in `__tests__/**` using the `*.test.js` suffix so Jest auto-discovers them. Favor Supertest for HTTP flows and `pg-mem` to isolate database behavior. Use `npm test -- <pattern>` to focus during development, keep the coverage report passing, and refresh snapshots only when behavior truly changes. When altering migrations, add a regression test covering the new schema path.
+## 📊 Snapshot Atual
 
-## Commit & Pull Request Guidelines
-Match the existing log: short, imperative subjects in Portuguese for user-facing work, optional type prefixes (`feat:`, `fix:`), and PR references like `(#191)` when available. Keep commits scoped with updated tests and rebuilt assets. In PRs, outline the rationale, highlight risky areas (auth, migrations, rate limits), and attach console output or screenshots when behavior changes. List any manual steps (`npm run migrate`) so reviewers can reproduce them.
+- Versão (`package.json`): `2.0.0`
+- HEAD local: `8cddcd8` — `feat: exibir versão e build na interface (dev)`
+- Últimas entregas: **Registros relacionados** (histórico por contato) · **Tela de login redesenhada** (arte + ajustes CSS)
+- Worktrees oficiais:
+  - `~/late-dev` → branch `develop`, porta 3001 (homolog/QA)
+  - `~/late-prod` → branch `main`, porta 3000 (produção)
+- Sprints concluídas: 0, A, B, C, D  
+  Próximas sprints priorizadas: **Sprint 00-PRE — Hardening & Sanidade**, **Sprint E — Sessão Única**
+- Documentação estendida (não versionada): `_reports/*.md` gerados por `scripts/generate-artifacts.sh`
 
-## Environment & Security Notes
-Configuration relies on `.env`; set `SESSION_SECRET`, database DSN variables, and `TRUST_PROXY` when behind proxies. Define `CORS_ORIGINS` before deploying. Keep secrets and generated artifacts (`lighthouse-reports/`, `cookie.txt`) out of commits. Rotate credentials after running `scripts/seed-admin.js` in shared environments.
+---
+
+## 🏗️ Estrutura Real do Repositório
+
+```bash
+LATE/
+├── server.js             # Express 5 + sessões PG + EJS
+├── config/               # database.js (pg Pool), loadEnv.js
+├── controllers/          # auth, mensagens, usuários, setores, stats
+├── middleware/           # auth (RBAC), CSRF, CORS, validações
+├── models/               # acesso PostgreSQL (messages, alerts, users, stats)
+├── routes/               # routers API (api.js) e web (web.js)
+├── services/             # mailer SMTP/log e agendador de alertas
+├── scripts/              # migrate.js, seed-admin, inventário/artefatos, backup
+├── migrations/           # SQL incremental (20250927_*.sql ... 20251115_*.sql)
+├── views/                # Templates EJS
+├── public/               # JS estático, CSS, assets
+├── __tests__/            # Suite Jest + Supertest + pg-mem
+├── utils/                # helpers (ex.: política de senha)
+└── ecosystem.config.js   # processo PM2 `late-dev`
+```
+
+> Não existem diretórios `api/` ou `workers/` neste snapshot; serviços de fila/alerta estão em `services/`.
+
+---
+
+## 🚀 Onboarding Rápido
+
+```bash
+cp .env.example .env            # ajuste as variáveis antes de rodar
+npm install
+npm run migrate                 # aplica migrations (PG-only)
+node scripts/seed-admin.js      # exige ADMIN_EMAIL e ADMIN_PASSWORD
+npm run dev                     # http://localhost:3000 (nodemon)
+```
+
+Sempre que alterar schema ou assets:
+- `npm run migrate:dry` para validar SQL antes de aplicar
+- `npm run build:css` (ou `npm run build`) para regenerar `public/css/style.min.css`
+
+---
+
+## ✅ Últimas Entregas
+
+- **Registros relacionados (Sprint D)** — Histórico por telefone/e-mail, normalização de contatos e visualização agregada diretamente nos recados.
+- **Tela de login redesenhada** — Arte em tela cheia (`public/assets/bg_LATE.png`), card compacto e CSS ajustado para foco em acessibilidade.
+
+---
+
+## 🔧 Variáveis de Ambiente Essenciais
+
+`config/loadEnv.js` carrega automaticamente `.env.dev`/`.env.prod` → `.env.local` → `.env` (pode sobrescrever via `DOTENV_FILE`).
+
+- Banco: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PG_SSL`
+- Sessões: `SESSION_SECRET`, `COOKIE_NAME`, `SESSION_MAX_AGE`
+- Rede: `CORS_ORIGINS`, `TRUST_PROXY` (número ou palavra-chave; obrigatório em produção)
+- Mailer: `MAIL_DRIVER` (`smtp` ou `log`), `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- Aplicação: `APP_BASE_URL`, `APP_VERSION`, `APP_BUILD`, `MAIL_DEBUG`
+- Scripts: `ADMIN_EMAIL`, `ADMIN_PASSWORD` para `seed-admin`
+
+---
+
+## 🧪 Testes & Qualidade
+
+- `npm test` → Jest in-band com cobertura (ver `coverage/`).
+- Focar em suites específicas: `npm test -- controllers/messageController`.
+- Testes utilizam `supertest` + `pg-mem`; configure fixtures no próprio teste.
+- Checklist antes de abrir PR:
+  1. `npm run migrate:dry` (se houver migrations novas) e `npm run migrate`.
+  2. `npm run build:css` após mexer em `public/css/style.css`.
+  3. `npm test` e revisar cobertura.
+  4. Verificação manual mínima: login/logout, criação/edição de recado, mudança de status, notificações com `MAIL_DRIVER=log`.
+
+---
+
+## 🔄 Automação de Alertas
+
+- Serviço `services/messageAlerts.js` roda agendador (intervalo padrão: 60 min).
+- Consulta `messages` por status (`pending`, `in_progress`) e dispara e-mails via `services/mailer.js`.
+- Registra histórico em `message_alerts` e `message_events`.
+- Respeita `notification_settings` (editável via controllers/models).
+- `MAIL_DEBUG=1` habilita logs sem envio real.
+
+---
+
+## 🗂️ Banco & Migrations
+
+- Migrations SQL numeradas por data em `migrations/`.
+- Destaques já aplicados:
+  - Setores e permissões (`20251006_add_sectors.sql`, `20251107_add_users_view_scope.sql`)
+  - Alertas e notificações (`20251114_create_notification_settings.sql`, `20251115_create_message_alerts.sql`)
+  - Recuperação de senha (`20251110_add_password_reset_tokens.sql`)
+- Scripts:
+  - `npm run migrate` / `npm run migrate:dry`
+  - `scripts/backup-simple.sh` → usa `pg_dump`
+  - `scripts/generate-inventory.sh` / `scripts/generate-artifacts.sh`
+
+---
+
+## 🕹️ Backlog Imediato
+
+### Sprint 00-PRE — Hardening & Sanidade
+- Garantir idempotência para automations (índices únicos em `automation_logs`).
+- Revisar tokens do intake (hash + expiração) e remover legados (`callback_time`).
+- Rodar checklist de segurança (rate limit, headers, seeds) antes de seguir.
+
+### Sprint E — Sessão Única
+- Migration: adicionar `session_version INT DEFAULT 1` em `users`.
+- Incrementar a versão ao autenticar, trocar senha ou desativar usuário.
+- Persistir `session_version` em `req.session.version` e validá-la via middleware dedicado.
+- Ao detectar divergência: destruir sessão, registrar IP/user-agent/userId e exibir `Sua sessão foi encerrada...`.
+
+---
+
+## ⚙️ Operação & Worktrees
+
+- `npm run dev` → nodemon local (porta 3000, override via `.env`).
+- `npm start` → execução simples (production ready, sem watch).
+- PM2:
+  - `pm2 start ecosystem.config.js --only late-dev`
+  - `pm2 restart late-dev`
+  - `pm2 logs late-dev`
+- Worktree DEV (`~/late-dev`): `git checkout develop && git pull origin develop`
+- Worktree PROD (`~/late-prod`): `git checkout main && git pull origin main`
+- Nunca desenvolva diretamente na raiz `~/LATE/`; utilize o worktree correto e confirme branch antes de editar.
+
+---
+
+## 🧰 Scripts Úteis
+
+- `scripts/migrate.js [--dry-run]`
+- `scripts/seed-admin.js`
+- `scripts/generate-artifacts.sh` → gera `_reports/inventario_*.txt`, tree e dump textual (sem subir para o Git)
+- `scripts/generate-inventory.sh`
+- `scripts/backup-simple.sh`
+
+---
+
+## ✍️ Convenções de Código & PRs
+
+- Node.js ≥ 22, CommonJS, indentação 2 espaços, semicolons mantidos.
+- Identificadores em inglês; mensagens exibidas/comentários de negócio em pt-BR.
+- Commits: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, etc.).
+- PRs devem incluir:
+  - Resumo objetivo + motivação.
+  - Riscos (auth, rate limiting, migrations, e-mail).
+  - Passos manuais (ex.: `npm run migrate`, `npm run build:css`).
+  - Evidências (logs, screenshots quando UI mudar).
+
+---
+
+## 🔐 Segurança
+
+- Helmet + CSP (API); HSTS somente em produção HTTPS.
+- Rate limit: `/login` 20 req/15min, `/api` 100 req/15min.
+- CSRF: middleware dedicado (ver `middleware/csrf.js`), endpoint `GET /api/csrf` renova token.
+- Sessões: `express-session` + `connect-pg-simple`, cookies `httpOnly`, `secure` quando `NODE_ENV=production`.
+- CORS: `middleware/cors.js` checa origem com base em `CORS_ORIGINS`.
+- `validateOrigin` (opcional) pode ser habilitado em produção para reforçar allowlist.
+
+---
+
+## 📚 Referências Rápidas
+
+- `README.md` — visão geral, instruções de deploy, rate limits.
+- `manual-operacional.md` — operação do sistema para times de atendimento.
+- `_reports/⚡ LATE — Cheatsheet de Comandos.md` — comandos Git/PM2/Deploy (não versionado).
+- `_reports/LATE_SPRINTS_EXECUTADAS.md` — histórico de sprints concluídas.
+- `_reports/LATE_SPRINTS_FUTURAS.md` — roadmap detalhado.
+- `_reports/📊 LATE — Status Atual do Projeto.md` — panorama DEV/PROD.
+
+---
+
+## ✅ Antes de Finalizar Uma Task
+
+1. `npm run migrate:dry` e `npm run migrate` (se aplicável).  
+2. `npm run build:css` quando o CSS base for alterado.  
+3. `npm test` e revisar cobertura (commit inclui ajustes de teste).  
+4. Revisar logs (`pm2 logs late-dev`) após subir em homolog/produção.  
+5. Atualizar documentos afetados (`AGENTS.md`, `/help`, `/roadmap`, `_reports`).  
+6. Conferir que credenciais/artefatos locais (`.env*`, `_reports/`) não foram adicionados ao git.
+
+---
+
+🌀 Powered by Codex CLI + LATE Core v2.0.0
