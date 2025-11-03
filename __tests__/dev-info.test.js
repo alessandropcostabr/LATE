@@ -13,7 +13,17 @@ describe('Dev diagnostics (Sprint 01)', () => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
-      req.session = sessionUser ? { user: { ...sessionUser } } : {};
+      if (sessionUser) {
+        const version = sessionUser.sessionVersion || 1;
+        req.session = {
+          user: { ...sessionUser, sessionVersion: version },
+          sessionVersion: version,
+          destroy: (cb) => { if (typeof cb === 'function') cb(); },
+          cookie: {},
+        };
+      } else {
+        req.session = {};
+      }
       next();
     });
     const apiRoutes = require('../routes/api');
@@ -73,6 +83,25 @@ describe('Dev diagnostics (Sprint 01)', () => {
         '00000000-0000-0000-0000-000000000002',
       ]
     );
+
+    await dbPool.query(`
+      CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT,
+        role TEXT NOT NULL DEFAULT 'OPERADOR',
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        view_scope TEXT NOT NULL DEFAULT 'all',
+        session_version INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await dbPool.query(`
+      INSERT INTO users (id, name, email, role, is_active, view_scope, session_version)
+      VALUES (1, 'Root Admin', 'root@late.dev', 'ADMIN', TRUE, 'all', 1)
+    `);
   });
 
   afterAll(async () => {

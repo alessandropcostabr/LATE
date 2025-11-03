@@ -25,7 +25,7 @@ function parseBooleanFlag(value) {
 
 function sanitizeUser(user) {
   if (!user) return null;
-  const { password_hash, ...rest } = user;
+  const { password_hash, session_version, ...rest } = user;
   return rest;
 }
 
@@ -182,6 +182,10 @@ exports.update = async (req, res) => {
     const updated = await UserModel.update(id, payload);
     if (!updated) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
+    if (payload.active !== undefined && currentActive !== nextActive) {
+      await UserModel.bumpSessionVersion(id);
+    }
+
     return res.json({ success: true, data: { user: sanitizeUser(updated) } });
   } catch (err) {
     if (isEmailUniqueViolation(err)) {
@@ -220,8 +224,8 @@ exports.updateStatus = async (req, res) => {
       }
     }
 
-    const ok = await UserModel.setActive(id, active);
-    if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+    const result = await UserModel.setActive(id, active);
+    if (!result.updated) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
     return res.json({ success: true, data: { id, active } });
   } catch (err) {
@@ -243,6 +247,8 @@ exports.resetPassword = async (req, res) => {
     const password_hash = await argon2.hash(newPassword, { type: argon2.argon2id });
     const ok = await UserModel.resetPassword(id, password_hash);
     if (!ok) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+
+    await UserModel.bumpSessionVersion(id);
     return res.json({ success: true });
   } catch (err) {
     console.error('[users] resetPassword error:', err);

@@ -7,7 +7,7 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 - **Stack:** Node.js 22 · Express 5 · PostgreSQL · EJS · PM2
 - **Arquitetura:** MVC com middlewares, views EJS, sessão segura
 - **Autenticação:** Session cookie (httpOnly, secure, sameSite), regeneração de ID, RBAC com escopos por setor
-- **Segurança:** Helmet, CSRF, CORS, validações, rate limit, versionamento de sessão (single-session)
+- **Segurança:** Helmet, CSRF, CORS, validações, rate limit, single-session via `session_version`
 
 ## 📂 Funcionalidades
 
