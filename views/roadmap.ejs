@@ -12,9 +12,10 @@
         <div class="card-body">
           <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Panorama atual</h2>
           <ul style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;list-style:disc;">
-            <li><strong>Registros relacionados:</strong> histórico por contato (telefone/e-mail) direto no recado.</li>
-            <li><strong>Página de login redesenhada:</strong> nova arte, contraste melhorado e layout responsivo.</li>
-            <li><strong>Documentação atualizada:</strong> `AGENTS.md`, `/help` e Manual Operacional com as últimas mudanças.</li>
+            <li><strong>Sprint 00-PRE concluída:</strong> automations idempotentes e intake com tokens hasheados/expiráveis.</li>
+            <li><strong>Agendamentos claros:</strong> campo “Data e horário para retorno” em <em>Novo Recado</em> e <em>Editar Recado</em>.</li>
+            <li><strong>Alertas sem duplicidade:</strong> lembretes automáticos disparam uma vez por minuto por recado.</li>
+            <li><strong>Checklist de segurança:</strong> script dedicado para validar rate limit, headers e seed-admin.</li>
           </ul>
           <p style="margin:0;">Versão atual: <strong>LATE v<%= appVersion %></strong> · Build: <code><%= appBuild %></code></p>
         </div>
@@ -26,14 +27,6 @@
           <p class="card-subtitle">Prioridades imediatas da equipe.</p>
         </div>
         <div class="card-body">
-          <article style="margin-bottom:2rem;">
-            <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">🔴 Sprint 00-PRE — Hardening &amp; Sanidade</h3>
-            <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
-              <li>Idempotência nas automations (índices únicos em <code>automation_logs</code>).</li>
-              <li>Sanitização do intake externo (tokens hasheados, expiração configurável).</li>
-              <li>Limpeza de legados como <code>callback_time</code> e revisão de permissões.</li>
-            </ul>
-          </article>
           <article>
             <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">🟡 Sprint E — Sessão Única</h3>
             <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
