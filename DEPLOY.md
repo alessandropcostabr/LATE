@@ -1,339 +1,88 @@
-# Instruções de Deploy - Sistema de Contatos
+# 🚀 DEPLOY — LATE
 
-## 🎯 Deploy no Seu Ambiente AWS EC2
-
-Estas instruções são específicas para o seu ambiente já configurado:
-- **Servidor**: AWS EC2 (Ubuntu 22.04/24.04 LTS)
-- **Node.js**: v22.15.0 já instalado
-- **Express.js**: v5.1.0
-- **PM2**: v6.0.5 já configurado
-- **PostgreSQL**: conexão via `pg` (Pool) e `connect-pg-simple`
-
-## 📋 Pré-requisitos Verificados
-
-✅ Node.js v22.19.0 instalado  
-✅ PM2 v6.0.10 configurado  
-✅ Servidor AWS EC2 ativo  
-✅ Acesso SSH ao servidor  
-
-## 🚀 Passos para Deploy
-
-### 1. Transferir Arquivos para o Servidor
-
-```bash
-# Opção 1: Via SCP (se você tem acesso SSH)
-scp -r late/ usuario@seu-servidor-ec2:/caminho/destino/
-
-# Opção 2: Via Git (recomendado)
-# No servidor EC2:
-git clone <url-do-repositorio>
-cd late
-
-# Opção 3: Upload via painel de controle
-# Compacte a pasta late em ZIP
-# Faça upload via painel web do seu provedor
-# Extraia no servidor
-```
-
-### 2. Instalar Dependências
-
-```bash
-# No servidor EC2, dentro da pasta do projeto:
-cd late
-npm install
-```
-
-### 3. Executar Migrações
-
-Configure as variáveis `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` e `PG_SSL` antes de aplicar as migrações em `migrations/`.
-
-```bash
-export PGHOST=127.0.0.1
-export PGPORT=5432
-export PGUSER=late_app
-export PGPASSWORD='senha-segura'
-export PGDATABASE=late_prod
-export PG_SSL=1 # use 0 apenas em ambientes locais sem TLS
-
-export DB_DRIVER=pg
-
-node scripts/migrate.js
-```
-
-### 4. Configurar PM2
-
-```bash
-# Parar aplicações existentes (se houver)
-pm2 stop all
-
-# Iniciar o sistema de recados
-pm2 start server.js --name "late"
-
-# Worker responsável pela fila de e-mails
-pm2 start scripts/email-worker.js --name "late-mails"
-
-# Verificar status
-pm2 status
-
-# Salvar configuração para reinicialização automática
-pm2 save
-```
-
-### 5. Configurar notificações por e-mail (opcional)
-
-```bash
-export MAIL_DRIVER=smtp            # use log para homologação
-# PROD: export APP_BASE_URL=https://late.miahchat.com
-# DEV (uso local em http://127.0.0.1:3001): export APP_BASE_URL=http://127.0.0.1:3001
-export SMTP_HOST=mail.seudominio.com.br
-export SMTP_PORT=465               # 465 com SSL (SMTP_SECURE=1) ou 587 com STARTTLS (SMTP_SECURE=0)
-export SMTP_SECURE=1
-export SMTP_USER=no-reply@seudominio.com.br
-export SMTP_PASS='senha-da-caixa'
-export SMTP_FROM="LATE <no-reply@seudominio.com.br>"
-# Intervalo/batch do worker opcional
-export EMAIL_WORKER_INTERVAL_MS=15000
-export EMAIL_WORKER_BATCH=10
-export EMAIL_QUEUE_PROCESSING_TIMEOUT_MINUTES=10
-# Token de intake (requerido para POST /api/intake)
-export INTAKE_TOKEN='troque-este-token'
-```
-
-Utilize uma caixa real (cPanel, Workspace, etc.) e mantenha SPF/DKIM atualizados para garantir entregabilidade. Falhas são registradas em `[MAIL:ERROR]` e não bloqueiam a criação do recado.
-
-### 6. Configurar Firewall (se necessário)
-
-```bash
-# Permitir acesso às portas 3000 (PROD) e 3001 (DEV)
-sudo ufw allow 3000
-sudo ufw allow 3001
-
-# Verificar regras
-sudo ufw status
-```
-
-### 7. Testar Funcionamento
-
-```bash
-# Verificar se o servidor está rodando
-curl http://localhost:3000
-
-# Ou acesse via navegador:
-# http://SEU-IP-EC2:3000
-```
-
-## 🔧 Configurações Específicas
-
-### Arquivo de Configuração PM2 (Opcional)
-
-Crie um arquivo `ecosystem.config.js`:
-
-```javascript
-module.exports = {
-  apps: [{
-    name: 'late',
-    script: 'server.js',
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3000
-    }
-  }]
-};
-```
-
-Então use:
-```bash
-pm2 start ecosystem.config.js
-```
-
-### Configuração de Proxy Reverso (Nginx - Opcional)
-
-Se você quiser usar uma porta padrão (80/443):
-
-Os cabeçalhos CORS devem ser tratados pela aplicação Node.js. No Nginx, apenas encaminhe o cabeçalho `Origin` original e não adicione `Access-Control-Allow-*`.
-
-```nginx
-# /etc/nginx/sites-available/late
-server {
-    listen 80;
-    server_name seu-dominio.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header Origin $http_origin;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-## 📊 Monitoramento
-
-### Comandos PM2 Úteis
-
-```bash
-# Ver logs em tempo real
-pm2 logs late
-
-# Ver status detalhado
-pm2 show late
-
-# Reiniciar aplicação
-pm2 restart late
-
-# Parar aplicação
-pm2 stop late
-
-# Remover aplicação
-pm2 delete late
-
-# Ver métricas de performance
-pm2 monit
-```
-
-### Verificar Saúde do Sistema
-
-```bash
-# Verificar uso de memória
-free -h
-
-# Verificar uso de disco
-df -h
-
-# Verificar processos Node.js
-ps aux | grep node
-
-# Verificar porta 3000
-netstat -tlnp | grep :3000
-```
-
-## 🔄 Atualizações Futuras
-
-### Para atualizar o sistema:
-
-```bash
-# 1. Fazer backup do banco de dados
-pg_dump "$PGDATABASE" -h "$PGHOST" -U "$PGUSER" -F c -f backup/late_$(date +%Y%m%d_%H%M%S).dump
-
-# 2. Parar aplicação
-pm2 stop late
-
-# 3. Atualizar código (via Git)
-git pull origin main
-
-# 4. Instalar novas dependências (se houver)
-npm install
-
-# 5. Reiniciar aplicação
-pm2 start late
-```
-
-## 🗄️ Backup Automático
-
-### Configurar Backup Diário
-
-```bash
-# Editar crontab
-crontab -e
-
-# Adicionar linha para backup diário às 2h da manhã:
-0 2 * * * pg_dump "$PGDATABASE" -h "$PGHOST" -U "$PGUSER" -F c -f /backup/late_$(date +\%Y\%m\%d).dump
-```
-
-## 🔒 Segurança
-
-### Configurações Recomendadas
-
-1. **Firewall**:
-   ```bash
-   # Permitir apenas portas necessárias
-   sudo ufw enable
-   sudo ufw allow ssh
-   sudo ufw allow 3000
-   ```
-
-2. **Atualizações do Sistema**:
-   ```bash
-   # Manter sistema atualizado
-   sudo apt update && sudo apt upgrade -y
-   ```
-
-3. **Monitoramento de Logs**:
-   ```bash
-   # Verificar logs do sistema regularmente
-   sudo tail -f /var/log/syslog
-   ```
-
-## 🆘 Solução de Problemas
-
-### Problemas Comuns no Deploy
-
-1. **Erro "EADDRINUSE" (Porta em uso)**:
-   ```bash
-   # Verificar processo na porta 3000
-   sudo lsof -i :3000
-   
-   # Matar processo se necessário
-   sudo kill -9 PID_DO_PROCESSO
-   ```
-
-2. **Erro de Permissões**:
-   ```bash
-   # Ajustar permissões da pasta
-   sudo chown -R $USER:$USER late/
-   chmod -R 755 late/
-   ```
-
-3. **Banco de Dados não Criado**:
-   ```bash
-   # Confirmar variáveis PG_* carregadas
-   env | grep '^PG'
-
-   # Rodar migrações novamente
-   node scripts/migrate.js
-   ```
-
-4. **Dependências não Instaladas**:
-   ```bash
-   # Limpar cache e reinstalar
-   rm -rf node_modules package-lock.json
-   npm cache clean --force
-   npm install
-   ```
-
-## 📞 Acesso ao Sistema
-
-Após o deploy bem-sucedido:
-
-- **URL Local**: http://localhost:3000
-- **URL Externa**: http://SEU-IP-EC2:3000
-- **Dashboard**: Página inicial com estatísticas
-- **Novo Contato**: /novo-recado
-- **Lista Completa**: /recados
-
-## ✅ Checklist de Deploy
-
-- [ ] Arquivos transferidos para o servidor
-- [ ] Dependências instaladas (`npm install`)
-- [ ] PM2 configurado e aplicação iniciada
-- [ ] Firewall configurado (porta 3000)
-- [ ] Sistema acessível via navegador
-- [ ] Banco de dados criado automaticamente
-- [ ] Backup configurado
-- [ ] Logs funcionando (`pm2 logs`)
+Última atualização: 04/11/2025
 
 ---
 
-**🎉 Parabéns! Seu Sistema de Contatos está no ar!**
+## 🧱 Ambientes
 
-Para suporte, consulte os logs do PM2 e a documentação principal no README.md.
+- **Local:** para desenvolvimento (localhost:3000)
+- **Staging:** ambiente pré-produção (EC2 via worktree `dev`)
+- **Produção:** instância EC2 com domínio e HTTPS
+
+---
+
+## ⛏️ Comandos Úteis (Cheatsheet)
+
+### Worktree Git
+```bash
+# Cria pastas separadas para dev e main
+./_scripts/setup-worktree.sh
+```
+
+### Setup Inicial
+```bash
+npm install
+cp .env.example .env
+npm run migrate
+ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD='SenhaForte!1' node scripts/seed-admin.js
+```
+
+### Rodar Local
+```bash
+npm run dev # inicia com nodemon e recarrega automaticamente
+```
+
+### PM2 (Staging/Produção)
+```bash
+pm2 restart ecosystem.config.js --only late-dev
+pm2 restart ecosystem.config.js --only late-prod
+```
+
+### Atualizar Produção
+```bash
+cd ~/late-prod
+git pull origin main
+npm install
+npm run migrate
+pm2 restart late-prod
+```
+
+### Monitorar
+```bash
+pm2 logs
+```
+
+### Diagnóstico rápido
+```bash
+# Snapshot imediato (stdout)
+node scripts/dev-info.js
+
+# Gerar arquivo para anexar ao relatório
+node scripts/dev-info.js --json --output /tmp/diagnostics-$(date +%Y%m%d-%H%M).json
+```
+- Execute antes e depois do deploy para comparar estado do banco/filas.
+- Em incidentes, anexe o JSON gerado no chamado e compartilhe via #late-dev.
+- A rota `GET /api/debug/info` responde o mesmo payload quando `NODE_ENV=development` (útil em staging).
+- Após atualizar documentação Markdown, rode `npm run docs:sync` para sincronizar os fragmentos exibidos nas rotas públicas.
+- Sempre que ajustar o diagnóstico, valide com `npm test -- dev-info` antes de subir PR/deploy.
+
+---
+
+## 🌐 Acesso
+
+- Backend: `https://late.miahchat.com`
+- Admin: `/admin`
+- Ajuda: `/ajuda`
+
+---
+
+## 🔐 Segurança
+
+- Sessões com cookie seguro
+- Rate-limit ativo
+- CSP, Helmet, CORS restrito
+
+---
+
+Para erros e suporte técnico, use `/admin/logs` ou o canal #suporte-dev no Slack.
