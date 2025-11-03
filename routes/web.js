@@ -14,7 +14,6 @@ const authController = require('../controllers/authController');
 const notificationController = require('../controllers/notificationController');
 const messageViewController = require('../controllers/messageViewController');
 const contactController = require('../controllers/contactController');
-const features = require('../config/features');
 
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -137,6 +136,10 @@ router.get('/help', requireAuth, (req, res) => {
   res.render('help', { title: 'Central de Ajuda', user: req.session.user || null });
 });
 
+router.get('/roadmap', requireAuth, (req, res) => {
+  res.render('roadmap', { title: 'Roadmap', user: req.session.user || null });
+});
+
 router.get('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.showSettings);
 router.post('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.updateSettings);
 
@@ -175,7 +178,7 @@ router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, a
 
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('recados', {
-      title: 'Registros',
+      title: 'Recados',
       user: req.session.user || null,
       csrfToken,
       destinatariosUsuarios: activeUsers,
@@ -199,7 +202,6 @@ router.get(
   contactController.showHistory
 );
 
-// Rota para histórico apenas com email (sem telefone)
 router.get(
   '/contatos/email/historico',
   requireAuth,
@@ -216,7 +218,7 @@ router.get('/novo-recado', requireAuth, requirePermission('create'), csrfProtect
     ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('novo-recado', {
-      title: 'Novo Registro',
+      title: 'Novo Recado',
       user: req.session.user || null,
       csrfToken,
       activeUsers,
@@ -236,7 +238,7 @@ router.get('/editar-recado/:id', requireAuth, requireMessageUpdatePermission, cs
     ]);
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     res.render('editar-recado', {
-      title: 'Editar Registro',
+      title: 'Editar Recado',
       id: req.params.id,
       user: req.session.user || null,
       csrfToken,
@@ -269,7 +271,7 @@ router.get('/visualizar-recado/:id', requireAuth, requirePermission('read'), csr
   }
 
   res.render('visualizar-recado', {
-    title: 'Visualizar Contato',
+    title: 'Visualizar Recado',
     id: req.params.id,
     user: req.session.user || null,
     csrfToken,
