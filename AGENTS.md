@@ -11,7 +11,7 @@ Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **
 
 - Versão (`package.json`): `2.0.0`
 - HEAD local: `8cddcd8` — `feat: exibir versão e build na interface (dev)`
-- Últimas entregas: **Registros relacionados** (histórico por contato) · **Tela de login redesenhada** (arte + ajustes CSS)
+- Últimas entregas: **Hardening do intake e automations** (tokens com hash, índice por minuto) · **Registros relacionados** (histórico por contato) · **Tela de login redesenhada**
 - Worktrees oficiais:
   - `~/late-dev` → branch `develop`, porta 3001 (homolog/QA)
   - `~/late-prod` → branch `main`, porta 3000 (produção)
@@ -124,16 +124,15 @@ Sempre que alterar schema ou assets:
 
 ## 🕹️ Backlog Imediato
 
-### Sprint 00-PRE — Hardening & Sanidade
-- Garantir idempotência para automations (índices únicos em `automation_logs`).
-- Revisar tokens do intake (hash + expiração) e remover legados (`callback_time`).
-- Rodar checklist de segurança (rate limit, headers, seeds) antes de seguir.
-
 ### Sprint E — Sessão Única
 - Migration: adicionar `session_version INT DEFAULT 1` em `users`.
 - Incrementar a versão ao autenticar, trocar senha ou desativar usuário.
 - Persistir `session_version` em `req.session.version` e validá-la via middleware dedicado.
 - Ao detectar divergência: destruir sessão, registrar IP/user-agent/userId e exibir `Sua sessão foi encerrada...`.
+
+### Próximas validações operacionais
+- Executar periodicamente `scripts/security-check.sh` para confirmar rate limit, headers e seed.
+- Revisar integrações que consomem o intake após rotacionar `INTAKE_TOKEN`.
 
 ---
 
@@ -205,6 +204,7 @@ Sempre que alterar schema ou assets:
 4. Revisar logs (`pm2 logs late-dev`) após subir em homolog/produção.  
 5. Atualizar documentos afetados (`AGENTS.md`, `/help`, `/roadmap`, `_reports`).  
 6. Conferir que credenciais/artefatos locais (`.env*`, `_reports/`) não foram adicionados ao git.
+7. Quando houver mudanças de segurança, gerar relatório com `scripts/security-check.sh` e anexar ao PR.
 
 ---
 
