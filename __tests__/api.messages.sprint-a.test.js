@@ -154,8 +154,8 @@ describe('Sprint A endpoints', () => {
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         view_scope TEXT NOT NULL DEFAULT 'all',
         session_version INTEGER NOT NULL DEFAULT 1,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
       );
     `);
 
@@ -260,25 +260,13 @@ describe('Sprint A endpoints', () => {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
-
-    db.none(`
-      CREATE TABLE event_logs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        event_type TEXT NOT NULL,
-        entity_type TEXT NOT NULL,
-        entity_id TEXT NOT NULL,
-        actor_user_id INTEGER,
-        metadata JSONB,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `);
   }
 
   async function seedBaseData(memInstance) {
     const db = memInstance.public;
-    db.none(`INSERT INTO users (id, name, email, role, session_version) VALUES (1, 'Admin', 'admin@example.com', 'ADMIN', 1)`);
-    db.none(`INSERT INTO users (id, name, email, role, session_version) VALUES (2, 'Maria Usuária', 'maria@example.com', 'OPERADOR', 1)`);
-    db.none(`INSERT INTO users (id, name, email, role, session_version) VALUES (3, 'João Operador', 'joao@example.com', 'OPERADOR', 1)`);
+    db.none(`INSERT INTO users (id, name, email, password_hash, role, view_scope) VALUES (1, 'Admin', 'admin@example.com', 'hash', 'ADMIN', 'all')`);
+    db.none(`INSERT INTO users (id, name, email, password_hash, role, view_scope) VALUES (2, 'Maria Usuária', 'maria@example.com', 'hash', 'OPERADOR', 'all')`);
+    db.none(`INSERT INTO users (id, name, email, password_hash, role, view_scope) VALUES (3, 'João Operador', 'joao@example.com', 'hash', 'OPERADOR', 'all')`);
     db.none(`INSERT INTO messages (id, call_date, call_time, recipient, sender_name, sender_phone, sender_email, subject, message, status, created_by)
              VALUES (1, '2025-01-01', '09:00', 'Suporte', 'Cliente', '11999999999', 'cliente@example.com', 'Dúvida', 'Detalhes do recado', 'pending', 1)`);
   }
@@ -296,7 +284,7 @@ describe('Sprint A endpoints', () => {
           sessionVersion: 1,
         },
         sessionVersion: 1,
-        destroy: jest.fn((cb) => cb?.()),
+        destroy: (cb) => (typeof cb === 'function' ? cb() : undefined),
         cookie: {},
       };
       next();

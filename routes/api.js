@@ -14,6 +14,7 @@ const messageChecklistController = require('../controllers/messageChecklistContr
 const messageCommentController = require('../controllers/messageCommentController');
 const messageWatcherController = require('../controllers/messageWatcherController');
 const automationController = require('../controllers/automationController');
+const eventLogsController = require('../controllers/eventLogsController');
 const healthController = require('../controllers/healthController');
 const metaController = require('../controllers/metaController');
 const intakeController = require('../controllers/intakeController');
@@ -135,6 +136,7 @@ const canUpdateMessages = [requireAuth, requirePermission('update'), csrfProtect
 const canManageMessageAccess = [requireAuth, requireMessageUpdatePermission, csrfProtection];
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
 const canChangeOwnPassword = [requireAuth, csrfProtection];
+const canAudit = [requireAuth, requireRole('ADMIN', 'SUPERVISOR')];
 
 const intakeLimiter = rateLimit({
   windowMs: Number(process.env.INTAKE_RATE_WINDOW_MS || 60 * 1000),
@@ -184,6 +186,25 @@ router.post(
   '/intake',
   ...flatFns(intakeGuards, validateIntakeCreate, handleIntakeValidationErrors),
   intakeController.create
+);
+
+// Auditoria (event logs)
+router.get(
+  '/event-logs',
+  ...flatFns(canAudit),
+  eventLogsController.list
+);
+
+router.get(
+  '/event-logs/summary',
+  ...flatFns(canAudit),
+  eventLogsController.summary
+);
+
+router.get(
+  '/event-logs/:id',
+  ...flatFns(canAudit),
+  eventLogsController.getById
 );
 
 // ========== Messages ==========
