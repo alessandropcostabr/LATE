@@ -1,7 +1,6 @@
 // controllers/messageController.js
 // Comentários em pt-BR; identificadores em inglês.
 
-const db = require('../config/database');
 const Message = require('../models/message');
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -15,7 +14,6 @@ const { enqueueTemplate } = require('../services/emailQueue');
 const { getViewerFromRequest, resolveViewerWithSectors } = require('./helpers/viewer');
 const features = require('../config/features');
 const ContactModel = require('../models/contact');
-const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 function normalizeRecipientId(value) {
   const parsed = Number(value);
@@ -477,13 +475,6 @@ async function logMessageEvent(messageId, eventType, payload = {}) {
       event_type: eventType,
       payload,
     });
-    const actorId = Number.isInteger(Number(payload?.user_id)) ? Number(payload.user_id) : null;
-    await logAuditEvent(`message.${eventType}`, {
-      entityType: 'message',
-      entityId: messageId,
-      actorUserId: actorId,
-      metadata: payload && typeof payload === 'object' ? payload : undefined,
-    });
   } catch (eventErr) {
     console.warn('[messages] falha ao registrar evento', {
       messageId,
@@ -877,76 +868,11 @@ exports.updateStatus = async (req, res) => {
     if (!before) {
       return res.status(404).json({ success: false, error: 'Registro não encontrado' });
     }
-    const targetStatus = String(status || '').trim();
-    const transitioningToResolved = targetStatus === 'resolved' && before.status !== 'resolved';
-    const resolutionBodyRaw = req.body?.resolutionComment ?? req.body?.resolution_comment ?? req.body?.comment ?? req.body?.resolution;
-    const resolutionBody = typeof resolutionBodyRaw === 'string' ? resolutionBodyRaw.trim() : '';
-
-    if (transitioningToResolved && !resolutionBody) {
-      return res.status(400).json({ success: false, error: 'Descreva a solução antes de marcar o registro como resolvido.' });
-    }
-
-    let createdResolutionComment = null;
-    if (transitioningToResolved) {
-      const client = await db.connect();
-      let txError = null;
-      try {
-        await client.query('BEGIN');
-        const ok = await Message.updateStatus(id, status, {
-          updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
-          client,
-        });
-        if (!ok) {
-          await client.query('ROLLBACK');
-          client.release();
-          return res.status(404).json({ success: false, error: 'Contato não encontrado' });
-        }
-
-        createdResolutionComment = await MessageCommentModel.create({
-          messageId: id,
-          userId: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : null,
-          body: resolutionBody,
-        }, { client });
-
-        await client.query('COMMIT');
-      } catch (err) {
-        txError = err;
-        try {
-          await client.query('ROLLBACK');
-        } catch (rollbackErr) {
-          console.error('[messages] falha ao desfazer transação de resolução:', rollbackErr);
-        }
-      } finally {
-        client.release();
-      }
-
-      if (txError) {
-        if (txError?.code === 'INVALID_COMMENT') {
-          return res.status(400).json({ success: false, error: 'O comentário de solução deve ter entre 1 e 5000 caracteres.' });
-        }
-        console.error('[messages] erro ao resolver registro:', txError);
-        return res.status(500).json({ success: false, error: 'Falha ao atualizar status' });
-      }
-
-      if (createdResolutionComment) {
-        await logAuditEvent('comment.created', {
-          entityType: 'message',
-          entityId: id,
-          actorUserId: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : null,
-          metadata: {
-            comment_id: createdResolutionComment.id,
-            context: 'resolution',
-            length: createdResolutionComment.body?.length ?? 0,
-          },
-        });
-      }
-    } else {
-      const ok = await Message.updateStatus(id, status, {
-        updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
-      });
-      if (!ok) {
-        return res.status(404).json({ success: false, error: 'Contato não encontrado' });
-      }
+    const ok = await Message.updateStatus(id, status, {
+      updatedBy: Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : undefined,
+    });
+    if (!ok) {
+      return res.status(404).json({ success: false, error: 'Contato não encontrado' });
     }
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
@@ -959,18 +885,6 @@ exports.updateStatus = async (req, res) => {
         from: before.status,
         to: updated?.status,
       });
-
-      if (updated?.status === 'resolved') {
-        await logAuditEvent('message.resolved', {
-          entityType: 'message',
-          entityId: id,
-          actorUserId: actor.id,
-          metadata: {
-            from: before.status,
-            comment_id: createdResolutionComment?.id || null,
-          },
-        });
-      }
     }
 
     return res.json({ success: true, data: toClient(updated, viewer) });

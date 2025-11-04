@@ -2,7 +2,6 @@
 // Logs de execução das automations.
 
 const db = require('../config/database');
-const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 exports.listByAutomation = async (automationId, { limit = 100, offset = 0 } = {}) => {
   const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 500);
@@ -30,7 +29,6 @@ function truncateToMinute(date) {
 exports.create = async ({ automationId, messageId, status, error, payload, createdAt = null }) => {
   const createdAtValue = createdAt ? new Date(createdAt) : null;
   const minuteBucket = truncateToMinute(createdAtValue || new Date());
-  let record = null;
   try {
     const { rows } = await db.query(
       `INSERT INTO automation_logs (automation_id, message_id, status, error, payload, created_at, created_at_minute)
@@ -38,35 +36,11 @@ exports.create = async ({ automationId, messageId, status, error, payload, creat
         RETURNING id, automation_id, message_id, status, error, payload, created_at`,
       [automationId, messageId || null, status, error || null, payload || null, createdAtValue, minuteBucket]
     );
-    record = rows[0] || null;
+    return rows[0] || null;
   } catch (err) {
     if (err?.code === '23505') {
       return null;
     }
     throw err;
   }
-
-  if (record) {
-    const metadata = {
-      status: record.status || status || null,
-      message_id: record.message_id ?? messageId ?? null,
-      has_error: Boolean(record.error),
-    };
-
-    if (record.error) {
-      metadata.error = String(record.error).slice(0, 200);
-    }
-
-    if (record.payload && typeof record.payload === 'object') {
-      metadata.payload = record.payload;
-    }
-
-    await logAuditEvent('automation.fired', {
-      entityType: 'automation',
-      entityId: automationId,
-      metadata,
-    });
-  }
-
-  return record;
 };

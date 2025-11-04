@@ -30,7 +30,6 @@ async function ensureSchema() {
       role TEXT NOT NULL DEFAULT 'OPERADOR',
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       view_scope TEXT DEFAULT 'all',
-      session_version INTEGER NOT NULL DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -114,11 +113,7 @@ beforeAll(async () => {
         id: 1,
         name: 'Test User',
         role: 'ADMIN',
-        sessionVersion: 1,
       },
-      sessionVersion: 1,
-      destroy: jest.fn((cb) => cb?.()),
-      cookie: {},
     };
     next();
   });

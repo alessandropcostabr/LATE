@@ -24,7 +24,6 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 ### Comentários e Menções
 - Comentários visíveis por todos com permissão
 - Use `@nome` para alertar usuários específicos
-- Ao resolver um registro, descreva a solução no comentário solicitado (follow-up obrigatório)
 
 ### Checklists
 - Itens marcáveis por progresso

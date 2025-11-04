@@ -4,7 +4,6 @@
 const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
-const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
 
@@ -131,15 +130,6 @@ exports.login = async (req, res) => {
       });
     });
 
-    await logAuditEvent('user.login', {
-      entityType: 'user',
-      entityId: user.id,
-      actorUserId: user.id,
-      metadata: {
-        interface: wants ? 'api' : 'web',
-      },
-    });
-
     if (wants) {
       return res.json({ success: true, data: { user: sessionUser } });
     }
@@ -235,28 +225,6 @@ exports.register = async (req, res) => {
   }
 };
 
-exports.logout = async (req, res) => {
-  const rawId = Number(req.session?.user?.id);
-  const actorId = Number.isInteger(rawId) && rawId > 0 ? rawId : null;
-
-  if (req.session?.destroy) {
-    await new Promise((resolve) => {
-      req.session.destroy((err) => {
-        if (err) {
-          console.error('[auth] erro ao encerrar sessão durante logout:', err);
-        }
-        resolve();
-      });
-    });
-  }
-
-  if (actorId) {
-    await logAuditEvent('user.logout', {
-      entityType: 'user',
-      entityId: actorId,
-      actorUserId: actorId,
-    });
-  }
-
-  return res.redirect('/login');
+exports.logout = (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
 };

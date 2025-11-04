@@ -38,7 +38,6 @@ async function ensureSchema() {
       role TEXT NOT NULL DEFAULT 'OPERADOR',
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       view_scope TEXT NOT NULL DEFAULT 'all',
-      session_version INTEGER NOT NULL DEFAULT 1,
       created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     );
@@ -74,29 +73,15 @@ beforeAll(async () => {
 
   app = express();
   app.use(express.json());
-  app.use(async (req, _res, next) => {
-    try {
-      const { rows } = await dbManager.query(
-        'SELECT session_version FROM users WHERE id = $1',
-        [userId]
-      );
-      const sessionVersion = Number(rows?.[0]?.session_version) || 1;
-      req.session = {
-        user: {
-          id: userId,
-          email: userEmail,
-          role: 'ADMIN',
-          name: 'Usuário Teste',
-          sessionVersion,
-        },
-        sessionVersion,
-        destroy: jest.fn((cb) => cb?.()),
-        cookie: {},
-      };
-      next();
-    } catch (err) {
-      next(err);
-    }
+  app.use((req, _res, next) => {
+    req.session = req.session || {};
+    req.session.user = {
+      id: userId,
+      email: userEmail,
+      role: 'ADMIN',
+      name: 'Usuário Teste',
+    };
+    next();
   });
   app.use('/api', apiRoutes);
 });

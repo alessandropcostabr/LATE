@@ -2,7 +2,6 @@
 // CRUD de comentários na timeline dos registros.
 
 const MessageCommentModel = require('../models/messageComment');
-const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 exports.list = async (req, res) => {
   try {
@@ -29,16 +28,6 @@ exports.create = async (req, res) => {
       messageId,
       userId: sessionUser.id,
       body,
-    });
-
-    await logAuditEvent('comment.created', {
-      entityType: 'message',
-      entityId: messageId,
-      actorUserId: Number.isInteger(Number(sessionUser.id)) ? Number(sessionUser.id) : null,
-      metadata: {
-        comment_id: comment?.id ?? null,
-        length: comment?.body?.length ?? 0,
-      },
     });
 
     return res.status(201).json({ success: true, data: { comment } });
