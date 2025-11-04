@@ -1,6 +1,7 @@
 // models/eventLog.js
 // Acesso aos eventos de auditoria leve (tabela event_logs).
 
+const { randomUUID } = require('crypto');
 const db = require('../config/database');
 
 function sanitizeWildcard(value) {
@@ -88,6 +89,48 @@ function buildFilters({
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   return { clause, params };
+}
+
+async function create({
+  eventType,
+  entityType,
+  entityId,
+  actorUserId = null,
+  metadata = null,
+}) {
+  const normalizedEvent = String(eventType || '').trim();
+  const normalizedEntityType = String(entityType || '').trim();
+  const normalizedEntityId = String(entityId || '').trim();
+
+  if (!normalizedEvent || !normalizedEntityType || !normalizedEntityId) {
+    throw new Error('Evento de auditoria inválido.');
+  }
+
+  const payload = metadata && typeof metadata === 'object' ? metadata : null;
+  const actor = Number.isInteger(actorUserId) ? actorUserId : null;
+
+  const id = randomUUID();
+  const createdAt = new Date();
+
+  const { rows } = await db.query(
+    `INSERT INTO event_logs (id, event_type, entity_type, entity_id, actor_user_id, metadata, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id, event_type, entity_type, entity_id, actor_user_id, metadata, created_at`
+    , [id, normalizedEvent, normalizedEntityType, normalizedEntityId, actor, payload, createdAt]
+  );
+
+  const row = rows?.[0];
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    event_type: row.event_type,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id,
+    actor_user: row.actor_user_id ? { id: row.actor_user_id, name: null } : null,
+    metadata: row.metadata || null,
+    created_at: row.created_at,
+  };
 }
 
 async function listFiltered({
@@ -238,6 +281,7 @@ async function getById(id) {
 }
 
 module.exports = {
+  create,
   listFiltered,
   summary,
   getById,
