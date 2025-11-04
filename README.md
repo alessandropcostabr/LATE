@@ -17,7 +17,9 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 - Widgets de dashboard com SLAs e indicadores
 - Endpoint `/intake` para entrada automatizada (formulários ou e-mail)
 - Fila de e-mail com retries e auditoria
+- Trilha de auditoria leve via `event_logs` (login, automations, mudanças de recado, follow-up)
 - Ferramentas de diagnóstico (CLI `scripts/dev-info.js` e endpoint `/api/debug/info` em DEV/TEST)
+- Follow-up obrigatório: ao resolver um recado, registrar comentário com a solução
 
 ## 📌 Roteiro e Referências
 
@@ -51,6 +53,6 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 
 🔐 LATE prioriza **segurança**, **relacionamento com o cliente** e **organização intersetorial**.
 
-📅 Última atualização: 04/11/2025
+📅 Última atualização: 05/11/2025
 
 💡 Projeto em uso interno por equipes clínicas e operacionais.

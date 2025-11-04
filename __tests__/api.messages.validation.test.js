@@ -1,6 +1,18 @@
 const express = require('express');
 const supertest = require('supertest');
 
+jest.mock('../models/user', () => ({
+  findById: jest.fn(async (id) => ({
+    id,
+    name: 'Test User',
+    email: 'user@example.com',
+    role: 'ADMIN',
+    is_active: true,
+    view_scope: 'all',
+    session_version: 1,
+  })),
+}));
+
 jest.mock('../controllers/messageController', () => {
   const dispatchBackground = jest.fn((_task, fn) => {
     if (typeof fn === 'function') {
@@ -68,7 +80,11 @@ function createApp(role = 'admin') {
           id: 1,
           name: 'Test User',
           role,
+          sessionVersion: 1,
         },
+        sessionVersion: 1,
+        destroy: jest.fn((cb) => cb?.()),
+        cookie: {},
       };
     }
     next();

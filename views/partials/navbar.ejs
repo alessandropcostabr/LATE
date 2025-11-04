@@ -70,7 +70,14 @@
       <% } %>
 
       <% if (showReports) { %>
-        <li><a href="/relatorios" class="app-navbar__menu-link<%= title === 'Relatórios' ? ' is-active' : '' %>">Relatórios</a></li>
+        <li>
+          <a href="/relatorios/estatisticas" class="app-navbar__menu-link<%= title && title.includes('Relatórios · Estatísticas') ? ' is-active' : '' %>">Relatórios</a>
+          <ul class="app-navbar__menu-sub">
+            <li><a href="/relatorios/estatisticas" class="app-navbar__menu-link<%= title && title.includes('Relatórios · Estatísticas') ? ' is-active' : '' %>">Estatísticas</a></li>
+            <li><a href="/relatorios/auditoria" class="app-navbar__menu-link<%= title && title.includes('Relatórios · Auditoria') ? ' is-active' : '' %>">Auditoria</a></li>
+            <li><span class="app-navbar__menu-link is-disabled" aria-disabled="true">Exportações (em breve)</span></li>
+          </ul>
+        </li>
       <% } %>
 
       <% if (userRoleSlug === 'admin') { %>
