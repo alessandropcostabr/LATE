@@ -44,18 +44,12 @@ async function bootstrapSchema({ mem, db }) {
       return left === right ? null : left;
     },
   });
-  mem.public.registerFunction({
-    name: 'gen_random_uuid',
-    returns: 'uuid',
-    implementation: () => require('crypto').randomUUID(),
-  });
 
   await db.exec('DROP TABLE IF EXISTS user_sectors CASCADE;');
   await db.exec('DROP TABLE IF EXISTS messages CASCADE;');
   await db.exec('DROP TABLE IF EXISTS users CASCADE;');
   await db.exec('DROP TABLE IF EXISTS sectors CASCADE;');
   await db.exec('DROP TABLE IF EXISTS message_events CASCADE;');
-  await db.exec('DROP TABLE IF EXISTS event_logs CASCADE;');
 
   await db.exec(`
     CREATE TABLE users (
@@ -66,7 +60,6 @@ async function bootstrapSchema({ mem, db }) {
       role TEXT NOT NULL DEFAULT 'OPERADOR',
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       view_scope TEXT DEFAULT 'all',
-      session_version INTEGER NOT NULL DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -125,30 +118,13 @@ async function bootstrapSchema({ mem, db }) {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
-
-  await db.exec(`
-    CREATE TABLE event_logs (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      event_type TEXT NOT NULL,
-      entity_type TEXT NOT NULL,
-      entity_id TEXT NOT NULL,
-      actor_user_id INTEGER,
-      metadata JSONB,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
 }
 
 function createApp(sessionUser) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = {
-      user: { ...sessionUser, sessionVersion: 1 },
-      sessionVersion: 1,
-      destroy: jest.fn((cb) => cb?.()),
-      cookie: {},
-    };
+    req.session = { user: { ...sessionUser } };
     next();
   });
 

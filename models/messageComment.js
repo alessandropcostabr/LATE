@@ -52,7 +52,7 @@ exports.listByMessage = async (messageId, { limit = 200, offset = 0 } = {}) => {
   }));
 };
 
-exports.create = async ({ messageId, userId, body }, { client } = {}) => {
+exports.create = async ({ messageId, userId, body }) => {
   const sanitized = sanitizeBody(body);
   if (sanitized.length < BODY_MIN || sanitized.length > BODY_MAX) {
     const err = new Error('Comentário inválido.');
@@ -60,9 +60,7 @@ exports.create = async ({ messageId, userId, body }, { client } = {}) => {
     throw err;
   }
 
-  const executor = client || db;
-
-  const { rows } = await executor.query(
+  const { rows } = await db.query(
     `INSERT INTO message_comments (message_id, user_id, body)
          VALUES ($1, $2, $3)
       RETURNING id, message_id, user_id, body, created_at, updated_at`,
@@ -73,7 +71,7 @@ exports.create = async ({ messageId, userId, body }, { client } = {}) => {
   if (!comment) return null;
 
   if (comment.user_id) {
-    const { rows: userRows } = await executor.query(
+    const { rows: userRows } = await db.query(
       `SELECT name AS user_name, email AS user_email
          FROM users
         WHERE id = $1`,

@@ -33,7 +33,6 @@ async function bootstrapSchema(db) {
       role TEXT DEFAULT 'OPERADOR',
       is_active BOOLEAN DEFAULT TRUE,
       view_scope TEXT DEFAULT 'all',
-      session_version INTEGER DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -110,16 +109,7 @@ function createApp(dbManager, sessionUser = null) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    if (sessionUser) {
-      req.session = {
-        user: { ...sessionUser, sessionVersion: 1 },
-        sessionVersion: 1,
-        destroy: jest.fn((cb) => cb?.()),
-        cookie: {},
-      };
-    } else {
-      req.session = {};
-    }
+    req.session = sessionUser ? { user: { ...sessionUser } } : {};
     next();
   });
   const apiRoutes = require('../routes/api');

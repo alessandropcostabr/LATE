@@ -43,11 +43,7 @@ function createApp(role = 'admin') {
         id: 99,
         name: 'Supervisor Teste',
         role,
-        sessionVersion: 1,
       },
-      sessionVersion: 1,
-      destroy: jest.fn((cb) => cb?.()),
-      cookie: {},
     };
     next();
   });
@@ -83,29 +79,6 @@ describe('POST /api/messages/:id/forward', () => {
   });
 
   it('encaminha recado para um novo usuário e envia notificação', async () => {
-    userModel.findById.mockImplementation(async (id) => {
-      if (id === 99) {
-        return {
-          id: 99,
-          name: 'Supervisor Teste',
-          role: 'ADMIN',
-          is_active: true,
-          view_scope: 'all',
-          session_version: 1,
-        };
-      }
-      if (id === 2) {
-        return {
-          id: 2,
-          name: 'Maria Destinatária',
-          email: 'dest@example.com',
-          is_active: true,
-          session_version: 1,
-        };
-      }
-      return null;
-    });
-
     messageModel.findById
       .mockResolvedValueOnce({
         id: 1,
@@ -142,6 +115,13 @@ describe('POST /api/messages/:id/forward', () => {
 
     messageModel.updateRecipient.mockResolvedValue(true);
 
+    userModel.findById.mockResolvedValue({
+      id: 2,
+      name: 'Maria Destinatária',
+      email: 'dest@example.com',
+      is_active: true,
+    });
+
     const app = createApp('admin');
     const response = await supertest(app)
       .post('/api/messages/1/forward')
@@ -169,34 +149,17 @@ describe('POST /api/messages/:id/forward', () => {
   });
 
   it('retorna 400 quando o destinatário é o mesmo usuário', async () => {
-    userModel.findById.mockImplementation(async (id) => {
-      if (id === 99) {
-        return {
-          id: 99,
-          name: 'Supervisor Teste',
-          role: 'ADMIN',
-          is_active: true,
-          view_scope: 'all',
-          session_version: 1,
-        };
-      }
-      if (id === 2) {
-        return {
-          id: 2,
-          name: 'Maria Destinatária',
-          email: 'dest@example.com',
-          is_active: true,
-          session_version: 1,
-        };
-      }
-      return null;
-    });
-
     messageModel.findById.mockResolvedValue({
       id: 1,
       recipient_user_id: 2,
       recipient_sector_id: null,
       recipient: 'Maria Destinatária',
+    });
+    userModel.findById.mockResolvedValue({
+      id: 2,
+      name: 'Maria Destinatária',
+      email: 'dest@example.com',
+      is_active: true,
     });
 
     const app = createApp('admin');
@@ -214,20 +177,6 @@ describe('POST /api/messages/:id/forward', () => {
   });
 
   it('encaminha recado para um setor sem enviar e-mail', async () => {
-    userModel.findById.mockImplementation(async (id) => {
-      if (id === 99) {
-        return {
-          id: 99,
-          name: 'Supervisor Teste',
-          role: 'ADMIN',
-          is_active: true,
-          view_scope: 'all',
-          session_version: 1,
-        };
-      }
-      return null;
-    });
-
     messageModel.findById
       .mockResolvedValueOnce({
         id: 1,

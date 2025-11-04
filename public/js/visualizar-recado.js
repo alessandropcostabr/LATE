@@ -631,29 +631,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!window.confirm(messages.confirm)) return;
 
-    let resolutionComment = null;
-    if (status === 'resolved') {
-      const commentInput = window.prompt('Descreva a solução adotada:');
-      if (commentInput === null) {
-        return;
-      }
-      const trimmed = commentInput.trim();
-      if (!trimmed) {
-        showToast('Informe a solução antes de concluir o registro.', 'error');
-        return;
-      }
-      resolutionComment = trimmed;
-    }
-
     const originalText = button.textContent;
     try {
       button.disabled = true;
       button.textContent = messages.loading;
-      const payload = { status };
-      if (resolutionComment) {
-        payload.resolutionComment = resolutionComment;
-      }
-      await API.updateMessageStatus(state.currentMessage.id, payload);
+      await API.updateMessageStatus(state.currentMessage.id, { status });
       showToast(messages.success, 'success');
       await loadMessage();
     } catch (err) {
