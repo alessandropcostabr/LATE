@@ -9,6 +9,18 @@ jest.mock('../models/contact', () => ({
   updateFromMessage: jest.fn(),
 }));
 
+jest.mock('../models/user', () => ({
+  findById: jest.fn(async (id) => ({
+    id,
+    name: 'Test Reader',
+    email: 'reader@example.com',
+    role: 'READER',
+    is_active: true,
+    view_scope: 'all',
+    session_version: 1,
+  })),
+}));
+
 const messageModel = require('../models/message');
 
 function createApp(role = 'reader') {
@@ -23,7 +35,11 @@ function createApp(role = 'reader') {
           id: 1,
           name: 'Test Reader',
           role,
+          sessionVersion: 1,
         },
+        sessionVersion: 1,
+        destroy: jest.fn((cb) => cb?.()),
+        cookie: {},
       };
     }
     next();

@@ -39,6 +39,16 @@ describe('AutomationLogModel', () => {
         event TEXT NOT NULL
       );
 
+      CREATE TABLE event_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_type TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        actor_user_id INTEGER,
+        metadata JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       CREATE TABLE automation_logs (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         automation_id UUID NOT NULL,
@@ -78,6 +88,18 @@ describe('AutomationLogModel', () => {
 
     expect(first).toBeTruthy();
 
+    const { rows: auditRows } = await dbManager.getDatabase().query(
+      'SELECT event_type, entity_type, entity_id, metadata FROM event_logs'
+    );
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0].event_type).toBe('automation.fired');
+    expect(auditRows[0].entity_type).toBe('automation');
+    expect(auditRows[0].entity_id).toBe(automationId);
+    const metadata = auditRows[0].metadata || {};
+    expect(metadata.status).toBe('processed');
+    expect(metadata.has_error).toBe(false);
+    expect(Number(metadata.message_id)).toBe(42);
+
     const duplicate = await AutomationLogModel.create({
       automationId,
       messageId: 42,
@@ -91,5 +113,8 @@ describe('AutomationLogModel', () => {
 
     const { rows } = await dbManager.getDatabase().query('SELECT COUNT(*) AS total FROM automation_logs');
     expect(Number(rows[0].total)).toBe(1);
+
+    const { rows: auditCountRows } = await dbManager.getDatabase().query('SELECT COUNT(*) AS total FROM event_logs');
+    expect(Number(auditCountRows[0].total)).toBe(1);
   });
 });

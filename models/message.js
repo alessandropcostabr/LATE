@@ -961,8 +961,9 @@ async function updateRecipient(id, options = {}, retrying = false) {
   }
 }
 
-async function updateStatus(id, status, { updatedBy } = {}, retrying = false) {
+async function updateStatus(id, status, { updatedBy, client } = {}, retrying = false) {
   const normalizedStatus = ensureStatus(status);
+  const executor = client || db;
   if (updatedBy !== undefined) {
     const canUpdateUser = await supportsColumn(UPDATED_BY_COLUMN);
     if (canUpdateUser) {
@@ -974,14 +975,14 @@ async function updateStatus(id, status, { updatedBy } = {}, retrying = false) {
        WHERE id = ${ph(3)}
     `;
     try {
-      const { rowCount } = await db.query(sqlWithUser, [
+      const { rowCount } = await executor.query(sqlWithUser, [
         normalizedStatus,
         normalizeUserId(updatedBy),
         id,
       ]);
       return rowCount > 0;
     } catch (err) {
-      return handleSchemaError(err, retrying, () => updateStatus(id, status, { updatedBy }, true));
+      return handleSchemaError(err, retrying, () => updateStatus(id, status, { updatedBy, client }, true));
     }
     }
   }
@@ -993,10 +994,10 @@ async function updateStatus(id, status, { updatedBy } = {}, retrying = false) {
      WHERE id = ${ph(2)}
   `;
   try {
-    const { rowCount } = await db.query(sql, [normalizedStatus, id]);
+    const { rowCount } = await executor.query(sql, [normalizedStatus, id]);
     return rowCount > 0;
   } catch (err) {
-    return handleSchemaError(err, retrying, () => updateStatus(id, status, { updatedBy }, true));
+    return handleSchemaError(err, retrying, () => updateStatus(id, status, { updatedBy, client }, true));
   }
 }
 

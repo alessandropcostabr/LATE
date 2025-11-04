@@ -139,6 +139,7 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
         role TEXT NOT NULL DEFAULT 'OPERADOR',
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         view_scope TEXT DEFAULT 'all',
+        session_version INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -223,11 +224,11 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
     const db = memInstance.public;
 
     db.none(`
-      INSERT INTO users (id, name, email, role, is_active, view_scope)
+      INSERT INTO users (id, name, email, role, is_active, view_scope, session_version)
       VALUES
-        (1, 'Ana Operadora', 'ana@example.com', 'OPERADOR', TRUE, 'own'),
-        (2, 'Bruno Operador', 'bruno@example.com', 'OPERADOR', TRUE, 'all'),
-        (99, 'Admin', 'admin@example.com', 'ADMIN', TRUE, 'all')
+        (1, 'Ana Operadora', 'ana@example.com', 'OPERADOR', TRUE, 'own', 1),
+        (2, 'Bruno Operador', 'bruno@example.com', 'OPERADOR', TRUE, 'all', 1),
+        (99, 'Admin', 'admin@example.com', 'ADMIN', TRUE, 'all', 1)
     `);
 
     db.none(`
@@ -265,7 +266,12 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
     app.locals.appBuild = 'test';
 
     app.use((req, res, next) => {
-      req.session = { user: sessionUser };
+      req.session = {
+        user: { ...sessionUser, sessionVersion: 1 },
+        sessionVersion: 1,
+        destroy: jest.fn((cb) => cb?.()),
+        cookie: {},
+      };
       const roleSlug = normalizeRoleSlug(sessionUser.role);
       res.locals.user = sessionUser;
       res.locals.userRoleSlug = roleSlug;
