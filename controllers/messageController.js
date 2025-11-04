@@ -12,6 +12,7 @@ const MessageChecklistModel = require('../models/messageChecklist');
 const MessageCommentModel = require('../models/messageComment');
 const MessageWatcherModel = require('../models/messageWatcher');
 const { enqueueTemplate } = require('../services/emailQueue');
+const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 const { getViewerFromRequest, resolveViewerWithSectors } = require('./helpers/viewer');
 const features = require('../config/features');
 const ContactModel = require('../models/contact');
@@ -476,6 +477,13 @@ async function logMessageEvent(messageId, eventType, payload = {}) {
       event_type: eventType,
       payload,
     });
+    const actorId = Number.isInteger(Number(payload?.user_id)) ? Number(payload.user_id) : null;
+    await logAuditEvent(`message.${eventType}`, {
+      entityType: 'message',
+      entityId: messageId,
+      actorUserId: actorId,
+      metadata: payload && typeof payload === 'object' ? payload : undefined,
+    });
   } catch (eventErr) {
     console.warn('[messages] falha ao registrar evento', {
       messageId,
@@ -887,29 +895,33 @@ exports.updateStatus = async (req, res) => {
       });
     }
 
+    if (transitioningToResolved && resolutionBody.length > 5000) {
+      return res.status(400).json({
+        success: false,
+        error: 'O comentário de solução deve ter entre 1 e 5000 caracteres.',
+      });
+    }
+
     const actorUserId = Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : null;
-    let createdResolutionComment = null;
+
+    let insertedResolutionComment = null;
 
     if (transitioningToResolved) {
       const client = await db.connect();
       try {
         await client.query('BEGIN');
 
-        const ok = await Message.updateStatus(id, targetStatus, {
-          updatedBy: actorUserId || undefined,
-          client,
-        });
+        const ok = await Message.updateStatus(
+          id,
+          targetStatus,
+          {
+            updatedBy: actorUserId || undefined,
+            client,
+          },
+        );
         if (!ok) {
           await client.query('ROLLBACK');
           return res.status(404).json({ success: false, error: 'Contato não encontrado' });
-        }
-
-        if (resolutionBody.length < 1 || resolutionBody.length > 5000) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            error: 'O comentário de solução deve ter entre 1 e 5000 caracteres.',
-          });
         }
 
         const { rows: commentRows } = await client.query(
@@ -918,21 +930,7 @@ exports.updateStatus = async (req, res) => {
           RETURNING id, message_id, user_id, body, created_at, updated_at`,
           [id, actorUserId, resolutionBody],
         );
-        createdResolutionComment = commentRows?.[0] || null;
-
-        if (createdResolutionComment?.user_id) {
-          const { rows: userRows } = await client.query(
-            `SELECT name AS user_name, email AS user_email
-               FROM users
-              WHERE id = $1`,
-            [createdResolutionComment.user_id],
-          );
-          if (userRows[0]) {
-            createdResolutionComment.user_name = userRows[0].user_name;
-            createdResolutionComment.user_email = userRows[0].user_email;
-          }
-        }
-
+        insertedResolutionComment = commentRows?.[0] || null;
         await client.query('COMMIT');
       } catch (txErr) {
         try {
@@ -956,6 +954,20 @@ exports.updateStatus = async (req, res) => {
         return res.status(404).json({ success: false, error: 'Contato não encontrado' });
       }
     }
+
+    if (insertedResolutionComment) {
+      await logAuditEvent('comment.created', {
+        entityType: 'message',
+        entityId: id,
+        actorUserId: actorUserId,
+        metadata: {
+          comment_id: insertedResolutionComment.id,
+          context: 'resolution',
+          length: insertedResolutionComment.body?.length ?? 0,
+        },
+      });
+    }
+
     let updated = await Message.findById(id, { viewer });
     await attachCreatorNames([updated]);
     updated = await maybeAdoptSectorMessage(updated, req.session?.user, viewer, actor);
@@ -967,6 +979,17 @@ exports.updateStatus = async (req, res) => {
         from: before.status,
         to: updated?.status,
       });
+      if (updated?.status === 'resolved') {
+        await logAuditEvent('message.resolved', {
+          entityType: 'message',
+          entityId: id,
+          actorUserId: actor.id,
+          metadata: {
+            from: before.status,
+            comment_id: insertedResolutionComment?.id || null,
+          },
+        });
+      }
     }
 
     return res.json({ success: true, data: toClient(updated, viewer) });
