@@ -289,8 +289,18 @@ router.get('/recados/:id', requireAuth, requirePermission('read'), (req, res) =>
   return res.redirect(302, `/visualizar-recado/${encodeURIComponent(id)}`);
 });
 
-router.get('/relatorios', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
-  res.render('relatorios', { title: 'Relatórios', user: req.session.user || null });
+router.get('/relatorios', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (_req, res) => res.redirect(302, '/relatorios/estatisticas'));
+
+router.get('/relatorios/estatisticas', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
+  res.render('relatorios-estatisticas', { title: 'Relatórios · Estatísticas', user: req.session.user || null });
+});
+
+router.get('/relatorios/auditoria', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
+  res.render('relatorios-auditoria', { title: 'Relatórios · Auditoria', user: req.session.user || null });
+});
+
+router.get('/relatorios/exportacoes', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
+  res.render('relatorios-exportacoes', { title: 'Relatórios · Exportações (em breve)', user: req.session.user || null });
 });
 
 // 404 handler para rotas web
