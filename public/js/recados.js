@@ -457,6 +457,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusCopy = STATUS_ACTION_COPY[targetStatus] || STATUS_ACTION_COPY.default;
         if (statusCopy.confirm && !window.confirm(statusCopy.confirm)) return;
 
+        let resolutionComment = null;
+        if (targetStatus === 'resolved') {
+          const commentInput = window.prompt('Descreva a solução adotada:');
+          if (commentInput === null) {
+            return;
+          }
+          const trimmed = commentInput.trim();
+          if (!trimmed) {
+            if (window.Toast?.error) {
+              window.Toast.error('Informe a solução antes de concluir o registro.');
+            } else {
+              alert('Informe a solução antes de concluir o registro.');
+            }
+            return;
+          }
+          resolutionComment = trimmed;
+        }
+
         const group = statusButton.closest('.message-status-group');
         const buttonsInGroup = group ? Array.from(group.querySelectorAll('button')) : [];
         const originalStates = buttonsInGroup.map((btn) => ({ btn, disabled: btn.disabled }));
@@ -473,7 +491,11 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error('API indisponível para atualizar registros.');
           }
 
-          await window.API.updateMessageStatus(messageId, { status: targetStatus });
+          const payload = { status: targetStatus };
+          if (resolutionComment) {
+            payload.resolutionComment = resolutionComment;
+          }
+          await window.API.updateMessageStatus(messageId, payload);
           if (window.Toast?.success) {
             window.Toast.success(statusCopy.success || 'Situação do registro atualizada.');
           }
