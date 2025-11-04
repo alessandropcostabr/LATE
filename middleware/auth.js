@@ -69,7 +69,9 @@ async function destroySessionAndRespond(req, res) {
     }
   });
 
-  res.clearCookie(cookieName);
+  if (typeof res.clearCookie === 'function') {
+    res.clearCookie(cookieName);
+  }
 
   if (isApiRequest(req)) {
     return res.status(401).json({ success: false, error: 'Sessão expirada. Faça login novamente.' });

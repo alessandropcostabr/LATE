@@ -43,6 +43,7 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - **Kanban:** colunas por status, ideal para triagem
 - **Calendário:** prazos e ligações por data
 - **Widgets (Dashboard):** hoje, atrasados, SLAs, por setor
+- **Relatórios de Auditoria:** em `/relatorios/auditoria`, acompanhe eventos recentes (criação, mudanças de status, comentários, login/logout) com filtros por período, tipo de evento e responsável.
 
 ## 🔔 Notificações
 
