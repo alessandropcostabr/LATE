@@ -887,29 +887,31 @@ exports.updateStatus = async (req, res) => {
       });
     }
 
+    if (transitioningToResolved && resolutionBody.length > 5000) {
+      return res.status(400).json({
+        success: false,
+        error: 'O comentário de solução deve ter entre 1 e 5000 caracteres.',
+      });
+    }
+
     const actorUserId = Number.isInteger(sessionUserId) && sessionUserId > 0 ? sessionUserId : null;
-    let createdResolutionComment = null;
 
     if (transitioningToResolved) {
       const client = await db.connect();
       try {
         await client.query('BEGIN');
 
-        const ok = await Message.updateStatus(id, targetStatus, {
-          updatedBy: actorUserId || undefined,
-          client,
-        });
+        const ok = await Message.updateStatus(
+          id,
+          targetStatus,
+          {
+            updatedBy: actorUserId || undefined,
+            client,
+          },
+        );
         if (!ok) {
           await client.query('ROLLBACK');
           return res.status(404).json({ success: false, error: 'Contato não encontrado' });
-        }
-
-        if (resolutionBody.length < 1 || resolutionBody.length > 5000) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({
-            success: false,
-            error: 'O comentário de solução deve ter entre 1 e 5000 caracteres.',
-          });
         }
 
         const { rows: commentRows } = await client.query(
@@ -918,20 +920,6 @@ exports.updateStatus = async (req, res) => {
           RETURNING id, message_id, user_id, body, created_at, updated_at`,
           [id, actorUserId, resolutionBody],
         );
-        createdResolutionComment = commentRows?.[0] || null;
-
-        if (createdResolutionComment?.user_id) {
-          const { rows: userRows } = await client.query(
-            `SELECT name AS user_name, email AS user_email
-               FROM users
-              WHERE id = $1`,
-            [createdResolutionComment.user_id],
-          );
-          if (userRows[0]) {
-            createdResolutionComment.user_name = userRows[0].user_name;
-            createdResolutionComment.user_email = userRows[0].user_email;
-          }
-        }
 
         await client.query('COMMIT');
       } catch (txErr) {
