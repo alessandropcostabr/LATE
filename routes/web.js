@@ -140,6 +140,19 @@ router.get('/roadmap', requireAuth, (req, res) => {
   res.render('roadmap', { title: 'Roadmap', user: req.session.user || null });
 });
 
+router.get('/relatorios/auditoria', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  res.render('relatorios', {
+    title: 'Relatórios · Auditoria',
+    user: req.session.user || null,
+    auditInitialFilters: {
+      from: sevenDaysAgo.toISOString(),
+      to: now.toISOString(),
+    },
+  });
+});
+
 router.get('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.showSettings);
 router.post('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.updateSettings);
 

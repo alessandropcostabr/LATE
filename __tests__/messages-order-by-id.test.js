@@ -117,7 +117,7 @@ beforeAll(async () => {
         sessionVersion: 1,
       },
       sessionVersion: 1,
-      destroy: jest.fn((cb) => cb?.()),
+      destroy: (cb) => (typeof cb === 'function' ? cb() : undefined),
       cookie: {},
     };
     next();

@@ -46,7 +46,7 @@ function createApp(role = 'admin') {
         sessionVersion: 1,
       },
       sessionVersion: 1,
-      destroy: jest.fn((cb) => cb?.()),
+      destroy: (cb) => (typeof cb === 'function' ? cb() : undefined),
       cookie: {},
     };
     next();
@@ -80,32 +80,18 @@ function createApp(role = 'admin') {
 describe('POST /api/messages/:id/forward', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    userModel.findById.mockImplementation(async (id) => ({
+      id,
+      name: id === 99 ? 'Supervisor Teste' : `Usuário ${id}`,
+      email: id === 99 ? 'supervisor@late.dev' : `user${id}@late.dev`,
+      role: id === 99 ? 'ADMIN' : 'OPERADOR',
+      is_active: true,
+      view_scope: 'all',
+      session_version: 1,
+    }));
   });
 
   it('encaminha recado para um novo usuário e envia notificação', async () => {
-    userModel.findById.mockImplementation(async (id) => {
-      if (id === 99) {
-        return {
-          id: 99,
-          name: 'Supervisor Teste',
-          role: 'ADMIN',
-          is_active: true,
-          view_scope: 'all',
-          session_version: 1,
-        };
-      }
-      if (id === 2) {
-        return {
-          id: 2,
-          name: 'Maria Destinatária',
-          email: 'dest@example.com',
-          is_active: true,
-          session_version: 1,
-        };
-      }
-      return null;
-    });
-
     messageModel.findById
       .mockResolvedValueOnce({
         id: 1,
@@ -142,6 +128,40 @@ describe('POST /api/messages/:id/forward', () => {
 
     messageModel.updateRecipient.mockResolvedValue(true);
 
+    userModel.findById.mockImplementation(async (id) => {
+      if (id === 99) {
+        return {
+          id: 99,
+          name: 'Supervisor Teste',
+          email: 'supervisor@late.dev',
+          role: 'ADMIN',
+          is_active: true,
+          view_scope: 'all',
+          session_version: 1,
+        };
+      }
+      if (id === 2) {
+        return {
+          id: 2,
+          name: 'Maria Destinatária',
+          email: 'dest@example.com',
+          role: 'OPERADOR',
+          is_active: true,
+          view_scope: 'all',
+          session_version: 1,
+        };
+      }
+      return {
+        id,
+        name: `Usuário ${id}`,
+        email: `user${id}@late.dev`,
+        role: 'OPERADOR',
+        is_active: true,
+        view_scope: 'all',
+        session_version: 1,
+      };
+    });
+
     const app = createApp('admin');
     const response = await supertest(app)
       .post('/api/messages/1/forward')
@@ -169,11 +189,18 @@ describe('POST /api/messages/:id/forward', () => {
   });
 
   it('retorna 400 quando o destinatário é o mesmo usuário', async () => {
+    messageModel.findById.mockResolvedValue({
+      id: 1,
+      recipient_user_id: 2,
+      recipient_sector_id: null,
+      recipient: 'Maria Destinatária',
+    });
     userModel.findById.mockImplementation(async (id) => {
       if (id === 99) {
         return {
           id: 99,
           name: 'Supervisor Teste',
+          email: 'supervisor@late.dev',
           role: 'ADMIN',
           is_active: true,
           view_scope: 'all',
@@ -185,18 +212,21 @@ describe('POST /api/messages/:id/forward', () => {
           id: 2,
           name: 'Maria Destinatária',
           email: 'dest@example.com',
+          role: 'OPERADOR',
           is_active: true,
+          view_scope: 'all',
           session_version: 1,
         };
       }
-      return null;
-    });
-
-    messageModel.findById.mockResolvedValue({
-      id: 1,
-      recipient_user_id: 2,
-      recipient_sector_id: null,
-      recipient: 'Maria Destinatária',
+      return {
+        id,
+        name: `Usuário ${id}`,
+        email: `user${id}@late.dev`,
+        role: 'OPERADOR',
+        is_active: true,
+        view_scope: 'all',
+        session_version: 1,
+      };
     });
 
     const app = createApp('admin');
@@ -214,20 +244,6 @@ describe('POST /api/messages/:id/forward', () => {
   });
 
   it('encaminha recado para um setor sem enviar e-mail', async () => {
-    userModel.findById.mockImplementation(async (id) => {
-      if (id === 99) {
-        return {
-          id: 99,
-          name: 'Supervisor Teste',
-          role: 'ADMIN',
-          is_active: true,
-          view_scope: 'all',
-          session_version: 1,
-        };
-      }
-      return null;
-    });
-
     messageModel.findById
       .mockResolvedValueOnce({
         id: 1,

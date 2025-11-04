@@ -57,8 +57,8 @@ async function ensureSchema() {
 async function seedUser() {
   const hash = await argon2.hash('SenhaAtual123', { type: argon2.argon2id });
   const result = await dbManager.query(`
-    INSERT INTO users (name, email, password_hash, role, is_active, view_scope)
-    VALUES ($1, $2, $3, 'ADMIN', TRUE, 'all')
+    INSERT INTO users (name, email, password_hash, role, is_active, view_scope, session_version)
+    VALUES ($1, $2, $3, 'ADMIN', TRUE, 'all', 1)
     RETURNING id
   `, ['Usuário Teste', userEmail, hash]);
   userId = result.rows[0].id;
@@ -74,29 +74,19 @@ beforeAll(async () => {
 
   app = express();
   app.use(express.json());
-  app.use(async (req, _res, next) => {
-    try {
-      const { rows } = await dbManager.query(
-        'SELECT session_version FROM users WHERE id = $1',
-        [userId]
-      );
-      const sessionVersion = Number(rows?.[0]?.session_version) || 1;
-      req.session = {
-        user: {
-          id: userId,
-          email: userEmail,
-          role: 'ADMIN',
-          name: 'Usuário Teste',
-          sessionVersion,
-        },
-        sessionVersion,
-        destroy: jest.fn((cb) => cb?.()),
-        cookie: {},
-      };
-      next();
-    } catch (err) {
-      next(err);
-    }
+  app.use((req, _res, next) => {
+    req.session = req.session || {};
+    req.session.user = {
+      id: userId,
+      email: userEmail,
+      role: 'ADMIN',
+      name: 'Usuário Teste',
+      sessionVersion: 1,
+    };
+    req.session.sessionVersion = 1;
+    req.session.destroy = (cb) => (typeof cb === 'function' ? cb() : undefined);
+    req.session.cookie = req.session.cookie || {};
+    next();
   });
   app.use('/api', apiRoutes);
 });
@@ -110,7 +100,7 @@ afterAll(async () => {
 beforeEach(async () => {
   await dbManager.query('DELETE FROM password_reset_tokens');
   const baseHash = await argon2.hash('SenhaAtual123', { type: argon2.argon2id });
-  await dbManager.query('UPDATE users SET password_hash = $1 WHERE id = $2', [baseHash, userId]);
+  await dbManager.query('UPDATE users SET password_hash = $1, session_version = 1 WHERE id = $2', [baseHash, userId]);
   jest.clearAllMocks();
 });
 
