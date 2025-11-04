@@ -57,6 +57,18 @@ jest.mock('../controllers/messageController', () => {
 
 jest.mock('../controllers/statsController', () => ({}));
 
+jest.mock('../models/user', () => ({
+  findById: jest.fn(async (id) => ({
+    id,
+    name: 'Test Admin',
+    email: 'admin@example.com',
+    role: 'ADMIN',
+    is_active: true,
+    view_scope: 'all',
+    session_version: 1,
+  })),
+}));
+
 jest.mock('../middleware/validation', () => ({
   handleValidationErrors: jest.fn((req, res, next) => next && next()),
   handleIntakeValidationErrors: jest.fn((req, res, next) => next && next()),
@@ -95,7 +107,12 @@ describe('routes/api defensive middleware fallback', () => {
     expect(statsRoute.handlers.length).toBeGreaterThanOrEqual(1);
 
     const req = {
-      session: { user: { role: 'ADMIN' } },
+      session: {
+        user: { role: 'ADMIN', id: 1, sessionVersion: 1 },
+        sessionVersion: 1,
+        destroy: jest.fn((cb) => cb?.()),
+        cookie: {},
+      },
       originalUrl: '/api/messages/stats',
     };
     const res = {};
@@ -103,6 +120,7 @@ describe('routes/api defensive middleware fallback', () => {
     res.json = jest.fn(() => res);
     res.redirect = jest.fn();
     res.render = jest.fn();
+    res.clearCookie = jest.fn();
     const next = jest.fn();
 
     warnSpy.mockClear();

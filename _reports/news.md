@@ -12,6 +12,10 @@
       <p>Agora, ao fazer login, o LATE encerra automaticamente sessões antigas do mesmo usuário. Isso evita acessos concorrentes sem supervisão e reduz riscos quando alguém esquece a sessão aberta em outro dispositivo.</p>
     </section>
     <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📝 Follow-up obrigatório na resolução</h2>
+      <p>Ao marcar um registro como <strong>Resolvido</strong>, o sistema solicita um comentário descrevendo a solução aplicada. O texto fica registrado na linha do tempo e alimenta a trilha de auditoria leve.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔄 Sessão atualizada em mudanças críticas</h2>
       <p>Troca de senha, reset administrado ou desativação também renovam a sessão. Quem estiver com o usuário logado recebe o aviso “Sua sessão foi encerrada porque outro login foi realizado” e precisa autenticar novamente.</p>
     </section>
