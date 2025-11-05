@@ -55,6 +55,6 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 
 🔐 LATE prioriza **segurança**, **relacionamento com o cliente** e **organização intersetorial**.
 
-📅 Última atualização: 05/11/2025
+📅 Última atualização: 06/11/2025
 
 💡 Projeto em uso interno por equipes clínicas e operacionais.

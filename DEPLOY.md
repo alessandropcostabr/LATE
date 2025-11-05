@@ -1,6 +1,6 @@
 # 🚀 DEPLOY — LATE
 
-Última atualização: 05/11/2025
+Última atualização: 06/11/2025
 
 ---
 
@@ -47,6 +47,7 @@ npm install
 npm run migrate
 pm2 restart late-prod
 ```
+- Confirmar acesso autenticado a `/relatorios/auditoria` (perfil ADMIN ou SUPERVISOR) após o deploy.
 
 ### Monitorar
 ```bash
