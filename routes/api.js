@@ -18,6 +18,7 @@ const eventLogsController = require('../controllers/eventLogsController');
 const healthController = require('../controllers/healthController');
 const metaController = require('../controllers/metaController');
 const intakeController = require('../controllers/intakeController');
+const reportExportController = require('../controllers/reportExportController');
 const { collectDevInfo } = require('../utils/devInfo');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
@@ -205,6 +206,30 @@ router.get(
   '/event-logs/:id',
   ...flatFns(canAudit),
   eventLogsController.getById
+);
+
+router.post(
+  '/event-logs/export',
+  ...flatFns(canAudit, csrfProtection),
+  reportExportController.requestEventLogsExport
+);
+
+router.post(
+  '/messages/export',
+  ...flatFns(canAudit, csrfProtection),
+  reportExportController.requestMessagesExport
+);
+
+router.get(
+  '/report-exports',
+  ...flatFns(canAudit),
+  reportExportController.list
+);
+
+router.get(
+  '/report-exports/:id/download',
+  ...flatFns(canAudit),
+  reportExportController.download
 );
 
 // ========== Messages ==========

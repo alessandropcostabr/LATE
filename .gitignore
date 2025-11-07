@@ -87,3 +87,7 @@ data/*.db
 # local deploy marker
 .last_deploy_commit
 .csrf
+
+# Export / storage artifacts
+storage/*
+!storage/.gitkeep

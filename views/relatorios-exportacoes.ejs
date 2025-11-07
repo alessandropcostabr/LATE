@@ -1,20 +1,157 @@
 <%- include('partials/header') %>
 <body>
   <%- include('partials/navbar') %>
+  <%
+    const defaults = auditInitialFilters || {};
+    const defaultFromInput = defaults.fromInput || '';
+    const defaultToInput = defaults.toInput || '';
+  %>
 
   <main class="main" role="main">
-    <div class="container">
-      <h1>Relatórios · Exportações (em breve)</h1>
+    <div class="container export-container" data-export-root>
+      <% if (csrfToken) { %>
+        <meta name="csrf-token" content="<%= csrfToken %>">
+      <% } %>
 
-      <div class="card card--muted">
+      <header class="page-header">
+        <div>
+          <p class="page-eyebrow">Downloads oficiais</p>
+          <h1>Relatórios · Exportações</h1>
+          <p class="text-muted">
+            Gere arquivos CSV ou JSON com os filtros aplicados e acompanhe o histórico de solicitações.
+          </p>
+        </div>
+      </header>
+
+      <section class="card export-card">
         <div class="card-header">
-          <h2 class="card-title">Planejamento</h2>
+          <div>
+            <h2 class="card-title">Exportar Auditoria (event_logs)</h2>
+            <p class="card-subtitle">Use os mesmos filtros da aba Auditoria e receba um arquivo CSV/JSON.</p>
+          </div>
         </div>
         <div class="card-body">
-          <p>Em breve você poderá exportar dados filtrados em CSV/JSON diretamente por aqui. Esta funcionalidade faz parte do planejamento da Sprint de Exportações.</p>
-          <p>Enquanto isso, entre em contato com o time técnico para obter relatórios sob demanda.</p>
+          <form id="exportAuditForm" class="export-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="export-form-grid">
+              <div>
+                <label for="auditExportFrom" class="form-label">De</label>
+                <input type="datetime-local" class="form-control" id="auditExportFrom" name="from" value="<%= defaultFromInput %>" required>
+              </div>
+              <div>
+                <label for="auditExportTo" class="form-label">Até</label>
+                <input type="datetime-local" class="form-control" id="auditExportTo" name="to" value="<%= defaultToInput %>" required>
+              </div>
+              <div>
+                <label for="auditExportEventType" class="form-label">Tipo(s) de evento</label>
+                <input type="text" class="form-control" id="auditExportEventType" name="event_type" placeholder="message.*, user.login">
+              </div>
+              <div>
+                <label for="auditExportEntityType" class="form-label">Entidade</label>
+                <input type="text" class="form-control" id="auditExportEntityType" name="entity_type" placeholder="message, user">
+              </div>
+              <div>
+                <label for="auditExportActor" class="form-label">Responsável (ID)</label>
+                <input type="number" min="1" class="form-control" id="auditExportActor" name="actor_user_id" placeholder="ex.: 12">
+              </div>
+              <div>
+                <label for="auditExportSearch" class="form-label">Busca em metadados</label>
+                <input type="text" class="form-control" id="auditExportSearch" name="search" placeholder="Trecho contido na metadata">
+              </div>
+              <div>
+                <label for="auditExportFormat" class="form-label">Formato</label>
+                <select class="form-select" id="auditExportFormat" name="format">
+                  <option value="csv" selected>CSV</option>
+                  <option value="json">JSON</option>
+                </select>
+              </div>
+            </div>
+            <div class="export-actions">
+              <button type="submit" class="btn btn-primary">Solicitar exportação de auditoria</button>
+              <small class="text-muted">Limite de <%= process.env.REPORT_EXPORT_MAX_ROWS || 5000 %> linhas por arquivo.</small>
+            </div>
+          </form>
         </div>
-      </div>
+      </section>
+
+      <section class="card export-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Exportar Registros (messages)</h2>
+            <p class="card-subtitle">Selecione período e status para gerar o CSV/JSON dos registros.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="exportMessagesForm" class="export-form">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="export-form-grid export-form-grid--messages">
+              <div>
+                <label for="msgExportStatus" class="form-label">Situação</label>
+                <select class="form-select" id="msgExportStatus" name="status">
+                  <option value="">Todas</option>
+                  <option value="pending">Pendentes</option>
+                  <option value="in_progress">Em andamento</option>
+                  <option value="resolved">Resolvidas</option>
+                </select>
+              </div>
+              <div>
+                <label for="msgExportStart" class="form-label">Data inicial</label>
+                <input type="date" class="form-control" id="msgExportStart" name="start_date">
+              </div>
+              <div>
+                <label for="msgExportEnd" class="form-label">Data final</label>
+                <input type="date" class="form-control" id="msgExportEnd" name="end_date">
+              </div>
+              <div>
+                <label for="msgExportRecipient" class="form-label">Destinatário</label>
+                <input type="text" class="form-control" id="msgExportRecipient" name="recipient" placeholder="Parte do nome do destinatário">
+              </div>
+              <div>
+                <label for="msgExportFormat" class="form-label">Formato</label>
+                <select class="form-select" id="msgExportFormat" name="format">
+                  <option value="csv" selected>CSV</option>
+                  <option value="json">JSON</option>
+                </select>
+              </div>
+            </div>
+            <div class="export-actions">
+              <button type="submit" class="btn btn-outline-primary">Solicitar exportação de registros</button>
+              <small class="text-muted">Use os filtros para reduzir o volume gerado.</small>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card export-history-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Histórico de exportações</h2>
+            <p class="card-subtitle">Arquivos ficam disponíveis por até 7 dias.</p>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="exportHistoryRefresh">Atualizar</button>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th scope="col">Tipo</th>
+                  <th scope="col">Formato</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Criado em</th>
+                  <th scope="col">Concluído em</th>
+                  <th scope="col">Arquivo</th>
+                </tr>
+              </thead>
+              <tbody id="exportHistoryTable">
+                <tr>
+                  <td colspan="6" class="text-muted text-center">Nenhuma exportação solicitada.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 

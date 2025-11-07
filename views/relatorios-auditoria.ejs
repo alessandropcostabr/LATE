@@ -1,23 +1,180 @@
 <%- include('partials/header') %>
 <body>
   <%- include('partials/navbar') %>
+  <%
+    const filters = auditInitialFilters || {};
+    const defaultFrom = filters.fromIso || '';
+    const defaultTo = filters.toIso || '';
+    const defaultFromInput = filters.fromInput || '';
+    const defaultToInput = filters.toInput || '';
+  %>
 
   <main class="main" role="main">
-    <div class="container">
-      <h1>Relatórios · Auditoria</h1>
+    <div
+      class="container audit-container"
+      data-audit-root
+      data-default-from="<%= defaultFrom %>"
+      data-default-to="<%= defaultTo %>"
+      data-filter-key="late.audit.filters"
+    >
+      <header class="page-header">
+        <div>
+          <p class="page-eyebrow">Auditoria leve</p>
+          <h1>Relatórios · Auditoria</h1>
+          <p class="text-muted">
+            Consulte quem executou cada ação crítica (criação, encaminhamento, resolução, logins/logouts e automations) no recorte selecionado.
+          </p>
+        </div>
+        <div class="page-meta">
+          <span class="badge badge--beta">Beta</span>
+          <small class="text-muted">Consome <code>event_logs</code></small>
+        </div>
+      </header>
 
-      <div class="card card--muted">
+      <section class="card card--muted audit-filters-card">
         <div class="card-header">
-          <h2 class="card-title">Em breve</h2>
+          <h2 class="card-title">Filtros do período</h2>
+          <p class="card-subtitle text-muted">
+            Datas usam horário local; tipos aceitam curingas (ex.: <code>message.*</code>).
+          </p>
         </div>
         <div class="card-body">
-          <p>Esta seção exibirá os eventos registrados em <code>event_logs</code>, permitindo filtrar ações como criação de recado, mudanças de status, automações e logins/logouts.</p>
-          <p>No momento, estamos consolidando os dados e definindo os dashboards. Se notar alguma necessidade específica, entre em contato com o time técnico.</p>
+          <form id="auditFiltersForm" class="audit-filters" autocomplete="off">
+            <div class="row g-3">
+              <div class="col-12 col-md-3">
+                <label for="auditFrom" class="form-label">De</label>
+                <input type="datetime-local" class="form-control" id="auditFrom" name="from" value="<%= defaultFromInput %>" required>
+              </div>
+              <div class="col-12 col-md-3">
+                <label for="auditTo" class="form-label">Até</label>
+                <input type="datetime-local" class="form-control" id="auditTo" name="to" value="<%= defaultToInput %>" required>
+              </div>
+              <div class="col-12 col-md-3">
+                <label for="auditEventType" class="form-label">Tipo de evento</label>
+                <input type="text" class="form-control" id="auditEventType" name="event_type" placeholder="message.*, user.login">
+              </div>
+              <div class="col-12 col-md-3">
+                <label for="auditEntityType" class="form-label">Entidade</label>
+                <input type="text" class="form-control" id="auditEntityType" name="entity_type" placeholder="message, user">
+              </div>
+              <div class="col-12 col-md-3">
+                <label for="auditEntityId" class="form-label">ID da entidade</label>
+                <input type="text" class="form-control" id="auditEntityId" name="entity_id" placeholder="#, UUID">
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="auditActorName" class="form-label">Responsável</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="auditActorName"
+                  name="actor_user_name"
+                  list="auditUsersOptions"
+                  placeholder="Digite o nome ou #ID"
+                >
+                <input type="hidden" id="auditActorId" name="actor_user_id" value="">
+                <small class="form-text text-muted">Selecione na lista para preencher o ID automaticamente.</small>
+                <datalist id="auditUsersOptions">
+                  <% (auditUsers || []).forEach(function(user) { %>
+                    <option value="<%= user.name %> (#<%= user.id %>)" data-id="<%= user.id %>"></option>
+                  <% }) %>
+                </datalist>
+              </div>
+              <div class="col-12 col-md-4">
+                <label for="auditSearch" class="form-label">Busca em metadados</label>
+                <input type="text" class="form-control" id="auditSearch" name="search" placeholder="Trecho contido em metadata">
+              </div>
+              <div class="col-12 col-md-2">
+                <label for="auditLimit" class="form-label">Itens por chamada</label>
+                <select class="form-select" id="auditLimit" name="limit">
+                  <option value="25">25</option>
+                  <option value="50" selected>50</option>
+                  <option value="100">100</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="audit-filters__actions">
+              <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+              <button type="button" class="btn btn-outline-secondary" id="auditResetFilters">Limpar</button>
+            </div>
+          </form>
         </div>
-      </div>
+      </section>
+
+      <section class="card card--muted audit-legend-card">
+        <div class="card-header">
+          <h2 class="card-title">Eventos suportados</h2>
+          <p class="card-subtitle text-muted">Cada item corresponde a um prefixo em <code>event_logs.event_type</code>.</p>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Use este guia para entender os eventos disponíveis hoje e planejar novos ganchos.</p>
+          <ul id="auditEventLegend" class="audit-legend">
+            <li class="text-muted">Carregando legendas...</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card card--muted audit-summary-card">
+        <div class="card-header">
+          <h2 class="card-title">Indicadores do período</h2>
+        </div>
+        <div class="card-body audit-summary" aria-live="polite">
+          <div class="audit-summary__cards" id="auditSummaryCards">
+            <div class="audit-placeholder">Carregando indicadores...</div>
+          </div>
+          <div class="audit-summary__lists">
+            <div>
+              <h3>Eventos mais frequentes</h3>
+              <ul id="auditTopEvents" class="audit-list">
+                <li class="text-muted">Nenhum dado carregado.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Série diária</h3>
+              <ul id="auditDailyBreakdown" class="audit-list">
+                <li class="text-muted">Aguardando filtros.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card audit-table-card">
+        <div class="card-header audit-table-card__header">
+          <h2 class="card-title">Eventos registrados</h2>
+          <button type="button" id="auditExportButton" class="btn btn-outline-secondary">
+            Exportar CSV/JSON
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="auditTableStatus" class="alert d-none" role="status"></div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Data</th>
+                  <th scope="col">Evento</th>
+                  <th scope="col">Entidade</th>
+                  <th scope="col">Responsável</th>
+                  <th scope="col">Metadados</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr class="table-placeholder">
+                  <td colspan="5">Aguardando primeira busca...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button type="button" id="auditLoadMore" class="btn btn-outline-primary w-100 mt-3 d-none">
+            Carregar mais eventos
+          </button>
+        </div>
+      </section>
     </div>
   </main>
 
+  <script type="application/json" id="auditUsersData"><%- JSON.stringify(auditUsers || []) %></script>
   <%- include('partials/footer') %>
 </body>
 </html>

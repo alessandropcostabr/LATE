@@ -160,6 +160,30 @@ ${html}
 `.trim(),
     };
   },
+  'export-ready': (data = {}) => {
+    const recipient = data.recipient_name || 'colega';
+    const type = String(data.export_type || '').toLowerCase();
+    const typeLabel = type === 'messages' ? 'Registros' : 'Auditoria';
+    const format = String(data.format || 'csv').toUpperCase();
+    const baseUrl = (data.base_url || process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const url = `${baseUrl}/relatorios/exportacoes`;
+    const safeUrl = escapeHtml(url);
+    return {
+      subject: `[LATE] Exportação de ${typeLabel} pronta`,
+      text: [
+        `Olá, ${recipient}!`,
+        '',
+        `O arquivo de ${typeLabel} (${format}) está pronto para download.`,
+        '',
+        `Acesse: ${url}`,
+      ].join('\n'),
+      html: `
+<p>Olá, <strong>${escapeHtml(recipient)}</strong>!</p>
+<p>O arquivo de <strong>${escapeHtml(typeLabel)}</strong> (${escapeHtml(format)}) está pronto para download.</p>
+<p><a href="${safeUrl}">➜ Abrir página de exportações</a></p>
+`.trim(),
+    };
+  },
 };
 
 function render(templateName, data) {

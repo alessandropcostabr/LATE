@@ -49,7 +49,7 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - Acesse **Menu → Relatórios → Auditoria** (perfis Admin ou Supervisor).
 - Use os filtros rápidos (7 ou 30 dias) ou escolha um intervalo personalizado para investigar ações específicas.
 - Clique em **Ver detalhes** na tabela para visualizar o JSON com mais contexto (ex.: de/para do status, usuário que executou, automations).
-- Exporte manualmente os resultados copiando a tabela; a opção de download será liberada na Sprint 02B.
+- Gere arquivos CSV/JSON diretamente em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o histórico pelo próprio painel.
 
 ## 🔔 Notificações
 
