@@ -1,8 +1,21 @@
 // models/eventLog.js
-// Acesso aos eventos de auditoria leve (tabela event_logs).
+// Auditoria leve (event_logs) com criação, filtros avançados e export helpers.
 
 const { randomUUID } = require('crypto');
 const db = require('../config/database');
+
+function sanitizeText(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase();
+}
+
+function normalizeEntityId(entityId) {
+  if (entityId === null || entityId === undefined) return null;
+  if (typeof entityId === 'number' || typeof entityId === 'bigint') {
+    return String(entityId);
+  }
+  return String(entityId).trim();
+}
 
 function sanitizeWildcard(value) {
   if (!value) return null;
@@ -83,7 +96,9 @@ function buildFilters({
     const createdIdx = params.length;
     params.push(cursor.id);
     const idIdx = params.length;
-    where.push(`(el.created_at < $${createdIdx}::timestamptz OR (el.created_at = $${createdIdx}::timestamptz AND el.id < $${idIdx}::uuid))`);
+    where.push(
+      `(el.created_at < $${createdIdx}::timestamptz OR (el.created_at = $${createdIdx}::timestamptz AND el.id < $${idIdx}::uuid))`,
+    );
   }
 
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -98,9 +113,9 @@ async function create({
   actorUserId = null,
   metadata = null,
 }) {
-  const normalizedEvent = String(eventType || '').trim();
-  const normalizedEntityType = String(entityType || '').trim();
-  const normalizedEntityId = String(entityId || '').trim();
+  const normalizedEvent = sanitizeText(eventType);
+  const normalizedEntityType = sanitizeText(entityType);
+  const normalizedEntityId = normalizeEntityId(entityId);
 
   if (!normalizedEvent || !normalizedEntityType || !normalizedEntityId) {
     throw new Error('Evento de auditoria inválido.');
@@ -115,8 +130,8 @@ async function create({
   const { rows } = await db.query(
     `INSERT INTO event_logs (id, event_type, entity_type, entity_id, actor_user_id, metadata, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, event_type, entity_type, entity_id, actor_user_id, metadata, created_at`
-    , [id, normalizedEvent, normalizedEntityType, normalizedEntityId, actor, payload, createdAt]
+      RETURNING id, event_type, entity_type, entity_id, actor_user_id, metadata, created_at`,
+    [id, normalizedEvent, normalizedEntityType, normalizedEntityId, actor, payload, createdAt],
   );
 
   const row = rows?.[0];
@@ -184,7 +199,8 @@ async function listFiltered({
   let nextCursor = null;
   if (hasMore && items.length) {
     const last = items[items.length - 1];
-    const payload = Buffer.from(`${last.created_at.toISOString()}|${last.id}`).toString('base64');
+    const lastDate = last.created_at instanceof Date ? last.created_at : new Date(last.created_at);
+    const payload = Buffer.from(`${lastDate.toISOString()}|${last.id}`).toString('base64');
     nextCursor = payload;
   }
 
@@ -243,46 +259,39 @@ async function summary({ from, to, eventTypes }) {
   };
 }
 
-async function getById(id) {
-  if (!id) return null;
+async function listRecent({ limit = 50, entityType, entityId } = {}) {
+  const filters = [];
+  const params = [];
+  let index = 1;
+
+  if (entityType) {
+    filters.push(`entity_type = $${index++}`);
+    params.push(sanitizeText(entityType));
+  }
+
+  if (entityId !== undefined && entityId !== null) {
+    filters.push(`entity_id = $${index++}`);
+    params.push(normalizeEntityId(entityId));
+  }
+
+  const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 50, 200));
+
   const { rows } = await db.query(
-    `
-      SELECT
-        el.id,
-        el.event_type,
-        el.entity_type,
-        el.entity_id,
-        el.actor_user_id,
-        el.metadata,
-        el.created_at,
-        u.name AS actor_user_name
-      FROM event_logs el
-      LEFT JOIN users u ON u.id = el.actor_user_id
-      WHERE el.id = $1
-      LIMIT 1
-    `,
-    [id],
+    `SELECT id, event_type, entity_type, entity_id, actor_user_id, metadata, created_at
+       FROM event_logs
+       ${whereClause}
+   ORDER BY created_at DESC
+      LIMIT ${safeLimit}`,
+    params,
   );
 
-  const row = rows[0];
-  if (!row) return null;
-
-  return {
-    id: row.id,
-    event_type: row.event_type,
-    entity_type: row.entity_type,
-    entity_id: row.entity_id,
-    actor_user: row.actor_user_id
-      ? { id: row.actor_user_id, name: row.actor_user_name || null }
-      : null,
-    metadata: row.metadata || null,
-    created_at: row.created_at,
-  };
+  return rows || [];
 }
 
 module.exports = {
   create,
   listFiltered,
   summary,
-  getById,
+  listRecent,
 };

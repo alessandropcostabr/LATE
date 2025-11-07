@@ -2,14 +2,22 @@ const express = require('express');
 const supertest = require('supertest');
 
 const mockFindById = jest.fn();
+const mockRoleState = { value: 'READER' };
 
 jest.mock('../models/message', () => ({
   findById: (...args) => mockFindById(...args),
 }));
 
-const mockUserFindById = jest.fn();
 jest.mock('../models/user', () => ({
-  findById: (...args) => mockUserFindById(...args),
+  findById: jest.fn(async (id) => ({
+    id,
+    name: 'Test User',
+    email: 'user@example.com',
+    role: mockRoleState.value.toUpperCase(),
+    is_active: true,
+    view_scope: 'all',
+    session_version: 1,
+  })),
 }));
 
 jest.mock('../controllers/messageController', () => {
@@ -63,8 +71,6 @@ jest.mock('../middleware/csrf', () => jest.fn((req, _res, next) => next()));
 
 const messageController = require('../controllers/messageController');
 
-const userRoles = new Map();
-
 function createApp() {
   const app = express();
   app.use(express.json());
@@ -73,24 +79,21 @@ function createApp() {
   app.use((req, _res, next) => {
     const roleHeader = req.get('x-test-role');
     if (roleHeader !== undefined) {
-      const normalized = typeof roleHeader === 'string' ? roleHeader.trim().toUpperCase() : '';
+      const normalizedRole = roleHeader && roleHeader !== 'none'
+        ? String(roleHeader)
+        : undefined;
+      mockRoleState.value = normalizedRole ? normalizedRole : 'reader';
       req.session = {
         user: {
           id: 1,
           name: 'Test User',
+          role: normalizedRole,
           sessionVersion: 1,
         },
         sessionVersion: 1,
-        destroy: (cb) => (typeof cb === 'function' ? cb() : undefined),
+        destroy: jest.fn((cb) => cb?.()),
         cookie: {},
       };
-
-      if (normalized && normalized !== 'NONE') {
-        req.session.user.role = normalized;
-        userRoles.set(1, normalized);
-      } else if (normalized === 'NONE') {
-        userRoles.set(1, '');
-      }
     }
     next();
   });
@@ -128,23 +131,12 @@ function expectForbidden(response) {
 describe('RBAC for /api/messages* routes', () => {
   let app;
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockFindById.mockReset();
-    userRoles.clear();
-    userRoles.set(1, 'ADMIN');
-    userRoles.set(2, 'OPERADOR');
-    mockUserFindById.mockImplementation(async (id) => ({
-      id,
-      name: id === 1 ? 'Test User' : `User ${id}`,
-      email: `user${id}@late.dev`,
-      role: userRoles.has(id) ? userRoles.get(id) : 'OPERADOR',
-      is_active: true,
-      view_scope: 'all',
-      session_version: 1,
-    }));
-    app = createApp();
-  });
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockFindById.mockReset();
+  mockRoleState.value = 'READER';
+  app = createApp();
+});
 
   it('bloqueia requisições sem sessão', async () => {
     const response = await supertest(app).get('/api/messages');
