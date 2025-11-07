@@ -267,12 +267,9 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
 
     app.use((req, res, next) => {
       req.session = {
-        user: {
-          ...sessionUser,
-          sessionVersion: 1,
-        },
+        user: { ...sessionUser, sessionVersion: 1 },
         sessionVersion: 1,
-        destroy: (cb) => (typeof cb === 'function' ? cb() : undefined),
+        destroy: jest.fn((cb) => cb?.()),
         cookie: {},
       };
       const roleSlug = normalizeRoleSlug(sessionUser.role);

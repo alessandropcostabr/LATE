@@ -45,6 +45,12 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - **Widgets (Dashboard):** hoje, atrasados, SLAs, por setor
 - **Relatórios de Auditoria:** em `/relatorios/auditoria`, acompanhe eventos recentes (criação, mudanças de status, comentários, login/logout) com filtros por período, tipo de evento e responsável.
 
+### Relatórios de Auditoria
+- Acesse **Menu → Relatórios → Auditoria** (perfis Admin ou Supervisor).
+- Use os filtros rápidos (7 ou 30 dias) ou escolha um intervalo personalizado para investigar ações específicas.
+- Clique em **Ver detalhes** na tabela para visualizar o JSON com mais contexto (ex.: de/para do status, usuário que executou, automations).
+- Gere arquivos CSV/JSON diretamente em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o histórico pelo próprio painel.
+
 ## 🔔 Notificações
 
 - Envio por e-mail para:

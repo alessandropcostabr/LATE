@@ -2,17 +2,9 @@
 // API de auditoria leve para consultar event_logs.
 
 const EventLogModel = require('../models/eventLog');
+const { buildEventLogFilters, prepareEventLogFiltersForQuery } = require('../services/eventLogFilters');
 
 const MAX_LIMIT = 500;
-
-function parseDate(value) {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-  return parsed;
-}
 
 function parseCursor(raw) {
   if (!raw) return null;
@@ -29,33 +21,13 @@ function parseCursor(raw) {
   }
 }
 
-function buildDateRange(fromRaw, toRaw) {
-  const now = new Date();
-  let from = parseDate(fromRaw);
-  let to = parseDate(toRaw) || now;
-
-  if (!from) {
-    from = new Date(to.getTime() - 7 * 24 * 60 * 60 * 1000);
-  }
-
-  if (from > to) {
-    return { error: 'Parâmetros inválidos.' };
-  }
-
-  return { from, to };
-}
-
-function normalizeEventTypes(query) {
-  if (query.event_type === undefined) return [];
-  if (Array.isArray(query.event_type)) return query.event_type;
-  return String(query.event_type || '').split(',').map((value) => value.trim()).filter(Boolean);
-}
-
 async function list(req, res) {
   try {
-    const { from, to, error } = buildDateRange(req.query.from, req.query.to);
-    if (error) {
-      return res.status(400).json({ success: false, error });
+    let normalizedFilters;
+    try {
+      normalizedFilters = buildEventLogFilters(req.query);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Parâmetros inválidos.' });
     }
 
     const limitRaw = Number(req.query.limit) || 50;
@@ -63,25 +35,13 @@ async function list(req, res) {
       return res.status(400).json({ success: false, error: 'Parâmetros inválidos.' });
     }
 
-    const eventTypes = normalizeEventTypes(req.query);
     const cursor = parseCursor(req.query.cursor);
     if (req.query.cursor && !cursor) {
       return res.status(400).json({ success: false, error: 'Parâmetros inválidos.' });
     }
 
-    const actorUserId = req.query.actor_user_id ? Number(req.query.actor_user_id) : null;
-    if (req.query.actor_user_id && (!Number.isInteger(actorUserId) || actorUserId <= 0)) {
-      return res.status(400).json({ success: false, error: 'Parâmetros inválidos.' });
-    }
-
     const result = await EventLogModel.listFiltered({
-      from,
-      to,
-      eventTypes,
-      entityType: req.query.entity_type ? String(req.query.entity_type).trim() : null,
-      entityId: req.query.entity_id ? String(req.query.entity_id).trim() : null,
-      actorUserId,
-      search: req.query.search ? String(req.query.search).trim() : null,
+      ...prepareEventLogFiltersForQuery(normalizedFilters),
       cursor,
       limit: limitRaw,
     });
@@ -109,17 +69,15 @@ async function list(req, res) {
 
 async function summary(req, res) {
   try {
-    const { from, to, error } = buildDateRange(req.query.from, req.query.to);
-    if (error) {
-      return res.status(400).json({ success: false, error });
+    let normalizedFilters;
+    try {
+      normalizedFilters = buildEventLogFilters(req.query);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: err.message || 'Parâmetros inválidos.' });
     }
 
-    const eventTypes = normalizeEventTypes(req.query);
-
     const result = await EventLogModel.summary({
-      from,
-      to,
-      eventTypes,
+      ...prepareEventLogFiltersForQuery(normalizedFilters),
     });
 
     return res.json({
