@@ -20,6 +20,28 @@ const SectorModel = require('../models/sector');
 
 const router = express.Router();
 
+const DEFAULT_AUDIT_WINDOW_DAYS = 7;
+
+function formatDateTimeLocal(dateLike) {
+  const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function getAuditInitialFilters() {
+  const now = new Date();
+  const from = new Date(now.getTime() - DEFAULT_AUDIT_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  return {
+    fromIso: from.toISOString(),
+    toIso: now.toISOString(),
+    fromInput: formatDateTimeLocal(from),
+    toInput: formatDateTimeLocal(now),
+  };
+}
+
 // ------------------------------ Admin --------------------------------------
 // Admin → Usuários (apenas ADMIN)
 router.get('/admin/usuarios', requireAuth, requireRole('ADMIN'), (req, res) => {
@@ -295,12 +317,34 @@ router.get('/relatorios/estatisticas', requireAuth, requireRole('ADMIN', 'SUPERV
   res.render('relatorios-estatisticas', { title: 'Relatórios · Estatísticas', user: req.session.user || null });
 });
 
-router.get('/relatorios/auditoria', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
-  res.render('relatorios-auditoria', { title: 'Relatórios · Auditoria', user: req.session.user || null });
+router.get('/relatorios/auditoria', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), async (req, res) => {
+  const auditInitialFilters = getAuditInitialFilters();
+  let auditUsers = [];
+  try {
+    auditUsers = await UserModel.getActiveUsersSelect();
+  } catch (err) {
+    console.error('[web] falha ao carregar usuários para audit:', err);
+  }
+
+  res.render('relatorios-auditoria', {
+    title: 'Relatórios · Auditoria',
+    user: req.session.user || null,
+    auditInitialFilters,
+    auditUsers,
+    scripts: ['/js/relatorios-auditoria.js'],
+  });
 });
 
-router.get('/relatorios/exportacoes', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
-  res.render('relatorios-exportacoes', { title: 'Relatórios · Exportações (em breve)', user: req.session.user || null });
+router.get('/relatorios/exportacoes', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), csrfProtection, (req, res) => {
+  const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
+  const auditInitialFilters = getAuditInitialFilters();
+  res.render('relatorios-exportacoes', {
+    title: 'Relatórios · Exportações',
+    user: req.session.user || null,
+    auditInitialFilters,
+    csrfToken,
+    scripts: ['/js/relatorios-exportacoes.js'],
+  });
 });
 
 // 404 handler para rotas web

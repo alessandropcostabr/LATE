@@ -180,6 +180,18 @@ const API = (() => {
     });
   }
 
+  async function getEventLogs(params = {}) {
+    return request('/event-logs' + buildQuery(params));
+  }
+
+  async function getEventLogsSummary(params = {}) {
+    return request('/event-logs/summary' + buildQuery(params));
+  }
+
+  async function getEventLog(id) {
+    return request(`/event-logs/${encodeURIComponent(id)}`);
+  }
+
   return {
     request,
     createMessage,
@@ -203,6 +215,9 @@ const API = (() => {
     removeComment,
     addWatcher,
     removeWatcher,
+    getEventLogs,
+    getEventLogsSummary,
+    getEventLog,
 
     // aliases temporários para compatibilidade
     createRecado: createMessage,

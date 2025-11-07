@@ -57,42 +57,124 @@
   </div>
 
   <div class="app-navbar__menu" id="appNavbarMenu">
-    <ul class="app-navbar__menu-list">
-      <li><a href="/" class="app-navbar__menu-link<%= title === 'Dashboard' ? ' is-active' : '' %>">Dashboard</a></li>
+    <% const iconMap = {
+      dashboard: '/assets/icon-painel_controle.svg',
+      records: '/assets/icon-registros.svg',
+      reports: '/assets/icon-relatorios.svg',
+      admin: '/assets/icon-administracao.svg',
+      support: '/assets/icon-suporte.svg'
+    }; %>
+    <% const navSections = []; %>
+    <% navSections.push({
+      key: 'dashboard',
+      label: 'Painel de controle',
+        icon: iconMap.dashboard,
+      defaultOpen: true,
+      items: [
+        { label: 'Dashboard', href: '/', active: title === 'Dashboard' }
+      ]
+    }); %>
+
+    <% if (canReadMessages || canCreateMessages) { %>
+      <% const registroItems = []; %>
       <% if (canReadMessages) { %>
-        <li><a href="/recados" class="app-navbar__menu-link<%= title === 'Recados' ? ' is-active' : '' %>">Recados</a></li>
-        <li><a href="/recados/kanban" class="app-navbar__menu-link<%= title === 'Registros · Kanban' ? ' is-active' : '' %>">Kanban</a></li>
-        <li><a href="/recados/calendario" class="app-navbar__menu-link<%= title === 'Registros · Calendário' ? ' is-active' : '' %>">Calendário</a></li>
+        <% registroItems.push(
+          { label: 'Recados', href: '/recados', active: title === 'Recados' },
+          { label: 'Kanban', href: '/recados/kanban', active: title === 'Registros · Kanban' },
+          { label: 'Calendário', href: '/recados/calendario', active: title === 'Registros · Calendário' }
+        ); %>
       <% } %>
+      <% if (canCreateMessages) { registroItems.push({ label: 'Novo Recado', href: '/novo-recado', active: title === 'Novo Recado' }); } %>
+      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Registros', icon: iconMap.records, items: registroItems, defaultOpen: true }); } %>
+    <% } %>
 
-      <% if (canCreateMessages) { %>
-        <li><a href="/novo-recado" class="app-navbar__menu-link<%= title === 'Novo Recado' ? ' is-active' : '' %>">Novo Recado</a></li>
-      <% } %>
+    <% if (showReports) { %>
+      <% navSections.push({
+        key: 'reports',
+        label: 'Relatórios',
+        icon: iconMap.reports,
+        items: [
+          { label: 'Estatísticas', href: '/relatorios/estatisticas', active: title && title.includes('Relatórios · Estatísticas') },
+          { label: 'Auditoria', href: '/relatorios/auditoria', active: title && title.includes('Relatórios · Auditoria') },
+          { label: 'Exportações', href: '/relatorios/exportacoes', active: title && title.includes('Relatórios · Exportações') }
+        ]
+      }); %>
+    <% } %>
 
-      <% if (showReports) { %>
-        <li>
-          <a href="/relatorios/estatisticas" class="app-navbar__menu-link<%= title && title.includes('Relatórios · Estatísticas') ? ' is-active' : '' %>">Relatórios</a>
-          <ul class="app-navbar__menu-sub">
-            <li><a href="/relatorios/estatisticas" class="app-navbar__menu-link<%= title && title.includes('Relatórios · Estatísticas') ? ' is-active' : '' %>">Estatísticas</a></li>
-            <li><a href="/relatorios/auditoria" class="app-navbar__menu-link<%= title && title.includes('Relatórios · Auditoria') ? ' is-active' : '' %>">Auditoria</a></li>
-            <li><span class="app-navbar__menu-link is-disabled" aria-disabled="true">Exportações (em breve)</span></li>
+    <% if (userRoleSlug === 'admin') { %>
+      <% navSections.push({
+        key: 'admin',
+        label: 'Administração',
+        icon: iconMap.admin,
+        items: [
+          { label: 'Usuários', href: '/admin/usuarios', active: title === 'Admin · Usuários' },
+          { label: 'Setores', href: '/admin/setores', active: title === 'Admin · Setores' },
+          { label: 'Notificações', href: '/admin/notificacoes', active: title === 'Configurações de Notificações' }
+        ]
+      }); %>
+    <% } %>
+
+    <% if (user) { %>
+      <% navSections.push({
+        key: 'support',
+        label: 'Suporte & Docs',
+        icon: iconMap.support,
+        defaultOpen: false,
+        items: [
+          { label: 'Novidades', href: '/news', active: title === 'Novidades' },
+          { label: 'Manual Operacional', href: '/manual-operacional', active: title === 'Manual Operacional' },
+          { label: 'Plano de evolução', href: '/roadmap', active: title === 'Roadmap' },
+          { label: 'Central de ajuda', href: '/help', active: title === 'Central de Ajuda' }
+        ]
+      }); %>
+    <% } %>
+
+    <ul class="app-navbar__menu-list">
+      <% navSections.forEach((section, index) => {
+        const hasItems = Array.isArray(section.items) && section.items.length;
+        if (!hasItems) { return; }
+        const sectionId = `navSection${index}`;
+        const isOpen = section.defaultOpen !== false;
+      %>
+        <li class="app-navbar__menu-section<%= isOpen ? ' is-open' : '' %>">
+          <button
+            class="app-navbar__section-toggle"
+            type="button"
+            data-target="#<%= sectionId %>"
+            aria-expanded="<%= isOpen ? 'true' : 'false' %>">
+            <span class="app-navbar__section-icon" aria-hidden="true">
+              <% if (section.icon) { %>
+                <img src="<%= section.icon %>" alt="" role="presentation" />
+              <% } %>
+            </span>
+            <span class="app-navbar__section-title"><%= section.label %></span>
+            <span class="app-navbar__section-caret" aria-hidden="true"></span>
+          </button>
+          <ul
+            class="app-navbar__section-list"
+            id="<%= sectionId %>"
+            <%= isOpen ? '' : 'hidden' %>
+            aria-hidden="<%= isOpen ? 'false' : 'true' %>">
+            <% section.items.forEach((item) => { %>
+              <li>
+                <% if (item.disabled) { %>
+                  <span class="app-navbar__section-link is-disabled" aria-disabled="true"><%= item.label %></span>
+                <% } else { %>
+                  <a href="<%= item.href %>" class="app-navbar__section-link<%= item.active ? ' is-active' : '' %>"><%= item.label %></a>
+                <% } %>
+              </li>
+            <% }); %>
           </ul>
         </li>
-      <% } %>
-
-      <% if (userRoleSlug === 'admin') { %>
-        <li class="app-navbar__menu-group">
-          <span class="app-navbar__menu-group-label">Admin</span>
-          <ul>
-            <li><a href="/admin/usuarios" class="app-navbar__menu-link<%= title === 'Admin · Usuários' ? ' is-active' : '' %>">Usuários</a></li>
-            <li><a href="/admin/setores" class="app-navbar__menu-link<%= title === 'Admin · Setores' ? ' is-active' : '' %>">Setores</a></li>
-            <li><a href="/admin/notificacoes" class="app-navbar__menu-link<%= title === 'Configurações de Notificações' ? ' is-active' : '' %>">Notificações</a></li>
-          </ul>
-        </li>
-      <% } %>
+      <% }); %>
 
       <% if (!user) { %>
-        <li><a href="/login" class="app-navbar__menu-link<%= title === 'Login' ? ' is-active' : '' %>">Login</a></li>
+        <li class="app-navbar__menu-section is-open">
+          <div class="app-navbar__section-list" aria-hidden="false">
+            <a href="/login" class="app-navbar__section-link<%= title === 'Login' ? ' is-active' : '' %>">Login</a>
+            <a href="/help" class="app-navbar__section-link<%= title && title.includes('Ajuda') ? ' is-active' : '' %>">Central de ajuda</a>
+          </div>
+        </li>
       <% } %>
     </ul>
   </div>

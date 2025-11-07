@@ -28,6 +28,34 @@ module.exports = {
         // Segredos e PG_* devem vir de .env.prod (ou variáveis do PM2), não coloque aqui.
       }
     },
+    {
+      name: "late-email-worker",
+      cwd: __dirname,
+      script: "scripts/email-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "200M",
+      time: true,
+      env: {
+        NODE_ENV: "production",
+      }
+    },
+    {
+      name: "late-export-worker",
+      cwd: __dirname,
+      script: "scripts/export-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "200M",
+      time: true,
+      env: {
+        NODE_ENV: "production",
+      }
+    },
 
     // =========================
     // Desenvolvimento (DEV)
@@ -50,6 +78,34 @@ module.exports = {
         // Para testes de UI (3000) falando com API (3001), libere ambas as origens:
         CORS_ORIGINS: "http://localhost:3000 http://localhost:3001",
         // Demais segredos e PG_* vêm do .env (DEV)
+      }
+    },
+    {
+      name: "late-dev-email-worker",
+      cwd: __dirname,
+      script: "scripts/email-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "200M",
+      time: true,
+      env: {
+        NODE_ENV: "development"
+      }
+    },
+    {
+      name: "late-dev-export-worker",
+      cwd: __dirname,
+      script: "scripts/export-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "200M",
+      time: true,
+      env: {
+        NODE_ENV: "development"
       }
     }
   ]
