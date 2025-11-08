@@ -50,11 +50,11 @@
     </section>
     <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🩺 Diagnóstico em linha com o rollout</h2>
-      <p>O comando <code>node scripts/dev-info.js</code> e o endpoint <code>/api/debug/info</code> seguem disponíveis para comparar estados antes/depois do deploy. Incluímos testes automatizados para garantir o snapshot e a exigência de autenticação.</p>
+      <p>O time técnico acompanha os mesmos indicadores usados na homologação para comparar o sistema antes e depois do deploy. Se notar lentidão ou falhas inesperadas, comunique o suporte e informe horário/recado afetado para acelerarmos o diagnóstico.</p>
     </section>
     <section>
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📚 Documentação revisada</h2>
-      <p>README, DEPLOY, Manual Operacional e Central de Ajuda foram atualizados com o fluxo de sessão única e o checklist de homologação. Consulte as rotas <strong>/help</strong> e <strong>/manual-operacional</strong> para detalhes.</p>
+      <p>Atualizamos o Manual Operacional e a Central de Ajuda com o funcionamento da sessão única, exemplos de mensagens e checklist de confirmação. Consulte <strong>/help</strong> e <strong>/manual-operacional</strong> para compartilhar com o time.</p>
     </section>
   </div>
 </article>
@@ -70,7 +70,7 @@
     </p>
     <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔐 Tokens de intake mais seguros</h2>
-      <p>O intake externo agora guarda somente o <strong>hash do token</strong>. Para quem integra o LATE com outros sistemas nada muda na operação, mas oferecemos um novo token e uma data de validade opcional. Se você usa o intake, avise o time de produto para receber o token atualizado.</p>
+      <p>Reforçamos a proteção dos tokens usados por integrações externas. Cada parceiro recebeu (ou receberá) um novo token com validade opcional; basta avisar o time de produto para concluir a troca e continuar enviando recados com segurança.</p>
     </section>
     <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🗓️ Agende retornos com data e horário</h2>

@@ -46,10 +46,10 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - **Relatórios de Auditoria:** em `/relatorios/auditoria`, acompanhe eventos recentes (criação, mudanças de status, comentários, login/logout) com filtros por período, tipo de evento e responsável.
 
 ### Relatórios de Auditoria
-- Acesse **Menu → Relatórios → Auditoria** (perfis Admin ou Supervisor).
+- Acesse **Menu → Relatórios → Auditoria** (disponível para Admins e Supervisores).
 - Use os filtros rápidos (7 ou 30 dias) ou escolha um intervalo personalizado para investigar ações específicas.
-- Clique em **Ver detalhes** na tabela para visualizar o JSON com mais contexto (ex.: de/para do status, usuário que executou, automations).
-- Gere arquivos CSV/JSON diretamente em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o histórico pelo próprio painel.
+- Clique em **Ver detalhes** para visualizar o histórico completo da ação (quem fez, qual setor, antes e depois).
+- Gere arquivos CSV/JSON em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel.
 
 ## 🔔 Notificações
 
@@ -67,10 +67,11 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - Rate-limit e CSRF ativos
 - Ações críticas registradas em log/auditoria
 
-## 📥 Integração via /intake
+## 🔗 Integrações externas
 
-- Envio seguro via token
-- Formulário público externo ou e-mail gateway
+- Envio de recados via formulários públicos ou sistemas parceiros autorizados
+- Cada integração usa um token exclusivo e pode ter validade definida pelo administrador
+- Em caso de troca de parceiro ou suspeita de uso incorreto, solicite um novo token ao time de produto
 
 ## 📚 Ajuda
 
@@ -78,9 +79,9 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - Links para SOPs e Playbooks no Notion
 
 ### Quando acionar o diagnóstico técnico
-- Ao notar lentidão ou falhas repetidas, rode `node scripts/dev-info.js --json --output=diagnostics.json` (via time técnico) para registrar o estado do sistema.
-- O arquivo gerado (`diagnostics.json`, por padrão) deve ser enviado junto ao chamado para agilizar a análise.
-- Para homologação, a rota `/api/debug/info` (apenas em DEV/TEST e com usuário logado) retorna o mesmo resumo. Sem sessão válida o endpoint responde 401.
+- Note qualquer comportamento fora do esperado (lentidão, erro recorrente, notificações duplicadas) e registre horário/setor afetado.
+- Abra um recado para o time responsável ou acione o canal interno dedicado; a equipe técnica coleta os diagnósticos necessários e acompanha a evolução do incidente.
+- Quanto mais contexto for enviado (capturas de tela, IDs de recado, navegador utilizado), mais rápido conseguimos responder.
 
 ---
 
