@@ -1,3 +1,32 @@
+<article class="card" aria-labelledby="news-2025-11-06">
+  <div class="card-header">
+    <h1 class="card-title" id="news-2025-11-06">🗞️ Novidades — 06/11/2025</h1>
+    <p class="card-subtitle">Auditoria leve liberada para Admins e Supervisores</p>
+  </div>
+  <div class="card-body">
+    <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+      Publicado em 06/11/2025 · Sprint 02 — Auditoria Leve concluída
+    </p>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Nova aba em Relatórios</h2>
+      <p>A área <strong>Relatórios</strong> ganhou a aba <strong>Auditoria</strong>, exclusiva para perfis Admin e Supervisor. Lá você acompanha, dia a dia, quem criou, encaminhou ou resolveu cada recado — tudo filtrável por período, tipo de evento e responsável.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📝 Resolução sempre documentada</h2>
+      <p>Ao concluir um recado, o sistema agora pede um breve comentário com a solução adotada. Esse registro aparece tanto na timeline do recado quanto na auditoria, garantindo histórico completo para reaberturas e auditorias internas.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Segurança reforçada</h2>
+      <p>Logins, logouts e automações passaram a gerar trilhas leves automaticamente. Assim, fica fácil identificar acessos simultâneos ou revisar alertas disparados fora de hora.</p>
+    </section>
+    <section>
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📅 O que vem a seguir</h2>
+      <p>Estamos trabalhando na próxima etapa da aba Auditoria: cards com indicadores, filtros salvos e exportação em CSV/JSON. Compartilhe suas necessidades para priorizarmos nas próximas sprints!</p>
+    </section>
+  </div>
+</article>
+
+
 <article class="card" aria-labelledby="news-2025-11-04">
   <div class="card-header">
     <h1 class="card-title" id="news-2025-11-04">🗞️ Novidades — 04/11/2025</h1>
@@ -162,33 +191,6 @@
     <section>
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📧 Intake com token</h2>
       <p>O endpoint `/intake` passou a exigir token. Cada requisição gera log com IP, user-agent e status.</p>
-    </section>
-  </div>
-</article>
-<article class="card" aria-labelledby="news-2025-11-06">
-  <div class="card-header">
-    <h1 class="card-title" id="news-2025-11-06">🗞️ Novidades — 06/11/2025</h1>
-    <p class="card-subtitle">Auditoria leve liberada para Admins e Supervisores</p>
-  </div>
-  <div class="card-body">
-    <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
-      Publicado em 06/11/2025 · Sprint 02 — Auditoria Leve concluída
-    </p>
-    <section style="margin-bottom:1.5rem;">
-      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔍 Nova aba em Relatórios</h2>
-      <p>A área <strong>Relatórios</strong> ganhou a aba <strong>Auditoria</strong>, exclusiva para perfis Admin e Supervisor. Lá você acompanha, dia a dia, quem criou, encaminhou ou resolveu cada recado — tudo filtrável por período, tipo de evento e responsável.</p>
-    </section>
-    <section style="margin-bottom:1.5rem;">
-      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📝 Resolução sempre documentada</h2>
-      <p>Ao concluir um recado, o sistema agora pede um breve comentário com a solução adotada. Esse registro aparece tanto na timeline do recado quanto na auditoria, garantindo histórico completo para reaberturas e auditorias internas.</p>
-    </section>
-    <section style="margin-bottom:1.5rem;">
-      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Segurança reforçada</h2>
-      <p>Logins, logouts e automações passaram a gerar trilhas leves automaticamente. Assim, fica fácil identificar acessos simultâneos ou revisar alertas disparados fora de hora.</p>
-    </section>
-    <section>
-      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📅 O que vem a seguir</h2>
-      <p>Estamos trabalhando na próxima etapa da aba Auditoria: cards com indicadores, filtros salvos e exportação em CSV/JSON. Compartilhe suas necessidades para priorizarmos nas próximas sprints!</p>
     </section>
   </div>
 </article>
