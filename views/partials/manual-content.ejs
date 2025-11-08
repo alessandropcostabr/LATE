@@ -47,13 +47,14 @@
 <li><strong>Calendário:</strong> prazos e ligações por data</li>
 <li><strong>Widgets (Dashboard):</strong> hoje, atrasados, SLAs, por setor</li>
 <li><strong>Relatórios de Auditoria:</strong> em <code>/relatorios/auditoria</code>, acompanhe eventos recentes (criação, mudanças de status, comentários, login/logout) com filtros por período, tipo de evento e responsável.</li>
+<li><strong>Status Operacional:</strong> em <code>/relatorios/status</code>, disponível para Admin/Supervisor. Mostra versão do sistema, uptime, consumo de memória, papel do banco (primário/standby), saúde do VIP 192.168.15.250, túnel Cloudflare e métricas Prometheus de cada nó (CPU, memória, disco, rede). O painel se atualiza automaticamente a cada 10 segundos.</li>
 </ul>
 <h3>Relatórios de Auditoria</h3>
 <ul>
 <li>Acesse <strong>Menu → Relatórios → Auditoria</strong> (disponível para Admins e Supervisores).</li>
 <li>Use os filtros rápidos (7 ou 30 dias) ou escolha um intervalo personalizado para investigar ações específicas.</li>
 <li>Clique em <strong>Ver detalhes</strong> para visualizar o histórico completo da ação (quem fez, qual setor, antes e depois).</li>
-<li>Gere arquivos CSV/JSON em <strong>Relatórios › Exportações</strong>; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel.</li>
+<li>Gere arquivos CSV/JSON em <strong>Relatórios › Exportações</strong>; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel (a exportação roda em segundo plano e você recebe um aviso assim que estiver pronta).</li>
 </ul>
 <h2>🔔 Notificações</h2>
 <ul>

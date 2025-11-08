@@ -12,11 +12,11 @@
         <div class="card-body">
           <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Panorama atual</h2>
           <ul style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;list-style:disc;">
-            <li><strong>Sprint 00-PRE concluída:</strong> automações agora evitam duplicidades e o intake externo passou a usar tokens protegidos com validade.</li>
-            <li><strong>Sprint 01 (Ferramentas de suporte):</strong> painel de diagnóstico disponível para o time técnico sempre que for preciso comparar o ambiente antes e depois de um deploy.</li>
-            <li><strong>Sprint E entregue:</strong> sessão única por usuário, com aviso automático quando a conta é aberta em outro dispositivo.</li>
-            <li><strong>Agendamentos claros:</strong> o campo “Data e horário para retorno” está presente nas telas de criar e editar recado, garantindo follow-up certeiro.</li>
-            <li><strong>Checklist de segurança:</strong> validação rápida antes de cada publicação para conferir limites, cabeçalhos e usuários administrativos.</li>
+            <li><strong>Sprint 00-PRE, 01 e E concluídas:</strong> automações idempotentes, painel de diagnóstico para DEV e sessão única por usuário estão em produção.</li>
+            <li><strong>Status Operacional liberado:</strong> Admins e Supervisores acompanham a saúde do app, PostgreSQL, VIP e túnel Cloudflare direto em Relatórios.</li>
+            <li><strong>Deploy automatizado:</strong> merges em `main` acionam o workflow GitHub → Ansible/PM2, garantindo que mach1, mach2 e mach3 fiquem alinhados.</li>
+            <li><strong>Auditoria leve ativa:</strong> follow-up obrigatório, event logs e filtros por período já estão disponíveis na aba Auditoria.</li>
+            <li><strong>Exportações e anexos:</strong> export CSV/JSON está em desenvolvimento e anexos receberam sinal verde para a próxima sequência.</li>
           </ul>
           <p style="margin:0;">Versão atual: <strong>LATE v<%= appVersion %></strong> · Identificador interno: <%= appBuild %></p>
         </div>
@@ -29,15 +29,14 @@
         </div>
         <div class="card-body">
           <article>
-            <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">🟡 Sprint 02 — Auditoria leve</h3>
+            <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">🟡 Sprint 02B — Auditoria &amp; Infra</h3>
             <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
-              <li>Registrar automaticamente quem criou, encaminhou, comentou ou finalizou cada recado.</li>
-              <li>Exibir filtros rápidos (7/30 dias) e buscas detalhadas para Investigar alterações.</li>
-              <li>Garantir comentário obrigatório ao resolver um registro, formando um histórico completo.</li>
-              <li>Liberar exportações em CSV/JSON para Admins e Supervisores acompanharem os dados fora do sistema.</li>
-              <li>Preparar cards e indicadores para destacar eventos mais críticos logo na abertura da aba.</li>
+              <li>Status Operacional disponível em Relatórios (versão, uptime, Prometheus, VIP).</li>
+              <li>Workflow GitHub Actions + Ansible atualiza automaticamente os três nós.</li>
+              <li>Próximas entregas: exportações CSV/JSON e cards com filtros salvos na aba Auditoria.</li>
+              <li>Planejamento em andamento para anexos nos recados e revisão de segurança de login.</li>
             </ul>
-            <p style="margin-top:1rem;margin-bottom:0;">Na sequência, o foco recai sobre Intake via e-mail (Sprint 03) e novas preferências de notificações (Sprint 04).</p>
+            <p style="margin-top:1rem;margin-bottom:0;">Na sequência, o foco recai sobre anexos, notificações avançadas e revisão pós-cluster das políticas de acesso.</p>
           </article>
         </div>
       </section>
