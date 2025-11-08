@@ -1,0 +1,8 @@
+all:
+  hosts:
+    cluster:
+      children:
+        bastion:
+        cluster_nodes:
+  vars:
+    ansible_python_interpreter: /usr/bin/python3

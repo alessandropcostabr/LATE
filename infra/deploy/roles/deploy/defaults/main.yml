@@ -1,0 +1,4 @@
+---
+pm_install: true
+pm2_extra_processes: []
+pm2_web_process: late-prod

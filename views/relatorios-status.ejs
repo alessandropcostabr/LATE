@@ -1,0 +1,93 @@
+<%- include('partials/header') %>
+<body>
+  <%- include('partials/navbar') %>
+
+  <main class="main" role="main">
+    <div class="container">
+      <h1>Relatórios · Status Operacional</h1>
+      <p id="status-last-updated" class="muted">Sincronizando...</p>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Aplicação</h2>
+        </div>
+        <div class="card-body">
+          <ul class="status-list">
+            <li>Versão: <strong id="app-version">-</strong></li>
+            <li>Build: <strong id="app-build">-</strong></li>
+            <li>Node.js: <strong id="app-node">-</strong></li>
+            <li>Ambiente: <strong id="app-env">-</strong></li>
+            <li>Hostname: <strong id="app-hostname">-</strong></li>
+            <li>Uptime: <strong id="app-uptime">-</strong></li>
+            <li>Memória RSS: <strong id="app-memory">-</strong></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">PostgreSQL</h2>
+        </div>
+        <div class="card-body">
+          <p id="db-status" class="status-indicator">Coletando...</p>
+          <ul class="status-list">
+            <li>Latência SELECT 1: <strong id="db-latency">-</strong></li>
+            <li>Papel: <strong id="db-role">-</strong></li>
+          </ul>
+          <div id="db-replication-extra" class="status-extra"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Serviços Externos</h2>
+        </div>
+        <div class="card-body">
+          <ul class="status-list">
+            <li>
+              VIP Health:
+              <span id="vip-health-status" class="status-indicator">-</span>
+            </li>
+            <li>
+              Tunnel Cloudflare:
+              <span id="tunnel-health-status" class="status-indicator">-</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.5rem;" id="prometheus-card">
+        <div class="card-header">
+          <h2 class="card-title">Resumo Prometheus por Nó</h2>
+        </div>
+        <div class="card-body">
+          <div id="prometheus-disabled" class="muted" hidden>Sem dados Prometheus.</div>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th scope="col">Instance</th>
+                  <th scope="col">UP</th>
+                  <th scope="col">Load1</th>
+                  <th scope="col">CPU %</th>
+                  <th scope="col">Mem %</th>
+                  <th scope="col">RootFS %</th>
+                  <th scope="col">RX (B/s)</th>
+                  <th scope="col">TX (B/s)</th>
+                </tr>
+              </thead>
+              <tbody id="prometheus-node-rows">
+                <tr>
+                  <td colspan="8" class="muted">Aguardando atualização...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <%- include('partials/footer', { scripts: scripts || [] }) %>
+</body>
+</html>
