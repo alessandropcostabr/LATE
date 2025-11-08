@@ -12,13 +12,13 @@
         <div class="card-body">
           <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.75rem;">Panorama atual</h2>
           <ul style="margin-left:1.25rem;margin-bottom:1.5rem;line-height:1.6;list-style:disc;">
-            <li><strong>Sprint 00-PRE concluída:</strong> automations idempotentes e intake com tokens hasheados/expiráveis.</li>
-            <li><strong>Sprint 01 (Dev Tools):</strong> CLI <code>dev-info</code> + endpoint autenticado para diagnóstico rápido.</li>
-            <li><strong>Sprint E entregue:</strong> sessão única por usuário com <code>session_version</code> e aviso automático.</li>
-            <li><strong>Agendamentos claros:</strong> campo “Data e horário para retorno” em <em>Novo Recado</em> e <em>Editar Recado</em>.</li>
-            <li><strong>Checklist de segurança:</strong> script dedicado para validar rate limit, headers e seed-admin.</li>
+            <li><strong>Sprint 00-PRE concluída:</strong> automações agora evitam duplicidades e o intake externo passou a usar tokens protegidos com validade.</li>
+            <li><strong>Sprint 01 (Ferramentas de suporte):</strong> painel de diagnóstico disponível para o time técnico sempre que for preciso comparar o ambiente antes e depois de um deploy.</li>
+            <li><strong>Sprint E entregue:</strong> sessão única por usuário, com aviso automático quando a conta é aberta em outro dispositivo.</li>
+            <li><strong>Agendamentos claros:</strong> o campo “Data e horário para retorno” está presente nas telas de criar e editar recado, garantindo follow-up certeiro.</li>
+            <li><strong>Checklist de segurança:</strong> validação rápida antes de cada publicação para conferir limites, cabeçalhos e usuários administrativos.</li>
           </ul>
-          <p style="margin:0;">Versão atual: <strong>LATE v<%= appVersion %></strong> · Build: <code><%= appBuild %></code></p>
+          <p style="margin:0;">Versão atual: <strong>LATE v<%= appVersion %></strong> · Identificador interno: <%= appBuild %></p>
         </div>
       </section>
 
@@ -29,15 +29,15 @@
         </div>
         <div class="card-body">
           <article>
-            <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">🟡 Sprint 02 — Audit leve</h3>
+            <h3 style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">🟡 Sprint 02 — Auditoria leve</h3>
             <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
-              <li>Adicionar tabela <code>event_logs</code> para registrar ações-chave sem PII.</li>
-              <li>Criar hooks para eventos de recado (criação, status), comentários e login.</li>
-              <li>Disponibilizar consultas rápidas (últimos 30 dias, mudanças de status).</li>
-              <li>Obrigar o follow-up ao resolver um registro (comentário obrigatório).</li>
-              <li>Planejar painel simples para acompanhar eventos recorrentes.</li>
+              <li>Registrar automaticamente quem criou, encaminhou, comentou ou finalizou cada recado.</li>
+              <li>Exibir filtros rápidos (7/30 dias) e buscas detalhadas para Investigar alterações.</li>
+              <li>Garantir comentário obrigatório ao resolver um registro, formando um histórico completo.</li>
+              <li>Liberar exportações em CSV/JSON para Admins e Supervisores acompanharem os dados fora do sistema.</li>
+              <li>Preparar cards e indicadores para destacar eventos mais críticos logo na abertura da aba.</li>
             </ul>
-            <p style="margin-top:1rem;margin-bottom:0;">Em paralelo, planejamos Sprint 03 (Intake via e-mail) e Sprint 04 (notificações avançadas) para o próximo mês.</p>
+            <p style="margin-top:1rem;margin-bottom:0;">Na sequência, o foco recai sobre Intake via e-mail (Sprint 03) e novas preferências de notificações (Sprint 04).</p>
           </article>
         </div>
       </section>
@@ -48,9 +48,9 @@
         </div>
         <div class="card-body">
           <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
-            <li>Para detalhes completos, consulte <code>_reports/LATE_SPRINTS_FUTURAS.md</code> (arquivo local).</li>
-            <li>Atualizações rápidas permanecem em <strong>/news</strong>; dúvidas operacionais em <strong>/help</strong>.</li>
-            <li>Antes de propor nova demanda, valide se ela já está listada nas seções acima.</li>
+            <li>As novidades são publicadas primeiro em <strong>/news</strong> e detalhadas no <strong>/manual-operacional</strong>.</li>
+            <li>Dúvidas de uso ficam concentradas em <strong>/help</strong> e no canal interno de suporte.</li>
+            <li>Antes de abrir uma nova demanda, verifique se ela já está programada e registre o contexto direto no LATE.</li>
           </ul>
           <p style="margin:1.5rem 0 0;">Tem algo a sugerir? Abra um recado para o time de produto ou procure o canal #late-dev.</p>
         </div>

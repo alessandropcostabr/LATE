@@ -50,10 +50,10 @@
 </ul>
 <h3>Relatórios de Auditoria</h3>
 <ul>
-<li>Acesse <strong>Menu → Relatórios → Auditoria</strong> (perfis Admin ou Supervisor).</li>
+<li>Acesse <strong>Menu → Relatórios → Auditoria</strong> (disponível para Admins e Supervisores).</li>
 <li>Use os filtros rápidos (7 ou 30 dias) ou escolha um intervalo personalizado para investigar ações específicas.</li>
-<li>Clique em <strong>Ver detalhes</strong> na tabela para visualizar o JSON com mais contexto (ex.: de/para do status, usuário que executou, automations).</li>
-<li>Gere arquivos CSV/JSON diretamente em <strong>Relatórios › Exportações</strong>; aplique os filtros desejados e acompanhe o histórico pelo próprio painel.</li>
+<li>Clique em <strong>Ver detalhes</strong> para visualizar o histórico completo da ação (quem fez, qual setor, antes e depois).</li>
+<li>Gere arquivos CSV/JSON em <strong>Relatórios › Exportações</strong>; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel.</li>
 </ul>
 <h2>🔔 Notificações</h2>
 <ul>
@@ -73,10 +73,11 @@
 <li>Rate-limit e CSRF ativos</li>
 <li>Ações críticas registradas em log/auditoria</li>
 </ul>
-<h2>📥 Integração via /intake</h2>
+<h2>🔗 Integrações externas</h2>
 <ul>
-<li>Envio seguro via token</li>
-<li>Formulário público externo ou e-mail gateway</li>
+<li>Envio de recados via formulários públicos ou sistemas parceiros autorizados</li>
+<li>Cada integração usa um token exclusivo e pode ter validade definida pelo administrador</li>
+<li>Em caso de troca de parceiro ou suspeita de uso incorreto, solicite um novo token ao time de produto</li>
 </ul>
 <h2>📚 Ajuda</h2>
 <ul>
@@ -85,9 +86,9 @@
 </ul>
 <h3>Quando acionar o diagnóstico técnico</h3>
 <ul>
-<li>Ao notar lentidão ou falhas repetidas, rode <code>node scripts/dev-info.js --json --output=diagnostics.json</code> (via time técnico) para registrar o estado do sistema.</li>
-<li>O arquivo gerado (<code>diagnostics.json</code>, por padrão) deve ser enviado junto ao chamado para agilizar a análise.</li>
-<li>Para homologação, a rota <code>/api/debug/info</code> (apenas em DEV/TEST e com usuário logado) retorna o mesmo resumo. Sem sessão válida o endpoint responde 401.</li>
+<li>Note qualquer comportamento fora do esperado (lentidão, erro recorrente, notificações duplicadas) e registre horário/setor afetado.</li>
+<li>Abra um recado para o time responsável ou acione o canal interno dedicado; a equipe técnica coleta os diagnósticos necessários e acompanha a evolução do incidente.</li>
+<li>Quanto mais contexto for enviado (capturas de tela, IDs de recado, navegador utilizado), mais rápido conseguimos responder.</li>
 </ul>
 <hr>
 <p>📩 Dúvidas? Fale com a coordenação ou veja <code>/ajuda</code> dentro do sistema.</p>
