@@ -12,7 +12,6 @@ jobs:
     env:
       BASTION_HOST: ${{ secrets.BASTION_HOST }}
       BASTION_USER: ${{ secrets.BASTION_USER }}
-      ANSIBLE_BECOME_PASS: ${{ secrets.BASTION_SUDO_PASS }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,6 +32,8 @@ jobs:
           rsync -az infra/deploy/ "${BASTION_USER}@${BASTION_HOST}:~/late-dev/infra/deploy/"
 
       - name: Run Ansible playbook on bastion
+        env:
+          ANSIBLE_BECOME_PASS: ${{ secrets.BASTION_SUDO_PASS }}
         run: |
           ssh "${BASTION_USER}@${BASTION_HOST}" \
-            "cd ~/late-dev && ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml"
+            "export ANSIBLE_BECOME_PASS='${ANSIBLE_BECOME_PASS}' && cd ~/late-dev && ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml"

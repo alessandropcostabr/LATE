@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
-require('../config/loadEnv').loadEnv();
+require('../config/loadEnv').loadEnv(process.env.NODE_ENV || 'production');
 
 // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
 require('../config/loadEnv').loadEnv();
