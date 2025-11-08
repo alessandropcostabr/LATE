@@ -4,7 +4,7 @@
     "output": "views/partials/manual-content.ejs"
   },
   {
-    "source": "_reports/news.md",
+    "source": "docs/news/news.md",
     "output": "views/partials/news-content.ejs"
   }
 ]
