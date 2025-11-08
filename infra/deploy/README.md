@@ -14,9 +14,10 @@ Este diretório guarda o inventário base da Sprint “Automação de Deploy Git
 
 - Usuário SSH: `alessandro`
 - Porta padrão: `22`
-- Autenticação atual: usuário `alessandro` com senha `ale123` (definida em `inventory.ini`; migrar para vault quando as senhas forem rotacionadas).
+- Autenticação: usuário `alessandro` via chave privada (`~/.ssh/mach-key`, configurada no bastion e nos runners).
 - `sudo` necessário para operações de sistema (utilizar `ansible_become: true`).
 - Para mach2/mach3 é obrigatório usar `ProxyJump=alessandro@191.9.115.129` (já definido em `inventory.ini`).
+- A senha de `sudo` **não** fica no repositório. Para rodar localmente, exporte `ANSIBLE_BECOME_PASS` (ex.: `export ANSIBLE_BECOME_PASS=ale123`) ou utilize `--ask-become-pass`.
 
 ## Próximos passos
 
@@ -35,10 +36,13 @@ O workflow `.github/workflows/deploy.yml` dispara em `push` para `main` (ou manu
 
 ### Secrets necessários
 
-| Secret            | Descrição                                      |
-|-------------------|------------------------------------------------|
-| `BASTION_HOST`    | IP/hostname público do bastion (mach1).        |
-| `BASTION_USER`    | Usuário SSH (ex.: `alessandro`).               |
-| `BASTION_SSH_KEY` | Chave privada em formato PEM para acessar o bastion. |
+| Secret              | Descrição                                                    |
+|---------------------|--------------------------------------------------------------|
+| `BASTION_HOST`      | IP/hostname público do bastion (mach1).                      |
+| `BASTION_USER`      | Usuário SSH (ex.: `alessandro`).                             |
+| `BASTION_SSH_KEY`   | Chave privada em formato PEM para acessar o bastion.         |
+| `BASTION_SUDO_PASS` | Senha de `sudo` usada como `ANSIBLE_BECOME_PASS` no pipeline. |
+
+O job define `ANSIBLE_BECOME_PASS` a partir do secret `BASTION_SUDO_PASS`, eliminando senhas em arquivos versão dos.
 
 Certifique-se de que o bastion possua Ansible instalado e acesso às máquinas internas via ProxyJump (já configurado no inventário).

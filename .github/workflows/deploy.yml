@@ -12,6 +12,7 @@ jobs:
     env:
       BASTION_HOST: ${{ secrets.BASTION_HOST }}
       BASTION_USER: ${{ secrets.BASTION_USER }}
+      ANSIBLE_BECOME_PASS: ${{ secrets.BASTION_SUDO_PASS }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
