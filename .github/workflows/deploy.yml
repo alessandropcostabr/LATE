@@ -1,0 +1,37 @@
+name: Deploy Cluster
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      BASTION_HOST: ${{ secrets.BASTION_HOST }}
+      BASTION_USER: ${{ secrets.BASTION_USER }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.BASTION_SSH_KEY }}
+          known_hosts: 'placeholder'
+
+      - name: Add bastion host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$BASTION_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync deploy artifacts to bastion
+        run: |
+          rsync -az infra/deploy/ "${BASTION_USER}@${BASTION_HOST}:~/late-dev/infra/deploy/"
+
+      - name: Run Ansible playbook on bastion
+        run: |
+          ssh "${BASTION_USER}@${BASTION_HOST}" \
+            "cd ~/late-dev && ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml"

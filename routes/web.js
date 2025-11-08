@@ -317,6 +317,14 @@ router.get('/relatorios/estatisticas', requireAuth, requireRole('ADMIN', 'SUPERV
   res.render('relatorios-estatisticas', { title: 'Relatórios · Estatísticas', user: req.session.user || null });
 });
 
+router.get('/relatorios/status', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
+  res.render('relatorios-status', {
+    title: 'Relatórios · Status Operacional',
+    user: req.session.user || null,
+    scripts: ['/js/status.js'],
+  });
+});
+
 router.get('/relatorios/auditoria', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), async (req, res) => {
   const auditInitialFilters = getAuditInitialFilters();
   let auditUsers = [];

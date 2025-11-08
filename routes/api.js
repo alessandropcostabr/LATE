@@ -19,6 +19,7 @@ const healthController = require('../controllers/healthController');
 const metaController = require('../controllers/metaController');
 const intakeController = require('../controllers/intakeController');
 const reportExportController = require('../controllers/reportExportController');
+const statusController = require('../controllers/statusController');
 const { collectDevInfo } = require('../utils/devInfo');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
@@ -165,6 +166,11 @@ router.get('/csrf', csrfProtection, (req, res) => {
 // Utilitários
 router.get('/health', healthController.apiCheck);
 router.get('/version', metaController.version);
+router.get(
+  '/status',
+  ...flatFns(requireAuth, requireRole('ADMIN', 'SUPERVISOR')),
+  statusController.getStatus
+);
 
 const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
 if (nodeEnv === 'development' || nodeEnv === 'test') {
