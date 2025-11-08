@@ -44,12 +44,13 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - **Calendário:** prazos e ligações por data
 - **Widgets (Dashboard):** hoje, atrasados, SLAs, por setor
 - **Relatórios de Auditoria:** em `/relatorios/auditoria`, acompanhe eventos recentes (criação, mudanças de status, comentários, login/logout) com filtros por período, tipo de evento e responsável.
+- **Status Operacional:** em `/relatorios/status`, disponível para Admin/Supervisor. Mostra versão do sistema, uptime, consumo de memória, papel do banco (primário/standby), saúde do VIP 192.168.15.250, túnel Cloudflare e métricas Prometheus de cada nó (CPU, memória, disco, rede). O painel se atualiza automaticamente a cada 10 segundos.
 
 ### Relatórios de Auditoria
 - Acesse **Menu → Relatórios → Auditoria** (disponível para Admins e Supervisores).
 - Use os filtros rápidos (7 ou 30 dias) ou escolha um intervalo personalizado para investigar ações específicas.
 - Clique em **Ver detalhes** para visualizar o histórico completo da ação (quem fez, qual setor, antes e depois).
-- Gere arquivos CSV/JSON em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel.
+- Gere arquivos CSV/JSON em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel (a exportação roda em segundo plano e você recebe um aviso assim que estiver pronta).
 
 ## 🔔 Notificações
 
