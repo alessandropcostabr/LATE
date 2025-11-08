@@ -1,3 +1,35 @@
+<article class="card" aria-labelledby="news-2025-11-08">
+  <div class="card-header">
+    <h1 class="card-title" id="news-2025-11-08">🗞️ Novidades — 08/11/2025</h1>
+    <p class="card-subtitle">Status Operacional e deploy automático</p>
+  </div>
+  <div class="card-body">
+    <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+      Publicado em 08/11/2025 · Sprint 02B — Auditoria &amp; Infraestrutura
+    </p>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📊 Painel “Status Operacional”</h2>
+      <p>Admins e Supervisores agora acompanham a saúde do LATE em <strong>Relatórios → Status</strong>. Você vê a versão, uptime, uso de memória e a latência do banco. Também enxerga qual nó do cluster está primário ou standby, além da saúde do VIP 192.168.15.250 e do túnel Cloudflare.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📡 Telemetria Prometheus</h2>
+      <p>O painel mostra na mesma tela as métricas de CPU, memória, disco e rede coletadas do Prometheus para mach1, mach2 e mach3. Assim dá para perceber rapidamente se algum nó está sobrecarregado.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🤖 Deploy Ansible + PM2 clusterizado</h2>
+      <p>Merge em <code>main</code> agora dispara o workflow <strong>Deploy Cluster</strong>, que sincroniza o bastion, roda o playbook Ansible e recarrega o app em modo cluster (PM2). Os workers de e-mail/exportação seguem em fork, mas são garantidos após cada deploy.</p>
+    </section>
+    <section>
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📌 Próximas entregas</h2>
+      <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
+        <li><strong>Exportações CSV/JSON</strong> em <strong>Relatórios → Exportações</strong>.</li>
+        <li><strong>Anexos nos recados</strong> (imagens/PDFs) com quota segura.</li>
+        <li><strong>Revisão de segurança de login</strong>: alertas de tentativas falhas e MFA opcional.</li>
+      </ul>
+    </section>
+  </div>
+</article>
+
 <article class="card" aria-labelledby="news-2025-11-06">
   <div class="card-header">
     <h1 class="card-title" id="news-2025-11-06">🗞️ Novidades — 06/11/2025</h1>
