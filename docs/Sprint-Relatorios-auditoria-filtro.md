@@ -45,4 +45,4 @@ Este rascunho detalha o Item 2 da proposta de UI para a rota `/relatorios/audito
 - Exportação (`/relatorios/exportacoes`).
 - Permitir combinação de múltiplos IDs de entidade.
 
-> Referência principal: `docs/Sprint-Relatorios-auditoria-filtro.md`.
+> Referência principal: `docs/relatorios-auditoria-filtro.md`.

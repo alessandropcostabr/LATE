@@ -9,7 +9,8 @@
  *   node scripts/docs-sync.js --config foo.json
  *
  * Cada entrada da config deve ter:
- *   { "source": "manual-operacional.md", "output": "views/partials/manual-content.ejs" }
+ *   { "source": "docs/manuals/manual-operacional.md", "output": "views/partials/manual-content.ejs" }
+ * ou um array `sources` para concatenar múltiplos arquivos Markdown.
  */
 
 const fs = require('fs');
@@ -46,19 +47,46 @@ function renderMarkdown(mdContent, sourcePath) {
   return marked.parse(mdContent, { baseUrl: sourcePath });
 }
 
-function processEntry(entry) {
-  const absoluteSource = resolvePath(entry.source);
-  const absoluteOutput = resolvePath(entry.output);
-
-  if (!fs.existsSync(absoluteSource)) {
-    throw new Error(`Arquivo fonte não encontrado: ${entry.source}`);
+function collectSources(entry) {
+  if (entry.sources && entry.source) {
+    console.warn('[docs-sync] Campo "source" será ignorado porque "sources" foi definido.');
   }
 
-  const mdContent = fs.readFileSync(absoluteSource, 'utf8');
-  const html = renderMarkdown(mdContent, path.dirname(absoluteSource));
+  const candidates = Array.isArray(entry.sources) && entry.sources.length > 0
+    ? entry.sources
+    : entry.source
+      ? [entry.source]
+      : [];
+
+  if (candidates.length === 0) {
+    throw new Error('Entrada inválida: defina "source" (string) ou "sources" (array).');
+  }
+
+  return candidates.map((relativePath) => {
+    const absolutePath = resolvePath(relativePath);
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(`Arquivo fonte não encontrado: ${relativePath}`);
+    }
+    return { relativePath, absolutePath };
+  });
+}
+
+function processEntry(entry) {
+  const sources = collectSources(entry);
+  const absoluteOutput = resolvePath(entry.output);
+
+  const mdContent = sources
+    .map(({ absolutePath }) => fs.readFileSync(absolutePath, 'utf8').trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+  const baseDir = path.dirname(sources[0].absolutePath);
+  const html = renderMarkdown(mdContent, baseDir);
   ensureDirExists(absoluteOutput);
   fs.writeFileSync(absoluteOutput, `${html.trim()}\n`, 'utf8');
-  console.log(`[docs-sync] ${entry.source} → ${entry.output}`);
+
+  const label = sources.map(({ relativePath }) => relativePath).join(', ');
+  console.log(`[docs-sync] ${label} → ${entry.output}`);
 }
 
 function main() {
