@@ -27,6 +27,27 @@ const pgConfig = {
              ? { rejectUnauthorized: false } : false,
 };
 
+const defaultStatementTimeout =
+  process.env.NODE_ENV === 'production'
+    ? Number(process.env.PG_DEFAULT_STATEMENT_TIMEOUT_MS || 60000)
+    : null;
+
+function parseTimeout(rawValue) {
+  if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') {
+    return defaultStatementTimeout;
+  }
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    console.warn('[db] Valor inválido para PG_STATEMENT_TIMEOUT_MS/STATEMENT_TIMEOUT_MS:', rawValue);
+    return defaultStatementTimeout;
+  }
+  return parsed;
+}
+
+const statementTimeoutMs = parseTimeout(
+  process.env.PG_STATEMENT_TIMEOUT_MS ?? process.env.STATEMENT_TIMEOUT_MS
+);
+
 // Aviso útil (sem vazar segredos)
 if (!pgConfig.user || !pgConfig.password || !pgConfig.database) {
   console.error('[db] Variáveis PG_* ausentes. Verifique PG_USER, PG_PASSWORD e PG_DATABASE.');
@@ -40,6 +61,27 @@ function createPool() {
 }
 
 const pool = createPool();
+
+if (typeof statementTimeoutMs === 'number' && statementTimeoutMs > 0) {
+  const statementTimeoutSql = `SET statement_timeout TO ${statementTimeoutMs}`;
+  pool.on?.('connect', (client) => {
+    if (!client || typeof client.query !== 'function') return;
+    client.query(statementTimeoutSql).catch((err) => {
+      console.error('[db] Falha ao definir statement_timeout:', err);
+    });
+  });
+  pool.statementTimeoutMs = statementTimeoutMs;
+} else if (statementTimeoutMs === 0) {
+  pool.statementTimeoutMs = 0;
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[db] statement_timeout permanece desativado em produção; avalie configurar PG_STATEMENT_TIMEOUT_MS.');
+  }
+} else {
+  pool.statementTimeoutMs = null;
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[db] statement_timeout não configurado; usando padrão do servidor (verifique PG_STATEMENT_TIMEOUT_MS).');
+  }
+}
 
 pool.on?.('error', (err) => {
   console.error('[db] Erro no cliente idle do PostgreSQL:', err);

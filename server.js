@@ -21,6 +21,7 @@ const healthController = require('./controllers/healthController');
 const { startAlertScheduler } = require('./services/messageAlerts');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
 const packageInfo = require('./package.json');
+const { resolveSessionSecret } = require('./config/sessionSecret');
 
 let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
@@ -124,10 +125,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const secureCookie = isProd ? 'auto' : false;
 const sessionPool = db;
 const sessionName = isProd ? 'late.sess' : 'late.dev.sess'; // nome distinto por ambiente
+const sessionSecret = resolveSessionSecret({ isProd });
 
 app.use(session({
   name: sessionName, // Por quê: evitar colisão de cookie quando prod/dev compartilham domínio
-  secret: process.env.SESSION_SECRET || 'trocar-este-segredo-em-producao',
+  secret: sessionSecret,
   resave: false,
   rolling: true,
   saveUninitialized: false,
@@ -135,7 +137,7 @@ app.use(session({
     pool: sessionPool,
     tableName: process.env.SESSION_TABLE || 'sessions',
     schemaName: process.env.SESSION_SCHEMA || 'public',
-    createTableIfMissing: true, // cria tabela se não existir
+    createTableIfMissing: !isProd, // evita exigir CREATE TABLE em produção
     pruneSessionInterval: 60 * 60 // em segundos (1h) // Por quê: coleta periódica de sessões expiradas p/ reduzir bloat
   }),
   cookie: {
