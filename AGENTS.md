@@ -17,7 +17,8 @@ Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **
   - `~/late-prod` → branch `main`, porta 3000 (produção)
 - Sprints concluídas: 0, A, B, C, D  
   Próximas sprints priorizadas: **Sprint 00-PRE — Hardening & Sanidade**, **Sprint E — Sessão Única**
-- Documentação estendida (não versionada): `_reports/*.md` gerados por `scripts/generate-artifacts.sh`
+- Documentação estendida (versionada): `docs/**` (news, planning, roadmap, status, manuais, specs).  
+  `_reports/` ficou reservado para artefatos temporários gerados por scripts locais.
 
 ---
 
@@ -188,11 +189,11 @@ Sempre que alterar schema ou assets:
 ## 📚 Referências Rápidas
 
 - `README.md` — visão geral, instruções de deploy, rate limits.
-- `manual-operacional.md` — operação do sistema para times de atendimento.
-- `_reports/⚡ LATE — Cheatsheet de Comandos.md` — comandos Git/PM2/Deploy (não versionado).
-- `_reports/LATE_SPRINTS_EXECUTADAS.md` — histórico de sprints concluídas.
-- `_reports/LATE_SPRINTS_FUTURAS.md` — roadmap detalhado.
-- `_reports/📊 LATE — Status Atual do Projeto.md` — panorama DEV/PROD.
+- `docs/manuals/manual-operacional.md` — operação do sistema para times de atendimento.
+- `docs/tecnicos/LATE_Cheatsheet_Comandos.md` — comandos Git/PM2/Deploy.
+- `docs/planning/LATE_SPRINTS_EXECUTADAS.md` — histórico de sprints concluídas.
+- `docs/planning/LATE_SPRINTS_FUTURAS.md` — roadmap detalhado.
+- `docs/status/LATE_Status_Atual.md` — panorama DEV/PROD.
 
 ---
 
@@ -202,7 +203,7 @@ Sempre que alterar schema ou assets:
 2. `npm run build:css` quando o CSS base for alterado.  
 3. `npm test` e revisar cobertura (commit inclui ajustes de teste).  
 4. Revisar logs (`pm2 logs late-dev`) após subir em homolog/produção.  
-5. Atualizar documentos afetados (`AGENTS.md`, `/help`, `/roadmap`, `_reports`).  
+5. Atualizar documentos afetados (`AGENTS.md`, `/help`, `/roadmap`, `docs/**`).  
 6. Conferir que credenciais/artefatos locais (`.env*`, `_reports/`) não foram adicionados ao git.
 7. Quando houver mudanças de segurança, gerar relatório com `scripts/security-check.sh` e anexar ao PR.
 

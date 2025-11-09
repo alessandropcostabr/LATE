@@ -29,7 +29,7 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 - [`/relatorios/auditoria`](./relatorios/auditoria): consulta de eventos registrados em `event_logs`
 - [`/relatorios/exportacoes`](./relatorios/exportacoes): painel para gerar arquivos CSV/JSON com filtros aplicados
 - [`/roadmap`](./roadmap): planejamento técnico e versões
-- [`manual-operacional.md`](./manual-operacional.md): instruções para uso operacional
+- [`manual-operacional.md`](./docs/manuals/manual-operacional.md): instruções para uso operacional
 - [`DEPLOY.md`](./DEPLOY.md): comandos e boas práticas de operação
 - [`LATE_SPRINTS_EXECUTADAS.md`](./LATE_SPRINTS_EXECUTADAS.md)
 - [`LATE_SPRINTS_FUTURAS.md`](./LATE_SPRINTS_FUTURAS.md)
@@ -39,7 +39,7 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 - Repositório usa `git worktree` para `main`, `dev` e `infra`
 - Veja `🌳 LATE — Guia Completo de Worktrees.md`
 - Cheatsheet em `⚡ LATE — Cheatsheet de Comandos.md`
-- `npm run docs:sync` gera os fragmentos HTML usados nas rotas a partir dos arquivos Markdown (`manual-operacional.md`, `_reports/news.md` etc.).
+- `npm run docs:sync` gera os fragmentos HTML usados nas rotas a partir dos arquivos Markdown (`docs/manuals/manual-operacional.md`, `docs/news/news.md` etc.).
 
 ## 🩺 Diagnóstico rápido
 

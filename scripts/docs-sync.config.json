@@ -1,6 +1,6 @@
 [
   {
-    "source": "manual-operacional.md",
+    "source": "docs/manuals/manual-operacional.md",
     "output": "views/partials/manual-content.ejs"
   },
   {
