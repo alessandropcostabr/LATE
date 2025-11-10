@@ -26,6 +26,12 @@
     dbReplicationExtra: () => qs('db-replication-extra'),
     vipHealth: () => qs('vip-health-status'),
     tunnelHealth: () => qs('tunnel-health-status'),
+    exportsPending: () => qs('exports-pending'),
+    exportsProcessing: () => qs('exports-processing'),
+    exportsFailed: () => qs('exports-failed'),
+    exportsStalled: () => qs('exports-stalled'),
+    exportsLastFailed: () => qs('exports-last-failed'),
+    exportsLastCompleted: () => qs('exports-last-completed'),
     promCard: () => qs('prometheus-card'),
     promDisabled: () => qs('prometheus-disabled'),
     promTableBody: () => qs('prometheus-node-rows'),
@@ -59,6 +65,16 @@
     }
 
     return parts.length ? parts.join(' ') : '0s';
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(date);
   }
 
   function formatMemoryMb(value) {
@@ -243,6 +259,29 @@
     });
   }
 
+  function updateExportsSection(queue) {
+    const counts = queue?.counts || {};
+    setText(elements.exportsPending, formatNumber(Number(counts.pending) || 0));
+    setText(elements.exportsProcessing, formatNumber(Number(counts.processing) || 0));
+    setText(elements.exportsFailed, formatNumber(Number(counts.failed) || 0));
+    setText(elements.exportsStalled, formatNumber(Number(queue?.stalled) || 0));
+
+    if (queue?.last_failed) {
+      const error = queue.last_failed.error || 'Falha';
+      const at = formatDateTime(queue.last_failed.at);
+      setText(elements.exportsLastFailed, `${error} (${at})`);
+    } else if (queue?.error) {
+      setText(elements.exportsLastFailed, `Erro ao coletar: ${queue.error}`);
+    } else {
+      setText(elements.exportsLastFailed, 'Nenhuma falha registrada');
+    }
+
+    setText(
+      elements.exportsLastCompleted,
+      queue?.last_completed_at ? formatDateTime(queue.last_completed_at) : 'Ainda não concluído'
+    );
+  }
+
   async function loadStatus() {
     try {
       const response = await fetch(ENDPOINT, { headers: { accept: 'application/json' }, cache: 'no-store' });
@@ -252,11 +291,12 @@
         throw new Error(payload?.error || `HTTP ${response.status}`);
       }
 
-      const { app, db, vip_health: vip, tunnel_health: tunnel, prometheus } = payload.data || {};
+      const { app, db, vip_health: vip, tunnel_health: tunnel, prometheus, exports: exportsQueue } = payload.data || {};
       updateAppSection(app);
       updateDbSection(db);
       updateRemoteServices(vip, tunnel);
       renderPrometheus(prometheus);
+      updateExportsSection(exportsQueue);
 
       const now = new Date();
       setText(elements.lastUpdated, `Atualizado às ${now.toLocaleTimeString('pt-BR')}`);
