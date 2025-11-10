@@ -56,6 +56,22 @@
         </div>
       </div>
 
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Fila de Exportações</h2>
+        </div>
+        <div class="card-body">
+          <ul class="status-list">
+            <li>Pendentes: <strong id="exports-pending">-</strong></li>
+            <li>Processando: <strong id="exports-processing">-</strong></li>
+            <li>Falhas: <strong id="exports-failed">-</strong></li>
+            <li>Travados (&gt;15min): <strong id="exports-stalled">-</strong></li>
+            <li>Última falha: <strong id="exports-last-failed">-</strong></li>
+            <li>Última conclusão: <strong id="exports-last-completed">-</strong></li>
+          </ul>
+        </div>
+      </div>
+
       <div class="card" style="margin-bottom:1.5rem;" id="prometheus-card">
         <div class="card-header">
           <h2 class="card-title">Resumo Prometheus por Nó</h2>

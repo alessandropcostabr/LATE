@@ -211,6 +211,56 @@ async function cleanupExpiredFiles() {
   return rows.map(mapRow);
 }
 
+async function getQueueMetrics() {
+  const { rows } = await db.query(`
+    SELECT
+      COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+      COUNT(*) FILTER (WHERE status = 'processing')::int AS processing,
+      COUNT(*) FILTER (WHERE status = 'failed')::int AS failed,
+      COUNT(*) FILTER (WHERE status = 'processing' AND started_at IS NOT NULL AND started_at <= NOW() - INTERVAL '15 minutes')::int AS stalled
+    FROM report_exports
+  `);
+
+  const summary = rows[0] || { pending: 0, processing: 0, failed: 0, stalled: 0 };
+
+  const [lastFailed] = (
+    await db.query(
+      `SELECT id, error, completed_at
+         FROM report_exports
+        WHERE status = 'failed'
+     ORDER BY completed_at DESC NULLS LAST
+        LIMIT 1`
+    )
+  ).rows;
+
+  const [lastCompleted] = (
+    await db.query(
+      `SELECT id, completed_at
+         FROM report_exports
+        WHERE status = 'completed'
+     ORDER BY completed_at DESC NULLS LAST
+        LIMIT 1`
+    )
+  ).rows;
+
+  return {
+    counts: {
+      pending: Number(summary.pending) || 0,
+      processing: Number(summary.processing) || 0,
+      failed: Number(summary.failed) || 0,
+    },
+    stalled: Number(summary.stalled) || 0,
+    last_failed: lastFailed
+      ? {
+          id: lastFailed.id,
+          error: lastFailed.error || null,
+          at: lastFailed.completed_at,
+        }
+      : null,
+    last_completed_at: lastCompleted?.completed_at || null,
+  };
+}
+
 module.exports = {
   create,
   listByUser,
@@ -222,6 +272,7 @@ module.exports = {
   pullPending,
   requeueStuckProcessing,
   cleanupExpiredFiles,
+  getQueueMetrics,
   EXPORT_TYPES,
   EXPORT_FORMATS,
   EXPORT_STATUSES,

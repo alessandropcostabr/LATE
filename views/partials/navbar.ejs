@@ -1,8 +1,8 @@
-<% const canReadMessages = permissions && permissions.readMessages; %>
-<% const canCreateMessages = permissions && permissions.createMessages; %>
-<% const showReports =
-  typeof userRoleSlug !== 'undefined' &&
-  (userRoleSlug === 'admin' || userRoleSlug === 'supervisor'); %>
+<% const perms = typeof permissions === 'object' && permissions !== null ? permissions : {}; %>
+<% const canReadMessages = Boolean(perms.readMessages); %>
+<% const canCreateMessages = Boolean(perms.createMessages); %>
+<% const roleSlug = typeof userRoleSlug === 'string' ? userRoleSlug : ''; %>
+<% const showReports = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
 <% const rawUserName = (typeof user !== 'undefined' && user && user.name) ? String(user.name).trim() : ''; %>
 <% const userNameParts = rawUserName ? rawUserName.split(/\s+/).filter(Boolean) : []; %>
 <% const displayUserName = userNameParts.length > 1 ? `${userNameParts[0]} ${userNameParts[userNameParts.length - 1]}` : (userNameParts[0] || 'Usuário'); %>
@@ -102,7 +102,7 @@
       }); %>
     <% } %>
 
-    <% if (userRoleSlug === 'admin') { %>
+    <% if (roleSlug === 'admin') { %>
       <% navSections.push({
         key: 'admin',
         label: 'Administração',

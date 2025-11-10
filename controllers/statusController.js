@@ -4,6 +4,7 @@
 const os = require('os');
 const { performance } = require('perf_hooks');
 const db = require('../config/database');
+const ReportExportModel = require('../models/reportExport');
 
 function getFetch() {
   const fetchImpl = global.fetch;
@@ -173,6 +174,14 @@ async function getPrometheusNodeSummary() {
   }
 }
 
+async function getExportQueueHealth() {
+  try {
+    return await ReportExportModel.getQueueMetrics();
+  } catch (err) {
+    return { error: String(err?.message || err) };
+  }
+}
+
 exports.getStatus = async (_req, res) => {
   try {
     const appInfo = {
@@ -185,11 +194,12 @@ exports.getStatus = async (_req, res) => {
       hostname: os.hostname(),
     };
 
-    const [dbHealth, vipHealth, tunnelHealth, prometheus] = await Promise.all([
+    const [dbHealth, vipHealth, tunnelHealth, prometheus, exportsHealth] = await Promise.all([
       getPgHealth(),
       safeFetchJson(process.env.VIP_HEALTH_URL || 'http://127.0.0.1:3000/health'),
       safeFetchJson(process.env.TUNNEL_HEALTH_URL),
       getPrometheusNodeSummary(),
+      getExportQueueHealth(),
     ]);
 
     return res.json({
@@ -200,6 +210,7 @@ exports.getStatus = async (_req, res) => {
         vip_health: vipHealth,
         tunnel_health: tunnelHealth,
         prometheus,
+        exports: exportsHealth,
       },
     });
   } catch (err) {
@@ -217,4 +228,5 @@ exports.__private = {
   getPgHealth,
   getPrometheusNodeSummary,
   promQL,
+  getExportQueueHealth,
 };
