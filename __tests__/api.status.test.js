@@ -4,9 +4,13 @@ const supertest = require('supertest');
 jest.mock('../config/database', () => ({
   query: jest.fn(),
 }));
+jest.mock('../models/reportExport', () => ({
+  getQueueMetrics: jest.fn(),
+}));
 
 const statusController = require('../controllers/statusController');
 const databaseMock = require('../config/database');
+const reportExportModel = require('../models/reportExport');
 
 function createJsonResponse(data, status = 200) {
   return {
@@ -32,6 +36,12 @@ describe('GET /api/status', () => {
     app.use(express.json());
     app.get('/api/status', statusController.getStatus);
     databaseMock.query.mockReset();
+    reportExportModel.getQueueMetrics.mockReset().mockResolvedValue({
+      counts: { pending: 0, processing: 0, failed: 0 },
+      stalled: 0,
+      last_failed: null,
+      last_completed_at: null,
+    });
     global.fetch = jest.fn();
     process.env = { ...originalEnv };
   });
@@ -88,11 +98,18 @@ describe('GET /api/status', () => {
       .mockResolvedValueOnce(createJsonResponse({ status: 'success', data: { result: [{ metric: { instance: 'node-a:9100' }, value: [0, '12000'] }, { metric: { instance: 'node-b:9100' }, value: [0, '15000'] }] } })) // rx
       .mockResolvedValueOnce(createJsonResponse({ status: 'success', data: { result: [{ metric: { instance: 'node-a:9100' }, value: [0, '9000'] }, { metric: { instance: 'node-b:9100' }, value: [0, '11000'] }] } })); // tx
 
+    reportExportModel.getQueueMetrics.mockResolvedValue({
+      counts: { pending: 2, processing: 1, failed: 3 },
+      stalled: 1,
+      last_failed: { id: 'fail-1', error: 'timeout', at: '2025-11-08T10:00:00.000Z' },
+      last_completed_at: '2025-11-08T11:00:00.000Z',
+    });
+
     const response = await supertest(app).get('/api/status');
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    const { app: appData, db, vip_health: vip, tunnel_health: tunnel, prometheus } = response.body.data;
+    const { app: appData, db, vip_health: vip, tunnel_health: tunnel, prometheus, exports: exportsQueue } = response.body.data;
 
     expect(appData.version).toBe('2.0.0-test');
     expect(appData.build).toBe('build-xyz');
@@ -121,6 +138,12 @@ describe('GET /api/status', () => {
       tx: 11000,
     });
     expect(global.fetch).toHaveBeenCalledTimes(9);
+    expect(exportsQueue).toMatchObject({
+      counts: { pending: 2, processing: 1, failed: 3 },
+      stalled: 1,
+      last_failed: { id: 'fail-1', error: 'timeout', at: '2025-11-08T10:00:00.000Z' },
+      last_completed_at: '2025-11-08T11:00:00.000Z',
+    });
   });
 
   it('degrada com prometheus desabilitado quando URL não está configurada', async () => {
@@ -156,11 +179,12 @@ describe('GET /api/status', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
 
-    const { prometheus, db } = response.body.data;
+    const { prometheus, db, exports: exportsQueue } = response.body.data;
     expect(prometheus.enabled).toBe(false);
     expect(prometheus.nodes).toEqual({});
     expect(global.fetch).toHaveBeenCalledTimes(2);
     expect(db.replication.role).toBe('standby');
     expect(db.replication.replay.replay_delay_seconds).toBe(12);
+    expect(exportsQueue).toBeDefined();
   });
 });

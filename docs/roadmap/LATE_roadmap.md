@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP — LATE
 
-> Última atualização: 2025-11-08
+> Última atualização: 2025-11-09
 
 Este roadmap consolida as entregas concluídas, em andamento e planejadas para o LATE, com foco em relacionamento, rastreabilidade, operação e segurança.
 
@@ -34,6 +34,12 @@ Este roadmap consolida as entregas concluídas, em andamento e planejadas para o
 - ⏳ Cards e filtros salvos na aba Auditoria.
 - ⏳ Exportações CSV/JSON com fila e notificações.
 - ⏳ Health-check pós-export no painel de status.
+
+### Sprint Hardening PG + CSP
+- 🔒 TLS no PostgreSQL: canário em mach1 (ssl=on + `PG_SSL=true`), rollout total após 24h sem incidentes.
+- 🛡️ CSP global: middleware Helmet em `report-only`, coleta de violações, migração para enforce (sem `'unsafe-inline'`).
+- 🧪 Diagnostics model: mover `SELECT 1`/`pg_stat_replication` para `models/diagnostics.js`, controllers apenas orquestram.
+- 📝 Testes automatizados para garantir CSP em headers e que o app continua PG-only.
 
 ### Operação do Cluster
 - 🔁 Exercitar failover automático (Pacemaker) após cada deploy.
