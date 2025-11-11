@@ -362,7 +362,7 @@ app.use((req, res) => {
 });
 
 // Boot
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'}, env=${envFile})`);
 });
 
