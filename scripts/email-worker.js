@@ -3,7 +3,7 @@
 // scripts/email-worker.js
 // Inicializa o worker de fila de e-mails. Usar via `npm run worker:emails`.
 
-require('../config/loadEnv').loadEnv();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const { startEmailQueueWorker, stopEmailQueueWorker } = require('../services/emailQueueWorker');
 const db = require('../config/database');

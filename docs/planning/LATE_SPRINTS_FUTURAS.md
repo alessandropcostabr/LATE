@@ -201,7 +201,7 @@ NODE_ENV=production node scripts/migrate.js
 # Gerar novo token:
 openssl rand -hex 32
 
-# 3. Atualizar .env.prod
+# 3. Atualizar .env (único)
 INTAKE_TOKEN=<novo_token>
 INTAKE_TOKEN_PEPPER=<pepper_secreto>
 
@@ -247,7 +247,7 @@ curl -X POST http://localhost:3001/api/intake \
 - [ ] Testar idempotência de automations
 - [ ] Testar intake com token hasheado
 - [ ] Gerar novo `INTAKE_TOKEN`
-- [ ] Atualizar `.env.dev` e `.env.prod`
+- [ ] Atualizar `.env` (documentação + exemplos)
 - [ ] Aplicar migrations em PROD
 - [ ] Reiniciar aplicações
 - [ ] Atualizar sistemas externos

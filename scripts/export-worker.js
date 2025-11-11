@@ -3,7 +3,7 @@
 // scripts/export-worker.js
 // Inicializa o worker de exportações.
 
-require('../config/loadEnv').loadEnv();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const { startReportExportWorker, stopReportExportWorker } = require('../services/reportExportWorker');
 const db = require('../config/database');

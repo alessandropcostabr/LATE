@@ -14,7 +14,7 @@ describe('API utilitários', () => {
   beforeEach(() => {
     app = express();
     app.use(express.json());
-    app.get('/api/health', healthController.apiCheck);
+    app.get('/api/health', healthController.check);
     app.get('/api/version', metaController.version);
   });
 

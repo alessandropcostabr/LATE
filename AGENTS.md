@@ -14,7 +14,7 @@ Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **
 - Últimas entregas: **Hardening do intake e automations** (tokens com hash, índice por minuto) · **Registros relacionados** (histórico por contato) · **Tela de login redesenhada**
 - Worktrees oficiais:
   - `~/late-dev` → branch `develop`, porta 3001 (homolog/QA)
-  - `~/late-prod` → branch `main`, porta 3000 (produção)
+  - `~/late-prod` → branch `main`, porta 3100 (produção)
 - Sprints concluídas: 0, A, B, C, D  
   Próximas sprints priorizadas: **Sprint 00-PRE — Hardening & Sanidade**, **Sprint E — Sessão Única**
 - Documentação estendida (versionada): `docs/**` (news, planning, roadmap, status, manuais, specs).  
@@ -27,7 +27,7 @@ Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **
 ```bash
 LATE/
 ├── server.js             # Express 5 + sessões PG + EJS
-├── config/               # database.js (pg Pool), loadEnv.js
+├── config/               # database.js (pg Pool)
 ├── controllers/          # auth, mensagens, usuários, setores, stats
 ├── middleware/           # auth (RBAC), CSRF, CORS, validações
 ├── models/               # acesso PostgreSQL (messages, alerts, users, stats)
@@ -53,7 +53,7 @@ cp .env.example .env            # ajuste as variáveis antes de rodar
 npm install
 npm run migrate                 # aplica migrations (PG-only)
 node scripts/seed-admin.js      # exige ADMIN_EMAIL e ADMIN_PASSWORD
-npm run dev                     # http://localhost:3000 (nodemon)
+npm run dev                     # http://localhost:3100 (nodemon)
 ```
 
 Sempre que alterar schema ou assets:
@@ -71,7 +71,7 @@ Sempre que alterar schema ou assets:
 
 ## 🔧 Variáveis de Ambiente Essenciais
 
-`config/loadEnv.js` carrega automaticamente `.env.dev`/`.env.prod` → `.env.local` → `.env` (pode sobrescrever via `DOTENV_FILE`).
+Entradas (`server.js`, scripts em `scripts/`) chamam `dotenv` diretamente e carregam **um único `.env`**. Opcionalmente é possível sobrescrever com `DOTENV_FILE=/caminho/arquivo.env`.
 
 - Banco: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PG_SSL`
 - Sessões: `SESSION_SECRET`, `COOKIE_NAME`, `SESSION_MAX_AGE`
@@ -139,7 +139,7 @@ Sempre que alterar schema ou assets:
 
 ## ⚙️ Operação & Worktrees
 
-- `npm run dev` → nodemon local (porta 3000, override via `.env`).
+- `npm run dev` → nodemon local (porta 3100, override via `.env`).
 - `npm start` → execução simples (production ready, sem watch).
 - PM2:
   - `pm2 start ecosystem.config.js --only late-dev`

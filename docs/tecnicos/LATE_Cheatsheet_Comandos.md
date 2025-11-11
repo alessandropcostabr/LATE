@@ -79,7 +79,9 @@ ansible cluster_ubuntu -a "uptime"
 # Gerar secret
 openssl rand -hex 32
 
-# .env.prod
-PG_SSL=strict
+# .env (produção)
+HOST=0.0.0.0
+PGHOST=192.168.15.250   # VIP do cluster
+PG_SSL=require
 SESSION_SECRET=<secret>
 ```

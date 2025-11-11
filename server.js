@@ -1,6 +1,16 @@
 // server.js — Express 5 + EJS + PostgreSQL + sessions (PG-only)
 // Comentários em pt-BR; identificadores em inglês.
 
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+const compression = require('compression');
+
+const envFile = process.env.DOTENV_FILE
+  ? path.resolve(process.cwd(), process.env.DOTENV_FILE)
+  : path.join(__dirname, '.env');
+require('dotenv').config({ path: envFile });
+
 const express = require('express');
 const corsMw = require('./middleware/cors');
 const helmet = require('helmet');
@@ -8,16 +18,10 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
-const path = require('path');
-const fs = require('fs');
-const compression = require('compression');
-const { execSync } = require('child_process');
-require('./config/loadEnv').loadEnv(); // Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
 
 const db = require('./config/database'); // Pool do pg (PG-only)
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
-const healthController = require('./controllers/healthController');
 const { startAlertScheduler } = require('./services/messageAlerts');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
 const packageInfo = require('./package.json');
@@ -27,7 +31,8 @@ let validateOrigin;
 try { validateOrigin = require('./middleware/validateOrigin'); } catch { validateOrigin = null; }
 
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = Number(process.env.PORT || 3100);
+const HOST = process.env.HOST || '0.0.0.0';
 // NÃO achatar para boolean. Preservar number/string conforme Express:
 // aceita: number (hops), true/false, 'loopback' | 'linklocal' | 'uniquelocal' | lista/CIDR.
 const rawTrustProxy = (process.env.TRUST_PROXY ?? (isProd ? '1' : '')).toString().trim();
@@ -315,8 +320,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health
-app.get('/health', healthController.check);
+// Health HTTP plano (não consulta o banco) para HAProxy/VIP
+app.get('/health', (_req, res) => res.status(200).send('OK'));
 
 // Rotas
 app.use('/login', loginLimiter);
@@ -357,9 +362,8 @@ app.use((req, res) => {
 });
 
 // Boot
-const HOST = process.env.HOST || '127.0.0.1';
 const server = app.listen(PORT, HOST, () => {
-  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'})`);
+  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'dev'}, env=${envFile})`);
 });
 
 const disableScheduler = String(process.env.DISABLE_ALERT_SCHEDULER || '').toLowerCase();
