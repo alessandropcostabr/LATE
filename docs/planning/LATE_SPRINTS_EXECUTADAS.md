@@ -80,8 +80,8 @@ Estabelecer base sólida de infraestrutura, segurança e padronização para o p
   - `~/late-prod/` - Worktree main (porta 3000)
 
 - **Configuração:**
-  - `.env.dev` e `.env.prod` separados
-  - `loadEnv.js` para carregamento automático
+  - `.env` único (prod/dev) controlado por variáveis e `DOTENV_FILE` opcional
+  - Entrypoints chamam `dotenv` diretamente (sem `loadEnv.js`)
   - PM2 com processos isolados
 
 #### 2. Hardening de Segurança

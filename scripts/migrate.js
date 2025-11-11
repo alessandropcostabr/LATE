@@ -3,18 +3,18 @@
 // scripts/migrate.js
 // Migrador simples para arquivos .sql em migrations/ (ordem alfanumérica).
 // - Respeita DB_DRIVER=pg (falha se diferente)
-// - Carrega .env.production -> .env (fallback)
+// - Carrega variáveis do .env da raiz
 // - Usa tabela schema_migrations para controle de arquivos aplicados
 // - --dry-run lista o que seria aplicado
 // Comentários em pt-BR; identificadores em inglês.
 
 const fs = require('fs');
 const path = require('path');
-// Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
-require('../config/loadEnv').loadEnv(process.env.NODE_ENV || 'production');
 
-// Carrega .env apropriado (.env ou .env.prod) antes de qualquer leitura de process.env
-require('../config/loadEnv').loadEnv();
+const envFile = process.env.DOTENV_FILE
+  ? path.resolve(process.cwd(), process.env.DOTENV_FILE)
+  : path.join(__dirname, '..', '.env');
+require('dotenv').config({ path: envFile });
 
 // Barrar drivers não suportados
 const driver = String(process.env.DB_DRIVER || 'pg').toLowerCase();

@@ -35,7 +35,7 @@ Migrar a aplicação **LATE** (diretório `~/late-prod`) para um **cluster HA** 
 - Acesso SSH com sudo nos três nós.
 - Hostname no Cloudflare (ex.: `late.amah.com.br`).
 - Credenciais do **Cloudflare Tunnel** (arquivo `credentials-file` JSON).
-- `.env.prod` contendo: `DB_DRIVER=pg`, `PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`, `PG_SSL`, `SESSION_SECRET` forte.
+- `.env` de produção contendo: `DB_DRIVER=pg`, `PG_HOST` (VIP 192.168.15.250), `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`, `PG_SSL`, `SESSION_SECRET` forte.
 
 ---
 
@@ -81,7 +81,7 @@ cd ~/late-prod
 npm ci --omit=dev
 
 # Copiar env de produção
-cp /caminho/seguro/.env.prod ~/late-prod/.env
+cp /caminho/seguro/.env ~/late-prod/.env
 ```
 
 **Critérios**
@@ -93,8 +93,8 @@ cp /caminho/seguro/.env.prod ~/late-prod/.env
 ### 4) Healthcheck HTTP `/health`
 **Teste local**
 ```bash
-curl -s http://127.0.0.1:3000/health
-# Esperado: { "success": true, "data": "OK" } (ou similar)
+curl -s -i http://127.0.0.1:3000/health
+# Esperado: HTTP 200 + corpo "OK" (sem dependência de banco)
 ```
 
 > *Se a rota não existir, criar uma rota simples que execute `SELECT 1` no PostgreSQL e retorne JSON. Não alterar views/public.*

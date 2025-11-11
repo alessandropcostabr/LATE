@@ -5,7 +5,11 @@
 //   ADMIN_EMAIL=admin@local.test ADMIN_PASSWORD='SenhaForte!1' node scripts/seed-admin.js
 //   (as variáveis PG_* já vêm do ecosystem.config.js; este script lê ambos formatos PG_HOST/PGHOST etc.)
 
-require('../config/loadEnv').loadEnv(); // Padronizar carregamento do .env/.env.prod
+const path = require('path');
+const envFile = process.env.DOTENV_FILE
+  ? path.resolve(process.cwd(), process.env.DOTENV_FILE)
+  : path.join(__dirname, '..', '.env');
+require('dotenv').config({ path: envFile });
 const { Pool } = require('pg');
 const argon2 = require('argon2');
 const crypto = require('crypto');

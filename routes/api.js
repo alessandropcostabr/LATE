@@ -164,7 +164,7 @@ router.get('/csrf', csrfProtection, (req, res) => {
 });
 
 // Utilitários
-router.get('/health', healthController.apiCheck);
+router.get('/health', healthController.check);
 router.get('/version', metaController.version);
 router.get(
   '/status',

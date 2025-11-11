@@ -1,14 +1,14 @@
 // config/database.js
-// Conexão com PostgreSQL (PG only). Mensagens em pt-BR; identificadores em inglês.
+// Conexão com PostgreSQL (PG-only). Comentários pt-BR; identificadores em inglês.
 
 const path = require('path');
-const dotenv = require('dotenv');
 
-// Carrega somente .env do projeto; em produção você pode injetar envs via PM2/systemd.
-dotenv.config({ path: path.join(__dirname, '..', '.env'), quiet: true });
-console.info('[db] Env carregado de: .env');
+const envFile = process.env.DOTENV_FILE
+  ? path.resolve(process.cwd(), process.env.DOTENV_FILE)
+  : path.join(__dirname, '..', '.env');
+require('dotenv').config({ path: envFile });
+console.info(`[db] Env carregado de: ${path.basename(envFile)}`);
 
-// Fail-fast: somente PostgreSQL é suportado
 const driver = String(process.env.DB_DRIVER || 'pg').toLowerCase();
 if (driver !== 'pg') {
   throw new Error('Configuração inválida: somente PostgreSQL é suportado. Defina DB_DRIVER=pg no .env');
@@ -16,15 +16,16 @@ if (driver !== 'pg') {
 
 const { Pool } = require('pg');
 
-// Aceita PG_* (padrão do projeto) e PG* (padrão do cliente psql)
+// Aceita PG_* (padrão Node) e PG* (psql/libpq)
 const pgConfig = {
   host:     process.env.PG_HOST     || process.env.PGHOST     || '127.0.0.1',
   port:    (process.env.PG_PORT     || process.env.PGPORT     || 5432) * 1,
   user:     process.env.PG_USER     || process.env.PGUSER,
   password: process.env.PG_PASSWORD || process.env.PGPASSWORD,
   database: process.env.PG_DATABASE || process.env.PGDATABASE,
-  ssl:      ['1','true','yes','on'].includes(String(process.env.PG_SSL).toLowerCase())
-             ? { rejectUnauthorized: false } : false,
+  ssl: ['1', 'true', 'yes', 'on', 'require'].includes(String(process.env.PG_SSL).toLowerCase())
+    ? { rejectUnauthorized: false }
+    : false,
 };
 
 const defaultStatementTimeout =
@@ -32,13 +33,11 @@ const defaultStatementTimeout =
     ? Number(process.env.PG_DEFAULT_STATEMENT_TIMEOUT_MS || 60000)
     : null;
 
-function parseTimeout(rawValue) {
-  if (rawValue === undefined || rawValue === null || String(rawValue).trim() === '') {
-    return defaultStatementTimeout;
-  }
-  const parsed = Number(rawValue);
+function parseTimeout(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return defaultStatementTimeout;
+  const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    console.warn('[db] Valor inválido para PG_STATEMENT_TIMEOUT_MS/STATEMENT_TIMEOUT_MS:', rawValue);
+    console.warn('[db] Valor inválido para PG_STATEMENT_TIMEOUT_MS/STATEMENT_TIMEOUT_MS:', raw);
     return defaultStatementTimeout;
   }
   return parsed;
@@ -48,44 +47,36 @@ const statementTimeoutMs = parseTimeout(
   process.env.PG_STATEMENT_TIMEOUT_MS ?? process.env.STATEMENT_TIMEOUT_MS
 );
 
-// Aviso útil (sem vazar segredos)
 if (!pgConfig.user || !pgConfig.password || !pgConfig.database) {
   console.error('[db] Variáveis PG_* ausentes. Verifique PG_USER, PG_PASSWORD e PG_DATABASE.');
 }
 
 function createPool() {
-  if (typeof global.__LATE_POOL_FACTORY === 'function') {
-    return global.__LATE_POOL_FACTORY();
-  }
+  if (typeof global.__LATE_POOL_FACTORY === 'function') return global.__LATE_POOL_FACTORY();
   return new Pool(pgConfig);
 }
 
 const pool = createPool();
 
 if (typeof statementTimeoutMs === 'number' && statementTimeoutMs > 0) {
-  const statementTimeoutSql = `SET statement_timeout TO ${statementTimeoutMs}`;
-  pool.on?.('connect', (client) => {
-    if (!client || typeof client.query !== 'function') return;
-    client.query(statementTimeoutSql).catch((err) => {
-      console.error('[db] Falha ao definir statement_timeout:', err);
-    });
-  });
+  const st = `SET statement_timeout TO ${statementTimeoutMs}`;
+  pool.on?.('connect', (client) => client?.query(st).catch((err) => {
+    console.error('[db] Falha ao definir statement_timeout:', err);
+  }));
   pool.statementTimeoutMs = statementTimeoutMs;
 } else if (statementTimeoutMs === 0) {
   pool.statementTimeoutMs = 0;
   if (process.env.NODE_ENV === 'production') {
-    console.warn('[db] statement_timeout permanece desativado em produção; avalie configurar PG_STATEMENT_TIMEOUT_MS.');
+    console.warn('[db] statement_timeout permanece desativado em produção; avalie PG_STATEMENT_TIMEOUT_MS.');
   }
 } else {
   pool.statementTimeoutMs = null;
   if (process.env.NODE_ENV === 'production') {
-    console.warn('[db] statement_timeout não configurado; usando padrão do servidor (verifique PG_STATEMENT_TIMEOUT_MS).');
+    console.warn('[db] statement_timeout não configurado; usando padrão do servidor.');
   }
 }
 
-pool.on?.('error', (err) => {
-  console.error('[db] Erro no cliente idle do PostgreSQL:', err);
-});
+pool.on?.('error', (err) => console.error('[db] Erro no cliente idle do PostgreSQL:', err));
 
 const placeholder = (i) => `$${i}`;
 
@@ -94,12 +85,7 @@ let databaseProxy;
 async function execStatements(sql) {
   const text = String(sql || '').trim();
   if (!text) return [];
-
-  const statements = text
-    .split(/;(?:\s*[\r\n]+|\s*$)/)
-    .map((statement) => statement.trim())
-    .filter(Boolean);
-
+  const statements = text.split(/;(?:\s*[\r\n]+|\s*$)/).map(s => s.trim()).filter(Boolean);
   if (statements.length === 0) return [];
 
   const client = await pool.connect();
@@ -118,24 +104,14 @@ function prepareStatement(sql) {
   const text = String(sql || '').trim();
   return {
     text,
-    async run(params = []) {
-      await pool.query(text, params);
-    },
-    async get(params = []) {
-      const { rows } = await pool.query(text, params);
-      return rows[0];
-    },
-    async all(params = []) {
-      const { rows } = await pool.query(text, params);
-      return rows;
-    },
+    async run(params = []) { await pool.query(text, params); },
+    async get(params = []) { const { rows } = await pool.query(text, params); return rows[0]; },
+    async all(params = []) { const { rows } = await pool.query(text, params); return rows; },
   };
 }
 
 function getDatabase() {
-  if (global.__LATE_DB_INSTANCE) {
-    return global.__LATE_DB_INSTANCE;
-  }
+  if (global.__LATE_DB_INSTANCE) return global.__LATE_DB_INSTANCE;
   if (!databaseProxy) {
     databaseProxy = {
       exec: execStatements,
@@ -147,9 +123,7 @@ function getDatabase() {
 }
 
 async function close() {
-  if (typeof pool.end === 'function') {
-    await pool.end();
-  }
+  if (typeof pool.end === 'function') await pool.end();
 }
 
 pool.getDatabase = getDatabase;

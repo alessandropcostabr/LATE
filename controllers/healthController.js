@@ -10,19 +10,9 @@ async function ensureDatabaseConnection() {
 exports.check = async (_req, res) => {
   try {
     await ensureDatabaseConnection();
-    return res.status(200).json({ success: true, data: { status: 'ok' } });
-  } catch (err) {
-    console.error('[health] Falha ao consultar o banco:', err);
-    return res.status(500).json({ success: false, error: 'Banco de dados indisponível' });
-  }
-};
-
-exports.apiCheck = async (_req, res) => {
-  try {
-    await ensureDatabaseConnection();
     return res.status(200).json({ success: true, data: 'ok' });
   } catch (err) {
-    console.error('[health] Falha ao consultar o banco (API):', err);
+    console.error('[health] Falha ao consultar o banco:', err);
     return res.status(500).json({ success: false, error: 'Banco de dados indisponível' });
   }
 };
