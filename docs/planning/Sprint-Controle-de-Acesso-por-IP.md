@@ -128,6 +128,7 @@ module.exports = function ipAccessGuard() {
     const isBlockedByBlocklist = blockList.length ? ipInCidrList(clientIp, blockList) : false;
     const isOfficeIp = allowList.length ? ipInCidrList(clientIp, allowList) : false;
     const allowedOffsite = Boolean(req.user?.allow_offsite_access);
+    const enforceAllowlist = offsitePolicy !== 'allow';
 
     if (isBlockedByBlocklist) {
       return res.status(403).json({ success: false, error: 'Acesso bloqueado pelo IP (política de segurança).' });
@@ -139,7 +140,7 @@ module.exports = function ipAccessGuard() {
       }
     }
 
-    if (!isAllowedByAllowlist && !allowedOffsite) {
+    if (enforceAllowlist && !isAllowedByAllowlist && !allowedOffsite) {
       return res.status(403).json({ success: false, error: 'IP não autorizado pela lista de acesso.' });
     }
 
