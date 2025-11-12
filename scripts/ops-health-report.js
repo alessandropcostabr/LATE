@@ -150,6 +150,8 @@ function collectEnvHashes() {
   const lines = [];
   let referenceSignature = null;
   let referenceMap = null;
+  const hashValue = (value) =>
+    crypto.createHash('sha256').update(String(value ?? '')).digest('hex').slice(0, 12);
   nodes.forEach((node, index) => {
     try {
       const raw = ssh(node, `cd ${repoPath} && cat .env`);
@@ -179,7 +181,12 @@ function collectEnvHashes() {
       if (signature !== referenceSignature && referenceMap) {
         const diffs = Object.keys({ ...referenceMap, ...normalized })
           .filter((key) => (referenceMap[key] || '') !== (normalized[key] || ''))
-          .map((key) => `    • ${key}: ${normalized[key] || '(vazio)'} (ref: ${referenceMap[key] || '(vazio)'})`);
+          .map(
+            (key) =>
+              `    • ${key}: hash_atual=${hashValue(normalized[key])} hash_ref=${hashValue(
+                referenceMap[key],
+              )}`,
+          );
         if (diffs.length) lines.push(...diffs);
       }
     } catch (err) {
