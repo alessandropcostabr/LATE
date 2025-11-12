@@ -1,4 +1,5 @@
 # Sprint 1 — Painel de Status (Back + Front) **sem Prometheus**
+> Atualizado em 2025/11/12.
 
 **Data:** 09/11/2025  
 **Escopo:** `/api/status` (JSON protegido) e `/relatorios/status` (EJS + JS).  

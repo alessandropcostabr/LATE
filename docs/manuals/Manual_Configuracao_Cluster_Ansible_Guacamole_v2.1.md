@@ -1,4 +1,5 @@
 # Resumo — Configuração do Cluster Ubuntu com Ansible e Apache Guacamole
+> Atualizado em 2025/11/12.
 
 **Data:** 11/11/2025
 

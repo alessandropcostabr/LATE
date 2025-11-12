@@ -1,4 +1,5 @@
 # Sprint: Automação de Deploy GitHub → Cluster PostgreSQL/PM2
+> Atualizado em 2025/11/12.
 
 ## Objetivo
 Garantir que cada merge de `develop` para `main` acione uma atualização automática dos três nós do cluster, aplicando `git pull`, `npm install` e os comandos PM2 necessários, com logs auditáveis.

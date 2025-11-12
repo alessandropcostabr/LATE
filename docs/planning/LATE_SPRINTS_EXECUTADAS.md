@@ -1,4 +1,5 @@
 # 📦 LATE — Sprints Executadas (Histórico Completo)
+> Atualizado em 2025/11/12.
 
 **Período:** Outubro - Novembro 2025  
 **Versão Atual:** 2.0.0
@@ -944,5 +945,5 @@ function updateContactHistorySection(phone, email) {
 
 ---
 
-**Última atualização:** 08/11/2025 por Manus AI  
+**Última atualização:** 2025/11/12 por Manus AI  
 **Próximas sprints:** Sprint 02B (fase 2), anexos nos recados e revisão de segurança de login pós-cluster

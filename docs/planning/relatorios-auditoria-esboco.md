@@ -1,4 +1,5 @@
 # Esboço — Relatórios · Auditoria
+> Atualizado em 2025/11/12.
 
 > ✅ MVP entregue em 05/11/2025 (APIs + coleta). Próxima fase: Sprint 02B focada em UI e exportações.
 

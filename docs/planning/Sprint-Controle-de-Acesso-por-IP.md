@@ -1,4 +1,5 @@
 # Sprint — Controle de Acesso por IP (Back + Front)
+> Atualizado em 2025/11/12.
 
 > **Meta**: Restringir/monitorar acesso ao **LATE** por IP (rede interna vs. acesso externo), com exceção por usuário; exibir IP e escopo de acesso no **/relatorios/status**; permitir **ADMIN** configurar “Acesso externo habilitado” por usuário.  
 > **Restrições**: não alterar o layout base (EJS/CSS/JS) — apenas incluir campos/badges discretos.

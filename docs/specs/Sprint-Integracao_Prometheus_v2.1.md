@@ -1,4 +1,5 @@
 # Sprint 2 — Integração Prometheus no Painel de Status
+> Atualizado em 2025/11/12.
 
 **Data:** 09/11/2025  
 **Nota:** Porta do app Node/PM2 em PROD = **3100** (apenas para health local).

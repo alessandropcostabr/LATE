@@ -1,4 +1,5 @@
 # Manual de Uso — tmux (Administração de Cluster)
+> Atualizado em 2025/11/12.
 
 **Data:** 09/11/2025
 

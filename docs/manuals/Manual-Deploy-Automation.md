@@ -1,6 +1,7 @@
 # 📘 Manual — Deploy Automatizado (GitHub → Bastion → Cluster)
+> Atualizado em 2025/11/12.
 
-> Última atualização: 11/11/2025
+> Última atualização: 2025/11/12
 
 ## 1. Visão Geral
 

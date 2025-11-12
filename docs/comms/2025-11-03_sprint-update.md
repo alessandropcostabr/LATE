@@ -1,4 +1,5 @@
 ## Atualização — Sprint 00-PRE concluída e próximos passos
+> Atualizado em 2025/11/12.
 
 > Sugestão de mensagem para compartilhar no canal `#late-dev`.
 

@@ -1,4 +1,5 @@
 # Sprint 3 — Dashboards (Grafana) embutidos no Painel de Status
+> Atualizado em 2025/11/12.
 
 **Data:** 09/11/2025  
 **Nota:** App Node/PM2 (PROD) = porta **3100**; Grafana mantém **3000**.

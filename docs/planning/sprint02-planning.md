@@ -1,4 +1,5 @@
 # Planejamento Sprint 02 — Audit Leve
+> Atualizado em 2025/11/12.
 
 **Status:** ✅ Concluída em 05/11/2025  
 **Objetivo:** Consolidar trilhas de auditoria leves e garantir follow-up obrigatório na resolução de recados.

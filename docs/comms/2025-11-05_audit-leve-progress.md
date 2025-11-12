@@ -1,4 +1,5 @@
 # Comunicado · 05/11/2025 — Sprint 02 (Audit Leve)
+> Atualizado em 2025/11/12.
 
 ## 👀 Contexto
 - Consolidamos os ganchos da auditoria leve (`event_logs`) e o follow-up obrigatório na resolução.

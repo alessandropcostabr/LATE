@@ -1,4 +1,5 @@
 # Manual Simples — Prometheus & Grafana (Cluster Ubuntu)
+> Atualizado em 2025/11/12.
 
 **Data:** 09/11/2025
 

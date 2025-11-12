@@ -1,5 +1,5 @@
 # 📘 MP Operacional — LATE (v2.1)
-**Atualizado:** 11/11/2025  
+**Atualizado:** 2025/11/12  
 **Abrangência:** Produção (cluster HA), Desenvolvimento, Rotina de Deploy, Banco de Dados (PostgreSQL), Monitoramento e Troubleshooting.
 
 > Este MP consolida a operação do LATE no **novo cluster**: Ubuntu 24.04 LTS (3 nós: mach1, mach2, mach3), **HA** com Pacemaker/Corosync (**VIP app 192.168.15.250 / VIP DB 192.168.15.251**), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e acesso remoto via **Apache Guacamole**.  

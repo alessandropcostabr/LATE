@@ -1,4 +1,6 @@
 # Manual de Cluster HA com Pacemaker/Corosync
+> Atualizado em 2025/11/12.
+
 ## Instalação, Configuração e Troubleshooting
 
 **Versão**: 1.0  

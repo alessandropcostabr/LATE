@@ -1,4 +1,5 @@
 ## Atualização — Sprint E (Sessão Única) em desenvolvimento
+> Atualizado em 2025/11/12.
 
 > Sugestão de mensagem para o canal `#late-dev` após merge para develop.
 
