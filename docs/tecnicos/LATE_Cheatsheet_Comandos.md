@@ -1,7 +1,7 @@
 # LATE — Cheatsheet de Comandos (v2.1)
-**Atualizado:** 09/11/2025
+**Atualizado:** 11/11/2025
 
-> Atualizado em 09/11/2025. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP `192.168.15.250`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
+> Atualizado em 11/11/2025. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app `192.168.15.250` / VIP DB `192.168.15.251`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
 > Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
 
 
@@ -34,20 +34,56 @@ export ANSIBLE_BECOME_PASS=<senha>
 ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml
 ```
 
+### `.env`
+```bash
+# Verificar consistência (esperado: apenas APP_VERSION muda)
+diff -u mach1.env mach2.env
+diff -u mach1.env mach3.env
+# Sincronizar manualmente quando ajustar credenciais
+scp ~/late-prod/.env alessandro@<host>:/home/alessandro/late-prod/.env
+```
+
+### Backups
+```bash
+# Relatórios/cron em mach1 geram pg_dump 2x/dia
+ls -lh /var/backups/late/late_prod_*.sql.gz
+```
+
 ## PM2
 ```bash
 pm2 status
 pm2 logs late-prod --lines 50
 pm2 reload ecosystem.config.js
 pm2 start ecosystem.config.js --only late-prod
+pm2 env <id> | grep HOST        # deve ser HOST: 0.0.0.0 (reinicie se vier 127.0.0.1)
+```
+
+### Recuperar bind incorreto (502/503)
+```bash
+pm2 delete late-prod
+pm2 start ecosystem.config.js --only late-prod
+pm2 env $(pm2 list | awk '/late-prod/ {print $4}') | grep HOST
 ```
 
 ## PostgreSQL
 ```bash
-# PROD
-psql -d late_prod -c "SELECT now(), pg_is_in_recovery();"
-# Backup rapido
+# PROD (VIP 192.168.15.251)
+psql -h 192.168.15.251 -d late_prod -c "SELECT now(), pg_is_in_recovery();"
+psql -h 192.168.15.251 -d late_prod -c "SELECT pid, client_addr, state FROM pg_stat_replication;"
 pg_dump late_prod | gzip > backup_prod_$(date +%Y%m%d).sql.gz
+```
+
+### Ajustes de fluxo de WAL (primário)
+```bash
+sudo -u postgres psql -c "SELECT pg_create_physical_replication_slot('mach1_slot');"
+sudo -u postgres psql -c "SELECT slot_name, active FROM pg_replication_slots;"
+```
+
+### Ajustes de standby (`mach1`)
+```bash
+sudo sed -i "s/host=192.168.15.203/host=192.168.15.251/" /var/lib/postgresql/16/main/postgresql.auto.conf
+sudo systemctl restart postgresql
+tail -n 20 /var/log/postgresql/postgresql-16-main.log
 ```
 
 ## Cluster (Pacemaker/Corosync)
@@ -55,6 +91,7 @@ pg_dump late_prod | gzip > backup_prod_$(date +%Y%m%d).sql.gz
 # Status do cluster/recursos
 sudo crm status
 sudo crm resource list
+sudo crm configure show | grep -E "no-quorum|standby"
 
 # Ver VIP no no atual
 ip addr show enp0s25 | grep 192.168.15.250
@@ -63,6 +100,19 @@ ip addr show enp0s25 | grep 192.168.15.250
 sudo systemctl stop corosync
 # (aguarde migracao do VIP) 
 sudo systemctl start corosync
+
+# Isolar nó com hardware em falha
+sudo crm node standby <hostname>
+sudo crm node online <hostname>
+```
+
+## HAProxy
+```bash
+sudo tail -n 50 /var/log/haproxy.log
+sudo sed -n '1,120p' /etc/haproxy/haproxy.cfg
+# Desabilitar backend indisponível (ex.: mach3 off)
+sudo sed -i 's/server mach3 .* check$/server mach3 192.168.15.203:3100 check disabled/' /etc/haproxy/haproxy.cfg
+sudo systemctl reload haproxy
 ```
 
 ## Guacamole

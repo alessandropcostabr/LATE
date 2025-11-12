@@ -1,7 +1,7 @@
 # LATE — Design Tecnico Atualizado (v2.1)
-**Data:** 09/11/2025
+**Data:** 11/11/2025
 
-> Atualizado em 09/11/2025. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP `192.168.15.250`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
+> Atualizado em 11/11/2025. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app `192.168.15.250` / VIP DB `192.168.15.251`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
 > Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
 
 
@@ -13,16 +13,17 @@
 - **PM2** (web em cluster; workers em fork)
 
 ## Infra (PROD)
-- **Cluster 3 nos**: `mach1` (.201), `mach2` (.202), `mach3` (.203)
-- **HA**: Pacemaker/Corosync + **VIP 192.168.15.250**
-- **DB**: primario `mach3`, replicas `mach1`/`mach2`
+- **Cluster 3 nos**: `mach1` (.201), `mach2` (.202), `mach3` (.203) — **11/11/2025:** `mach3` desligado (falha de disco) e mantido em standby.
+- **HA**: Pacemaker/Corosync + VIP app `192.168.15.250` (HAProxy/Cloudflared) e VIP DB `192.168.15.251`.
+- **DB**: primário aponta sempre para o VIP `192.168.15.251`; nó detentor atual `mach2` (`mach1` em standby, `mach3` off). Replicação usa slots dedicados (`mach1_slot`, `mach3_slot`).
 - **Acesso remoto**: Apache Guacamole (Tomcat 9 + guacd)
 - **Automacao**: GitHub Actions → Bastion → **Ansible** → PM2 reload
 
 ## Convencoes
 - Identificadores/codigo em **ingles**; UX e mensagens em **pt‑BR**; **API JSON** sempre.
 - SQL **somente** em `models/`; controllers **sem SQL**.  
-- Variaveis `.env`: `PG_*`, `PG_SSL=strict` em PROD recomendado.
+- Variaveis `.env`: `PG_*`, `PG_SSL=strict` em PROD recomendado. Usamos apenas `.env` (sem `.env.prod`), sincronizado entre nós e com `APP_VERSION=2.5.1@machX` para identificar o host.
+- Processos web devem ser iniciados via `pm2 start ecosystem.config.js --only late-prod` para garantir `HOST=0.0.0.0` (verificar com `pm2 env`); nós offline precisam ter backend desabilitado no HAProxy (`check disabled`).
 
 ## Testes & Saude
 - `GET /api/health` executa `SELECT 1` (200/500).

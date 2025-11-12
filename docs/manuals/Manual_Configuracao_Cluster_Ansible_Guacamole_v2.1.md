@@ -1,11 +1,13 @@
 # Resumo — Configuração do Cluster Ubuntu com Ansible e Apache Guacamole
 
-**Data:** 09/11/2025
+**Data:** 11/11/2025
 
 ## Infraestrutura
 - `mach1` (192.168.15.201): Controle (Ansible + Guacamole)
 - `mach2` (192.168.15.202): Gerenciado
-- `mach3` (192.168.15.203): Gerenciado
+- `mach3` (192.168.15.203): Gerenciado (**11/11/2025:** reinstalado como standby; monitorar disco até troca preventiva)
+
+> **Importante:** apenas `.env` deve ser utilizado nas worktrees (`mach1`/`mach2`/`mach3`). Não deixe `.env.prod` ou variantes; mantenha o conteúdo idêntico entre nós, alterando apenas `APP_VERSION=2.5.1@machX` para identificar o host.
 
 ### Inventário Ansible
 ```ini
