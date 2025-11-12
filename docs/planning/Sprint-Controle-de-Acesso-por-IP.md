@@ -74,6 +74,8 @@ CREATE INDEX IF NOT EXISTS idx_users_allow_offsite_access
   ON users (allow_offsite_access);
 ```
 
+> ⚠️ Pós-migrate imediato: executar `UPDATE users SET allow_offsite_access = true WHERE deleted_at IS NULL;` (ou script equivalente) para garantir que todos os usuários existentes — especialmente o ADMIN — permaneçam liberados antes de aplicar as novas políticas de IP. Ajuste manualmente depois quem deve ficar restrito.
+
 ---
 
 ## 6) Backend — Tarefas e Patches
