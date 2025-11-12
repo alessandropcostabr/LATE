@@ -1,8 +1,8 @@
 # 📘 MP Operacional — LATE (v2.1)
-**Atualizado:** 09/11/2025  
+**Atualizado:** 11/11/2025  
 **Abrangência:** Produção (cluster HA), Desenvolvimento, Rotina de Deploy, Banco de Dados (PostgreSQL), Monitoramento e Troubleshooting.
 
-> Este MP consolida a operação do LATE no **novo cluster**: Ubuntu 24.04 LTS (3 nós: mach1, mach2, mach3), **HA** com Pacemaker/Corosync (**VIP 192.168.15.250**), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e acesso remoto via **Apache Guacamole**.  
+> Este MP consolida a operação do LATE no **novo cluster**: Ubuntu 24.04 LTS (3 nós: mach1, mach2, mach3), **HA** com Pacemaker/Corosync (**VIP app 192.168.15.250 / VIP DB 192.168.15.251**), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e acesso remoto via **Apache Guacamole**.  
 > Convenções oficiais: **identificadores em inglês**, **UX pt‑BR**, **API JSON apenas**, **DB = PostgreSQL** (PG only).
 
 ---
@@ -40,9 +40,10 @@ pm2 save
 ---
 
 ## 3) Infraestrutura de Produção (Cluster HA)
-- **Nós:** `mach1` (.201), `mach2` (.202), `mach3` (.203) — interface `enp0s25`.
-- **Failover IP (VIP):** `192.168.15.250` (recurso `IPaddr2`), monitor a cada 30s.
-- **Gerência:** Pacemaker/Corosync (`crm status`, `crm resource list`).
+- **Nós:** `mach1` (.201), `mach2` (.202), `mach3` (.203) — interface `enp0s25`. **11/11/2025:** `mach3` reinstalado e operando como standby; monitorar disco até substituição definitiva.
+- **Failover IP (VIP app):** `192.168.15.250` (recurso `IPaddr2`), monitor a cada 30s — desabilite no HAProxy quaisquer backends inoperantes com `check disabled`.
+- **VIP do Banco:** `192.168.15.251` (mesmo recurso `IPaddr2`, grupo `vip_db`) — `primary_conninfo` dos standbys deve apontar para esse VIP, não para IP físico.
+- **Gerência:** Pacemaker/Corosync (`crm status`, `crm resource list`). Mantenha nós com falha em standby (`sudo crm node standby <host>`); retorne com `sudo crm node online <host>` após o reparo.
 - **Acesso remoto:** Apache Guacamole (Tomcat 9 + guacd).
 
 **Comandos rápidos:**
@@ -63,17 +64,17 @@ sudo systemctl start corosync
 ---
 
 ## 4) Banco de Dados (PostgreSQL) — Produção
-- **Topologia:** PostgreSQL 16 — **Primary: mach3**; **Standbys: mach1/mach2** (streaming replication).
+- **Topologia:** PostgreSQL 16 com VIP `192.168.15.251` — primário reside no nó que detém o VIP (em 11/11/2025: `mach2`); standbys: `mach1` e `mach3` (streaming `async`, sob observação de hardware).
 - **App:** driver `pg` via `Pool`; **PG only**; `PG_SSL=strict` recomendado em PROD.
 - **Acesso na app:** SQL **apenas** em `models/` (controllers sem SQL).
 
 **Verificações essenciais:**
 ```bash
 # Papel do nó
-psql -d late_prod -c "SELECT pg_is_in_recovery();"
+psql -h 192.168.15.251 -d late_prod -c "SELECT pg_is_in_recovery();"
 
 # Replicação ativa (no primário)
-psql -d late_prod -c "SELECT count(*) FROM pg_stat_replication;"
+psql -h 192.168.15.251 -d late_prod -c "SELECT count(*) FROM pg_stat_replication;"
 
 # Lag (estimativa em bytes)
 psql -d late_prod -c "
@@ -86,6 +87,8 @@ SELECT now() AS ts,
 - `statement_timeout = '60s'` no servidor/role; revisar *long queries*.
 - `wal_keep_size` conforme tráfego; retenção e política de backup revisadas.
 - Usuário de aplicação com **privilégios mínimos** (evitar DDL em runtime).
+- `primary_conninfo` dos standbys deve apontar para `host=192.168.15.251` e usar slot físico dedicado (ex.: `mach1_slot`).
+- `pg_hba.conf` deve permitir `replication` para `late_repl` em `192.168.15.0/24` (md5).
 
 **Backup rápido:**
 ```bash
@@ -108,18 +111,23 @@ ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml
 **Pós-deploy (health):**
 ```bash
 curl -s http://localhost:3000/api/health
-curl -s http://localhost:3000/relatorios/status
+curl -s http://192.168.15.250/health
+curl -s https://late.miahchat.com/api/health
 ```
 
 ---
 
 ## 6) Operação Diária
+
+**Configuração (`.env`):** manter arquivo idêntico nos três nós; variação permitida apenas em `APP_VERSION=2.5.1@machX`. Remova `.env.prod` ou arquivos alternativos para evitar divergências.
+**Relatório automático:** cron em mach1 (00h/12h) executa `node scripts/ops-health-report.js --email`, verificando .env, PM2, discos, Prometheus e status público do Slack, além de gerar `pg_dump` (gzip) em `/var/backups/late/`; saída consolidada via e-mail (SMTP do `.env`).
 **PM2 (produção):**
 ```bash
 pm2 status
 pm2 logs late-prod --lines 50
 pm2 reload ecosystem.config.js
 pm2 start ecosystem.config.js --only late-prod
+pm2 env $(pm2 list | awk '/late-prod/ {print $4}') | grep HOST   # deve ser HOST: 0.0.0.0
 ```
 
 **Guacamole (admin remota):**
@@ -158,6 +166,7 @@ ansible cluster_ubuntu -a "uptime"
 ### 9.2 Pós-Deploy
 - [ ] `pm2 status` sem processos falhando.  
 - [ ] `/api/health` responde 200; `/relatorios/status` OK.  
+- [ ] `pm2 env <id> | grep HOST` retorna `0.0.0.0`; HAProxy sem backend em falha (`tail -n 50 /var/log/haproxy.log`).
 - [ ] Confirmar VIP ativo e serviço web acessível.
 
 ### 9.3 Failover (exercício controlado)
@@ -167,7 +176,7 @@ ansible cluster_ubuntu -a "uptime"
 
 ### 9.4 PostgreSQL (rotina)
 - [ ] `pg_is_in_recovery()` correto por nó.  
-- [ ] `pg_stat_replication` presente no primário.  
+- [ ] `pg_stat_replication` presente no primário (VIP 192.168.15.251).  
 - [ ] Lag aceitável; backups gerados/rotacionados.
 
 ---
@@ -175,7 +184,8 @@ ansible cluster_ubuntu -a "uptime"
 ## 10) Troubleshooting Rápido
 - **Cluster não sobe / recurso falhando:** `sudo crm status`, `sudo crm resource list`, `tail -f /var/log/pacemaker.log`.  
 - **VIP ausente:** checar `IPaddr2`, interface `enp0s25`, firewalls.  
-- **App 5xx após deploy:** `pm2 logs`, `/api/health`, dependências.  
+- **App 5xx após deploy:** `pm2 logs`; verificar `pm2 env <id> | grep HOST` (esperado `0.0.0.0`), validar HAProxy (`/etc/haproxy/haproxy.cfg`) e health-checks (`curl http://192.168.15.250/health`).  
+- **Nó com hardware off:** `sudo crm node standby <host>` + `server <host> ... check disabled` no HAProxy até o retorno do equipamento.  
 - **Guacamole 404/erro auth:** `sudo tail -f /opt/tomcat9/logs/catalina.out`, checar `guacd` e permissões do JDBC.  
 - **Prometheus/Grafana sem dados:** **Targets** em “UP”; reiniciar `node-exporter` e validar `prometheus.yml`.
 

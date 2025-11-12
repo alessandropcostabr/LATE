@@ -22,7 +22,8 @@
 mach1: 192.168.15.201 (interface enp0s25)
 mach2: 192.168.15.202 (interface enp0s25)
 mach3: 192.168.15.203 (interface enp0s25)
-VirtualIP (Failover): 192.168.15.250
+VirtualIP (Failover app): 192.168.15.250
+VirtualIP (Banco): 192.168.15.251
 ```
 
 ---
@@ -203,6 +204,57 @@ sudo crm resource start VirtualIP
 sudo tail -f /var/log/corosync/corosync.log
 sudo tail -f /var/log/pacemaker.log
 ```
+
+### Isolar nó com falha (ex.: disco corrompido)
+
+```bash
+sudo crm node standby <hostname>
+sudo crm configure show | grep standby
+```
+
+- Atualize o HAProxy para desabilitar o backend (`server <host> ... check disabled`).
+- Garanta que os standbys PostgreSQL apontem para o VIP `192.168.15.251` e que apenas nós ativos mantenham slots (`SELECT * FROM pg_replication_slots;`).
+- Para reintegrar após o reparo:
+
+```bash
+sudo crm node online <hostname>
+sudo systemctl start corosync pacemaker
+```
+
+### Reintegrar nó após reparo (ex.: mach3)
+
+1. **Sincronize configuração**  
+   - Confirme que somente o arquivo `.env` existe e que ele replica o conteúdo comum (`APP_VERSION=2.5.1@mach3`, URLs de health iguais às demais máquinas).  
+   - Garanta que `ecosystem.config.js` e scripts de workers sejam idênticos aos dos nós saudáveis (copie via `scp` se necessário).
+2. **Preparar PostgreSQL em modo standby limpo**  
+   ```bash
+   sudo systemctl stop postgresql
+   sudo mv /var/lib/postgresql/16/main /var/lib/postgresql/16/main.$(date +%Y%m%d%H%M%S).bak
+   sudo -u postgres env PGPASSWORD='LATErepl@2025' /usr/lib/postgresql/16/bin/pg_basebackup \
+     -h 192.168.15.251 -U late_repl -D /var/lib/postgresql/16/main \
+     -X stream -P -R --slot=mach3_slot
+   sudo chmod 700 /var/lib/postgresql/16/main
+   sudo systemctl start postgresql
+   ```
+   - Verifique `sudo -u postgres psql -c "select status from pg_stat_wal_receiver;"` → `streaming`.
+3. **Reativar no Pacemaker**  
+   ```bash
+   sudo crm node online mach3
+   sudo crm_resource --cleanup --resource pgsql --node mach3
+   ```
+   - Aguarde `crm status` mostrar `mach3` como `Unpromoted`.
+4. **Reabilitar backend no HAProxy**  
+   - Atualize `/etc/haproxy/haproxy.cfg` removendo `check disabled` do servidor mach3 e recarregue o serviço onde o HAProxy estiver ativo (`sudo systemctl reload haproxy` no nó que detém o VIP).  
+   - Teste com `curl http://192.168.15.203:3100/health` e `curl http://192.168.15.250/health`.
+5. **PM2**  
+   ```bash
+   cd ~/late-prod
+   pm2 start ecosystem.config.js --only late-prod
+   pm2 start ecosystem.config.js --only late-prod-email-worker
+   pm2 start ecosystem.config.js --only late-prod-export-worker
+   pm2 save
+   pm2 env <id> | grep HOST  # deve exibir 0.0.0.0
+   ```
 
 ---
 

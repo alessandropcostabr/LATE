@@ -105,13 +105,16 @@ curl -s -i http://127.0.0.1:3000/health
 **Comandos**
 ```bash
 cd ~/late-prod
-pm2 start server.js --name late-prod --env production
+pm2 start ecosystem.config.js --only late-prod
+pm2 env $(pm2 list | awk '/late-prod/ {print $4}') | grep HOST   # confirmar 0.0.0.0
 pm2 save
 pm2 status
 ```
 
 **Critérios**
 - `late-prod` em `online` no `pm2 status` de todos os nós.
+- `pm2 env` indicando `HOST: 0.0.0.0` (sem bindings a `127.0.0.1`).
+- `.env` idêntico nos três nós, com variação apenas em `APP_VERSION=2.5.1@machX`.
 
 ---
 
