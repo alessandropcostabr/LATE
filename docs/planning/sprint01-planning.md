@@ -1,4 +1,6 @@
 ## Planejamento Sprint 01 — Dev Tools
+> Atualizado em 2025/11/12.
+
 **Data alvo da planning:** 05/11/2025 (quarta-feira)  
 **Duração sugerida:** 45 minutos  
 **Participantes:** Produto, Engenharia (backend + frontend), QA, Operações

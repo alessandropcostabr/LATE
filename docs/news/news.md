@@ -1,4 +1,6 @@
 <article class="card" aria-labelledby="news-2025-11-08">
+> Atualizado em 2025/11/12.
+
   <div class="card-header">
     <h1 class="card-title" id="news-2025-11-08">🗞️ Novidades — 08/11/2025</h1>
     <p class="card-subtitle">Status Operacional e deploy automático</p>

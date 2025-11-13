@@ -1,4 +1,5 @@
 # 📋 Draft — Filtro Avançado (`/relatorios/auditoria`)
+> Atualizado em 2025/11/12.
 
 Este rascunho detalha o Item 2 da proposta de UI para a rota `/relatorios/auditoria`: o filtro avançado que permite investigar eventos registrados em `event_logs`.
 

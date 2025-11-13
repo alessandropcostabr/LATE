@@ -1,4 +1,5 @@
 ## Atualização — Sprint 01 (Dev Tools) em homologação
+> Atualizado em 2025/11/12.
 
 > Sugestão de mensagem para compartilhar no canal `#late-dev`.
 

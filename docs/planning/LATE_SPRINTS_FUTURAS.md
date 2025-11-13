@@ -1,7 +1,8 @@
 # 🚀 LATE — Sprints Futuras (Roadmap 2025-2026)
+> Atualizado em 2025/11/12.
 
 **Versão:** 2.0.1  
-**Última atualização:** 08/11/2025
+**Última atualização:** 2025/11/12
 
 ---
 
@@ -1176,7 +1177,7 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
 
 ---
 
-**Última atualização:** 04/11/2025 por Manus AI  
+**Última atualização:** 2025/11/12 por Manus AI  
 **Próxima revisão:** Kick-off Sprint 02B — Auditoria (UI & Exportações)
 ### Sprint ? — Relatórios Exportações
 

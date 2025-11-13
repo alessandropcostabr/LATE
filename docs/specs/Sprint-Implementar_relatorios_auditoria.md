@@ -1,4 +1,5 @@
 # Setup Prompt — Implementar `/relatorios/auditoria` (Sprint 02 — Auditoria Leve)
+> Atualizado em 2025/11/12.
 
 ## Objetivo
 Criar a **API de auditoria** e a **rota web** para a nova área **/relatorios/auditoria**, consumindo eventos de `event_logs` com filtros, paginação e sumários. UX: cards de resumo + tabela com drill-down (sem alterar layout visual). Baseie-se no esboço e requisitos funcionais já definidos.

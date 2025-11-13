@@ -1,4 +1,5 @@
 # Comunicado · 06/11/2025 — Auditoria leve disponível
+> Atualizado em 2025/11/12.
 
 ## ✨ O que mudou
 - A área **Relatórios** ganhou a aba **Auditoria**, exibindo cartões e listagem inicial alimentados pelos novos registros da tabela `event_logs`.

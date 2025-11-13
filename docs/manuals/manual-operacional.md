@@ -1,4 +1,6 @@
 ## 🎯 Objetivo
+> Atualizado em 2025/11/12.
+
 Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Triagem Eficiente) por equipes operacionais e administrativas.
 
 ## 🧑‍💼 Perfis de Acesso

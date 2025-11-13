@@ -1,6 +1,7 @@
 # 🗺️ ROADMAP — LATE
+> Atualizado em 2025/11/12.
 
-> Última atualização: 2025-11-09
+> Última atualização: 2025/11/12
 
 Este roadmap consolida as entregas concluídas, em andamento e planejadas para o LATE, com foco em relacionamento, rastreabilidade, operação e segurança.
 

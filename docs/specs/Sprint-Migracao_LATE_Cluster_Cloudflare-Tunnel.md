@@ -1,4 +1,5 @@
 # Sprint — Migração do `~/late-prod` para Cluster HA + Cloudflare Tunnel
+> Atualizado em 2025/11/12.
 
 > **Contexto LATE**: Node.js 22 + Express 5, EJS (sem alterações de layout), PostgreSQL via `PG_*`, PM2, Ubuntu 24.04. Exposição **exclusiva** via **Cloudflare Tunnel**.  
 > **Atenção**: não alterar `views/` nem `public/` nesta sprint.

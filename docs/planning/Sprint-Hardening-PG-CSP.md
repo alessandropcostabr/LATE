@@ -1,4 +1,6 @@
 ## Sprint — Hardening PG + CSP
+> Atualizado em 2025/11/12.
+
 **Objetivo:** aplicar as três frentes remanescentes do plano de endurecimento (TLS no PostgreSQL, CSP progressiva e eliminação de SQL nos controllers) garantindo rollout seguro no cluster.
 
 ### 1. TLS no PostgreSQL (PG_SSL) — prioridade alta
