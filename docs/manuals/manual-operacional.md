@@ -1,7 +1,7 @@
 ## 🎯 Objetivo
 > Atualizado em 2025/11/12.
 
-Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Triagem Eficiente) por equipes operacionais e administrativas.
+Este manual orienta o uso diário do sistema LATE por equipes operacionais e administrativas, desde o registro até a conclusão dos recados, fortalecendo o relacionamento com os clientes e garantindo a rastreabilidade das interações.
 
 ## 🧑‍💼 Perfis de Acesso
 
@@ -46,7 +46,7 @@ Este manual orienta o uso diário do sistema LATE (Ligação, Atendimento e Tria
 - **Calendário:** prazos e ligações por data
 - **Widgets (Dashboard):** hoje, atrasados, SLAs, por setor
 - **Relatórios de Auditoria:** em `/relatorios/auditoria`, acompanhe eventos recentes (criação, mudanças de status, comentários, login/logout) com filtros por período, tipo de evento e responsável.
-- **Status Operacional:** em `/relatorios/status`, disponível para Admin/Supervisor. Mostra versão do sistema, uptime, consumo de memória, papel do banco (primário/standby), saúde do VIP 192.168.15.250, túnel Cloudflare e métricas Prometheus de cada nó (CPU, memória, disco, rede). O painel se atualiza automaticamente a cada 10 segundos.
+- **Status Operacional:** em `/relatorios/status`, disponível para Admin/Supervisor. Apresenta um resumo amigável de cada servidor (versão, tempo no ar e uso de recursos) e sinaliza, em linguagem simples, se os serviços essenciais — banco de dados, integrações externas e monitoramento — estão funcionando bem. O painel se atualiza automaticamente a cada 10 segundos.
 
 ### Relatórios de Auditoria
 - Acesse **Menu → Relatórios → Auditoria** (disponível para Admins e Supervisores).

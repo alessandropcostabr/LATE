@@ -1,5 +1,4 @@
 <article class="card" aria-labelledby="news-2025-11-08">
-> Atualizado em 2025/11/12.
 
   <div class="card-header">
     <h1 class="card-title" id="news-2025-11-08">🗞️ Novidades — 08/11/2025</h1>
@@ -11,15 +10,15 @@
     </p>
     <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📊 Painel “Status Operacional”</h2>
-      <p>Admins e Supervisores enxergam agora uma viseira completa em <strong>Relatórios → Status</strong>. O painel mostra a saúde da aplicação, latência do PostgreSQL, papel de cada nó (primário/standby), VIP, túnel Cloudflare e o resumo Prometheus (UP, CPU, memória, disco e rede por máquina). Tudo é atualizado automaticamente a cada 10 segundos sem recarregar a página.</p>
+      <p>Admins e Supervisores agora contam, em <strong>Relatórios → Status</strong>, com uma visão simples e direta: quais servidores estão ativos, quão rápido respondem e se as integrações essenciais seguem saudáveis. O painel mostra uso de recursos, chamadas ao banco de dados e alertas de conectividade em linguagem clara, atualizando a cada 10 segundos.</p>
     </section>
     <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🚦 Replicação transparente</h2>
-      <p>O backend identifica se o nó é primário ou standby e exibe quem está ligado em cada slot (`mach1`, `mach2`, `mach3`). Quando o banco entra em modo leitura, o painel deixa claro o motivo, evitando surpresas em investigações de auditoria.</p>
+      <p>O sistema indica quem está atendendo como principal e quais servidores permanecem prontos para assumir, avisando também quando a base de dados está só para consulta. Assim, qualquer análise de auditoria começa com o contexto certo, sem sustos.</p>
     </section>
     <section style="margin-bottom:1.5rem;">
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🤖 Deploy automatizado</h2>
-      <p>Cada merge em <code>main</code> aciona um workflow GitHub Actions que sincroniza o playbook Ansible para o bastion e roda <code>ansible-playbook</code> com PM2 em modo cluster (app principal) + workers de e-mail/exportação em fork. Senhas não ficam mais em arquivos versionados; o pipeline injeta o segredo via <code>ANSIBLE_BECOME_PASS</code>.</p>
+      <p>Cada aprovação na branch principal aciona um fluxo automático que atualiza o ambiente, aplica o playbook e reinicia os serviços em cluster com dois processos por nó. Os segredos sensíveis ficam guardados no cofre do pipeline e aparecem apenas na hora do deploy.</p>
     </section>
     <section>
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🗓️ O que vem agora</h2>
