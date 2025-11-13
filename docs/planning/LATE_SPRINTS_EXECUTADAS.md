@@ -16,7 +16,7 @@
 | Sprint C | ✅ Concluída | Out/2025 | - | 1 |
 | Sprint D | ✅ Concluída | Out/2025 | #247 | 2 |
 | **Correções Pós-D** | ✅ Concluída | Out-Nov/2025 | #248-257 | - |
-| Sprint 02B (parcial) | 🟡 Em andamento | Nov/2025 | #266-268 | 0 |
+| Sprint 02B | ✅ Concluída | Nov/2025 | #266-268 | 0 |
 
 ---
 
@@ -60,10 +60,10 @@ Fechar a Sprint 02B com a camada visual de auditoria, telemetria do cluster e de
 - `views/relatorios-status.ejs`, `public/js/status.js`, `controllers/statusController.js`
 - `docs/manuals/manual-operacional.md`, `views/help.ejs`, `views/roadmap.ejs`
 
-### Pendências
-- Exportações CSV/JSON (fila + notificação).
-- Cards e filtros salvos na aba Auditoria.
-- Implementar anexos nos recados e revisão final da segurança de login.
+### Encerramento
+- ✅ Exportações CSV/JSON (fila + notificação) validadas com entregas e alertas.
+- ✅ Cards e filtros salvos na aba Auditoria confirmados no front-end.
+- 🔜 Implementar anexos nos recados e revisão final da segurança de login migrados para próximas sprints (controle por IP e hardening).
 
 ---
 

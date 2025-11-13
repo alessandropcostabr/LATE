@@ -7,6 +7,44 @@
       <h1>Relatórios · Status Operacional</h1>
       <p id="status-last-updated" class="muted">Sincronizando...</p>
 
+      <%
+        const currentScope = accessScope || 'external_blocked';
+        const scopeLabels = {
+          internal: 'Interno',
+          external_allowed: 'Externo habilitado',
+          external_blocked: 'Externo bloqueado',
+        };
+        const scopeClasses = {
+          internal: 'badge bg-success',
+          external_allowed: 'badge bg-primary',
+          external_blocked: 'badge bg-secondary',
+        };
+        const scopeLabel = scopeLabels[currentScope] || currentScope;
+        const scopeClass = scopeClasses[currentScope] || 'badge bg-secondary';
+        const allowOffsite = user?.allow_offsite_access === true;
+        const policyLabel = allowOffsite
+          ? 'Acesso externo liberado'
+          : 'Acesso externo bloqueado';
+      %>
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header">
+          <h2 class="card-title">Sessão &amp; Rede</h2>
+        </div>
+        <div class="card-body">
+          <ul class="status-list">
+            <li>Seu IP atual: <strong id="session-client-ip"><%= clientIp || 'Indisponível' %></strong></li>
+            <li>
+              Tipo de sessão:
+              <span id="session-access-scope" class="<%= scopeClass %>"><%= scopeLabel %></span>
+            </li>
+            <li>
+              Política de acesso:
+              <strong id="session-access-policy"><%= policyLabel %></strong>
+            </li>
+          </ul>
+        </div>
+      </div>
+
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-header">
           <h2 class="card-title">Aplicação</h2>

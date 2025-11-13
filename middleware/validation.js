@@ -611,6 +611,12 @@ const validateUserCreate = [
     .custom((value) => allowedViewScopes.includes(String(value || '').toLowerCase()))
     .withMessage('Escopo de visualização inválido')
     .customSanitizer((value) => String(value || '').toLowerCase()),
+  vbody('allow_offsite_access').optional({ nullable: true })
+    .isBoolean().withMessage('Flag de acesso externo inválida')
+    .toBoolean(),
+  vbody('allowOffsiteAccess').optional({ nullable: true })
+    .isBoolean().withMessage('Flag de acesso externo inválida')
+    .toBoolean(),
   vbody('sectorIds').isArray({ min: 1 }).withMessage('Selecione pelo menos um setor'),
   vbody('sectorIds.*').isInt({ min: 1 }).withMessage('IDs de setor inválidos')
 ];
@@ -636,7 +642,13 @@ const validateUserUpdate = [
   vbody('view_scope').optional({ checkFalsy: true, nullable: true })
     .custom((value) => allowedViewScopes.includes(String(value || '').toLowerCase()))
     .withMessage('Escopo de visualização inválido')
-    .customSanitizer((value) => String(value || '').toLowerCase())
+    .customSanitizer((value) => String(value || '').toLowerCase()),
+  vbody('allow_offsite_access').optional({ nullable: true })
+    .isBoolean().withMessage('Flag de acesso externo inválida')
+    .toBoolean(),
+  vbody('allowOffsiteAccess').optional({ nullable: true })
+    .isBoolean().withMessage('Flag de acesso externo inválida')
+    .toBoolean()
 ];
 
 const validateUserStatus = [

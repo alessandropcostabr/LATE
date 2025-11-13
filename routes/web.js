@@ -14,6 +14,7 @@ const authController = require('../controllers/authController');
 const notificationController = require('../controllers/notificationController');
 const messageViewController = require('../controllers/messageViewController');
 const contactController = require('../controllers/contactController');
+const { getClientIp, resolveScope } = require('../utils/ipAccess');
 
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -318,9 +319,17 @@ router.get('/relatorios/estatisticas', requireAuth, requireRole('ADMIN', 'SUPERV
 });
 
 router.get('/relatorios/status', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
+  const clientIp = req.clientIp || getClientIp(req);
+  const accessScope = req.accessScope || resolveScope({
+    isOfficeIp: Boolean(req.isOfficeIp),
+    allowOffsiteAccess: Boolean(req.session?.user?.allow_offsite_access),
+  });
   res.render('relatorios-status', {
     title: 'Relatórios · Status Operacional',
     user: req.session.user || null,
+    clientIp,
+    accessScope,
+    offsitePolicy: String(process.env.OFFSITE_POLICY || 'deny').toLowerCase(),
     scripts: ['/js/status.js'],
   });
 });

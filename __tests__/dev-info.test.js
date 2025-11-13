@@ -47,6 +47,7 @@ describe('Dev diagnostics (Sprint 01)', () => {
         password_hash TEXT,
         role TEXT DEFAULT 'ADMIN',
         is_active BOOLEAN DEFAULT TRUE,
+        allow_offsite_access BOOLEAN DEFAULT TRUE,
         view_scope TEXT DEFAULT 'all',
         session_version INTEGER DEFAULT 1,
         created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -138,6 +138,7 @@ describe('Sprint B · Vistas Kanban e Calendário', () => {
         password_hash TEXT,
         role TEXT NOT NULL DEFAULT 'OPERADOR',
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        allow_offsite_access BOOLEAN NOT NULL DEFAULT TRUE,
         view_scope TEXT DEFAULT 'all',
         session_version INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMP DEFAULT NOW(),

@@ -4,6 +4,7 @@
 const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
+const { evaluateAccess, getClientIp, getClientIps } = require('../utils/ipAccess');
 const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
@@ -56,6 +57,11 @@ exports.login = async (req, res) => {
 
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '').trim();
+  const clientIp = getClientIp(req);
+  req.clientIp = clientIp;
+  if (!req.clientIps || !req.clientIps.length) {
+    req.clientIps = getClientIps(req);
+  }
 
   try {
     const user = await UserModel.findByEmail(email);
@@ -102,7 +108,36 @@ exports.login = async (req, res) => {
       email: user.email,
       role: user.role,
       viewScope: user.view_scope || 'all',
+      allow_offsite_access: user.allow_offsite_access === true,
     };
+
+    const ipEvaluation = evaluateAccess({
+      ip: clientIp,
+      allowOffsiteAccess: sessionUser.allow_offsite_access,
+    });
+    req.accessScope = ipEvaluation.scope;
+    req.isOfficeIp = ipEvaluation.isOfficeIp;
+
+    if (!ipEvaluation.allowed) {
+      await logAuditEvent('user.login_denied_offsite', {
+        entityType: 'user',
+        entityId: user.id,
+        actorUserId: user.id,
+        metadata: {
+          reason: ipEvaluation.reason,
+          ip: clientIp,
+        },
+      }).catch(() => {});
+
+      if (wants) {
+        return res.status(403).json({ success: false, error: ipEvaluation.message });
+      }
+
+      return res.status(403).render('login', buildViewData({
+        title: 'Login',
+        error: ipEvaluation.message,
+      }));
+    }
 
     const sessionVersion = await UserModel.bumpSessionVersion(user.id);
     if (!sessionVersion) {

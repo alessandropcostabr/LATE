@@ -1,6 +1,8 @@
 const MessageModel = require('../models/message');
 const UserSectorModel = require('../models/userSector');
 const UserModel = require('../models/user');
+const { evaluateAccess, getClientIp, getClientIps } = require('../utils/ipAccess');
+const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 const ROLE_ALIASES = {
   admin: 'admin',
@@ -58,7 +60,7 @@ function getSessionCookieName() {
   return (process.env.NODE_ENV || '').trim() === 'production' ? 'late.sess' : 'late.dev.sess';
 }
 
-async function destroySessionAndRespond(req, res) {
+async function destroySessionAndRespond(req, res, options = {}) {
   const cookieName = getSessionCookieName();
 
   await new Promise((resolve) => {
@@ -74,10 +76,13 @@ async function destroySessionAndRespond(req, res) {
   }
 
   if (isApiRequest(req)) {
-    return res.status(401).json({ success: false, error: 'Sessão expirada. Faça login novamente.' });
+    const statusCode = options.statusCode || 401;
+    const message = options.message || 'Sessão expirada. Faça login novamente.';
+    return res.status(statusCode).json({ success: false, error: message });
   }
 
-  return res.redirect('/login?error=session_invalidada');
+  const redirectError = options.redirectError || 'session_invalidada';
+  return res.redirect(`/login?error=${encodeURIComponent(redirectError)}`);
 }
 
 async function requireAuth(req, res, next) {
@@ -86,6 +91,12 @@ async function requireAuth(req, res, next) {
   }
 
   try {
+    const clientIp = getClientIp(req);
+    req.clientIp = clientIp;
+    if (!req.clientIps || !req.clientIps.length) {
+      req.clientIps = getClientIps(req);
+    }
+
     const sessionUserId = Number(req.session.user.id);
     if (!Number.isInteger(sessionUserId) || sessionUserId <= 0) {
       return destroySessionAndRespond(req, res);
@@ -111,12 +122,46 @@ async function requireAuth(req, res, next) {
       return destroySessionAndRespond(req, res);
     }
 
+    const accessEvaluation = evaluateAccess({
+      ip: clientIp,
+      allowOffsiteAccess: user.allow_offsite_access === true,
+    });
+    req.accessScope = accessEvaluation.scope;
+    req.isOfficeIp = accessEvaluation.isOfficeIp;
+
+    if (!accessEvaluation.allowed) {
+      console.warn('[auth] sessão bloqueada por política de IP', {
+        userId: sessionUserId,
+        reason: accessEvaluation.reason,
+        ip: clientIp,
+      });
+      try {
+        await logAuditEvent('user.session_denied_offsite', {
+          entityType: 'user',
+          entityId: sessionUserId,
+          actorUserId: sessionUserId,
+          metadata: {
+            reason: accessEvaluation.reason,
+            ip: clientIp,
+          },
+        });
+      } catch (logErr) {
+        console.warn('[auth] falha ao registrar audit de sessão bloqueada', logErr);
+      }
+      return destroySessionAndRespond(req, res, {
+        statusCode: 403,
+        message: accessEvaluation.message,
+        redirectError: 'acesso_ip_bloqueado',
+      });
+    }
+
     req.session.user = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
       viewScope: user.view_scope,
+      allow_offsite_access: user.allow_offsite_access === true,
       sessionVersion: dbVersion,
     };
 

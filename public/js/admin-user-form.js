@@ -17,6 +17,7 @@
   const activeSelect = document.getElementById('active');
   const sectorSelect = document.getElementById('sectorIds');
   const viewScopeSelect = document.getElementById('viewScope');
+  const allowOffsiteSelect = document.getElementById('allowOffsiteAccess');
 
   function showAlert(message, type = 'danger') {
     if (!alertBox) return;
@@ -142,6 +143,7 @@
       if (roleSelect) roleSelect.value = user.role || 'OPERADOR';
       if (activeSelect) activeSelect.value = user.is_active ? 'true' : 'false';
       if (viewScopeSelect) viewScopeSelect.value = user.view_scope || 'all';
+      if (allowOffsiteSelect) allowOffsiteSelect.value = user.allow_offsite_access ? 'true' : 'false';
       const selectedIds = unpackList(sectorsResp).map((s) => s.id);
       await loadSectors(selectedIds);
     } catch (err) {
@@ -175,6 +177,7 @@
       role: roleSelect?.value || 'OPERADOR',
       active: (activeSelect?.value || 'true') === 'true',
       viewScope: viewScopeSelect?.value || 'all',
+      allow_offsite_access: allowOffsiteSelect?.value === 'true',
     };
 
     try {
@@ -183,6 +186,7 @@
           ...payloadBase,
           password: passwordInput?.value || '',
           sectorIds,
+          allow_offsite_access: payloadBase.allow_offsite_access,
         };
         await apiRequest('/api/users', { method: 'POST', data: payload });
         showAlert('Usuário criado com sucesso.', 'success');
@@ -194,6 +198,7 @@
           role: payloadBase.role,
           active: payloadBase.active,
           viewScope: payloadBase.viewScope,
+          allow_offsite_access: payloadBase.allow_offsite_access,
         };
         await apiRequest(`/api/users/${userId}`, { method: 'PUT', data: payload });
         await apiRequest(`/api/users/${userId}/sectors`, { method: 'PUT', data: { sectorIds } });

@@ -46,6 +46,7 @@ describe('EventLogsController', () => {
         password_hash TEXT,
         role TEXT NOT NULL DEFAULT 'ADMIN',
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        allow_offsite_access BOOLEAN NOT NULL DEFAULT TRUE,
         view_scope TEXT NOT NULL DEFAULT 'all',
         session_version INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMPTZ DEFAULT NOW(),
