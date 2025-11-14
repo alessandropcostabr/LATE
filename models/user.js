@@ -87,7 +87,7 @@ class UserModel {
     role = 'OPERADOR',
     active = true,
     view_scope,
-    allow_offsite_access = true,
+    allow_offsite_access = false,
     access_restrictions = {},
   }) {
     const normalizedRestrictions = normalizeAccessRestrictions(access_restrictions);
