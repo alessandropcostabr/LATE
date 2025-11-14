@@ -165,8 +165,17 @@ function isScheduleAllowed(schedule, date = new Date()) {
   return schedule.ranges.some((range) => range.day === dayKey && range.start <= currentTime && currentTime <= range.end);
 }
 
+function canonicalizeIp(value) {
+  const normalized = normalizeIp(value);
+  try {
+    return ipaddr.parse(normalized).toNormalizedString();
+  } catch (err) {
+    return normalized;
+  }
+}
+
 function evaluateAccess({ ip, user, date = new Date() }) {
-  const normalizedIp = normalizeIp(ip);
+  const normalizedIp = canonicalizeIp(ip);
   const restrictions = normalizeAccessRestrictions(user?.access_restrictions || {});
   const blocklist = loadBlocklist();
   const allowlist = loadAllowlist();
