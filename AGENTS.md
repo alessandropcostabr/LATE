@@ -1,6 +1,6 @@
 # 🤖 AGENTS.md — LATE + CODEX CLI
 
-Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **LATE**. Consulte antes de investigar arquivos ou rodar comandos.
+Guia único para o agente CODEX CLI
 
 > 📍 Visão consolidada do backlog: `/roadmap`  
 > 📘 Ajuda para pessoas usuárias: `/help`
@@ -10,13 +10,9 @@ Guia único para o agente CODEX CLI e para colaboradorxs humanos que operam o **
 ## 📊 Snapshot Atual
 
 - Versão (`package.json`): `2.0.0`
-- HEAD local: `8cddcd8` — `feat: exibir versão e build na interface (dev)`
-- Últimas entregas: **Hardening do intake e automations** (tokens com hash, índice por minuto) · **Registros relacionados** (histórico por contato) · **Tela de login redesenhada**
 - Worktrees oficiais:
   - `~/late-dev` → branch `develop`, porta 3001 (homolog/QA)
   - `~/late-prod` → branch `main`, porta 3100 (produção)
-- Sprints concluídas: 0, A, B, C, D  
-  Próximas sprints priorizadas: **Sprint 00-PRE — Hardening & Sanidade**, **Sprint E — Sessão Única**
 - Documentação estendida (versionada): `docs/**` (news, planning, roadmap, status, manuais, specs).  
   `_reports/` ficou reservado para artefatos temporários gerados por scripts locais.
 
@@ -59,13 +55,6 @@ npm run dev                     # http://localhost:3100 (nodemon)
 Sempre que alterar schema ou assets:
 - `npm run migrate:dry` para validar SQL antes de aplicar
 - `npm run build:css` (ou `npm run build`) para regenerar `public/css/style.min.css`
-
----
-
-## ✅ Últimas Entregas
-
-- **Registros relacionados (Sprint D)** — Histórico por telefone/e-mail, normalização de contatos e visualização agregada diretamente nos recados.
-- **Tela de login redesenhada** — Arte em tela cheia (`public/assets/bg_LATE.png`), card compacto e CSS ajustado para foco em acessibilidade.
 
 ---
 
@@ -120,20 +109,6 @@ Entradas (`server.js`, scripts em `scripts/`) chamam `dotenv` diretamente e carr
   - `npm run migrate` / `npm run migrate:dry`
   - `scripts/backup-simple.sh` → usa `pg_dump`
   - `scripts/generate-inventory.sh` / `scripts/generate-artifacts.sh`
-
----
-
-## 🕹️ Backlog Imediato
-
-### Sprint E — Sessão Única
-- Migration: adicionar `session_version INT DEFAULT 1` em `users`.
-- Incrementar a versão ao autenticar, trocar senha ou desativar usuário.
-- Persistir `session_version` em `req.session.version` e validá-la via middleware dedicado.
-- Ao detectar divergência: destruir sessão, registrar IP/user-agent/userId e exibir `Sua sessão foi encerrada...`.
-
-### Próximas validações operacionais
-- Executar periodicamente `scripts/security-check.sh` para confirmar rate limit, headers e seed.
-- Revisar integrações que consomem o intake após rotacionar `INTAKE_TOKEN`.
 
 ---
 
@@ -208,5 +183,3 @@ Entradas (`server.js`, scripts em `scripts/`) chamam `dotenv` diretamente e carr
 7. Quando houver mudanças de segurança, gerar relatório com `scripts/security-check.sh` e anexar ao PR.
 
 ---
-
-🌀 Powered by Codex CLI + LATE Core v2.0.0

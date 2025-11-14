@@ -20,6 +20,7 @@ const metaController = require('../controllers/metaController');
 const intakeController = require('../controllers/intakeController');
 const reportExportController = require('../controllers/reportExportController');
 const statusController = require('../controllers/statusController');
+const whoamiController = require('../controllers/whoamiController');
 const { collectDevInfo } = require('../utils/devInfo');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
@@ -170,6 +171,11 @@ router.get(
   '/status',
   ...flatFns(requireAuth, requireRole('ADMIN', 'SUPERVISOR')),
   statusController.getStatus
+);
+router.get(
+  '/whoami',
+  ...flatFns(requireAuth),
+  whoamiController.get
 );
 
 const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();

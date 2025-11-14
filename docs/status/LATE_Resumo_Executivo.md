@@ -31,8 +31,9 @@ Fallback manual disponivel no bastion.
 - Auditoria leve: `event_logs` + hooks (`message.*`, `user.login/logout`, etc.).
 
 ## Roadmap imediato
-- Finalizar **Sprint 02B** (exportacoes CSV/JSON + filtros salvos em Auditoria).
-- Revisao de login pos-cluster (alertas de tentativas falhas, MFA opcional).
+- Sprint 02B entregue (exportações CSV/JSON, filtros salvos e health-checks no painel).
+- Implantar **controle de acesso por IP** com política OFFSITE, auditoria e badge no `/relatorios/status`.
+- Reforçar **Hardening PG + CSP** (TLS no PostgreSQL, CSP report-only → enforce e `models/diagnostics.js`).
 
 ## Conclusao
-Ambiente **estável** (mach2 como primário, mach1/mach3 standbys) com HA e esteira de deploy automatizada consolidados. O foco segue em Auditoria 02B, endurecimento de autenticação, automações para validar binding/health, e monitoramento do hardware de mach3 até troca preventiva.
+Ambiente **estável** (mach2 como primário, mach1/mach3 standbys) com HA e esteira de deploy automatizada consolidados. O foco agora está no controle de acesso por IP, no hardening PG + CSP e no monitoramento do hardware de mach3 até a troca preventiva do SSD/HDD.

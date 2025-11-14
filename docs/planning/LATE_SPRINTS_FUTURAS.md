@@ -28,9 +28,9 @@ Este documento consolida todas as sprints futuras planejadas para o projeto LATE
 
 ### Próximas Prioridades
 
-1. 🚧 **Sprint 02B — Auditoria (UI & Exportações + Status Operacional)**
-2. **Integração de Anexos nos Recados** (nova sugestão capturada)
-3. **Revisão de Segurança de Logins pós-cluster** (hardening)
+1. ✅ **Sprint 02B — Auditoria (UI & Exportações + Status Operacional)** (concluída em 12/11/2025: cards e filtros salvos, exportações com fila/notificações e health-check no painel)
+2. 🟡 **Sprint — Controle de Acesso por IP** (DEV: policy de rede, exceções por usuário, whoami e badges no `/relatorios/status`)
+3. 🟡 **Sprint Hardening PG + CSP** (TLS no PostgreSQL, middleware Helmet report-only/enforce e refatoração de `health/status`)
 
 ---
 
@@ -1055,7 +1055,7 @@ router.get('/contacts/:id/context', async (req, res) => {
 
 ### Sprint 02B — Auditoria (UI, Status Operacional & Exportações)
 
-**Status:** 🟡 Em andamento (entregas parciais liberadas em 08/11/2025)  
+**Status:** ✅ Concluída em 12/11/2025 (cards com filtros salvos, exportações CSV/JSON com fila/notificações e health-check pós-export)  
 **Prioridade:** 🔴 Alta · Dependências: Sprint 02 concluída e cluster HA ativo
 
 #### Objetivo
@@ -1077,11 +1077,11 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
    - Workflow GitHub Actions sincroniza `infra/deploy` para o bastion, injeta `ANSIBLE_BECOME_PASS` via secret e executa `ansible-playbook`.
    - PM2 roda em modo cluster para o app (`instances: 'max'`) e mantém workers de e-mail/export em fork.
 
-#### Próximos passos da sprint
+#### Resultados finais da sprint
 
-- Exports CSV/JSON com fila (`report_exports`) e notificações dentro do app.
-- Cards de auditoria com filtros salvos e drill-down direto para `/relatorios/auditoria`.
-- Health-check pós-export no painel de status.
+- ✅ Exportações CSV/JSON com fila (`report_exports`) e notificações no app.
+- ✅ Cards de auditoria com filtros salvos e drill-down direto para `/relatorios/auditoria`.
+- ✅ Health-check pós-export exibido no painel de status.
 
 ---
 
@@ -1097,8 +1097,13 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
 6. **Preferências de notificação** (Sprint 04)
 7. ✅ **Sessão única por usuário** (Sprint E · concluída)
 8. ✅ **Automação de deploy (GitHub → Ansible/PM2)** (Sprint 02B parcial)
-9. 🚧 **Dashboard “Status Operacional” + exportações CSV/JSON** (Sprint 02B)
+9. ✅ **Dashboard “Status Operacional” + exportações CSV/JSON** (Sprint 02B)
 10. **Memória operacional** (Sprint F)
+11. 🚧 **Aprimoramento de acesso e vigilância (PR #217 e derivados)**  
+    - Verificar `GET /api/messages/:id/watchers` (routes/api.js:398-413) e `messageWatcherController` para garantir que somente operadores com escopo vigente vejam os watchers de cada recado; hoje a permissão de leitura é suficiente e permite enumerar watchers fora do escopo de visão do usuário.
+    - Documentar o risco nos logs e reforçar o filtro por setor/usuário na camada de controller/model (mesmo escopo que o `requireAuth` aplica nas mensagens).  
+    - Evoluir a tela de administração: além de manter o toggle interno/externo, adicionar no painel “Admin · Usuários” um bloco “Acesso externo” com campos para listar IPs/URLs (separados por vírgula) liberados externamente, e parametrizar janelas de acesso (dias da semana + horário) por usuário.
+    - Quando esses controles estiverem prontos, gerar flag de controle (ex.: `external_access_schedule`) e revisitar o roadmap para alinhar com o hardening de acesso por IP.
 
 ### Melhorias de UX
 
@@ -1152,7 +1157,7 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
 - ✅ Sprint 00-PRE (Semana 1)
 - ✅ Sprint 01 (Semana 2 · Dev Tools)
 - ✅ Sprint E (Semana 2-3 · Sessão única)
-- 🚧 Sprint 02B (Semana 4 · Auditoria UI + Status + Exportações)
+- ✅ Sprint 02B (Semana 4 · Auditoria UI + Status + Exportações)
 
 ### Dezembro 2025
 - ⏳ Sprint 04 (Semana 3)
@@ -1178,7 +1183,7 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
 ---
 
 **Última atualização:** 2025/11/12 por Manus AI  
-**Próxima revisão:** Kick-off Sprint 02B — Auditoria (UI & Exportações)
+**Próxima revisão:** Kick-off Sprint — Controle de Acesso por IP
 ### Sprint ? — Relatórios Exportações
 
 ### Sprint ? — Relatórios Exportações

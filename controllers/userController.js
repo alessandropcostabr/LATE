@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
 const UserSector = require('../models/userSector');
+const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
 const ALLOWED_VIEW_SCOPES = ['own', 'all'];
@@ -75,6 +76,10 @@ exports.create = async (req, res) => {
     ? req.body.sectorIds.map((id) => Number(id)).filter(Number.isFinite)
     : [];
   const viewScope = normalizeViewScope(req.body.viewScope ?? req.body.view_scope);
+  const rawAllowOffsiteAccess = req.body.allow_offsite_access ?? req.body.allowOffsiteAccess;
+  const allowOffsiteAccess = rawAllowOffsiteAccess !== undefined
+    ? parseBooleanFlag(rawAllowOffsiteAccess)
+    : false;
 
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -90,7 +95,15 @@ exports.create = async (req, res) => {
     }
 
     const password_hash = await argon2.hash(password, { type: argon2.argon2id });
-    const created = await UserModel.create({ name, email, password_hash, role, active, view_scope: viewScope });
+    const created = await UserModel.create({
+      name,
+      email,
+      password_hash,
+      role,
+      active,
+      view_scope: viewScope,
+      allow_offsite_access: allowOffsiteAccess,
+    });
 
     try {
       await UserSector.setUserSectors(created.id, sectorIds);
@@ -156,6 +169,10 @@ exports.update = async (req, res) => {
     if (req.body.viewScope !== undefined || req.body.view_scope !== undefined) {
       payload.view_scope = normalizeViewScope(req.body.viewScope ?? req.body.view_scope);
     }
+    const rawAllowOffsiteAccess = req.body.allow_offsite_access ?? req.body.allowOffsiteAccess;
+    if (rawAllowOffsiteAccess !== undefined) {
+      payload.allow_offsite_access = parseBooleanFlag(rawAllowOffsiteAccess);
+    }
 
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ success: false, error: 'Nenhum dado para atualizar.' });
@@ -163,6 +180,7 @@ exports.update = async (req, res) => {
 
     const currentRole = targetUser.role;
     const currentActive = targetUser.is_active;
+    const previousAllowOffsite = Boolean(targetUser.allow_offsite_access);
     const nextRole = payload.role || currentRole;
     const nextActive = payload.active !== undefined ? payload.active : currentActive;
 
@@ -184,6 +202,22 @@ exports.update = async (req, res) => {
 
     if (payload.active !== undefined && currentActive !== nextActive) {
       await UserModel.bumpSessionVersion(id);
+    }
+
+    if (
+      payload.allow_offsite_access !== undefined &&
+      previousAllowOffsite !== payload.allow_offsite_access
+    ) {
+      await logAuditEvent('user.access_policy_changed', {
+        entityType: 'user',
+        entityId: id,
+        actorUserId: sessionUserId || null,
+        metadata: {
+          previous: previousAllowOffsite,
+          next: payload.allow_offsite_access,
+          ip: req.clientIp || req.ip || null,
+        },
+      });
     }
 
     return res.json({ success: true, data: { user: sanitizeUser(updated) } });
