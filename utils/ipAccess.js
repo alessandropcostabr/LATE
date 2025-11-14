@@ -120,7 +120,15 @@ function normalizeAccessRestrictions(raw) {
   const normalizedIps = Array.from(
     new Set(
       allowedIps
-        .map((entry) => normalizeIp(entry))
+        .map((entry) => {
+          const normalized = normalizeIp(entry);
+          try {
+            const parsed = ipaddr.parse(normalized);
+            return parsed.toNormalizedString();
+          } catch (err) {
+            return normalized;
+          }
+        })
         .filter((entry) => entry.length > 0)
     )
   );
