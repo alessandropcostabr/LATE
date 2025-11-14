@@ -321,7 +321,12 @@ router.get('/relatorios/estatisticas', requireAuth, requireRole('ADMIN', 'SUPERV
 router.get('/relatorios/status', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), (req, res) => {
   const clientIp = req.clientIp || getClientIp(req);
   const restrictions = normalizeAccessRestrictions(req.session?.user?.access_restrictions || {});
-  const scope = req.accessScope || (restrictions.ip.enabled ? 'ip_restrito' : 'unrestricted');
+  const fallbackScope = restrictions.ip.enabled
+    ? 'ip_restrito'
+    : restrictions.schedule.enabled
+      ? 'schedule_restricted'
+      : 'unrestricted';
+  const scope = req.accessScope || fallbackScope;
   res.render('relatorios-status', {
     title: 'Relatórios · Status Operacional',
     user: req.session.user || null,

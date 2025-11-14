@@ -65,10 +65,8 @@ function ipMatchesList(ip, cidrList) {
   });
 }
 
-const blocklistCache = {
-  signature: null,
-  cidrs: [],
-};
+const blocklistCache = { signature: null, cidrs: [] };
+const allowlistCache = { signature: null, cidrs: [] };
 
 function loadBlocklist() {
   const signature = process.env.IP_BLOCKLIST || '';
@@ -79,6 +77,30 @@ function loadBlocklist() {
   blocklistCache.signature = signature;
   blocklistCache.cidrs = cidrs;
   return cidrs;
+}
+
+function loadAllowlist() {
+  const signature = process.env.IP_ALLOWLIST || '';
+  if (allowlistCache.signature === signature) {
+    return allowlistCache.cidrs;
+  }
+  const cidrs = buildCidrList(signature);
+  allowlistCache.signature = signature;
+  allowlistCache.cidrs = cidrs;
+  return cidrs;
+}
+
+function resolveOffsitePolicy() {
+  const raw = (process.env.OFFSITE_POLICY || 'allow').toString().trim().toLowerCase();
+  return raw === 'deny' ? 'deny' : 'allow';
+}
+
+function normalizeBooleanFlag(value) {
+  return value === true ||
+    value === 1 ||
+    value === '1' ||
+    value === 'true' ||
+    value === 't';
 }
 
 function normalizeTime(value) {
@@ -139,12 +161,28 @@ function evaluateAccess({ ip, user, date = new Date() }) {
   const normalizedIp = normalizeIp(ip);
   const restrictions = normalizeAccessRestrictions(user?.access_restrictions || {});
   const blocklist = loadBlocklist();
+  const allowlist = loadAllowlist();
+  const hasAllowlist = allowlist.length > 0;
+  const isOfficeIp = hasAllowlist ? ipMatchesList(normalizedIp, allowlist) : true;
+  const offsitePolicy = resolveOffsitePolicy();
+  const allowOffsiteAccess = normalizeBooleanFlag(user?.allow_offsite_access);
 
   if (blocklist.length && ipMatchesList(normalizedIp, blocklist)) {
     return {
       allowed: false,
       reason: 'blocklist',
       message: 'Acesso bloqueado pelo IP (política global).',
+      ip: normalizedIp,
+      scope: 'blocked',
+      restrictions,
+    };
+  }
+
+  if (offsitePolicy === 'deny' && !isOfficeIp && !allowOffsiteAccess) {
+    return {
+      allowed: false,
+      reason: 'offsite_policy',
+      message: 'Acesso externo negado. Contate o administrador.',
       ip: normalizedIp,
       scope: 'blocked',
       restrictions,
@@ -173,7 +211,15 @@ function evaluateAccess({ ip, user, date = new Date() }) {
     };
   }
 
-  const scope = restrictions.ip.enabled ? 'ip_restricted' : 'unrestricted';
+  let scope = 'unrestricted';
+  if (restrictions.ip.enabled) {
+    scope = 'ip_restricted';
+  } else if (restrictions.schedule.enabled) {
+    scope = 'schedule_restricted';
+  } else if (offsitePolicy === 'deny' && !isOfficeIp && allowOffsiteAccess) {
+    scope = 'external_allowed';
+  }
+
   return {
     allowed: true,
     reason: null,

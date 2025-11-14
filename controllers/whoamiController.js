@@ -13,7 +13,12 @@ exports.get = (req, res) => {
   const ips = Array.isArray(req.clientIps) && req.clientIps.length ? req.clientIps : getClientIps(req);
   const accessEvaluation = req.accessEvaluation || {};
   const restrictions = normalizeAccessRestrictions(user.access_restrictions || {});
-  const scope = accessEvaluation.scope || (restrictions.ip.enabled ? 'ip_restricted' : 'unrestricted');
+  const fallbackScope = restrictions.ip.enabled
+    ? 'ip_restricted'
+    : restrictions.schedule.enabled
+      ? 'schedule_restricted'
+      : 'unrestricted';
+  const scope = accessEvaluation.scope || fallbackScope;
 
   return res.json({
     success: true,

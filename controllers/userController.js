@@ -185,6 +185,8 @@ exports.update = async (req, res) => {
     if (!targetUser) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
     const payload = {};
+    const previousRestrictions = normalizeAccessRestrictions(targetUser.access_restrictions || {});
+    let restrictionsChanged = false;
     if (req.body.name !== undefined) payload.name = String(req.body.name || '').trim();
     if (req.body.email !== undefined) payload.email = String(req.body.email || '').trim().toLowerCase();
     if (req.body.role !== undefined) payload.role = normalizeRole(req.body.role);
@@ -202,6 +204,8 @@ exports.update = async (req, res) => {
       if (parsedRestrictions.error) {
         return res.status(400).json({ success: false, error: parsedRestrictions.error });
       }
+      restrictionsChanged =
+        JSON.stringify(previousRestrictions) !== JSON.stringify(parsedRestrictions.data);
       payload.access_restrictions = parsedRestrictions.data;
     }
 
@@ -246,6 +250,19 @@ exports.update = async (req, res) => {
         metadata: {
           previous: previousAllowOffsite,
           next: payload.allow_offsite_access,
+          ip: req.clientIp || req.ip || null,
+        },
+      });
+    }
+
+    if (restrictionsChanged) {
+      await logAuditEvent('user.access_restrictions_changed', {
+        entityType: 'user',
+        entityId: id,
+        actorUserId: sessionUserId || null,
+        metadata: {
+          previous: previousRestrictions,
+          next: payload.access_restrictions,
           ip: req.clientIp || req.ip || null,
         },
       });
