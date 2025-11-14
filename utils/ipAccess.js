@@ -178,18 +178,9 @@ function evaluateAccess({ ip, user, date = new Date() }) {
     };
   }
 
-  if (offsitePolicy === 'deny' && !isOfficeIp && !allowOffsiteAccess) {
-    return {
-      allowed: false,
-      reason: 'offsite_policy',
-      message: 'Acesso externo negado. Contate o administrador.',
-      ip: normalizedIp,
-      scope: 'blocked',
-      restrictions,
-    };
-  }
+  const userHasExplicitIpList = restrictions.ip.enabled && restrictions.ip.allowed.length > 0;
 
-  if (restrictions.ip.enabled && !restrictions.ip.allowed.includes(normalizedIp)) {
+  if (userHasExplicitIpList && !restrictions.ip.allowed.includes(normalizedIp)) {
     return {
       allowed: false,
       reason: 'ip_not_allowed',
@@ -211,13 +202,30 @@ function evaluateAccess({ ip, user, date = new Date() }) {
     };
   }
 
+  if (
+    offsitePolicy === 'deny' &&
+    !isOfficeIp &&
+    !allowOffsiteAccess &&
+    !userHasExplicitIpList
+  ) {
+    return {
+      allowed: false,
+      reason: 'offsite_policy',
+      message: 'Acesso externo negado. Contate o administrador.',
+      ip: normalizedIp,
+      scope: 'blocked',
+      restrictions,
+    };
+  }
+
   let scope = 'unrestricted';
   if (restrictions.ip.enabled) {
     scope = 'ip_restricted';
   } else if (restrictions.schedule.enabled) {
     scope = 'schedule_restricted';
-  } else if (offsitePolicy === 'deny' && !isOfficeIp && allowOffsiteAccess) {
-    scope = 'external_allowed';
+  }
+  if (!userHasExplicitIpList && offsitePolicy === 'deny') {
+    scope = !isOfficeIp && allowOffsiteAccess ? 'external_allowed' : scope;
   }
 
   return {
