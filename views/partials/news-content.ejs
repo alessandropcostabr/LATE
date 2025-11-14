@@ -23,9 +23,9 @@
     <section>
       <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧭 Dicas rápidas</h2>
       <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
-        <li>Todos os usuários começam liberados. Ative os toggles conforme precisar.</li>
-        <li>Os eventos de bloqueio continuam registrados como <code>user.login_denied_offsite</code> e <code>user.session_denied_offsite</code> para fácil auditoria.</li>
-        <li>O env <code>OFFSITE_POLICY</code> passa a ser apenas um fallback; a regra efetiva vem do formulário do usuário.</li>
+        <li>Ninguém fica travado ao ativar a novidade: todos começam liberados e você só restringe quem realmente precisa de controle extra.</li>
+        <li>Quando uma tentativa for bloqueada, o próprio usuário vê o motivo e a auditoria registra o evento de forma automática para o time de suporte.</li>
+        <li>Esqueça variáveis técnicas como <code>OFFSITE_POLICY</code>: agora o ajuste é todo visual, direto no formulário do usuário.</li>
       </ul>
     </section>
   </div>
