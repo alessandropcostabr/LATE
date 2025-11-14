@@ -70,6 +70,13 @@ Este manual orienta o uso diário do sistema LATE por equipes operacionais e adm
 - Rate-limit e CSRF ativos
 - Ações críticas registradas em log/auditoria
 
+### Restrições por IP e Horário
+- Em **Admin → Usuários → Editar**, a seção *Restrições de acesso* permite:
+  - Ativar “Acesso restrito por IP” e informar os IPs externos liberados (ex.: `191.9.115.129`). Tudo desativado = usuário pode acessar de qualquer lugar.
+  - Ativar “Acesso restrito por horário” e definir faixas por dia da semana (segunda a sexta, 08h–18h, por exemplo).
+- O painel **Relatórios → Status** mostra o IP atual, o escopo aplicado (liberado/restrito) e a lista de regras ativas.
+- Bloqueios são informados ao usuário e registrados na auditoria (`user.login_denied_offsite` / `user.session_denied_offsite`); peça para o time de TI ajustar as regras caso alguém seja bloqueado indevidamente.
+
 ## 🔗 Integrações externas
 
 - Envio de recados via formulários públicos ou sistemas parceiros autorizados

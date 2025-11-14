@@ -33,6 +33,7 @@ describe('Session version enforcement', () => {
         role TEXT NOT NULL DEFAULT 'ADMIN',
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         allow_offsite_access BOOLEAN NOT NULL DEFAULT TRUE,
+        access_restrictions JSONB NOT NULL DEFAULT '{}'::jsonb,
         view_scope TEXT NOT NULL DEFAULT 'all',
         session_version INTEGER NOT NULL DEFAULT 1,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

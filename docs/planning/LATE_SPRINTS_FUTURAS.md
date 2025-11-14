@@ -31,6 +31,7 @@ Este documento consolida todas as sprints futuras planejadas para o projeto LATE
 1. ✅ **Sprint 02B — Auditoria (UI & Exportações + Status Operacional)** (concluída em 12/11/2025: cards e filtros salvos, exportações com fila/notificações e health-check no painel)
 2. 🟡 **Sprint — Controle de Acesso por IP** (DEV: policy de rede, exceções por usuário, whoami e badges no `/relatorios/status`)
 3. 🟡 **Sprint Hardening PG + CSP** (TLS no PostgreSQL, middleware Helmet report-only/enforce e refatoração de `health/status`)
+4. 🟠 **Correção PR #217 — Watchers fora do escopo** (rotas `/api/messages/:id/watchers` e `messageWatcherController` devem validar o escopo antes de listar watchers; hoje basta permissão de leitura e permite enumerar recados fora do setor)
 
 ---
 

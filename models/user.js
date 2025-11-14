@@ -4,6 +4,7 @@
 
 const db = require('../config/database'); // Pool do pg
 
+const { normalizeAccessRestrictions } = require('../utils/ipAccess');
 const ALLOWED_ROLES = new Set(['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR']);
 const ALLOWED_VIEW_SCOPES = new Set(['own', 'all']);
 
@@ -37,6 +38,7 @@ function mapRow(row, { includePassword = false } = {}) {
     view_scope: normalizeViewScope(row.view_scope),
     allow_offsite_access: row.allow_offsite_access === true || row.allow_offsite_access === 1 || row.allow_offsite_access === 't',
     session_version: Number(row.session_version || 1),
+    access_restrictions: normalizeAccessRestrictions(row.access_restrictions),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -53,6 +55,7 @@ const BASE_SELECT = `
     role,
     is_active,
     view_scope,
+    access_restrictions,
     allow_offsite_access,
     session_version,
     created_at,
@@ -85,7 +88,9 @@ class UserModel {
     active = true,
     view_scope,
     allow_offsite_access = false,
+    access_restrictions = {},
   }) {
+    const normalizedRestrictions = normalizeAccessRestrictions(access_restrictions);
     const sql = `
       INSERT INTO users (
         name,
@@ -94,6 +99,7 @@ class UserModel {
         role,
         is_active,
         view_scope,
+        access_restrictions,
         allow_offsite_access
       ) VALUES (
         ${ph(1)},
@@ -102,9 +108,10 @@ class UserModel {
         ${ph(4)},
         ${ph(5)},
         ${ph(6)},
-        ${ph(7)}
+        ${ph(7)},
+        ${ph(8)}
       )
-      RETURNING id, name, email, role, is_active, view_scope, allow_offsite_access, created_at, updated_at
+      RETURNING id, name, email, role, is_active, view_scope, access_restrictions, allow_offsite_access, created_at, updated_at
     `;
     try {
       const { rows } = await db.query(sql, [
@@ -114,6 +121,7 @@ class UserModel {
         normalizeRole(role),
         active === true || active === 'true' || active === 1 || active === '1',
         normalizeViewScope(view_scope),
+        normalizedRestrictions,
         allow_offsite_access === true || allow_offsite_access === 'true' || allow_offsite_access === 1 || allow_offsite_access === '1',
       ]);
       return mapRow(rows?.[0]);
@@ -159,7 +167,7 @@ class UserModel {
     return Number.isInteger(version) ? Number(version) : null;
   }
 
-  async update(id, { name, email, role, active, view_scope, allow_offsite_access }) {
+  async update(id, { name, email, role, active, view_scope, allow_offsite_access, access_restrictions }) {
     const setClauses = [];
     const params = [];
     let idx = 1;
@@ -194,6 +202,12 @@ class UserModel {
       idx += 1;
     }
 
+    if (access_restrictions !== undefined) {
+      setClauses.push(`access_restrictions = ${ph(idx)}`);
+      params.push(normalizeAccessRestrictions(access_restrictions));
+      idx += 1;
+    }
+
     if (allow_offsite_access !== undefined) {
       setClauses.push(`allow_offsite_access = ${ph(idx)}`);
       params.push(allow_offsite_access === true || allow_offsite_access === 'true' || allow_offsite_access === 1 || allow_offsite_access === '1');
@@ -210,7 +224,7 @@ class UserModel {
       UPDATE users
          SET ${setClauses.join(', ')}
        WHERE id = ${ph(idx)}
-       RETURNING id, name, email, role, is_active, view_scope, allow_offsite_access, created_at, updated_at
+       RETURNING id, name, email, role, is_active, view_scope, access_restrictions, allow_offsite_access, created_at, updated_at
     `;
 
     params.push(id);

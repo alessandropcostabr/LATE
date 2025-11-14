@@ -124,13 +124,13 @@ async function requireAuth(req, res, next) {
 
     const accessEvaluation = evaluateAccess({
       ip: clientIp,
-      allowOffsiteAccess: user.allow_offsite_access === true,
+      user,
     });
     req.accessScope = accessEvaluation.scope;
-    req.isOfficeIp = accessEvaluation.isOfficeIp;
+    req.accessEvaluation = accessEvaluation;
 
     if (!accessEvaluation.allowed) {
-      console.warn('[auth] sessão bloqueada por política de IP', {
+      console.warn('[auth] sessão bloqueada por política de acesso', {
         userId: sessionUserId,
         reason: accessEvaluation.reason,
         ip: clientIp,
@@ -150,8 +150,8 @@ async function requireAuth(req, res, next) {
       }
       return destroySessionAndRespond(req, res, {
         statusCode: 403,
-        message: accessEvaluation.message,
-        redirectError: 'acesso_ip_bloqueado',
+        message: accessEvaluation.message || 'Acesso bloqueado por restrição de segurança.',
+        redirectError: 'restricao_acesso',
       });
     }
 
@@ -161,6 +161,7 @@ async function requireAuth(req, res, next) {
       email: user.email,
       role: user.role,
       viewScope: user.view_scope,
+      access_restrictions: user.access_restrictions,
       allow_offsite_access: user.allow_offsite_access === true,
       sessionVersion: dbVersion,
     };
