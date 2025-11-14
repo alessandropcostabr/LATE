@@ -91,8 +91,8 @@ function loadAllowlist() {
 }
 
 function resolveOffsitePolicy() {
-  const raw = (process.env.OFFSITE_POLICY || 'allow').toString().trim().toLowerCase();
-  return raw === 'deny' ? 'deny' : 'allow';
+  const raw = (process.env.OFFSITE_POLICY || 'deny').toString().trim().toLowerCase();
+  return raw === 'allow' ? 'allow' : 'deny';
 }
 
 function normalizeBooleanFlag(value) {
