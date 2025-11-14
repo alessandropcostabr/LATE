@@ -109,14 +109,15 @@ exports.login = async (req, res) => {
       role: user.role,
       viewScope: user.view_scope || 'all',
       allow_offsite_access: user.allow_offsite_access === true,
+      access_restrictions: user.access_restrictions,
     };
 
     const ipEvaluation = evaluateAccess({
       ip: clientIp,
-      allowOffsiteAccess: sessionUser.allow_offsite_access,
+      user,
     });
     req.accessScope = ipEvaluation.scope;
-    req.isOfficeIp = ipEvaluation.isOfficeIp;
+    req.accessEvaluation = ipEvaluation;
 
     if (!ipEvaluation.allowed) {
       await logAuditEvent('user.login_denied_offsite', {

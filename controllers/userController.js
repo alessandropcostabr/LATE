@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const argon2 = require('argon2');
 const UserModel = require('../models/user');
 const UserSector = require('../models/userSector');
+const { normalizeAccessRestrictions } = require('../utils/ipAccess');
 const { logEvent: logAuditEvent } = require('../utils/auditLogger');
 
 const ALLOWED_ROLES = ['ADMIN', 'SUPERVISOR', 'OPERADOR', 'LEITOR'];
@@ -22,6 +23,22 @@ function normalizeViewScope(scope) {
 
 function parseBooleanFlag(value) {
   return value === true || value === 'true' || value === 1 || value === '1';
+}
+
+function parseAccessRestrictionsInput(raw) {
+  if (raw === undefined) return normalizeAccessRestrictions({});
+  let value = raw;
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw);
+    } catch (err) {
+      return { error: 'Formato inválido para restrições de acesso.' };
+    }
+  }
+  if (value && typeof value === 'object') {
+    return { data: normalizeAccessRestrictions(value) };
+  }
+  return { data: normalizeAccessRestrictions({}) };
 }
 
 function sanitizeUser(user) {
@@ -80,6 +97,11 @@ exports.create = async (req, res) => {
   const allowOffsiteAccess = rawAllowOffsiteAccess !== undefined
     ? parseBooleanFlag(rawAllowOffsiteAccess)
     : false;
+  const accessRestrictionsInput = req.body.accessRestrictions ?? req.body.access_restrictions;
+  const parsedRestrictions = parseAccessRestrictionsInput(accessRestrictionsInput);
+  if (parsedRestrictions.error) {
+    return res.status(400).json({ success: false, error: parsedRestrictions.error });
+  }
 
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -103,6 +125,7 @@ exports.create = async (req, res) => {
       active,
       view_scope: viewScope,
       allow_offsite_access: allowOffsiteAccess,
+      access_restrictions: parsedRestrictions.data,
     });
 
     try {
@@ -172,6 +195,14 @@ exports.update = async (req, res) => {
     const rawAllowOffsiteAccess = req.body.allow_offsite_access ?? req.body.allowOffsiteAccess;
     if (rawAllowOffsiteAccess !== undefined) {
       payload.allow_offsite_access = parseBooleanFlag(rawAllowOffsiteAccess);
+    }
+    const accessRestrictionsInput = req.body.accessRestrictions ?? req.body.access_restrictions;
+    if (accessRestrictionsInput !== undefined) {
+      const parsedRestrictions = parseAccessRestrictionsInput(accessRestrictionsInput);
+      if (parsedRestrictions.error) {
+        return res.status(400).json({ success: false, error: parsedRestrictions.error });
+      }
+      payload.access_restrictions = parsedRestrictions.data;
     }
 
     if (Object.keys(payload).length === 0) {

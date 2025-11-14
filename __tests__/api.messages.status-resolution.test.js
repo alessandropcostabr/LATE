@@ -33,6 +33,7 @@ async function createSchema() {
       role TEXT DEFAULT 'ADMIN',
       is_active BOOLEAN DEFAULT TRUE,
       allow_offsite_access BOOLEAN DEFAULT TRUE,
+      access_restrictions JSONB NOT NULL DEFAULT '{}'::jsonb,
       view_scope TEXT DEFAULT 'all',
       session_version INTEGER DEFAULT 1,
       created_at TIMESTAMPTZ DEFAULT NOW(),

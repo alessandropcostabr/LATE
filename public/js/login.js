@@ -93,7 +93,19 @@
       return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
-    form.addEventListener('submit', async (ev) => {
+    function fallbackToNativeSubmit() {
+      try {
+        form.removeEventListener('submit', handleSubmit);
+      } catch (_) {}
+      try {
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = false;
+      } catch (_) {}
+      form.dataset.nativeSubmit = '1';
+      form.submit();
+    }
+
+    async function handleSubmit(ev) {
       ev.preventDefault();
 
       const fd = new FormData(form);
@@ -146,8 +158,8 @@
         if (resp.status === 403) {
           // Provável falha de CSRF; atualiza token e recarrega para sincronizar segredo.
           await refreshCsrfToken();
-          alert('Falha de segurança (CSRF). A página será recarregada.');
-          window.location.reload();
+          alert('Falha de segurança (CSRF). Tentando novamente...');
+          fallbackToNativeSubmit();
           return;
         }
 
@@ -167,6 +179,8 @@
       } finally {
         setBusy(false);
       }
-    });
+    }
+
+    form.addEventListener('submit', handleSubmit);
   });
 })();

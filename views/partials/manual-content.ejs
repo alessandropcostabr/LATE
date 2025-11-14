@@ -77,6 +77,16 @@
 <li>Rate-limit e CSRF ativos</li>
 <li>Ações críticas registradas em log/auditoria</li>
 </ul>
+<h3>Restrições por IP e Horário</h3>
+<ul>
+<li>Em <strong>Admin → Usuários → Editar</strong>, a seção <em>Restrições de acesso</em> permite:<ul>
+<li>Ativar “Acesso restrito por IP” e informar os IPs externos liberados (ex.: <code>191.9.115.129</code>). Tudo desativado = usuário pode acessar de qualquer lugar.</li>
+<li>Ativar “Acesso restrito por horário” e definir faixas por dia da semana (segunda a sexta, 08h–18h, por exemplo).</li>
+</ul>
+</li>
+<li>O painel <strong>Relatórios → Status</strong> mostra o IP atual, o escopo aplicado (liberado/restrito) e a lista de regras ativas.</li>
+<li>Bloqueios são informados ao usuário e registrados na auditoria (<code>user.login_denied_offsite</code> / <code>user.session_denied_offsite</code>); peça para o time de TI ajustar as regras caso alguém seja bloqueado indevidamente.</li>
+</ul>
 <h2>🔗 Integrações externas</h2>
 <ul>
 <li>Envio de recados via formulários públicos ou sistemas parceiros autorizados</li>

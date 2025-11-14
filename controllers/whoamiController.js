@@ -1,7 +1,7 @@
 // controllers/whoamiController.js
 // Retorna informações básicas da sessão/autenticação atual.
 
-const { getClientIp, getClientIps, resolveScope } = require('../utils/ipAccess');
+const { getClientIp, getClientIps, normalizeAccessRestrictions } = require('../utils/ipAccess');
 
 exports.get = (req, res) => {
   if (!req.session?.user) {
@@ -11,11 +11,9 @@ exports.get = (req, res) => {
   const user = req.session.user;
   const ip = req.clientIp || getClientIp(req);
   const ips = Array.isArray(req.clientIps) && req.clientIps.length ? req.clientIps : getClientIps(req);
-  const allowOffsite = Boolean(user.allow_offsite_access);
-  const scope = req.accessScope || resolveScope({
-    isOfficeIp: Boolean(req.isOfficeIp),
-    allowOffsiteAccess: allowOffsite,
-  });
+  const accessEvaluation = req.accessEvaluation || {};
+  const restrictions = normalizeAccessRestrictions(user.access_restrictions || {});
+  const scope = accessEvaluation.scope || (restrictions.ip.enabled ? 'ip_restricted' : 'unrestricted');
 
   return res.json({
     success: true,
@@ -30,10 +28,7 @@ exports.get = (req, res) => {
       ips,
       userAgent: req.headers['user-agent'] || null,
       accessScope: scope,
-      allow_offsite_access: allowOffsite,
-      policy: {
-        offsite: (process.env.OFFSITE_POLICY || 'deny').toLowerCase(),
-      },
+      restrictions,
     },
   });
 };
