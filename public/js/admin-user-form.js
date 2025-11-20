@@ -181,20 +181,34 @@
       accessRestrictionsState.ip.allowed.push('');
     }
     accessRestrictionsState.ip.allowed.forEach((ip, index) => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'row g-2 align-items-center mb-2';
-      wrapper.dataset.ipIndex = index;
-      wrapper.innerHTML = `
-        <div class="col">
-          <input type="text" class="form-control ip-value-input" value="${ip}" placeholder="Ex.: 191.9.115.129" aria-label="Endereço IP permitido">
-        </div>
-        <div class="col-auto">
-          <button type="button" class="btn btn-link text-danger p-0 ip-remove-btn" data-remove-ip aria-label="Remover IP">
-            Remover
-          </button>
-        </div>
-      `;
-      ipListContainer.appendChild(wrapper);
+      const row = document.createElement('div');
+      row.className = 'row g-2 align-items-center mb-2';
+      row.dataset.ipIndex = index;
+
+      const colInput = document.createElement('div');
+      colInput.className = 'col';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'form-control ip-value-input';
+      input.value = String(ip || '').trim();
+      input.placeholder = 'Ex.: 191.9.115.129';
+      input.setAttribute('aria-label', 'Endereço IP permitido');
+      colInput.appendChild(input);
+
+      const colActions = document.createElement('div');
+      colActions.className = 'col-auto';
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn btn-link text-danger p-0 ip-remove-btn';
+      removeBtn.setAttribute('data-remove-ip', '');
+      removeBtn.setAttribute('aria-label', 'Remover IP');
+      removeBtn.textContent = 'Remover';
+      colActions.appendChild(removeBtn);
+
+      row.appendChild(colInput);
+      row.appendChild(colActions);
+
+      ipListContainer.appendChild(row);
     });
   }
 
