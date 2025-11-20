@@ -17,7 +17,6 @@
   const activeSelect = document.getElementById('active');
   const sectorSelect = document.getElementById('sectorIds');
   const viewScopeSelect = document.getElementById('viewScope');
-  const allowOffsiteSelect = document.getElementById('allowOffsiteAccess');
   const scheduleToggle = document.getElementById('accessScheduleToggle');
   const scheduleContainer = document.getElementById('scheduleRangesContainer');
   const addScheduleRangeBtn = document.getElementById('addScheduleRangeBtn');
@@ -302,13 +301,6 @@
       if (roleSelect) roleSelect.value = user.role || 'OPERADOR';
       if (activeSelect) activeSelect.value = user.is_active ? 'true' : 'false';
       if (viewScopeSelect) viewScopeSelect.value = user.view_scope || 'all';
-      if (allowOffsiteSelect) {
-        const isExternal =
-          user.allow_offsite_access === true ||
-          user.allow_offsite_access === 'true' ||
-          user.allow_offsite_access === 1;
-        allowOffsiteSelect.value = isExternal ? 'true' : 'false';
-      }
       setAccessRestrictions(user.access_restrictions || {});
       renderAccessRestrictions();
       const selectedIds = unpackList(sectorsResp).map((s) => s.id);
@@ -346,9 +338,6 @@
       viewScope: viewScopeSelect?.value || 'all',
     };
     const accessRestrictionsPayload = buildAccessRestrictionsPayload();
-    const allowOffsiteAccessValue = allowOffsiteSelect
-      ? allowOffsiteSelect.value === 'true'
-      : undefined;
 
     try {
       if (mode === 'create') {
@@ -358,9 +347,6 @@
           sectorIds,
           accessRestrictions: accessRestrictionsPayload,
         };
-        if (allowOffsiteAccessValue !== undefined) {
-          payload.allowOffsiteAccess = allowOffsiteAccessValue;
-        }
         await apiRequest('/api/users', { method: 'POST', data: payload });
         showAlert('Usuário criado com sucesso.', 'success');
         setTimeout(() => { window.location.href = '/admin/usuarios'; }, 1200);
@@ -373,9 +359,6 @@
           viewScope: payloadBase.viewScope,
           accessRestrictions: accessRestrictionsPayload,
         };
-        if (allowOffsiteAccessValue !== undefined) {
-          payload.allowOffsiteAccess = allowOffsiteAccessValue;
-        }
         await apiRequest(`/api/users/${userId}`, { method: 'PUT', data: payload });
         await apiRequest(`/api/users/${userId}/sectors`, { method: 'PUT', data: { sectorIds } });
         showAlert('Usuário atualizado com sucesso.', 'success');

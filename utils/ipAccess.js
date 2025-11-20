@@ -66,7 +66,6 @@ function ipMatchesList(ip, cidrList) {
 }
 
 const blocklistCache = { signature: null, cidrs: [] };
-const allowlistCache = { signature: null, cidrs: [] };
 
 function loadBlocklist() {
   const signature = process.env.IP_BLOCKLIST || '';
@@ -77,30 +76,6 @@ function loadBlocklist() {
   blocklistCache.signature = signature;
   blocklistCache.cidrs = cidrs;
   return cidrs;
-}
-
-function loadAllowlist() {
-  const signature = process.env.IP_ALLOWLIST || '';
-  if (allowlistCache.signature === signature) {
-    return allowlistCache.cidrs;
-  }
-  const cidrs = buildCidrList(signature);
-  allowlistCache.signature = signature;
-  allowlistCache.cidrs = cidrs;
-  return cidrs;
-}
-
-function resolveOffsitePolicy() {
-  const raw = (process.env.OFFSITE_POLICY || 'deny').toString().trim().toLowerCase();
-  return raw === 'allow' ? 'allow' : 'deny';
-}
-
-function normalizeBooleanFlag(value) {
-  return value === true ||
-    value === 1 ||
-    value === '1' ||
-    value === 'true' ||
-    value === 't';
 }
 
 function normalizeTime(value) {
@@ -178,11 +153,6 @@ function evaluateAccess({ ip, user, date = new Date() }) {
   const normalizedIp = canonicalizeIp(ip);
   const restrictions = normalizeAccessRestrictions(user?.access_restrictions || {});
   const blocklist = loadBlocklist();
-  const allowlist = loadAllowlist();
-  const hasAllowlist = allowlist.length > 0;
-  const isOfficeIp = hasAllowlist ? ipMatchesList(normalizedIp, allowlist) : true;
-  const offsitePolicy = resolveOffsitePolicy();
-  const allowOffsiteAccess = normalizeBooleanFlag(user?.allow_offsite_access);
 
   if (blocklist.length && ipMatchesList(normalizedIp, blocklist)) {
     return {
@@ -219,30 +189,11 @@ function evaluateAccess({ ip, user, date = new Date() }) {
     };
   }
 
-  if (
-    offsitePolicy === 'deny' &&
-    !isOfficeIp &&
-    !allowOffsiteAccess &&
-    !userHasExplicitIpList
-  ) {
-    return {
-      allowed: false,
-      reason: 'offsite_policy',
-      message: 'Acesso externo negado. Contate o administrador.',
-      ip: normalizedIp,
-      scope: 'blocked',
-      restrictions,
-    };
-  }
-
   let scope = 'unrestricted';
   if (restrictions.ip.enabled) {
     scope = 'ip_restricted';
   } else if (restrictions.schedule.enabled) {
     scope = 'schedule_restricted';
-  }
-  if (!userHasExplicitIpList && offsitePolicy === 'deny') {
-    scope = !isOfficeIp && allowOffsiteAccess ? 'external_allowed' : scope;
   }
 
   return {

@@ -102,15 +102,14 @@ exports.login = async (req, res) => {
       }));
     }
 
-    const sessionUser = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      viewScope: user.view_scope || 'all',
-      allow_offsite_access: user.allow_offsite_access === true,
-      access_restrictions: user.access_restrictions,
-    };
+  const sessionUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    viewScope: user.view_scope || 'all',
+    access_restrictions: user.access_restrictions,
+  };
 
     const ipEvaluation = evaluateAccess({
       ip: clientIp,
