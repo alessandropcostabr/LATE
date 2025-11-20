@@ -1,3 +1,36 @@
+<article class="card" aria-labelledby="news-2025-11-14">
+
+  <div class="card-header">
+    <h1 class="card-title" id="news-2025-11-14">🗞️ Novidades — 14/11/2025</h1>
+    <p class="card-subtitle">Restrições de acesso por usuário</p>
+  </div>
+  <div class="card-body">
+    <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+      Publicado em 14/11/2025 · Sprint Controle de Acesso
+    </p>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔐 Horários controlados</h2>
+      <p>Admins agora conseguem definir faixas de dias e horários permitidos por usuário. Basta acessar <strong>Admin → Usuários → Editar</strong> e ativar “Acesso restrito por horário”. Adicione quantas faixas quiser (ex.: Segunda a Sexta, 08h às 18h) e o LATE bloqueia tentativas fora desses intervalos.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🌐 Lista de IPs autorizados</h2>
+      <p>O antigo conceito de “Interno/Externo” foi substituído por uma lista flexível de IPs. Ative “Acesso restrito por IP” e informe os IPs externos liberados (ex.: 191.9.115.129). Quem estiver fora da lista recebe um aviso no login e na sessão.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">📊 Transparência no Status</h2>
+      <p>O painel <strong>/relatorios/status</strong> ganhou um bloco “Sessão &amp; Rede” que mostra o IP atual, o escopo aplicado (liberado, restrito por IP ou horário) e a lista de políticas ativas para o usuário autenticado.</p>
+    </section>
+    <section>
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧭 Dicas rápidas</h2>
+      <ul style="margin-left:1.25rem;line-height:1.6;list-style:disc;">
+        <li>Ninguém fica travado ao ativar a novidade: todos começam liberados e você só restringe quem realmente precisa de controle extra.</li>
+        <li>Quando uma tentativa for bloqueada, o próprio usuário vê o motivo e a auditoria registra o evento de forma automática para o time de suporte.</li>
+        <li>Esqueça variáveis técnicas como <code>OFFSITE_POLICY</code>: agora o ajuste é todo visual, direto no formulário do usuário.</li>
+      </ul>
+    </section>
+  </div>
+</article>
+
 <article class="card" aria-labelledby="news-2025-11-08">
 
   <div class="card-header">

@@ -1,33 +1,35 @@
 # Sprint — Controle de Acesso por IP (Back + Front)
-> Atualizado em 2025/11/12.
+> Atualizado em 2025/11/14.
 
-> **Meta**: Restringir/monitorar acesso ao **LATE** por IP (rede interna vs. acesso externo), com exceção por usuário; exibir IP e escopo de acesso no **/relatorios/status**; permitir **ADMIN** configurar “Acesso externo habilitado” por usuário.  
-> **Restrições**: não alterar o layout base (EJS/CSS/JS) — apenas incluir campos/badges discretos.
+> **Meta**: Individualizar as políticas de acesso usando o campo `access_restrictions` (IPs liberados + faixas de horário) e um bloco global mínimo (`IP_BLOCKLIST`). O sistema precisa mostrar o diagnóstico em `/relatorios/status` e `/api/whoami`, registrar auditoria de bloqueios e permitir que ADMIN configure tudo direto no formulário do usuário (sem alterar o layout base).
 
 ---
 
 ## 1) Objetivos e Resultados Esperados
-1. **Política de IP** (allowlist/blocklist + política OFFSITE `deny|allow`).
-2. **Exceção por usuário** via flag `allow_offsite_access` (Interno / Externo habilitado).
-3. **Captura e exibição do IP** no `/relatorios/status` e `/api/whoami`.
-4. **Auditoria leve** para tentativas negadas/alterações de política.
-5. **UI Admin** para ajustar a flag dos usuários (sem quebrar layout).
+1. `access_restrictions` JSONB normalizado: IPs permitidos e agenda (dias/horários).
+2. Motor único (`utils/ipAccess.js`) para ler IP real, aplicar blocklist global e avaliar restrições por usuário.
+3. `/relatorios/status` e `/api/whoami` exibem IP atual, escopo aplicado e detalhes das restrições.
+4. Auditoria para bloqueios (`user.login_denied_offsite`, `user.session_denied_offsite`) e quando ADMIN altera regras.
+5. Formulário de usuário com toggles “Acesso restrito por IP” e “Acesso restrito por horário”, permitindo listar IPs/intervalos.
+6. `OFFSITE_POLICY`/`allow_offsite_access` permanecem apenas como fallback legados; novos bloqueios focam nas restrições por usuário + blocklist.
 
 ---
 
 ## 2) Escopo (Back + Front)
 
 ### Back-end
-- Middleware `ipAccessGuard` (CIDR, trust proxy, exceção por usuário).
-- Expor cliente IP (`req.clientIp`) e whoami (`/api/whoami`).
-- Migration PG: `allow_offsite_access boolean default false`.
-- Ajuste auth: checar OFFSITE_POLICY no login.
-- Logs de auditoria: `user.login_denied_offsite`, `user.access_policy_changed`.
+- Helper único `utils/ipAccess.js`:
+  - normaliza IP, horários e listas CIDR;
+  - expõe `evaluateAccess`, `normalizeAccessRestrictions`, `getClientIp(s)`.
+- Migration: `20251219_add_access_restrictions_to_users.sql` adiciona `access_restrictions JSONB` (default `{}`) mantendo `allow_offsite_access` para retrocompatibilidade.
+- `authController` (login) e `middleware/auth` (sessão) chamam `evaluateAccess` antes de abrir/manter a sessão; bloqueios geram auditoria.
+- `/api/whoami` e `/relatorios/status` leem `req.accessEvaluation` para mostrar escopo, IP e restrições.
+- `IP_BLOCKLIST` e `TRUST_PROXY` continuam via `.env`; `OFFSITE_POLICY` fica opcional como fallback.
 
-### Front-end (EJS)
-- **Form** de edição de usuário: campo **Acesso externo** (select Interno/Externo habilitado).
-- **/relatorios/status**: mostrar **Seu IP** + **badge** do escopo (Interno | Externo habilitado).
-- Opcional discreto: badge com escopo no dropdown/perfil (sem mexer em layout global).
+### Front-end (EJS/JS)
+- Formulário Admin → Usuários recebe seção **Restrições de acesso** com toggles para IP/horário e editor dinâmico (JS).
+- `/relatorios/status` exibe “Sessão & Rede” com IP atual, escopo, tags de restrição e lista de IPs permitidos/horários.
+- `/news`, `/manual-operacional` e `/roadmap` referenciam o novo fluxo para orientar usuários/admins.
 
 ---
 
@@ -51,261 +53,136 @@
 
 **.env**
 ```dotenv
-IP_ALLOWLIST=192.168.15.0/24,10.0.0.0/8
-IP_BLOCKLIST=
-OFFSITE_POLICY=deny
 TRUST_PROXY=1
+IP_BLOCKLIST=177.170.0.0/16,191.9.115.0/24
+OFFSITE_POLICY=allow        # opcional, legado; manter allow até concluir rollout
 ```
 
-**Notas**  
-- Em PROD, `app.set('trust proxy', 1)` para `req.ip`/`req.ips` corretos atrás de proxy/VIP.  
-- Allowlist aceita IPs/CIDR; se vazia, política OFFSITE ainda se aplica (deny = exige exceção).
+**Notas**
+- `TRUST_PROXY` garante que `req.ips` reflitam a cadeia real quando estamos atrás do VIP/Cloudflare.
+- `IP_BLOCKLIST` aceita IPs/CIDR (CSV) e bloqueia imediatamente qualquer usuário, antes de olhar as restrições individuais.
+- `OFFSITE_POLICY` e a flag `allow_offsite_access` ficaram como fallback para ambientes antigos; a política efetiva passa pelo JSON `access_restrictions`.
 
 ---
 
 ## 5) Banco de Dados (Migration PG)
 
-**`migrations/20251111_add_allow_offsite_access.sql`**
+**`migrations/20251219_add_access_restrictions_to_users.sql`**
 ```sql
+BEGIN;
+
 ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS allow_offsite_access boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS access_restrictions JSONB NOT NULL DEFAULT '{}'::jsonb;
 
-CREATE INDEX IF NOT EXISTS idx_users_allow_offsite_access
-  ON users (allow_offsite_access);
+UPDATE users
+   SET access_restrictions = '{}'::jsonb
+ WHERE access_restrictions IS NULL;
+
+COMMIT;
 ```
 
-> ⚠️ Pós-migrate imediato: executar `UPDATE users SET allow_offsite_access = true WHERE deleted_at IS NULL;` (ou script equivalente) para garantir que todos os usuários existentes — especialmente o ADMIN — permaneçam liberados antes de aplicar as novas políticas de IP. Ajuste manualmente depois quem deve ficar restrito.
+> ⚠️ Pós-migrate: manter todos os usuários liberados (`access_restrictions = '{}'`) e permitir que a equipe ADMIN ajuste manualmente quem terá restrição por IP/horário. O campo `allow_offsite_access` segue disponível, mas não é mais o fator decisivo do bloqueio.
+## 6) Backend — Tarefas
 
----
+### 6.1 `utils/ipAccess.js`
+- `normalizeIp` remove `::ffff:` e garante valores legíveis.
+- `normalizeAccessRestrictions` aceita string/objeto e devolve `{ ip: { enabled, allowed[] }, schedule: { enabled, ranges[] } }`.
+- `evaluateAccess` aplica `IP_BLOCKLIST`, checa lista de IPs por usuário e agenda por dia/horário, retornando `{ allowed, scope, reason, message, restrictions }`.
+- `getClientIp(s)` usa apenas `req.ips` / `req.ip` (com `trust proxy`); headers arbitrários não são considerados.
 
-## 6) Backend — Tarefas e Patches
+### 6.2 Login / Sessão
+- `controllers/authController.login` roda `evaluateAccess` logo após validar senha; bloqueios retornam 403 e registram `user.login_denied_offsite`.
+- `middleware/auth.requireAuth` repete a checagem em cada request autenticado; se negar, destrói a sessão, grava `user.session_denied_offsite` e informa o motivo.
+- `req.session.user` passa a carregar `access_restrictions` para views/scripts.
 
-### 6.1 Middleware `middleware/ip-access-guard.js`
-Responsável por:
-- Resolver IP do cliente (honrando trust proxy).
-- Checar `IP_BLOCKLIST` (nega imediato).
-- Checar `OFFSITE_POLICY`:
-  - `deny`: se IP não é “interno” → **exigir** `user.allow_offsite_access`.
-- Anexar `req.clientIp`.
+### 6.3 Models & Controllers
+- `models/user` inclui `access_restrictions` nos `SELECT`/`INSERT`/`UPDATE` e normaliza antes de persistir.
+- `controllers/userController` aceita `accessRestrictions` (camelCase) ou `access_restrictions`, valida JSON e registra auditoria quando `allow_offsite_access` muda.
+- `controllers/whoamiController` expõe `{ ip, ips, accessScope, restrictions }`.
 
-> **Registro**: Aplicar **antes** das rotas autenticadas e após rotas públicas mínimas (assets, `/api/health`).
-
-**Esqueleto sugerido**:
-```js
-const ipaddr = require('ipaddr.js');
-
-function parseList(csv) {
-  if (!csv) return [];
-  return csv.split(',').map(s => s.trim()).filter(Boolean);
-}
-
-function ipInCidrList(ip, list) {
-  try {
-    const addr = ipaddr.parse(ip);
-    return list.some(cidr => {
-      const [range, lenStr] = cidr.includes('/') ? cidr.split('/') : [cidr, addr.kind() === 'ipv6' ? '128' : '32'];
-      const parsedRange = ipaddr.parse(range);
-      const len = parseInt(lenStr, 10);
-      return addr.match(parsedRange, len);
-    });
-  } catch {
-    return false;
-  }
-}
-
-function getClientIp(req) {
-  return req.ip || req.headers['cf-connecting-ip'] || req.connection?.remoteAddress || '0.0.0.0';
-}
-
-module.exports = function ipAccessGuard() {
-  const allowList = parseList(process.env.IP_ALLOWLIST || '');
-  const blockList = parseList(process.env.IP_BLOCKLIST || '');
-  const offsitePolicy = (process.env.OFFSITE_POLICY || 'deny').toLowerCase();
-
-  return async function (req, res, next) {
-    const clientIp = getClientIp(req);
-    req.clientIp = clientIp;
-
-    const isAllowedByAllowlist = allowList.length ? ipInCidrList(clientIp, allowList) : true;
-    const isBlockedByBlocklist = blockList.length ? ipInCidrList(clientIp, blockList) : false;
-    const isOfficeIp = allowList.length ? ipInCidrList(clientIp, allowList) : false;
-    const allowedOffsite = Boolean(req.user?.allow_offsite_access);
-    const enforceAllowlist = offsitePolicy !== 'allow';
-
-    if (isBlockedByBlocklist) {
-      return res.status(403).json({ success: false, error: 'Acesso bloqueado pelo IP (política de segurança).' });
-    }
-
-    if (offsitePolicy === 'deny' && !isOfficeIp) {
-      if (!allowedOffsite) {
-        return res.status(403).json({ success: false, error: 'Acesso externo negado. Contate o administrador.' });
-      }
-    }
-
-    if (enforceAllowlist && !isAllowedByAllowlist && !allowedOffsite) {
-      return res.status(403).json({ success: false, error: 'IP não autorizado pela lista de acesso.' });
-    }
-
-    return next();
-  };
-};
-```
-
-### 6.2 Auth Controller (`controllers/authController.js`)
-Após validar credenciais e **antes** de criar a sessão:
-- Calcular `isOfficeIp` (contra allowlist).
-- Se `OFFSITE_POLICY=deny` **e** `!isOfficeIp` **e** `!user.allow_offsite_access` → **403** + auditoria `user.login_denied_offsite`.
-
-Ao criar `req.session.user`, incluir:
-```js
-allow_offsite_access: !!user.allow_offsite_access
-```
-
-### 6.3 Users Model/Controller
-- **Model**: incluir `allow_offsite_access` em `SELECT`/`UPDATE`.
-- **Controller**: aceitar `allow_offsite_access` (`true/false` em string), validar e persistir.
-- **Auditoria**: ao alterar flag, registrar `user.access_policy_changed` com `{ target_user_id, allow_offsite_access }`.
-
-### 6.4 WhoAmI API
-- `GET /api/whoami` → `{ ip, ips, userAgent, accessScope }`.
-
-### 6.5 Status Controller
-- Injetar `clientIp` e `accessScope` no `render('relatorios/status', ...)`.
+### 6.4 Views / Rotas
+- `routes/web` injeta `clientIp`, `accessScope` e `accessRestrictions` na renderização de `/relatorios/status`.
 
 ---
 
 ## 7) Front-end — Tarefas
 
-### 7.1 Edição de Usuário (EJS existente)
-Adicionar campo:
-```ejs
-<label for="allow_offsite_access" class="form-label">Acesso externo</label>
-<select id="allow_offsite_access" name="allow_offsite_access" class="form-select">
-  <option value="false" <%= user && !user.allow_offsite_access ? 'selected' : '' %>>Interno (bloquear fora da empresa)</option>
-  <option value="true"  <%= user &&  user.allow_offsite_access ? 'selected' : '' %>>Externo habilitado</option>
-</select>
-<small class="form-text">Permite acesso fora da rede corporativa para este usuário.</small>
-```
-
-### 7.2 `/relatorios/status` (EJS)
-Adicionar bloco:
-```ejs
-<dl class="row">
-  <dt class="col-sm-3">Seu IP</dt>
-  <dd class="col-sm-9"><%= clientIp %></dd>
-
-  <dt class="col-sm-3">Acesso do usuário</dt>
-  <dd class="col-sm-9">
-    <span class="badge <%= accessScope === 'external_allowed' ? 'bg-success' : 'bg-secondary' %>">
-      <%= accessScope === 'external_allowed' ? 'Externo habilitado' : 'Interno' %>
-    </span>
-  </dd>
-</dl>
-```
-
-### 7.3 (Opcional) Badge no perfil/navbar
-- Injetar `res.locals.currentUserAccessScope` e exibir badge pequeno (classe `.badge`).
+- Form Admin mantém o select “Tipo de acesso” (Interno/Externo) para o flag legado e adiciona a seção “Restrições de acesso” com toggles para IP/horário e listas dinâmicas (JS em `public/js/admin-user-form.js`).
+- `/relatorios/status` mostra IP atual, badge de escopo (liberado, restrito por IP, restrito por horário, bloqueado) e lista os IPs/horários configurados.
 
 ---
 
 ## 8) Testes
 
-### 8.1 Unitários (Jest)
-- `ip-access-guard`:
-  - IP em blocklist → 403.
-  - OFFSITE `deny` + IP externo + flag false → 403.
-  - OFFSITE `deny` + IP externo + flag true → `next()`.
-- Parsers: CSV → arrays; CIDR matching.
-
-### 8.2 Integração (Supertest)
-- `PUT /api/users/:id` (ADMIN) altera `allow_offsite_access` → 200 e persiste.
-- `GET /api/whoami` retorna `accessScope`.
-
-### 8.3 Fluxo de Login
-- Simular IP externo (header `X-Forwarded-For`) com `TRUST_PROXY=1`:
-  - OFFSITE=deny + user.flag=false → 403 + auditoria.
-  - OFFSITE=deny + user.flag=true → 200 cria sessão.
-
-### 8.4 UI (Smoke Manual)
-- Form de usuário salva flag.
-- `/relatorios/status` mostra IP e badge correto.
+1. **Unitários**: `__tests__/ip-access.test.js` cobre normalização e `evaluateAccess`.  
+2. **Integração**: `POST/PUT /api/users` com `accessRestrictions`, `/api/whoami` refletindo escopo/IP.  
+3. **Login**: simular IP bloqueado/liberado; garantir auditoria e mensagens corretas.  
+4. **UI**: smoke no formulário (criar/editar) e painel `/relatorios/status`.
 
 ---
 
-## 9) Critérios de Aceite (DoD)
+## 9) Critérios de Aceite
 
-- [ ] Migration aplicada e reversível.  
-- [ ] Variáveis `.env` documentadas e lidas.  
-- [ ] Middleware ativo em PROD/DEV, sem quebrar rotas públicas.  
-- [ ] Login respeita OFFSITE_POLICY e exceção por usuário.  
-- [ ] API `/api/whoami` disponível com `success:true`.  
-- [ ] **/relatorios/status** exibe IP e badge.  
-- [ ] UI Admin permite ajustar flag por usuário (com CSRF).  
-- [ ] Auditoria grava mudanças de política e tentativas negadas.  
-- [ ] Testes unit/integration passando (CI verde).
+- Migration aplicada (DEV) e fixtures de teste atualizados.  
+- `.env` com `TRUST_PROXY` + `IP_BLOCKLIST` configurados/documentados.  
+- Login/sessão derrubam acessos fora das regras.  
+- `/api/whoami` + `/relatorios/status` exibem IP/escopo/restrições.  
+- Form Admin salva/edita restrições e mantém compatibilidade com o flag legado.  
+- Auditoria grava bloqueios e mudanças de política.  
+- Testes unitários/integrados passando.
 
 ---
 
 ## 10) Plano de Deploy & Rollback
 
 **Deploy**
-1. Aplicar migration no **PG**.
-2. Definir `.env` em DEV/PROD (`TRUST_PROXY=1`, `OFFSITE_POLICY`, `IP_ALLOWLIST`).  
-3. `pm2 reload` do app; validar `/api/health`.
+1. Aplicar `20251219_add_access_restrictions_to_users.sql`.
+2. Garantir `.env` com `TRUST_PROXY=1`, `IP_BLOCKLIST` revisado e `OFFSITE_POLICY=allow` (fallback liberado).
+3. `npm run migrate && pm2 reload ecosystem.config.js`.
 4. Smoke:
    ```bash
    curl -s http://localhost:3000/api/whoami
    curl -s http://localhost:3000/relatorios/status
+   npm test -- ip-access
    ```
-   - Acesso interno (rede) → login OK.
-   - Acesso externo sem exceção (simulado) → 403.
-   - Dar exceção ao usuário → login OK.
+5. Popular restrições por usuário somente após validação (todos começam liberados).
 
 **Rollback**
-- Reverter commit; reload PM2.  
-- (Se necessário) manter coluna no PG (é backward-compatible).  
-- Desligar política via `.env` (`OFFSITE_POLICY=allow`) enquanto reverte o código.
+- Reverter o deploy; manter a coluna (compatível).  
+- Definir `OFFSITE_POLICY=allow` até reativar a política nova.
 
 ---
 
 ## 11) Riscos & Mitigações
-- **Proxy/headers incorretos** → `req.ip` errado.  
-  **Mitigação**: `TRUST_PROXY=1` e validação de cabeçalhos (`X-Forwarded-For`).
-- **Allowlist mal configurada** → bloqueio indevido.  
-  **Mitigação**: iniciar com `OFFSITE_POLICY=allow`, popular allowlist, depois trocar para `deny`.
-- **Falsa sensação de segurança** se túnel/proxy expõe IP do balanceador.  
-  **Mitigação**: fixar cadeia de proxies confiáveis; validar IP real (Cloudflare `CF-Connecting-IP` quando aplicável).
+- **Proxy mal configurado** → IP incorreto. Mitigar com `TRUST_PROXY=1` e cadeias conhecidas.  
+- **Blocklist agressiva** → bloqueio geral. Testar entradas em DEV antes de mover para PROD.  
+- **Admins esquecem de preencher IPs** → usuários trancados. Começar com todos liberados e documentar checklist no deploy.
 
 ---
 
-## 12) Comandos Úteis (DEV/PROD)
+## 12) Comandos Úteis
 
 ```bash
-# Ver IP e escopo
+# Diagnóstico
 curl -s http://localhost:3001/api/whoami | jq
 
-# Testar login negado (simulando IP externo via X-Forwarded-For)
-curl -i -H "X-Forwarded-For: 203.0.113.10" -X POST \
-  -d "email=user@late&password=***" http://localhost:3001/login
+# Simular IP bloqueado (com trust proxy ativo)
+curl -i -H "X-Forwarded-For: 203.0.113.10" \
+  -d "email=admin@late&password=***" http://localhost:3001/login
 
-# Alterar flag do usuário (ex.: id=42) – requer cookie/admin
+# Atualizar restrições via API
 curl -X PUT -H "Content-Type: application/json" \
-  -d '{"allow_offsite_access":"true"}' \
-  http://localhost:3001/api/users/42
+  -d '{"accessRestrictions":{"ip":{"enabled":true,"allowed":["191.9.115.129"]}}}' \
+  http://localhost:3001/api/users/6
 ```
 
 ---
 
-## 13) Entregáveis (arquivos/touch points)
-
-- `middleware/ip-access-guard.js`  
-- `controllers/authController.js` (checagem OFFSITE + sessão com flag)  
-- `models/usersModel.js` (coluna `allow_offsite_access`)  
-- `controllers/usersController.js` (update + auditoria)  
-- `routes/api/whoami.js`  
-- `controllers/statusController.js` (injeta `clientIp`, `accessScope`)  
-- **EJS** (form de usuário e bloco em `/relatorios/status`)  
-- `migrations/20251111_add_allow_offsite_access.sql`  
-- `__tests__/middleware/ip-access-guard.test.js`  
-- `__tests__/routes/users.update-allow-offsite.test.js`  
-- `__tests__/auth/offsite-policy-login-flow.test.js`
+## 13) Entregáveis
+- `utils/ipAccess.js`
+- `controllers/authController.js`, `middleware/auth.js`
+- `controllers/userController.js`, `models/user.js`
+- `controllers/whoamiController.js`, `routes/web.js`
+- `views/admin-user-form.ejs`, `public/js/admin-user-form.js`, `views/relatorios-status.ejs`
+- `migrations/20251219_add_access_restrictions_to_users.sql`
+- `__tests__/ip-access.test.js` + fixtures que criam `users` com `access_restrictions`
