@@ -93,10 +93,6 @@ exports.create = async (req, res) => {
     ? req.body.sectorIds.map((id) => Number(id)).filter(Number.isFinite)
     : [];
   const viewScope = normalizeViewScope(req.body.viewScope ?? req.body.view_scope);
-  const rawAllowOffsiteAccess = req.body.allow_offsite_access ?? req.body.allowOffsiteAccess;
-  const allowOffsiteAccess = rawAllowOffsiteAccess !== undefined
-    ? parseBooleanFlag(rawAllowOffsiteAccess)
-    : false;
   const accessRestrictionsInput = req.body.accessRestrictions ?? req.body.access_restrictions;
   const parsedRestrictions = parseAccessRestrictionsInput(accessRestrictionsInput);
   if (parsedRestrictions.error) {
@@ -124,7 +120,6 @@ exports.create = async (req, res) => {
       role,
       active,
       view_scope: viewScope,
-      allow_offsite_access: allowOffsiteAccess,
       access_restrictions: parsedRestrictions.data,
     });
 
@@ -194,10 +189,6 @@ exports.update = async (req, res) => {
     if (req.body.viewScope !== undefined || req.body.view_scope !== undefined) {
       payload.view_scope = normalizeViewScope(req.body.viewScope ?? req.body.view_scope);
     }
-    const rawAllowOffsiteAccess = req.body.allow_offsite_access ?? req.body.allowOffsiteAccess;
-    if (rawAllowOffsiteAccess !== undefined) {
-      payload.allow_offsite_access = parseBooleanFlag(rawAllowOffsiteAccess);
-    }
     const accessRestrictionsInput = req.body.accessRestrictions ?? req.body.access_restrictions;
     if (accessRestrictionsInput !== undefined) {
       const parsedRestrictions = parseAccessRestrictionsInput(accessRestrictionsInput);
@@ -215,7 +206,6 @@ exports.update = async (req, res) => {
 
     const currentRole = targetUser.role;
     const currentActive = targetUser.is_active;
-    const previousAllowOffsite = Boolean(targetUser.allow_offsite_access);
     const nextRole = payload.role || currentRole;
     const nextActive = payload.active !== undefined ? payload.active : currentActive;
 
@@ -237,22 +227,6 @@ exports.update = async (req, res) => {
 
     if (payload.active !== undefined && currentActive !== nextActive) {
       await UserModel.bumpSessionVersion(id);
-    }
-
-    if (
-      payload.allow_offsite_access !== undefined &&
-      previousAllowOffsite !== payload.allow_offsite_access
-    ) {
-      await logAuditEvent('user.access_policy_changed', {
-        entityType: 'user',
-        entityId: id,
-        actorUserId: sessionUserId || null,
-        metadata: {
-          previous: previousAllowOffsite,
-          next: payload.allow_offsite_access,
-          ip: req.clientIp || req.ip || null,
-        },
-      });
     }
 
     if (restrictionsChanged) {

@@ -162,7 +162,6 @@ async function requireAuth(req, res, next) {
       role: user.role,
       viewScope: user.view_scope,
       access_restrictions: user.access_restrictions,
-      allow_offsite_access: user.allow_offsite_access === true,
       sessionVersion: dbVersion,
     };
 

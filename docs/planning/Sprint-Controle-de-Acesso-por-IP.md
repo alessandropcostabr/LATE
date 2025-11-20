@@ -7,11 +7,10 @@
 
 ## 1) Objetivos e Resultados Esperados
 1. `access_restrictions` JSONB normalizado: IPs permitidos e agenda (dias/horários).
-2. Motor único (`utils/ipAccess.js`) para ler IP real, aplicar blocklist global e avaliar restrições por usuário.
+2. Motor único (`utils/ipAccess.js`) para ler IP real, aplicar blocklist global e avaliar restrições por usuário (sem flag legado de acesso externo).
 3. `/relatorios/status` e `/api/whoami` exibem IP atual, escopo aplicado e detalhes das restrições.
-4. Auditoria para bloqueios (`user.login_denied_offsite`, `user.session_denied_offsite`) e quando ADMIN altera regras.
+4. Auditoria para bloqueios e quando ADMIN altera regras.
 5. Formulário de usuário com toggles “Acesso restrito por IP” e “Acesso restrito por horário”, permitindo listar IPs/intervalos.
-6. `OFFSITE_POLICY`/`allow_offsite_access` permanecem apenas como fallback legados; novos bloqueios focam nas restrições por usuário + blocklist.
 
 ---
 
@@ -21,10 +20,10 @@
 - Helper único `utils/ipAccess.js`:
   - normaliza IP, horários e listas CIDR;
   - expõe `evaluateAccess`, `normalizeAccessRestrictions`, `getClientIp(s)`.
-- Migration: `20251219_add_access_restrictions_to_users.sql` adiciona `access_restrictions JSONB` (default `{}`) mantendo `allow_offsite_access` para retrocompatibilidade.
+- Migration: `20251219_add_access_restrictions_to_users.sql` adiciona `access_restrictions JSONB` (default `{}`) e desativa o fluxo legado por flag externa.
 - `authController` (login) e `middleware/auth` (sessão) chamam `evaluateAccess` antes de abrir/manter a sessão; bloqueios geram auditoria.
 - `/api/whoami` e `/relatorios/status` leem `req.accessEvaluation` para mostrar escopo, IP e restrições.
-- `IP_BLOCKLIST` e `TRUST_PROXY` continuam via `.env`; `OFFSITE_POLICY` fica opcional como fallback.
+- `IP_BLOCKLIST` e `TRUST_PROXY` continuam via `.env`; `OFFSITE_POLICY` pode ser ignorado (nenhuma UI/flag depende dela).
 
 ### Front-end (EJS/JS)
 - Formulário Admin → Usuários recebe seção **Restrições de acesso** com toggles para IP/horário e editor dinâmico (JS).
@@ -55,13 +54,11 @@
 ```dotenv
 TRUST_PROXY=1
 IP_BLOCKLIST=177.170.0.0/16,191.9.115.0/24
-OFFSITE_POLICY=allow        # opcional, legado; manter allow até concluir rollout
 ```
 
 **Notas**
 - `TRUST_PROXY` garante que `req.ips` reflitam a cadeia real quando estamos atrás do VIP/Cloudflare.
 - `IP_BLOCKLIST` aceita IPs/CIDR (CSV) e bloqueia imediatamente qualquer usuário, antes de olhar as restrições individuais.
-- `OFFSITE_POLICY` e a flag `allow_offsite_access` ficaram como fallback para ambientes antigos; a política efetiva passa pelo JSON `access_restrictions`.
 
 ---
 
@@ -81,7 +78,7 @@ UPDATE users
 COMMIT;
 ```
 
-> ⚠️ Pós-migrate: manter todos os usuários liberados (`access_restrictions = '{}'`) e permitir que a equipe ADMIN ajuste manualmente quem terá restrição por IP/horário. O campo `allow_offsite_access` segue disponível, mas não é mais o fator decisivo do bloqueio.
+> ⚠️ Pós-migrate: manter todos os usuários liberados (`access_restrictions = '{}'`) e permitir que a equipe ADMIN ajuste manualmente quem terá restrição por IP/horário. O fluxo legado de “Interno/Externo” foi removido da UI/API.
 ## 6) Backend — Tarefas
 
 ### 6.1 `utils/ipAccess.js`
