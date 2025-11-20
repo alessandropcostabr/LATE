@@ -8,23 +8,29 @@
       <p id="status-last-updated" class="muted">Sincronizando...</p>
 
       <%
-        const currentScope = accessScope || 'external_blocked';
+        const currentScope = accessScope || 'unrestricted';
         const scopeLabels = {
-          internal: 'Interno',
-          external_allowed: 'Externo habilitado',
-          external_blocked: 'Externo bloqueado',
+          unrestricted: 'Acesso liberado',
+          ip_restrito: 'Restrito por IP',
+          ip_restricted: 'Restrito por IP',
+          schedule_restricted: 'Restrito por horário',
+          external_allowed: 'Externo autorizado',
+          blocked: 'Bloqueado',
         };
         const scopeClasses = {
-          internal: 'badge bg-success',
+          unrestricted: 'badge bg-success',
+          ip_restrito: 'badge bg-warning',
+          ip_restricted: 'badge bg-warning',
+          schedule_restricted: 'badge bg-warning',
           external_allowed: 'badge bg-primary',
-          external_blocked: 'badge bg-secondary',
+          blocked: 'badge bg-danger',
         };
-        const scopeLabel = scopeLabels[currentScope] || currentScope;
+        const scopeLabel = scopeLabels[currentScope] || 'Acesso monitorado';
         const scopeClass = scopeClasses[currentScope] || 'badge bg-secondary';
-        const allowOffsite = user?.allow_offsite_access === true;
-        const policyLabel = allowOffsite
-          ? 'Acesso externo liberado'
-          : 'Acesso externo bloqueado';
+        const restrictions = accessRestrictions || {};
+        const restrictionTags = [];
+        if (restrictions.ip?.enabled) restrictionTags.push('IP restrito');
+        if (restrictions.schedule?.enabled) restrictionTags.push('Horário restrito');
       %>
       <div class="card" style="margin-bottom:1.5rem;">
         <div class="card-header">
@@ -38,9 +44,35 @@
               <span id="session-access-scope" class="<%= scopeClass %>"><%= scopeLabel %></span>
             </li>
             <li>
-              Política de acesso:
-              <strong id="session-access-policy"><%= policyLabel %></strong>
+              Restrições ativas:
+              <% if (!restrictionTags.length) { %>
+                <span class="text-muted">Nenhuma</span>
+              <% } else { %>
+                <%= restrictionTags.join(' · ') %>
+              <% } %>
             </li>
+            <% if (restrictions.ip?.enabled) { %>
+              <li>
+                IPs permitidos:
+                <% if (Array.isArray(restrictions.ip.allowed) && restrictions.ip.allowed.length) { %>
+                  <%= restrictions.ip.allowed.join(', ') %>
+                <% } else { %>
+                  <span class="text-muted">Nenhum IP configurado</span>
+                <% } %>
+              </li>
+            <% } %>
+            <% if (restrictions.schedule?.enabled) { %>
+              <li>
+                Horários permitidos:
+                <ul class="mt-2 mb-0">
+                  <% (restrictions.schedule.ranges || []).forEach(function(range) { %>
+                    <li class="text-muted">
+                      <strong><%= range.day.toUpperCase() %></strong> · <%= range.start %> — <%= range.end %>
+                    </li>
+                  <% }) %>
+                </ul>
+              </li>
+            <% } %>
           </ul>
         </div>
       </div>

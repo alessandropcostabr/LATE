@@ -38,7 +38,8 @@ describe('EventLogModel', () => {
     await dbPool.query(`
       CREATE TABLE users (
         id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        access_restrictions JSONB NOT NULL DEFAULT '{}'::jsonb
       );
 
       CREATE TABLE event_logs (

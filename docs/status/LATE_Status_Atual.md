@@ -10,7 +10,7 @@
 | Item | Estado | Observacao |
 |---|---|---|
 | Producao | Estável | VIP `192.168.15.250` ativo via mach2; mach3 reintegrado (standby, monitorar disco) |
-| Desenvolvimento | Ativo | Sprint 02B concluída; próximo foco: controle de acesso por IP (DEV) e hardening |
+| Desenvolvimento | Ativo | Sprint 02B concluída; controle de acesso por IP (restrições por usuário) em validação |
 | Banco | Primario em `mach2` (VIP `192.168.15.251`) | Standbys `mach1` e `mach3` ativos (`mach1_slot`, `mach3_slot`); observar health do SSD/HDD de mach3 |
 | Deploy | Automatizado | GitHub → Bastion → Ansible/PM2 |
 | Auditoria Leve | Em uso | `/relatorios/auditoria` (rascunho UI) |
@@ -39,7 +39,7 @@
 ## Proximas Acoes
 1) Monitorar o hardware de `mach3` (SMART/logs) e planejar troca preventiva do SSD/HDD.  
 2) Automatizar validação `pm2 env` (`HOST=0.0.0.0`) no pós-deploy e checagem de `.env` unificado.  
-3) Implantar Sprint de controle de acesso por IP em DEV (middleware `ipAccessGuard`, UI no `/relatorios/status` e `/api/whoami`, auditoria de tentativas).  
+3) Finalizar Sprint de controle de acesso por IP em DEV (testes para `access_restrictions`, /api/whoami e formulário Admin; preparar rollout com todos os usuários liberados por padrão).  
 4) Planejar Hardening PG + CSP (TLS em mach1, middleware Helmet report-only/enforce, `models/diagnostics.js`).  
-5) Reforçar permissões de watchers (`GET /api/messages/:id/watchers`, `messageWatcherController`) para evitar exposição fora de escopo (PR #217).  
+5) Reforçar permissões de watchers (`GET /api/messages/:id/watchers`, `messageWatcherController`) — validar escopo antes de listar watchers, conforme PR #217.  
 6) Health-check pos-playbook e alerta no Slack (proximo passo do workflow).

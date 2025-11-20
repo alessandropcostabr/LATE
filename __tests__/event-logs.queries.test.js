@@ -21,7 +21,8 @@ describe('Event log analytical queries', () => {
     await dbPool.query(`
       CREATE TABLE users (
         id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        access_restrictions JSONB NOT NULL DEFAULT '{}'::jsonb
       );
 
       INSERT INTO users (id, name)

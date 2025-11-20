@@ -38,9 +38,9 @@ Este roadmap consolida as entregas concluídas, em andamento e planejadas para o
 > Sprint concluída em 12/11/2025; próximos passos migrados para os novos sprints listados abaixo.
 
 ### Sprint — Controle de Acesso por IP
-- 🟡 Política de allowlist/blocklist com exceções por usuário (`allow_offsite_access`), middleware `ipAccessGuard`, auditoria de tentativas e UI no `/relatorios/status` + `/api/whoami` (docs/planning/Sprint-Controle-de-Acesso-por-IP.md).
-- 🟡 Revisar `GET /api/messages/:id/watchers` (PR #217) e `messageWatcherController` para garantir scope antes de liberar watchers fora do escopo do usuário e registrar o risco em `event_logs`.
-- 🟡 Evoluir a administração de usuários com bloco “Acesso externo” (IPs/URLs permitidos, dias/horários) e controles de horário para o flag interno/externo.
+- 🟡 Política por usuário (`access_restrictions` JSONB) com listas de IPs/horários + `IP_BLOCKLIST` global e diagnóstico em `/relatorios/status` + `/api/whoami` (docs/planning/Sprint-Controle-de-Acesso-por-IP.md).
+- 🟡 Revisar `GET /api/messages/:id/watchers` (PR #217) e `messageWatcherController` para checar escopo antes de listar watchers de mensagens fora do setor do usuário e registrar o risco em `event_logs`.
+- 🟡 Evoluir a Administração com o bloco “Acesso externo” (IPs/URLs permitidos, dias/horários) e controles finos para cada usuário.
 
 ### Sprint Hardening PG + CSP
 - 🔒 TLS no PostgreSQL: canário em mach1 (ssl=on + `PG_SSL=true`), rollout total após 24h sem incidentes.

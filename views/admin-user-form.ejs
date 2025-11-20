@@ -84,6 +84,38 @@
               </div>
             </div>
 
+            <div class="card mt-4">
+              <div class="card-header">
+                <h2 class="card-title mb-0">Restrições de acesso</h2>
+                <p class="card-subtitle text-muted">Restrinja o acesso por dias/horários e/ou IPs específicos.</p>
+              </div>
+              <div class="card-body">
+                <div class="mb-4">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="accessScheduleToggle">
+                    <label class="form-check-label" for="accessScheduleToggle">Acesso restrito por horário</label>
+                  </div>
+                  <div id="scheduleRangesContainer" class="mt-3 access-restrictions__schedule" aria-live="polite"></div>
+                  <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="addScheduleRangeBtn">
+                    Adicionar faixa de horário
+                  </button>
+                  <small class="d-block text-muted mt-1">Defina o dia da semana e o intervalo permitido (formato HH:MM).</small>
+                </div>
+
+                <div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="accessIpToggle">
+                    <label class="form-check-label" for="accessIpToggle">Acesso restrito por IP</label>
+                  </div>
+                  <div id="ipListContainer" class="mt-3 access-restrictions__ip-list" aria-live="polite"></div>
+                  <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="addIpButton">
+                    Adicionar IP
+                  </button>
+                  <small class="d-block text-muted mt-1">Use IPs externos (ex.: 177.200.210.133). Se estiver desativado, o acesso é liberado para qualquer IP.</small>
+                </div>
+              </div>
+            </div>
+
             <div class="d-flex justify-content-end mt-4 gap-2">
               <a href="/admin/usuarios" class="btn btn-outline-secondary">Cancelar</a>
               <button type="submit" class="btn btn-primary">
