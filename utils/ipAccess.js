@@ -126,10 +126,10 @@ function normalizeAccessRestrictions(raw) {
             const parsed = ipaddr.parse(normalized);
             return parsed.toNormalizedString();
           } catch (err) {
-            return normalized;
+            return null;
           }
         })
-        .filter((entry) => entry.length > 0)
+        .filter((entry) => entry && entry.length > 0)
     )
   );
   base.ip = {
