@@ -30,7 +30,7 @@ Fechar a Sprint 02B com a camada visual de auditoria, telemetria do cluster e de
 1. **Painel Status Operacional (`/relatorios/status`)**
    - Cards com versão, uptime, uso de memória e hostnames.
    - Ping do PostgreSQL (latência, papel primário/standby, peers conectados).
-   - Saúde do VIP 192.168.15.250 e do túnel Cloudflare (timeout/erros).
+   - Saúde do VIP 192.168.0.250 e do túnel Cloudflare (timeout/erros).
    - Resumo Prometheus agrupado por nó (UP, Load1, CPU, Memória, RootFS, RX/TX).
 
 2. **Atualização de Navegação e Equipe**

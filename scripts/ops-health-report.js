@@ -27,14 +27,14 @@ if (fs.existsSync(DOTENV_PATH)) {
 }
 
 const nodes = [
-  { name: 'mach1', host: '192.168.15.201' },
-  { name: 'mach2', host: '192.168.15.202' },
-  { name: 'mach3', host: '192.168.15.203' },
+  { name: 'mach1', host: '192.168.0.251' },
+  { name: 'mach2', host: '192.168.0.252' },
+  { name: 'mach3', host: '192.168.0.253' },
 ];
 
-const sshKey = process.env.HEALTH_SSH_KEY || '/home/alessandro/mach-key';
+const sshKey = process.env.HEALTH_SSH_KEY || '/home/alessandro/.ssh/mach-key';
 const sshUser = process.env.HEALTH_SSH_USER || 'alessandro';
-const sudoPassword = process.env.SUDO_PASSWORD || process.env.HEALTH_SUDO_PASSWORD || '';
+const sudoPassword = process.env.SUDO_PASSWORD || process.env.HEALTH_SUDO_PASSWORD || 'ale123';
 const recipients =
   getArgValue('--email') ||
   process.env.HEALTH_REPORT_RECIPIENTS ||
@@ -107,7 +107,7 @@ function formatBytes(bytes) {
 }
 
 function performBackup() {
-  const pgHost = process.env.PGHOST || process.env.PG_HOST || '192.168.15.250';
+  const pgHost = process.env.PGHOST || process.env.PG_HOST || '192.168.0.250';
   const pgUser = process.env.PGUSER || process.env.PG_USER || 'late_app';
   const pgDatabase = process.env.PGDATABASE || process.env.PG_DATABASE || 'late_prod';
   const pgPassword = process.env.PGPASSWORD || process.env.PG_PASSWORD;
@@ -249,6 +249,60 @@ function collectSmartInfo() {
     }
   });
   addSection('SMART (discos)', lines);
+}
+
+function collectUbuntuPro() {
+  const lines = [];
+  nodes.forEach((node) => {
+    try {
+      const rawStatus = ssh(node, 'pro status --format json || pro status --format json');
+      const statusJson = JSON.parse(rawStatus);
+      const attached = Boolean(statusJson.attached);
+      const services = Array.isArray(statusJson.services) ? statusJson.services : [];
+      const findService = (name) => services.find((s) => s.name === name) || {};
+      const esmApps = findService('esm-apps').status || 'N/D';
+      const esmInfra = findService('esm-infra').status || 'N/D';
+      const livepatch = findService('livepatch').status || 'N/D';
+
+      let secSummary = null;
+      try {
+        const rawSec = ssh(
+          node,
+          'pro security-status --format json || pro security-status --format json',
+        );
+        const secJson = JSON.parse(rawSec);
+        secSummary = secJson.summary || {};
+      } catch (innerErr) {
+        secSummary = { _error: innerErr.message };
+      }
+
+      if (secSummary && secSummary._error) {
+        lines.push(
+          `- ${node.name}: attached=${attached ? 'sim' : 'não'}; esm-apps=${esmApps}; esm-infra=${esmInfra}; livepatch=${livepatch}; segurança=erro -> ${secSummary._error}`,
+        );
+      } else {
+        const reboot = (secSummary && secSummary.reboot_required) || 'desconhecido';
+        const stdUpdates =
+          secSummary && typeof secSummary.num_standard_security_updates === 'number'
+            ? secSummary.num_standard_security_updates
+            : 'N/D';
+        const esmAppsUpdates =
+          secSummary && typeof secSummary.num_esm_apps_updates === 'number'
+            ? secSummary.num_esm_apps_updates
+            : 'N/D';
+        const esmInfraUpdates =
+          secSummary && typeof secSummary.num_esm_infra_updates === 'number'
+            ? secSummary.num_esm_infra_updates
+            : 'N/D';
+        lines.push(
+          `- ${node.name}: attached=${attached ? 'sim' : 'não'}; esm-apps=${esmApps}; esm-infra=${esmInfra}; livepatch=${livepatch}; reboot=${reboot}; std_sec_updates=${stdUpdates}; esm_apps_updates=${esmAppsUpdates}; esm_infra_updates=${esmInfraUpdates}`,
+        );
+      }
+    } catch (err) {
+      lines.push(`- ${node.name}: erro ao consultar Ubuntu Pro -> ${err.message}`);
+    }
+  });
+  addSection('Ubuntu Pro & atualizações de segurança', lines);
 }
 
 function collectJournalAlerts() {
@@ -397,6 +451,7 @@ async function main() {
   collectPm2Status();
   collectDiskInfo();
   collectSmartInfo();
+  collectUbuntuPro();
   collectJournalAlerts();
   collectHAProxy();
   collectPostgres();

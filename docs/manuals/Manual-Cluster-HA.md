@@ -21,11 +21,10 @@
 ### IPs do Ambiente
 
 ```
-mach1: 192.168.15.201 (interface enp0s25)
-mach2: 192.168.15.202 (interface enp0s25)
-mach3: 192.168.15.203 (interface enp0s25)
-VirtualIP (Failover app): 192.168.15.250
-VirtualIP (Banco): 192.168.15.251
+mach1: 192.168.0.251 (interface enp0s25)
+mach2: 192.168.0.252 (interface enp0s25)
+mach3: 192.168.0.253 (interface enp0s25)
+VirtualIP (Failover app/DB): 192.168.0.250
 ```
 
 ---
@@ -82,15 +81,15 @@ quorum {
 nodelist {
         node {
                 nodeid: 1
-                ring0_addr: 192.168.15.201
+                ring0_addr: 192.168.0.251
         }
         node {
                 nodeid: 2
-                ring0_addr: 192.168.15.202
+                ring0_addr: 192.168.0.252
         }
         node {
                 nodeid: 3
-                ring0_addr: 192.168.15.203
+                ring0_addr: 192.168.0.253
         }
 }
 ```
@@ -102,8 +101,8 @@ Salve: `Ctrl+X`, `Y`, `Enter`.
 Em mach1:
 
 ```bash
-sudo scp /etc/corosync/corosync.conf alessandro@192.168.15.202:/tmp/corosync.conf
-sudo scp /etc/corosync/corosync.conf alessandro@192.168.15.203:/tmp/corosync.conf
+sudo scp /etc/corosync/corosync.conf alessandro@192.168.0.252:/tmp/corosync.conf
+sudo scp /etc/corosync/corosync.conf alessandro@192.168.0.253:/tmp/corosync.conf
 ```
 
 Em mach2 e mach3:
@@ -152,7 +151,7 @@ Em mach2 (DC atual):
 
 ```bash
 sudo crm configure primitive VirtualIP ocf:heartbeat:IPaddr2 \
-  params ip=192.168.15.250 cidr_netmask=24 nic=enp0s25 \
+  params ip=192.168.0.250 cidr_netmask=24 nic=enp0s25 \
   op monitor interval=30s
 ```
 
@@ -177,7 +176,7 @@ Deve mostrar todos os nós **Online**.
 ### Verificar em qual nó está o IP Virtual
 
 ```bash
-ip addr show enp0s25 | grep 192.168.15.250
+ip addr show enp0s25 | grep 192.168.0.250
 ```
 
 O nó que mostra o IP é o ativo.
@@ -215,7 +214,7 @@ sudo crm configure show | grep standby
 ```
 
 - Atualize o HAProxy para desabilitar o backend (`server <host> ... check disabled`).
-- Garanta que os standbys PostgreSQL apontem para o VIP `192.168.15.251` e que apenas nós ativos mantenham slots (`SELECT * FROM pg_replication_slots;`).
+- Garanta que os standbys PostgreSQL apontem para o VIP `192.168.0.250` e que apenas nós ativos mantenham slots (`SELECT * FROM pg_replication_slots;`).
 - Para reintegrar após o reparo:
 
 ```bash
@@ -233,7 +232,7 @@ sudo systemctl start corosync pacemaker
    sudo systemctl stop postgresql
    sudo mv /var/lib/postgresql/16/main /var/lib/postgresql/16/main.$(date +%Y%m%d%H%M%S).bak
    sudo -u postgres env PGPASSWORD='LATErepl@2025' /usr/lib/postgresql/16/bin/pg_basebackup \
-     -h 192.168.15.251 -U late_repl -D /var/lib/postgresql/16/main \
+     -h 192.168.0.250 -U late_repl -D /var/lib/postgresql/16/main \
      -X stream -P -R --slot=mach3_slot
    sudo chmod 700 /var/lib/postgresql/16/main
    sudo systemctl start postgresql
@@ -247,7 +246,7 @@ sudo systemctl start corosync pacemaker
    - Aguarde `crm status` mostrar `mach3` como `Unpromoted`.
 4. **Reabilitar backend no HAProxy**  
    - Atualize `/etc/haproxy/haproxy.cfg` removendo `check disabled` do servidor mach3 e recarregue o serviço onde o HAProxy estiver ativo (`sudo systemctl reload haproxy` no nó que detém o VIP).  
-   - Teste com `curl http://192.168.15.203:3100/health` e `curl http://192.168.15.250/health`.
+   - Teste com `curl http://192.168.0.253:3100/health` e `curl http://192.168.0.250/health`.
 5. **PM2**  
    ```bash
    cd ~/late-prod
@@ -273,7 +272,7 @@ sudo systemctl stop corosync
 **Em mach2 ou mach3**, verifique se o IP migrou:
 
 ```bash
-ip addr show enp0s25 | grep 192.168.15.250
+ip addr show enp0s25 | grep 192.168.0.250
 ```
 
 O IP deve aparecer em outro nó em até 30 segundos.
@@ -327,8 +326,8 @@ cat /etc/corosync/corosync.conf | grep ring0_addr
 
 2. Verificar conectividade:
 ```bash
-ping 192.168.15.202
-ping 192.168.15.203
+ping 192.168.0.252
+ping 192.168.0.253
 ```
 
 3. Permitir firewall:

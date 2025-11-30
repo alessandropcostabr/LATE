@@ -15,7 +15,7 @@ Entregar status operacional do LATE **sem** integrar Prometheus. Campos:
 ## 🔧 .env (variáveis)
 ```dotenv
 # VIP aponta para a porta do app Node (PM2) em PROD
-VIP_HEALTH_URL=http://192.168.15.250:3100/health
+VIP_HEALTH_URL=http://192.168.0.250:3100/health
 TUNNEL_HEALTH_URL=https://late.amah.com.br/health
 ```
 

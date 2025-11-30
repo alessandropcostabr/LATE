@@ -2,20 +2,21 @@
 **Data:** 11/11/2025  
 **Ambiente:** DEV (`late-dev`) + PROD (`late-prod`)
 
-> Atualizado em 2025/11/12. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app `192.168.15.250` / VIP DB `192.168.15.251`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
+> Atualizado em 2025/11/12. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app/DB `192.168.0.250`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
 > Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
 
 
 ## Situacao Geral
 | Item | Estado | Observacao |
 |---|---|---|
-| Producao | Estável | VIP `192.168.15.250` ativo via mach2; mach3 reintegrado (standby, monitorar disco) |
+| Producao | Estável | VIP `192.168.0.250` ativo via mach2; mach3 reintegrado (standby, monitorar disco) |
 | Desenvolvimento | Ativo | Sprint 02B concluída; controle de acesso por IP (restrições por usuário) em validação |
-| Banco | Primario em `mach2` (VIP `192.168.15.251`) | Standbys `mach1` e `mach3` ativos (`mach1_slot`, `mach3_slot`); observar health do SSD/HDD de mach3 |
+| Banco | Primario em `mach2` (VIP `192.168.0.250`) | Standbys `mach1` e `mach3` ativos (`mach1_slot`, `mach3_slot`); observar health do SSD/HDD de mach3 |
 | Deploy | Automatizado | GitHub → Bastion → Ansible/PM2 |
 | Auditoria Leve | Em uso | `/relatorios/auditoria` (rascunho UI) |
 | Status Operacional | Disponivel | `/relatorios/status` |
 | Guacamole | Operacional | Conexoes SSH para mach1‑3 via web |
+| Monitoramento | Reforçado | Cron + Landscape SaaS (conta `eltdqqsb`) coletam health-report com checagem de Ubuntu Pro/ESM/Livepatch |
 
 ## Branches / Worktrees
 - **`develop` → `~/late-dev` → :3001**

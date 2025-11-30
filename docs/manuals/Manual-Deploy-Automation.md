@@ -19,7 +19,7 @@
 - Usuário `alessandro` com acesso SSH usando a chave `~/.ssh/mach-key`.
 - Secrets configurados no repositório:
   - `BASTION_HOST`, `BASTION_USER`, `BASTION_SSH_KEY`, `BASTION_SUDO_PASS`.
-- Primário PostgreSQL exposto via VIP `192.168.15.251` (slot físico por nó standby, ex.: `mach1_slot`).
+- Primário PostgreSQL exposto via VIP `192.168.0.250` (slot físico por nó standby, ex.: `mach1_slot`).
 - Réplicas sincronizadas reportando `pg_is_in_recovery() = true` e `pg_stat_replication` ≥ 2 conexões.
 - `.env` padronizado nos três nós (somente `APP_VERSION=2.5.1@machX` varia). Remova quaisquer `.env.prod` restantes antes do deploy.
 
@@ -58,7 +58,7 @@ ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml
 - **Health-check 502/503 após deploy**:
   1. `pm2 env <id> | grep HOST` — se estiver `127.0.0.1`, reinicie com `pm2 delete` + `pm2 start ecosystem.config.js --only late-prod`.
   2. Confirme HAProxy (`sudo tail -n 50 /var/log/haproxy.log`) e desabilite backends inativos (`server ... check disabled`).
-  3. Valide `/api/health` via VIP e túnel (`curl http://192.168.15.250/health` e `curl https://late.miahchat.com/api/health`).
+  3. Valide `/api/health` via VIP e túnel (`curl http://192.168.0.250/health` e `curl https://late.miahchat.com/api/health`).
 - **Divergência de `.env`**: sincronize manualmente e valide URLs (`VIP_HEALTH_URL`, `TUNNEL_HEALTH_URL`), mantendo somente `.env` como fonte de configuração.
 
 ## 6. Próximos Passos

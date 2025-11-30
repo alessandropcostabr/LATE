@@ -9,8 +9,8 @@
 - **Node Exporter** (9100) exporta métricas
 
 ## 2. URLs
-- Prometheus: `http://192.168.15.201:9090`
-- Grafana: `http://192.168.15.201:3000` (admin/admin)
+- Prometheus: `http://192.168.0.251:9090`
+- Grafana: `http://192.168.0.251:3000` (admin/admin)
 
 ## 3. Serviços
 ```bash
