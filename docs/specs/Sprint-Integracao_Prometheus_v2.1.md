@@ -9,7 +9,7 @@ Integrar Prometheus a `/api/status` e à view via tabela **Resumo Prometheus por
 
 ## 🔧 .env
 ```dotenv
-PROMETHEUS_URL=http://192.168.15.201:9090
+PROMETHEUS_URL=http://192.168.0.251:9090
 ```
 
 ## 🧠 Controller — PromQL e agregação

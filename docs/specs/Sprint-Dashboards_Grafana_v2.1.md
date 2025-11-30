@@ -10,7 +10,7 @@ Embutir painéis Grafana via `iframe` no bloco "Dashboards Grafana" do `/relator
 ## 🔧 .env
 ```dotenv
 GRAFANA_EMBED_ENABLED=true
-GRAFANA_BASE=http://192.168.15.201:3000
+GRAFANA_BASE=http://192.168.0.251:3000
 GRAFANA_DASH_UID=node-exporter-full-uid
 GRAFANA_PANELS=2,74
 ```

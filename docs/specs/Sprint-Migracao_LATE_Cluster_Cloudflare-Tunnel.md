@@ -36,7 +36,7 @@ Migrar a aplicação **LATE** (diretório `~/late-prod`) para um **cluster HA** 
 - Acesso SSH com sudo nos três nós.
 - Hostname no Cloudflare (ex.: `late.amah.com.br`).
 - Credenciais do **Cloudflare Tunnel** (arquivo `credentials-file` JSON).
-- `.env` de produção contendo: `DB_DRIVER=pg`, `PG_HOST` (VIP 192.168.15.250), `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`, `PG_SSL`, `SESSION_SECRET` forte.
+- `.env` de produção contendo: `DB_DRIVER=pg`, `PG_HOST` (VIP 192.168.0.250), `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`, `PG_SSL`, `SESSION_SECRET` forte.
 
 ---
 
@@ -47,7 +47,7 @@ Migrar a aplicação **LATE** (diretório `~/late-prod`) para um **cluster HA** 
 ```bash
 sudo crm status
 ip -4 addr show <iface> | grep -E '192\.168\.15\.250'  # ajuste VIP/iface
-ping -c2 192.168.15.250
+ping -c2 192.168.0.250
 ```
 
 **Critérios**
@@ -160,7 +160,7 @@ pm2 status
 5. **Pacemaker resource** (exemplo — ajuste nomes/iface/VIP):
    ```bash
    sudo crm configure primitive VirtualIP ocf:heartbeat:IPaddr2 \
-     params ip=192.168.15.250 cidr_netmask=24 nic=enp0s25 op monitor interval=20s
+     params ip=192.168.0.250 cidr_netmask=24 nic=enp0s25 op monitor interval=20s
 
    sudo crm configure primitive Cloudflared systemd:cloudflared op monitor interval=20s
 

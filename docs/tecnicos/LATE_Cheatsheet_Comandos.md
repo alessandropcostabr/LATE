@@ -1,7 +1,7 @@
 # LATE — Cheatsheet de Comandos (v2.1)
 **Atualizado:** 2025/11/12
 
-> Atualizado em 2025/11/12. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app `192.168.15.250` / VIP DB `192.168.15.251`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
+> Atualizado em 2025/11/12. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app/DB `192.168.0.250`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
 > Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
 
 
@@ -67,9 +67,9 @@ pm2 env $(pm2 list | awk '/late-prod/ {print $4}') | grep HOST
 
 ## PostgreSQL
 ```bash
-# PROD (VIP 192.168.15.251)
-psql -h 192.168.15.251 -d late_prod -c "SELECT now(), pg_is_in_recovery();"
-psql -h 192.168.15.251 -d late_prod -c "SELECT pid, client_addr, state FROM pg_stat_replication;"
+# PROD (VIP 192.168.0.250)
+psql -h 192.168.0.250 -d late_prod -c "SELECT now(), pg_is_in_recovery();"
+psql -h 192.168.0.250 -d late_prod -c "SELECT pid, client_addr, state FROM pg_stat_replication;"
 pg_dump late_prod | gzip > backup_prod_$(date +%Y%m%d).sql.gz
 ```
 
@@ -81,7 +81,7 @@ sudo -u postgres psql -c "SELECT slot_name, active FROM pg_replication_slots;"
 
 ### Ajustes de standby (`mach1`)
 ```bash
-sudo sed -i "s/host=192.168.15.203/host=192.168.15.251/" /var/lib/postgresql/16/main/postgresql.auto.conf
+sudo sed -i "s/host=192.168.0.253/host=192.168.0.250/" /var/lib/postgresql/16/main/postgresql.auto.conf
 sudo systemctl restart postgresql
 tail -n 20 /var/log/postgresql/postgresql-16-main.log
 ```
@@ -94,7 +94,7 @@ sudo crm resource list
 sudo crm configure show | grep -E "no-quorum|standby"
 
 # Ver VIP no no atual
-ip addr show enp0s25 | grep 192.168.15.250
+ip addr show enp0s25 | grep 192.168.0.250
 
 # Simular failover (em 1 no)
 sudo systemctl stop corosync
@@ -111,12 +111,12 @@ sudo crm node online <hostname>
 sudo tail -n 50 /var/log/haproxy.log
 sudo sed -n '1,120p' /etc/haproxy/haproxy.cfg
 # Desabilitar backend indisponível (ex.: mach3 off)
-sudo sed -i 's/server mach3 .* check$/server mach3 192.168.15.203:3100 check disabled/' /etc/haproxy/haproxy.cfg
+sudo sed -i 's/server mach3 .* check$/server mach3 192.168.0.253:3100 check disabled/' /etc/haproxy/haproxy.cfg
 sudo systemctl reload haproxy
 ```
 
 ## Guacamole
-- URL: `http://192.168.15.201:8080/guacamole/`
+- URL: `http://192.168.0.251:8080/guacamole/`
 
 ## Ansible (basico)
 ```bash
@@ -131,7 +131,7 @@ openssl rand -hex 32
 
 # .env (produção)
 HOST=0.0.0.0
-PGHOST=192.168.15.250   # VIP do cluster
+PGHOST=192.168.0.250   # VIP do cluster
 PG_SSL=require
 SESSION_SECRET=<secret>
 ```

@@ -1066,7 +1066,7 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
 
 1. **Painel “Status Operacional” em `/relatorios/status`**
    - Cards de aplicação (versão, uptime, consumo) e banco (latência do `SELECT 1`, papel primário/standby, peers conectados).
-   - Saúde do VIP 192.168.15.250 e do túnel Cloudflare (timeout/erros destacados).
+   - Saúde do VIP 192.168.0.250 e do túnel Cloudflare (timeout/erros destacados).
    - Consolidação Prometheus (UP, Load1, CPU, Memória, RootFS, RX/TX) agrupada por `mach1`, `mach2`, `mach3`.
    - Auto-refresh a cada 10s sem recarregar a página.
 
