@@ -1,0 +1,46 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Dashboard CRM</h1>
+      <p class="muted">Visão rápida de pipeline, atividades e oportunidades recentes.</p>
+    </div>
+  </header>
+
+  <section class="card-grid">
+    <article class="card" aria-labelledby="pipelineChartTitle">
+      <header class="card__header">
+        <h2 id="pipelineChartTitle">Pipeline por mês/estágio</h2>
+        <p class="muted">Últimos meses, agrupado por estágio.</p>
+      </header>
+      <div class="card__body">
+        <canvas id="pipelineChart" height="200" aria-label="Pipeline por mês"></canvas>
+      </div>
+    </article>
+
+    <article class="card" aria-labelledby="activityChartTitle">
+      <header class="card__header">
+        <h2 id="activityChartTitle">Atividades por owner</h2>
+        <p class="muted">Status das atividades por responsável.</p>
+      </header>
+      <div class="card__body">
+        <canvas id="activityChart" height="200" aria-label="Atividades por owner"></canvas>
+      </div>
+    </article>
+  </section>
+
+  <section class="card" aria-labelledby="recentOppsTitle">
+    <header class="card__header">
+      <h2 id="recentOppsTitle">Oportunidades recentes</h2>
+      <p class="muted">Últimas oportunidades criadas ou visualizadas.</p>
+    </header>
+    <div class="card__body">
+      <ul id="recentOpportunities" class="list simple-list" aria-live="polite"></ul>
+    </div>
+  </section>
+</main>
+<script src="/js/chart.umd.js"></script>
+<script src="/js/crm-dashboard.js"></script>
+<%- include('partials/footer') %>
