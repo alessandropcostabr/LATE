@@ -5,6 +5,7 @@ jest.mock('../models/pipeline');
 jest.mock('../models/lead');
 jest.mock('../models/opportunity');
 jest.mock('../models/activity');
+jest.mock('../models/contact');
 
 jest.mock('../middleware/csrf', () => jest.fn((_req, _res, next) => next()));
 
@@ -12,6 +13,7 @@ const PipelineModel = require('../models/pipeline');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
 const ActivityModel = require('../models/activity');
+const ContactModel = require('../models/contact');
 
 const crmController = require('../controllers/crmController');
 
@@ -23,6 +25,8 @@ function createApp() {
     next();
   });
   app.post('/crm/leads', crmController.createLead);
+  app.post('/crm/leads/import-csv', crmController.importLeadsCsv);
+  app.post('/crm/leads/import-csv/preview', crmController.previewLeadsCsv);
   app.post('/crm/opportunities', crmController.createOpportunity);
   app.patch('/crm/opportunities/:id/stage', crmController.moveOpportunityStage);
   return supertest(app);
@@ -123,6 +127,31 @@ describe('CRM API', () => {
     expect(res.body.error).toMatch(/Campos obrigatórios/);
   });
 
+
+  test('preview CSV identifica duplicados por email/telefone', async () => {
+    ContactModel.findByIdentifiers.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'c1' });
+    const request = createApp();
+    const csv = 'name,phone,email\nAna,119,ana@test.com\nBia,118,bia@test.com';
+    const res = await request.post('/crm/leads/import-csv/preview').send({ csv });
+    expect(res.status).toBe(200);
+    expect(res.body.data.total).toBe(2);
+    expect(res.body.data.duplicates).toBe(1);
+    expect(res.body.data.rows[1].duplicate).toBe(true);
+  });
+
+  test('import CSV pula duplicados quando skip_duplicates=true', async () => {
+    ContactModel.findByIdentifiers
+      .mockResolvedValueOnce({ id: 'dup1' }) // primeira linha duplicada
+      .mockResolvedValueOnce(null);          // segunda linha ok
+    LeadModel.createLead.mockResolvedValue({ id: 'lead-new' });
+    const request = createApp();
+    const csv = 'name,phone,email\nAna,119,ana@test.com\nBia,118,bia@test.com';
+    const res = await request.post('/crm/leads/import-csv').send({ csv, skip_duplicates: true });
+    expect(res.status).toBe(200);
+    expect(res.body.data.imported).toBe(1);
+    expect(res.body.data.skipped).toBe(1);
+    expect(LeadModel.createLead).toHaveBeenCalledTimes(1);
+  });
   test('mover estágio válido', async () => {
     OpportunityModel.findById.mockResolvedValue({ id: 'o1', stage_id: 's1', pipeline_id: 'p1', amount: 100 });
     PipelineModel.getStageById

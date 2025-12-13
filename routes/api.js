@@ -274,6 +274,11 @@ router.get(
   crmController.exportOpportunitiesCsv
 );
 router.post(
+  '/crm/leads/import-csv/preview',
+  ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
+  crmController.previewLeadsCsv
+);
+router.post(
   '/crm/leads/import-csv',
   ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
   crmController.importLeadsCsv

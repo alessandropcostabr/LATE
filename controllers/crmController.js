@@ -5,6 +5,7 @@ const PipelineModel = require('../models/pipeline');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
 const ActivityModel = require('../models/activity');
+const ContactModel = require('../models/contact');
 const CrmStats = require('../models/crmStats');
 const CustomFieldModel = require('../models/customField');
 const CustomFieldValueModel = require('../models/customFieldValue');
@@ -416,6 +417,52 @@ async function exportActivitiesICS(req, res) {
   }
 }
 
+
+function splitCsvLine(line = '') {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i += 1; continue; }
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  result.push(current);
+  return result;
+}
+
+function parseCsvRows(csv = '') {
+  const lines = csv.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return { header: [], rows: [] };
+  const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const rows = lines.slice(1).map((line) => splitCsvLine(line));
+  return { header, rows };
+}
+
+function mapLeadRow(header, row) {
+  const idx = (name) => header.indexOf(name);
+  const get = (name) => {
+    const i = idx(name);
+    return i >= 0 ? (row[i] || '').trim() : '';
+  };
+  return {
+    name: get('name'),
+    phone: get('phone') || get('telefone') || get('celular'),
+    email: get('email'),
+    source: get('source') || get('fonte') || null,
+    notes: get('notes') || get('observacao') || null,
+  };
+}
+
 function toCsvRow(values = []) {
   return values
     .map((v) => {
@@ -460,35 +507,61 @@ async function exportOpportunitiesCsv(_req, res) {
   }
 }
 
+
+async function previewLeadsCsv(req, res) {
+  try {
+    const csv = req.body?.csv;
+    if (!csv || typeof csv !== 'string') {
+      return res.status(400).json({ success: false, error: 'CSV obrigatório' });
+    }
+    const { header, rows } = parseCsvRows(csv);
+    if (!rows.length) return res.json({ success: true, data: { total: 0, duplicates: 0, rows: [] } });
+
+    const parsed = [];
+    let duplicates = 0;
+    for (const raw of rows) {
+      const lead = mapLeadRow(header, raw);
+      if (!lead.name && !lead.phone && !lead.email) continue;
+      const dup = await ContactModel.findByIdentifiers({ phone: lead.phone, email: lead.email });
+      parsed.push({ ...lead, duplicate: Boolean(dup), contact_id: dup?.id || null });
+      if (dup) duplicates += 1;
+    }
+    return res.json({ success: true, data: { total: parsed.length, duplicates, rows: parsed } });
+  } catch (err) {
+    console.error('[crm] previewLeadsCsv', err);
+    return res.status(500).json({ success: false, error: 'Erro ao pré-visualizar CSV' });
+  }
+}
+
 async function importLeadsCsv(req, res) {
   try {
     const csv = req.body?.csv;
     if (!csv || typeof csv !== 'string') {
       return res.status(400).json({ success: false, error: 'CSV obrigatório' });
     }
-    const lines = csv.split(/\r?\n/).filter((l) => l.trim());
-    const dataLines = lines.slice(1); // assume primeira linha cabeçalho
-    let created = 0;
-    for (const line of dataLines) {
-      const cols = line.split(',');
-      const [name, phone, email, source, notes] = cols.map((c) => c.trim());
-      if (!name && !phone && !email) continue;
+    const skipDuplicates = String(req.body?.skip_duplicates || '').toLowerCase() === 'true';
+    const { header, rows } = parseCsvRows(csv);
+    let created = 0; let skipped = 0;
+    for (const raw of rows) {
+      const lead = mapLeadRow(header, raw);
+      if (!lead.name && !lead.phone && !lead.email) { skipped += 1; continue; }
+      const dup = await ContactModel.findByIdentifiers({ phone: lead.phone, email: lead.email });
+      if (dup && skipDuplicates) { skipped += 1; continue; }
       await LeadModel.createLead({
-        contact: { name, phone, email },
+        contact: { name: lead.name, phone: lead.phone, email: lead.email },
         pipeline_id: req.body.pipeline_id || null,
         owner_id: req.session.user.id,
-        source: source || 'import_csv',
-        notes: notes || null,
+        source: lead.source || req.body.source || 'import_csv',
+        notes: lead.notes || null,
       });
       created += 1;
     }
-    return res.json({ success: true, data: { imported: created } });
+    return res.json({ success: true, data: { imported: created, skipped } });
   } catch (err) {
     console.error('[crm] importLeadsCsv', err);
     return res.status(500).json({ success: false, error: 'Erro ao importar CSV' });
   }
 }
-
 module.exports = {
   listPipelines,
   listLeads,
@@ -504,6 +577,7 @@ module.exports = {
   exportActivitiesICS,
   exportLeadsCsv,
   exportOpportunitiesCsv,
+  previewLeadsCsv,
   importLeadsCsv,
   refreshStats,
 };
