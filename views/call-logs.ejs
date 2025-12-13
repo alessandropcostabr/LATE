@@ -1,0 +1,49 @@
+<%- include('partials/header', { title: 'Chamadas' }); %>
+<body class=page-recados>
+  <main class=container mt-3>
+    <div class=card>
+      <div class=card-header d-flex align-items-center justify-content-between flex-wrap gap-2>
+        <h2 class=mb-0>Chamadas</h2>
+        <div class=d-flex gap-2 flex-wrap>
+          <input id=f-caller class=form-control form-control-sm placeholder=Telefone />
+          <select id=f-status class=form-select form-select-sm>
+            <option value=>Status (todos)</option>
+            <option value=answered>Atendida</option>
+            <option value=no-answer>Não atendida</option>
+            <option value=busy>Ocupado</option>
+            <option value=cancel>Cancelada</option>
+            <option value=rejected>Rejeitada</option>
+            <option value=congestion>Congestionada</option>
+            <option value=ended>Encerrada</option>
+          </select>
+          <button id=btn-filtrar class=btn btn-primary btn-sm>Filtrar</button>
+        </div>
+      </div>
+      <div class=table-responsive>
+        <table class=table table-sm mb-0 id=tbl-call-logs>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Status</th>
+              <th>Origem</th>
+              <th>Destino</th>
+              <th>Duração</th>
+              <th>Tronco</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class=card-footer d-flex justify-content-between align-items-center flex-wrap gap-2>
+        <div id=paging-info class=text-muted small></div>
+        <div class=btn-group role=group>
+          <button class=btn btn-outline-secondary btn-sm id=prev-page>Anterior</button>
+          <button class=btn btn-outline-secondary btn-sm id=next-page>Próxima</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src=/js/call-logs.js></script>
+</body>
+</html>

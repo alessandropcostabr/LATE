@@ -1,0 +1,47 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Oportunidades</h1>
+      <p class="muted">Visão rápida das oportunidades recentes (máx 100).</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Título</th>
+            <th>Contato</th>
+            <th>Telefone</th>
+            <th>Pipeline / Estágio</th>
+            <th>Valor</th>
+            <th>Fechamento</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!opportunities || opportunities.length === 0) { %>
+            <tr><td colspan="7" class="muted">Nenhuma oportunidade encontrada.</td></tr>
+          <% } else { %>
+            <% opportunities.forEach((opp) => { %>
+              <tr>
+                <td><%= opp.title %></td>
+                <td><%= opp.contact_name || '-' %></td>
+                <td><%= opp.phone || '-' %></td>
+                <td><%= opp.pipeline_id %> / <%= opp.stage_id %></td>
+                <td><%= opp.amount ? `R$ ${Number(opp.amount).toFixed(2)}` : '-' %></td>
+                <td><%= opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-' %></td>
+                <td><%= opp.source || '-' %></td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<%- include('partials/footer') %>
