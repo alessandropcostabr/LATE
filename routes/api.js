@@ -258,6 +258,16 @@ router.patch(
   ...flatFns(canUpdateCRM, handleValidationErrors),
   crmController.updateActivityStatus
 );
+router.patch(
+  '/crm/stages/:id',
+  ...flatFns(canUpdateCRM, validateStageConfigUpdate, handleValidationErrors),
+  crmController.updateStageConfig
+);
+router.patch(
+  '/crm/stages/:id/rule',
+  ...flatFns(canUpdateCRM, validateStageRuleUpdate, handleValidationErrors),
+  crmController.updateStageRule
+);
 router.get(
   '/crm/activities.ics',
   ...flatFns(canReadCRM),

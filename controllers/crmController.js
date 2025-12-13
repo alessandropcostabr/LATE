@@ -359,6 +359,43 @@ async function statsPipeline(req, res) {
   }
 }
 
+
+async function updateStageConfig(req, res) {
+  try {
+    const id = req.params.id;
+    const payload = {
+      name: req.body.name,
+      position: req.body.position,
+      probability: req.body.probability,
+      color: req.body.color,
+      sla_minutes: req.body.sla_minutes,
+    };
+    const updated = await PipelineModel.updateStage(id, payload);
+    if (!updated) return res.status(404).json({ success: false, error: 'Estágio não encontrado' });
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('[crm] updateStageConfig', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar estágio' });
+  }
+}
+
+async function updateStageRule(req, res) {
+  try {
+    const id = req.params.id;
+    const rule = {
+      required_fields: Array.isArray(req.body.required_fields) ? req.body.required_fields : [],
+      forbid_jump: req.body.forbid_jump === true || String(req.body.forbid_jump).toLowerCase() === 'true',
+      forbid_back: req.body.forbid_back === true || String(req.body.forbid_back).toLowerCase() === 'true',
+      auto_actions: req.body.auto_actions || [],
+    };
+    const updated = await PipelineModel.upsertRule(id, rule);
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('[crm] updateStageRule', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar regra' });
+  }
+}
+
 async function statsActivities(req, res) {
   try {
     const data = await CrmStats.activitiesByOwner({ user: req.session?.user });
@@ -580,4 +617,6 @@ module.exports = {
   previewLeadsCsv,
   importLeadsCsv,
   refreshStats,
+  updateStageConfig,
+  updateStageRule,
 };
