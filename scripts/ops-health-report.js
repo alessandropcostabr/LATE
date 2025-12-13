@@ -43,7 +43,7 @@ const sendEmail = Boolean(recipients);
 
 const repoPath = '/home/alessandro/late-prod';
 const reportSections = [];
-const errors = [];
+const alerts = [];
 
 function getArgValue(flag) {
   const idx = process.argv.indexOf(flag);
@@ -178,6 +178,9 @@ function collectEnvHashes() {
       }
       const status = signature === referenceSignature ? 'OK' : 'ALTERADO';
       lines.push(`- ${node.name}: APP_VERSION=${appVersion} · assinatura=${signature} (${status})`);
+      if (status !== 'OK') {
+        alerts.push(`.env divergente em ${node.name} (APP_VERSION=${appVersion})`);
+      }
       if (signature !== referenceSignature && referenceMap) {
         const diffs = Object.keys({ ...referenceMap, ...normalized })
           .filter((key) => (referenceMap[key] || '') !== (normalized[key] || ''))
@@ -191,6 +194,7 @@ function collectEnvHashes() {
       }
     } catch (err) {
       lines.push(`- ${node.name}: erro ao ler .env -> ${err.message}`);
+      alerts.push(`Falha ao ler .env em ${node.name}: ${err.message}`);
     }
   });
   addSection('Configuração (.env)', lines);
@@ -214,9 +218,11 @@ function collectPm2Status() {
         const host = proc.pm2_env?.env?.HOST || 'N/D';
         const ok = status === 'online' && (name !== 'late-prod' || host === '0.0.0.0');
         lines.push(`    • ${name}: status=${status} host=${host}${ok ? '' : ' (ALERTA)'}`);
+        if (!ok) alerts.push(`PM2 ${name} em ${node.name} não está online/host esperado (status=${status}, host=${host})`);
       });
     } catch (err) {
       lines.push(`- ${node.name}: erro ao consultar PM2 -> ${err.message}`);
+      alerts.push(`PM2 indisponível em ${node.name}: ${err.message}`);
     }
   });
   addSection('PM2', lines);
@@ -228,8 +234,13 @@ function collectDiskInfo() {
     try {
       const df = ssh(node, "df -h --output=source,size,used,avail,pcent,target / | tail -n +2");
       lines.push(`- ${node.name}: ${df.trim()}`);
+      const match = df.match(/(\d+)%\s+\/$/);
+      if (match && Number(match[1]) >= 80) {
+        alerts.push(`Disco raiz em ${node.name} acima de 80% (${match[1]}%)`);
+      }
     } catch (err) {
       lines.push(`- ${node.name}: erro ao consultar df -> ${err.message}`);
+      alerts.push(`df falhou em ${node.name}: ${err.message}`);
     }
   });
   addSection('Uso de disco', lines);
@@ -244,8 +255,12 @@ function collectSmartInfo() {
       const match = output.match(/overall-health self-assessment test result:\s+(\w+)/i);
       const status = match ? match[1] : 'N/D';
       lines.push(`- ${node.name}: SMART /dev/sda -> ${status}`);
+      if (!['PASSED', 'OK'].includes(status.toUpperCase())) {
+        alerts.push(`SMART alerta em ${node.name}: status=${status}`);
+      }
     } catch (err) {
       lines.push(`- ${node.name}: SMART indisponível -> ${err.message}`);
+      alerts.push(`SMART falhou em ${node.name}: ${err.message}`);
     }
   });
   addSection('SMART (discos)', lines);
@@ -280,6 +295,7 @@ function collectUbuntuPro() {
         lines.push(
           `- ${node.name}: attached=${attached ? 'sim' : 'não'}; esm-apps=${esmApps}; esm-infra=${esmInfra}; livepatch=${livepatch}; segurança=erro -> ${secSummary._error}`,
         );
+        alerts.push(`Ubuntu Pro/security-status falhou em ${node.name}: ${secSummary._error}`);
       } else {
         const reboot = (secSummary && secSummary.reboot_required) || 'desconhecido';
         const stdUpdates =
@@ -297,9 +313,13 @@ function collectUbuntuPro() {
         lines.push(
           `- ${node.name}: attached=${attached ? 'sim' : 'não'}; esm-apps=${esmApps}; esm-infra=${esmInfra}; livepatch=${livepatch}; reboot=${reboot}; std_sec_updates=${stdUpdates}; esm_apps_updates=${esmAppsUpdates}; esm_infra_updates=${esmInfraUpdates}`,
         );
+        if (!attached || reboot === true) {
+          alerts.push(`Ubuntu Pro em ${node.name}: attached=${attached ? 'sim' : 'não'}, reboot_required=${reboot}`);
+        }
       }
     } catch (err) {
       lines.push(`- ${node.name}: erro ao consultar Ubuntu Pro -> ${err.message}`);
+      alerts.push(`Ubuntu Pro falhou em ${node.name}: ${err.message}`);
     }
   });
   addSection('Ubuntu Pro & atualizações de segurança', lines);
@@ -319,9 +339,13 @@ function collectJournalAlerts() {
             !line.includes('incorrect password attempt'),
         )
         .join('\n');
-      lines.push(`- ${node.name}:\n${filtered || '    (sem erros relevantes na última hora)'}`);
+      const hasLines = Boolean(filtered && filtered.trim().length);
+      const final = hasLines ? filtered : '    (sem erros relevantes na última hora)';
+      lines.push(`- ${node.name}:\n${final}`);
+      if (hasLines) alerts.push(`Erros no journal (última hora) em ${node.name}`);
     } catch (err) {
       lines.push(`- ${node.name}: erro ao consultar journal -> ${err.message}`);
+      alerts.push(`journalctl falhou em ${node.name}: ${err.message}`);
     }
   });
   addSection('Logs (última hora)', lines);
@@ -351,11 +375,14 @@ function collectHAProxy() {
         const server = cols[1];
         const status = cols[17] || cols[32] || 'N/D';
         const checkStatus = cols[34] || '';
-        return `- ${backend}/${server} -> ${status}${checkStatus ? ` (${checkStatus})` : ''}`;
+        const txt = `- ${backend}/${server} -> ${status}${checkStatus ? ` (${checkStatus})` : ''}`;
+        if (status !== 'UP') alerts.push(`HAProxy late_back ${server} está ${status}`);
+        return txt;
       });
     addSection('HAProxy (late_back)', lines.length ? lines : ['Sem servidores listados']);
   } catch (err) {
     addSection('HAProxy (late_back)', [`Erro ao consultar: ${err.message}`]);
+    alerts.push(`HAProxy late_back consulta falhou: ${err.message}`);
   }
 }
 
@@ -371,9 +398,11 @@ function collectPostgres() {
           .filter(Boolean)
           .map((line) => `- ${line}`)
       : ['Sem conexões de réplica detectadas'];
+    if (!out) alerts.push('PostgreSQL sem réplicas detectadas em pg_stat_replication');
     addSection('PostgreSQL (pg_stat_replication)', lines);
   } catch (err) {
     addSection('PostgreSQL (pg_stat_replication)', [`Erro ao consultar: ${err.message}`]);
+    alerts.push(`PostgreSQL réplica consulta falhou: ${err.message}`);
   }
 }
 
@@ -387,8 +416,10 @@ async function collectPrometheus() {
   try {
     const healthy = await fetch(`${url.replace(/\/$/, '')}/-/healthy`);
     lines.push(`- Healthcheck: ${healthy.status} ${healthy.statusText}`);
+    if (healthy.status !== 200) alerts.push(`Prometheus healthcheck retornou ${healthy.status}`);
   } catch (err) {
     lines.push(`- Healthcheck: erro -> ${err.message}`);
+    alerts.push(`Prometheus healthcheck falhou: ${err.message}`);
   }
   try {
     const targetsResp = await fetch(`${url.replace(/\/$/, '')}/api/v1/targets`);
@@ -399,9 +430,11 @@ async function collectPrometheus() {
       lines.push(
         `- ${target.labels?.instance || 'sem-label'}: ${target.health} (${target.lastError || 'ok'})`,
       );
+      if (target.health !== 'up') alerts.push(`Prometheus target ${target.labels?.instance} em ${target.health}`);
     });
   } catch (err) {
     lines.push(`- Targets: erro -> ${err.message}`);
+    alerts.push(`Prometheus targets falhou: ${err.message}`);
   }
   addSection('Prometheus', lines);
 }
@@ -424,6 +457,51 @@ async function collectSlackStatus() {
     lines.push(`- Erro ao consultar status Slack: ${err.message}`);
   }
   addSection('Slack (status público)', lines);
+}
+
+async function triggerAutoDiagnostic(incidentId) {
+  if (!alerts.length) return null;
+
+  const url =
+    process.env.DIAGNOSTIC_TRIGGER_URL ||
+    process.env.DIAGNOSTIC_URL ||
+    process.env.DIAGNOSTIC_ENDPOINT ||
+    '';
+  const token = process.env.DIAGNOSTIC_TOKEN || process.env.DARKSTAR_DIAGNOSTIC_TOKEN || '';
+  if (!url || !token) {
+    addSection('Auto-diagnóstico (Darkstar)', [
+      'Não configurado: defina DIAGNOSTIC_TRIGGER_URL e DIAGNOSTIC_TOKEN para acionar diagnose.sh automaticamente.',
+    ]);
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeoutMs = Number(process.env.DIAGNOSTIC_TIMEOUT_MS || 5000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Diagnostic-Token': token,
+      },
+      body: JSON.stringify({ incident_id: incidentId }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json().catch(() => ({}));
+    const diagId = data.incident_id || incidentId;
+    addSection('Auto-diagnóstico (Darkstar)', [
+      `Disparado em ${url}`,
+      `incident_id=${diagId}`,
+    ]);
+    return diagId;
+  } catch (err) {
+    clearTimeout(timer);
+    addSection('Auto-diagnóstico (Darkstar)', [`Falhou ao disparar: ${err.message}`]);
+    return null;
+  }
 }
 
 function buildEmailTransport() {
@@ -457,16 +535,21 @@ async function main() {
   collectPostgres();
   await collectPrometheus();
   await collectSlackStatus();
+  if (alerts.length) await triggerAutoDiagnostic(crypto.randomUUID());
 
   const report = reportSections.join('\n');
+  const alertHeader = alerts.length
+    ? `ALERTAS (${alerts.length}):\n- ${alerts.join('\n- ')}\n\n`
+    : 'Sem alertas detectados. E-mail não será enviado.\n\n';
   const header = `Relatório de Saúde – ${new Date().toLocaleString('pt-BR', {
     timeZone: 'America/Sao_Paulo',
   })}\nHost: ${os.hostname()}\n`;
-  const message = `${header}\n${report}`;
+  const message = `${alertHeader}${header}\n${report}`;
+  process.exitCode = alerts.length ? 1 : 0;
 
   console.log(message);
 
-  if (sendEmail) {
+  if (sendEmail && alerts.length) {
     try {
       const transporter = buildEmailTransport();
       await transporter.sendMail({

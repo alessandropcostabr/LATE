@@ -1,5 +1,8 @@
 // utils/normalizeContact.js
 // Funções de normalização de telefone/e-mail para contatos.
+// Telefones usam utils/phone (E.164, sem o '+', apenas dígitos) para deduplicação.
+
+const { normalizePhone: normalizePhoneE164Digits } = require('./phone');
 
 function normalizeText(value) {
   if (value === null || value === undefined) return null;
@@ -16,8 +19,8 @@ function normalizeEmail(value) {
 function normalizePhone(value) {
   const text = normalizeText(value);
   if (!text) return null;
-  const digits = text.replace(/[^0-9]+/g, '');
-  return digits === '' ? null : digits;
+  const normalized = normalizePhoneE164Digits(text);
+  return normalized === '' ? null : normalized;
 }
 
 function buildContactKey({ phone, email }) {
