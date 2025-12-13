@@ -105,3 +105,31 @@ module.exports = {
   findByIdentifiers,
   mapRow,
 };
+
+
+async function findDuplicates({ limit = 50 } = {}) {
+  const sql = `
+    SELECT phone_normalized, email_normalized, array_agg(id) AS ids, COUNT(*) AS total
+      FROM contacts
+     WHERE (phone_normalized <> '' OR email_normalized <> '')
+     GROUP BY phone_normalized, email_normalized
+    HAVING COUNT(*) > 1
+     ORDER BY total DESC
+     LIMIT $1`;
+  const { rows } = await db.query(sql, [limit]);
+  return rows || [];
+}
+
+async function mergeContacts(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) return false;
+  // Reatribui relacionamentos
+  await db.query('UPDATE leads SET contact_id = $2 WHERE contact_id = $1', [sourceId, targetId]);
+  await db.query('UPDATE opportunities SET contact_id = $2 WHERE contact_id = $1', [sourceId, targetId]);
+  await db.query("UPDATE activities SET related_id = $2 WHERE related_type = 'contact' AND related_id = $1", [sourceId, targetId]);
+  // Remove contato duplicado
+  await db.query('DELETE FROM contacts WHERE id = $1', [sourceId]);
+  return true;
+}
+
+module.exports.findDuplicates = findDuplicates;
+module.exports.mergeContacts = mergeContacts;

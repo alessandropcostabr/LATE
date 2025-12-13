@@ -26,6 +26,7 @@ const crmController = require('../controllers/crmController');
 const incidentController = require('../controllers/incidentController');
 const customFieldController = require('../controllers/customFieldController');
 const recadoSyncController = require('../controllers/recadoSyncController');
+const dedupController = require('../controllers/dedupController');
 const messageSendEventController = require('../controllers/messageSendEventController');
 const { collectDevInfo } = require('../utils/devInfo');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
@@ -297,6 +298,22 @@ router.get(
   '/crm/custom-fields',
   ...flatFns(canReadCRM),
   customFieldController.list
+);
+
+router.get(
+  '/crm/dedupe/contacts',
+  ...flatFns(canUpdateCRM),
+  dedupController.listDuplicates
+);
+router.post(
+  '/crm/dedupe/contacts/preview',
+  ...flatFns(canUpdateCRM, validateDedupPreview, handleValidationErrors),
+  dedupController.previewMerge
+);
+router.post(
+  '/crm/dedupe/contacts/merge',
+  ...flatFns(canUpdateCRM, validateDedupMerge, handleValidationErrors),
+  dedupController.merge
 );
 router.post(
   '/crm/custom-fields',
