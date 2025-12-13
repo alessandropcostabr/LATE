@@ -69,6 +69,61 @@ function checkRequiredFields(rule = {}, data = {}, customInput = {}, existingCus
   return missing;
 }
 
+
+async function scheduleStageSla(stage, opportunity) {
+  if (!stage || !stage.sla_minutes) return;
+  const minutes = Number(stage.sla_minutes);
+  if (!Number.isFinite(minutes) || minutes <= 0) return;
+  const start = new Date();
+  const end = new Date(start.getTime() + minutes * 60000);
+  try {
+    await ActivityModel.createActivity({
+      type: 'task',
+      subject: `SLA ${stage.name || ''}`.trim(),
+      starts_at: start.toISOString(),
+      ends_at: end.toISOString(),
+      owner_id: opportunity.owner_id,
+      related_type: 'opportunity',
+      related_id: opportunity.id,
+      status: 'pending',
+      location: null,
+    });
+  } catch (err) {
+    console.error('[crm][sla] falha ao criar atividade SLA', err);
+  }
+}
+
+async function applyAutoActions(stage, opportunity) {
+  const actions = Array.isArray(stage.auto_actions) ? stage.auto_actions : [];
+  if (!actions.length) return;
+  for (const action of actions) {
+    const type = String(action.type || '').toLowerCase();
+    try {
+      if (type === 'create_activity') {
+        await ActivityModel.createActivity({
+          type: action.activity_type || 'task',
+          subject: action.subject || `Tarefa para ${opportunity.title}`,
+          starts_at: action.starts_at || null,
+          ends_at: action.ends_at || null,
+          owner_id: opportunity.owner_id,
+          related_type: 'opportunity',
+          related_id: opportunity.id,
+          status: 'pending',
+          location: null,
+        });
+      } else if (type === 'notify_owner') {
+        console.info('[crm][auto_action] notify_owner', opportunity.id);
+      } else if (type === 'set_probability') {
+        if (action.value !== undefined && action.value !== null) {
+          await OpportunityModel.updateProbability(opportunity.id, action.value);
+        }
+      }
+    } catch (err) {
+      console.error('[crm][auto_action] falha', action, err);
+    }
+  }
+}
+
 async function validateOpportunityRequired({ stage, payload, customInput, existingCustomValues }) {
   const missing = [];
   missing.push(...checkRequiredFields(stage, payload, customInput, existingCustomValues));
@@ -231,6 +286,8 @@ async function createOpportunity(req, res) {
 
     const opp = await OpportunityModel.createOpportunity(payload);
     await persistCustomFields('opportunity', opp.id, customInput);
+    await applyAutoActions(stage, opp);
+    await scheduleStageSla(stage, opp);
     return res.json({ success: true, data: opp });
   } catch (err) {
     console.error('[crm] createOpportunity', err);
@@ -282,6 +339,8 @@ async function moveOpportunityStage(req, res) {
 
     const updated = await OpportunityModel.updateStage(id, targetStageId);
     if (isUuid(id)) { await persistCustomFields('opportunity', id, customInput); }
+    await applyAutoActions(targetStage, { ...opp, stage_id: targetStageId });
+    await scheduleStageSla(targetStage, { ...opp, stage_id: targetStageId });
     return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('[crm] moveOpportunityStage', err);
