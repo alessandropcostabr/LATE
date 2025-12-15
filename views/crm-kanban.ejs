@@ -1,0 +1,24 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Kanban de Oportunidades</h1>
+      <p class="muted">Arraste entre estágios. Filtros: pipeline e owner.</p>
+    </div>
+    <div class="page__actions">
+      <select id="pipelineSelect" class="input">
+        <option value="">Selecione um pipeline</option>
+      </select>
+      <select id="ownerSelect" class="input">
+        <option value="">Todos</option>
+        <option value="me">Meus</option>
+      </select>
+    </div>
+  </header>
+
+  <section class="kanban" id="kanbanBoard" aria-live="polite"></section>
+</main>
+<script src="/js/crm-kanban.js"></script>
+<%- include('partials/footer') %>

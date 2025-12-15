@@ -1,0 +1,47 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Leads</h1>
+      <p class="muted">Visão rápida dos leads recentes (máx 100).</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>E-mail</th>
+            <th>Status</th>
+            <th>Pipeline</th>
+            <th>Score</th>
+            <th>Criado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!leads || leads.length === 0) { %>
+            <tr><td colspan="7" class="muted">Nenhum lead encontrado.</td></tr>
+          <% } else { %>
+            <% leads.forEach((lead) => { %>
+              <tr>
+                <td><%= lead.contact_name || '-' %></td>
+                <td><%= lead.phone || lead.phone_normalized || '-' %></td>
+                <td><%= lead.email || '-' %></td>
+                <td><%= lead.status || '-' %></td>
+                <td><%= lead.pipeline_id ? lead.pipeline_id : '-' %></td>
+                <td><%= lead.score || 0 %></td>
+                <td><%= lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-' %></td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<%- include('partials/footer') %>

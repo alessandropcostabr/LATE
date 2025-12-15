@@ -20,9 +20,11 @@ const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 
 const db = require('./config/database'); // Pool do pg (PG-only)
+const healthGate = require('./middleware/healthGate');
 const apiRoutes = require('./routes/api');
 const webRoutes = require('./routes/web');
 const { startAlertScheduler } = require('./services/messageAlerts');
+const { startTelephonyProcessor } = require('./services/telephonyProcessor');
 const { normalizeRoleSlug, hasPermission } = require('./middleware/auth');
 const packageInfo = require('./package.json');
 const { resolveSessionSecret } = require('./config/sessionSecret');
@@ -123,8 +125,16 @@ const apiLimiter = rateLimit({
 app.use('/assets', express.static(path.join(__dirname, 'public', 'assets')));
 app.use(morgan('combined'));
 app.use(compression());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => {
+    req.rawBody = buf.toString();
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Camada de fallback (DB ping rápido). Bypassa health/report/estáticos.
+app.use(healthGate);
 
 // Sessão (connect-pg-simple usando o mesmo Pool)
 const secureCookie = isProd ? 'auto' : false;
@@ -132,7 +142,7 @@ const sessionPool = db;
 const sessionName = isProd ? 'late.sess' : 'late.dev.sess'; // nome distinto por ambiente
 const sessionSecret = resolveSessionSecret({ isProd });
 
-app.use(session({
+const sessionMiddleware = session({
   name: sessionName, // Por quê: evitar colisão de cookie quando prod/dev compartilham domínio
   secret: sessionSecret,
   resave: false,
@@ -151,7 +161,22 @@ app.use(session({
     sameSite: 'lax',
     maxAge: 1000 * 60 * 60 * 4 // 4h
   }
-}));
+});
+
+const skipSessionPaths = [
+  '/health',
+  '/api/health',
+  '/api/report-incident',
+];
+function shouldSkipSession(req) {
+  const path = req.path || req.originalUrl || '';
+  return skipSessionPaths.some((prefix) => path.startsWith(prefix));
+}
+
+app.use((req, res, next) => {
+  if (shouldSkipSession(req)) return next();
+  return sessionMiddleware(req, res, next);
+});
 
 // ⚠️ Importante: sem csurf global aqui. Proteção CSRF fica por rota no routes/web.js.
 app.use((req, res, next) => {
@@ -162,7 +187,7 @@ app.use((req, res, next) => {
 
 // user e permissões disponíveis nas views
 app.use((req, res, next) => {
-  const sessionUser = req.session.user || null;
+  const sessionUser = (req.session && req.session.user) || null;
   const roleSlug = normalizeRoleSlug(sessionUser?.role);
 
   res.locals.user = sessionUser;
@@ -372,6 +397,15 @@ if (!['true', '1', 'yes'].includes(disableScheduler) && process.env.NODE_ENV !==
     startAlertScheduler();
   } catch (err) {
     console.error('[alerts] falha ao iniciar agendador', err);
+  }
+}
+
+const disableTelephonyProcessor = String(process.env.DISABLE_TELEPHONY_PROCESSOR || '').toLowerCase();
+if (!['true', '1', 'yes'].includes(disableTelephonyProcessor) && process.env.NODE_ENV !== 'test') {
+  try {
+    startTelephonyProcessor();
+  } catch (err) {
+    console.error('[telephony] falha ao iniciar processador', err);
   }
 }
 
