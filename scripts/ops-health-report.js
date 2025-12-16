@@ -258,7 +258,7 @@ select 'role='||case when pg_is_in_recovery() then 'standby' else 'primary' end;
 
 async function collectPrometheus(){
   const lines=[]; const url=process.env.PROMETHEUS_URL; if(!url){addSection('Prometheus',['PROMETHEUS_URL não configurada']);return;}
-  try{const healthy=await fetch(`${url.replace(/\/$/, '')}/-/healthy`); lines.push(`- Healthcheck: ${healthy.status} ${healthy.statusText}`); if(healthy.status!==200) alerts.push(`Prometheus healthcheck retornou ${healthy.status}`);}catch(err){lines.push(`- Healthcheck: erro -> ${err.message}`); alerts.push(`Prometheus healthcheck falhou: ${err.message}`);} 
+  try{const healthy=await fetch(`${url.replace(/\/$/, '')}/-/healthy`); lines.push(`- Healthcheck: ${healthy.status} ${healthy.statusText}`); if(healthy.status!==200) alerts.push(`Prometheus healthcheck retornou ${healthy.status}`);}catch(err){lines.push(`- Healthcheck: erro -> ${err.message}`); alerts.push(`Prometheus healthcheck falhou: ${err.message}`);}
   try{const resp=await fetch(`${url.replace(/\/$/, '')}/api/v1/targets`); if(!resp.ok) throw new Error(`HTTP ${resp.status}`); const data=await resp.json(); const active=data.data?.activeTargets||[]; active.forEach(t=>{lines.push(`- ${t.labels?.instance||'sem-label'}: ${t.health} (${t.lastError||'ok'})`); if(t.health!=='up') alerts.push(`Prometheus target ${t.labels?.instance} em ${t.health}`);});}catch(err){lines.push(`- Targets: erro -> ${err.message}`); alerts.push(`Prometheus targets falhou: ${err.message}`);} addSection('Prometheus', lines);
 }
 
@@ -330,4 +330,3 @@ async function main(){
 }
 
 main().catch(err=>{ console.error('Erro inesperado no relatório:', err); process.exitCode=1; });
-
