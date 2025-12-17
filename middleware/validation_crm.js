@@ -137,4 +137,6 @@ module.exports = {
   validateCustomFieldUpdate,
   validateCustomFieldValue,
   validateCsvImport,
+  validateDedupPreview,
+  validateDedupMerge,
 };

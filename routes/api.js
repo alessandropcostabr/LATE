@@ -81,6 +81,8 @@ const {
   validateCustomFieldUpdate,
   validateCustomFieldValue,
   validateCsvImport,
+  validateDedupPreview,
+  validateDedupMerge,
 } = require('../middleware/validation_crm');
 
 // Painel ADMIN de Usuários
