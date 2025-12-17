@@ -1,7 +1,7 @@
 # 🗺️ ROADMAP — LATE
-> Atualizado em 2025/11/12.
+> Atualizado em 2025/12/16.
 
-> Última atualização: 2025/11/12
+> Última atualização: 2025/12/16
 
 Este roadmap consolida as entregas concluídas, em andamento e planejadas para o LATE, com foco em relacionamento, rastreabilidade, operação e segurança.
 
@@ -9,12 +9,16 @@ Este roadmap consolida as entregas concluídas, em andamento e planejadas para o
 
 ## ✅ ENTREGAS CONCLUÍDAS
 
-**Sprints 0 + A + B + C + D + E + 02 (parcial 02B)**
+**Sprints 0 + A + B + C + D + E + 02B + CRM Core (dez/2025)**
 
 - Infraestrutura sólida (login seguro, CSP, CSRF, cookies httpOnly, trust proxy)
 - Checklists, comentários, etiquetas e @menções
 - Widgets de SLA (Hoje, Atrasados, 48h)
-- Visões Kanban e Calendário
+- Visões Kanban e Calendário (CRM)
+- Calendário CRM com ICS e drag/drop de atividades
+- Dedup de contatos e merge seguro (email/telefone normalizado)
+- Export CSV de leads/opps com escopo (Meus/owner) e import simples de leads
+- Integrações: message-events (Sender) idempotente; ingestão de telefonia com HMAC; health gate 503 JSON
 - Filtro por labels, setor, status
 - Recados com watchers e progresso
 - Fila de e-mail com logs e reenvio

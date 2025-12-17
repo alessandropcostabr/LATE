@@ -16,7 +16,12 @@
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
-const { marked } = require('marked');
+
+// marked é ESM; carregamos dinamicamente para compatibilidade com CJS.
+async function loadMarked() {
+  const mod = await import('marked');
+  return mod.marked || mod.default || mod;
+}
 
 const DEFAULT_CONFIG = path.join(__dirname, 'docs-sync.config.json');
 
@@ -39,12 +44,14 @@ function ensureDirExists(filePath) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function renderMarkdown(mdContent, sourcePath) {
+async function renderMarkdown(mdContent, sourcePath) {
+  const marked = await loadMarked();
   marked.setOptions({
     mangle: false,
     headerIds: true,
   });
-  return marked.parse(mdContent, { baseUrl: sourcePath });
+  const html = await marked.parse(mdContent, { baseUrl: sourcePath });
+  return typeof html === 'string' ? html : String(html || '');
 }
 
 function collectSources(entry) {
@@ -71,7 +78,7 @@ function collectSources(entry) {
   });
 }
 
-function processEntry(entry) {
+async function processEntry(entry) {
   const sources = collectSources(entry);
   const absoluteOutput = resolvePath(entry.output);
 
@@ -81,7 +88,7 @@ function processEntry(entry) {
     .join('\n\n');
 
   const baseDir = path.dirname(sources[0].absolutePath);
-  const html = renderMarkdown(mdContent, baseDir);
+  const html = await renderMarkdown(mdContent, baseDir);
   ensureDirExists(absoluteOutput);
   fs.writeFileSync(absoluteOutput, `${html.trim()}\n`, 'utf8');
 
@@ -110,15 +117,15 @@ function main() {
     return;
   }
 
-  config.forEach((entry) => {
-    if (!entry?.source || !entry?.output) {
+  const tasks = config.map(async (entry) => {
+    if ((!entry?.source && !entry?.sources) || !entry?.output) {
       console.warn('[docs-sync] Entrada ignorada por falta de campos "source" ou "output":', entry);
       return;
     }
-    processEntry(entry);
+    await processEntry(entry);
   });
 
-  console.log('[docs-sync] Concluído.');
+  Promise.all(tasks).then(() => console.log('[docs-sync] Concluído.'));
 }
 
 if (require.main === module) {
