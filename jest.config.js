@@ -4,5 +4,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setup/log-silence.js'],
+  setupFilesAfterEnv: [
+    '<rootDir>/__tests__/setup/log-silence.js',
+    '<rootDir>/__tests__/setup/pgmem.js',
+  ],
 };
