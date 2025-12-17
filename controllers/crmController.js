@@ -179,7 +179,8 @@ async function listLeads(req, res) {
       status: req.query.status || null,
       search: req.query.search || null,
     };
-    const { filter: scopedFilter, scope } = applyOwnerScope(filter, req.session?.user || {}, req.query.scope || resolveViewScope(req));
+    const scopeParam = req.scopeResolved || req.query.scope || resolveViewScope(req);
+    const { filter: scopedFilter, scope } = applyOwnerScope(filter, req.session?.user || {}, scopeParam);
     const rows = await LeadModel.listLeads(scopedFilter, { limit, offset });
     return res.json({ success: true, data: rows, scope });
   } catch (err) {
@@ -199,7 +200,8 @@ async function listOpportunities(req, res) {
       contact_id: req.query.contact_id || null,
       search: req.query.search || null,
     };
-    const { filter: scopedFilter, scope } = applyOwnerScope(filter, req.session?.user || {}, req.query.scope || resolveViewScope(req));
+    const scopeParam = req.scopeResolved || req.query.scope || resolveViewScope(req);
+    const { filter: scopedFilter, scope } = applyOwnerScope(filter, req.session?.user || {}, scopeParam);
     const rows = await OpportunityModel.listOpportunities(scopedFilter, { limit, offset });
     return res.json({ success: true, data: rows, scope });
   } catch (err) {
@@ -365,13 +367,14 @@ async function listActivities(req, res) {
       related_id: req.query.related_id || null,
       owner_id: null,
     };
+    const scopeParam = req.scopeResolved || req.query.scope || resolveViewScope(req);
     const { filter: scopedFilter, scope } = applyOwnerScope(
       {
         ...filter,
         owner_id: req.query.owner_id || null,
       },
       req.session?.user || {},
-      req.query.scope || resolveViewScope(req),
+      scopeParam,
     );
 
     const rows = await ActivityModel.listActivities(scopedFilter);

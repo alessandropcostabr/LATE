@@ -86,6 +86,7 @@ const {
   validateDedupPreview,
   validateDedupMerge,
 } = require('../middleware/validation_crm');
+const { validateScopeParam } = require('../middleware/scope');
 
 // Painel ADMIN de Usuários
 const {
@@ -225,12 +226,12 @@ router.get(
 );
 router.get(
   '/crm/leads',
-  ...flatFns(canReadCRM, validateLeadList, handleValidationErrors),
+  ...flatFns(canReadCRM, validateScopeParam(), validateLeadList, handleValidationErrors),
   crmController.listLeads
 );
 router.get(
   '/crm/opportunities',
-  ...flatFns(canReadCRM, validateOpportunityList, handleValidationErrors),
+  ...flatFns(canReadCRM, validateScopeParam(), validateOpportunityList, handleValidationErrors),
   crmController.listOpportunities
 );
 router.post(
@@ -255,7 +256,7 @@ router.post(
 );
 router.get(
   '/crm/activities',
-  ...flatFns(canReadCRM, validateActivityList, handleValidationErrors),
+  ...flatFns(canReadCRM, validateScopeParam(), validateActivityList, handleValidationErrors),
   crmController.listActivities
 );
 router.patch(
