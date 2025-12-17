@@ -106,6 +106,23 @@ const validateCsvImport = [
 ];
 
 
+const validateStageConfigUpdate = [
+  validateUUIDParam('id'),
+  body('name').optional().isString(),
+  body('position').optional().isInt({ min: 1 }),
+  body('probability').optional().isFloat({ min: 0, max: 1 }),
+  body('color').optional().isString(),
+  body('sla_minutes').optional().isInt({ min: 0 }),
+];
+
+const validateStageRuleUpdate = [
+  validateUUIDParam('id'),
+  body('required_fields').optional().isArray(),
+  body('forbid_jump').optional().isBoolean(),
+  body('forbid_back').optional().isBoolean(),
+  body('auto_actions').optional().isArray(),
+];
+
 const validateDedupPreview = [
   body('phone').optional().isString(),
   body('email').optional().isEmail().withMessage('email inválido'),
@@ -137,6 +154,8 @@ module.exports = {
   validateCustomFieldUpdate,
   validateCustomFieldValue,
   validateCsvImport,
+  validateStageConfigUpdate,
+  validateStageRuleUpdate,
   validateDedupPreview,
   validateDedupMerge,
 };

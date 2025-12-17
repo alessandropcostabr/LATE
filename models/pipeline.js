@@ -64,3 +64,54 @@ module.exports = {
   getStages,
   getStageById,
 };
+
+
+async function updateStage(id, updates = {}) {
+  const sql = `
+    UPDATE pipeline_stages
+       SET name = COALESCE($2, name),
+           position = COALESCE($3, position),
+           probability = COALESCE($4, probability),
+           color = COALESCE($5, color),
+           sla_minutes = COALESCE($6, sla_minutes),
+           updated_at = NOW()
+     WHERE id = $1
+     RETURNING *
+  `;
+  const params = [
+    id,
+    updates.name || null,
+    updates.position !== undefined ? Number(updates.position) : null,
+    updates.probability !== undefined ? Number(updates.probability) : null,
+    updates.color || null,
+    updates.sla_minutes !== undefined ? Number(updates.sla_minutes) : null,
+  ];
+  const { rows } = await db.query(sql, params);
+  return rows?.[0] || null;
+}
+
+async function upsertRule(stageId, rule = {}) {
+  const sql = `
+    INSERT INTO pipeline_rules (pipeline_stage_id, required_fields, forbid_jump, forbid_back, auto_actions)
+    VALUES ($1,$2,$3,$4,$5)
+    ON CONFLICT (pipeline_stage_id) DO UPDATE SET
+      required_fields = EXCLUDED.required_fields,
+      forbid_jump = EXCLUDED.forbid_jump,
+      forbid_back = EXCLUDED.forbid_back,
+      auto_actions = EXCLUDED.auto_actions,
+      updated_at = NOW()
+    RETURNING *
+  `;
+  const params = [
+    stageId,
+    Array.isArray(rule.required_fields) ? rule.required_fields : [],
+    rule.forbid_jump === true,
+    rule.forbid_back === true,
+    rule.auto_actions || [],
+  ];
+  const { rows } = await db.query(sql, params);
+  return rows?.[0] || null;
+}
+
+module.exports.updateStage = updateStage;
+module.exports.upsertRule = upsertRule;
