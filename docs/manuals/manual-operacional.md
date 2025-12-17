@@ -1,5 +1,5 @@
 ## 🎯 Objetivo
-> Atualizado em 2025/11/12.
+> Atualizado em 2025/12/16.
 
 Este manual orienta o uso diário do sistema LATE por equipes operacionais e administrativas, desde o registro até a conclusão dos recados, fortalecendo o relacionamento com os clientes e garantindo a rastreabilidade das interações.
 
@@ -54,6 +54,38 @@ Este manual orienta o uso diário do sistema LATE por equipes operacionais e adm
 - Clique em **Ver detalhes** para visualizar o histórico completo da ação (quem fez, qual setor, antes e depois).
 - Gere arquivos CSV/JSON em **Relatórios › Exportações**; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel (a exportação roda em segundo plano e você recebe um aviso assim que estiver pronta).
 
+## 🎯 CRM — Gestão de Relacionamento
+
+O LATE agora conta com um módulo de CRM completo para gerenciar leads, contatos e oportunidades de negócio.
+
+### Pipelines e Funis
+- Acesse **CRM → Dashboard** para ver o resumo de oportunidades por estágio
+- Cada pipeline possui estágios configuráveis (ex.: Qualificação → Proposta → Negociação → Fechado)
+- Arraste oportunidades entre estágios no **CRM → Kanban**
+
+### Leads e Contatos
+- **CRM → Leads** lista todos os leads com filtros por status, origem e responsável
+- Deduplicação automática por email e telefone evita cadastros duplicados
+- Exporte leads em CSV respeitando seu escopo de acesso
+
+### Oportunidades
+- **CRM → Oportunidades** mostra negócios em andamento
+- Cada oportunidade pode ter atividades (tarefas, reuniões, chamadas) associadas
+- Mova oportunidades entre estágios; o sistema valida campos obrigatórios por etapa
+
+### Calendário de Atividades
+- **CRM → Calendário** exibe tarefas e compromissos em formato visual
+- Arraste para reagendar, redimensione para ajustar duração
+- Exporte em ICS para sincronizar com seu calendário pessoal
+
+### Configuração do CRM
+- **CRM → Config** permite gerenciar pipelines, estágios e regras
+- Defina campos obrigatórios por estágio, restrições de movimentação e automações
+
+### Relatório de WhatsApp
+- **Relatórios → WhatsApp** mostra eventos de envio de mensagens
+- Útil para acompanhar comunicações enviadas pelo sistema
+
 ## 🔔 Notificações
 
 - Envio por e-mail para:
@@ -72,8 +104,8 @@ Este manual orienta o uso diário do sistema LATE por equipes operacionais e adm
 
 ### Restrições por IP e Horário
 - Em **Admin → Usuários → Editar**, a seção *Restrições de acesso* permite:
-  - Ativar “Acesso restrito por IP” e informar os IPs externos liberados (ex.: `191.9.115.129`). Tudo desativado = usuário pode acessar de qualquer lugar.
-  - Ativar “Acesso restrito por horário” e definir faixas por dia da semana (segunda a sexta, 08h–18h, por exemplo).
+  - Ativar "Acesso restrito por IP" e informar os IPs externos liberados (ex.: `191.9.115.129`). Tudo desativado = usuário pode acessar de qualquer lugar.
+  - Ativar "Acesso restrito por horário" e definir faixas por dia da semana (segunda a sexta, 08h–18h, por exemplo).
 - O painel **Relatórios → Status** mostra o IP atual, o escopo aplicado (liberado/restrito) e a lista de regras ativas.
 - Bloqueios são informados ao usuário e registrados na auditoria (`user.login_denied_offsite` / `user.session_denied_offsite`); peça para o time de TI ajustar as regras caso alguém seja bloqueado indevidamente.
 

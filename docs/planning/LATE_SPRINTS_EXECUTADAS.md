@@ -1,8 +1,8 @@
 # 📦 LATE — Sprints Executadas (Histórico Completo)
-> Atualizado em 2025/11/12.
+> Atualizado em 2025/12/16.
 
 **Período:** Outubro - Dezembro 2025  
-**Versão Atual:** 2.0.0
+**Versão Atual:** 2.1.0
 
 ---
 
@@ -17,7 +17,7 @@
 | Sprint D | ✅ Concluída | Out/2025 | #247 | 2 |
 | **Correções Pós-D** | ✅ Concluída | Out-Nov/2025 | #248-257 | - |
 | Sprint 02B | ✅ Concluída | Nov/2025 | #266-268 | 0 |
-| Sprint CRM Core | ✅ Concluída | Dez/2025 | #292 (consolidado) | 3 |
+| Sprint CRM Core | ✅ Concluída | Dez/2025 | #292-301 | 4 |
 
 ---
 
