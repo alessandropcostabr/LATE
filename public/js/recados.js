@@ -15,6 +15,8 @@ const STATUS_LABELS = {
   resolved: 'Resolvido'
 };
 
+const PAGE_SIZE = 10;
+
 const STATUS_OPTIONS = [
   {
     value: 'pending',
@@ -149,19 +151,24 @@ function setButtonLoading(button, loading, textWhenLoading = 'Processando...') {
 }
 
 // Constrói query string a partir do formulário de filtros
-function buildQueryFromForm(form, { includeLimit = true } = {}) {
+function buildQueryFromForm(form, { includeLimit = true, page } = {}) {
   const p = new URLSearchParams();
   const start = form.start_date?.value?.trim();
   const end   = form.end_date?.value?.trim();
   const rec   = form.recipient?.value?.trim();
   const st    = form.status?.value?.trim();
+  const order = form.order?.value?.trim();
 
   if (start) p.set('start_date', start);
   if (end)   p.set('end_date', end);
   if (rec)   p.set('recipient', rec);
   if (st)    p.set('status', st);
+  if (order) p.set('order', order);
   if (includeLimit) {
-    p.set('limit', '10');
+    p.set('limit', String(PAGE_SIZE));
+  }
+  if (page && Number(page) > 0) {
+    p.set('page', String(page));
   }
   return p;
 }
@@ -173,6 +180,7 @@ function hydrateFormFromUrl(form, searchParams = new URLSearchParams(window.loca
     ['end_date', 'end_date'],
     ['recipient', 'recipient'],
     ['status', 'status'],
+    ['order', 'order'],
   ];
 
   mappings.forEach(([fieldName, param]) => {
@@ -236,10 +244,42 @@ function renderStatusControls(message, canEditThis, currentStatusLabel) {
   `;
 }
 
+function renderPagination(container, totalPages, currentPage) {
+  if (!container) return;
+  const pages = Math.max(1, Number(totalPages) || 1);
+  const page = Math.min(Math.max(1, Number(currentPage) || 1), pages);
+
+  if (pages === 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const windowSize = 2;
+  const start = Math.max(1, page - windowSize);
+  const end = Math.min(pages, page + windowSize);
+
+  const buttons = [];
+  if (page > 1) {
+    buttons.push(`<button type="button" data-page="${page - 1}" class="page-link">‹ Anterior</button>`);
+  }
+
+  for (let p = start; p <= end; p += 1) {
+    const active = p === page ? 'is-active' : '';
+    buttons.push(`<button type="button" data-page="${p}" class="page-link ${active}">${p}</button>`);
+  }
+
+  if (page < pages) {
+    buttons.push(`<button type="button" data-page="${page + 1}" class="page-link">Próxima ›</button>`);
+  }
+
+  container.innerHTML = buttons.join('');
+}
+
 async function carregarRecados() {
   const container = document.getElementById('listaRecados');
   const totalEl   = document.getElementById('totalResultados');
   const form      = document.getElementById('filtrosForm');
+  const paginationEl = document.getElementById('paginacao');
 
   if (container) {
     container.innerHTML = `
@@ -252,21 +292,24 @@ async function carregarRecados() {
     // Pega filtros da URL ou do form
     const url = new URL(window.location.href);
     const qs  = url.searchParams;
+    const qsPage = Number(qs.get('page'));
+    let currentPage = Number.isFinite(qsPage) && qsPage > 0 ? Math.floor(qsPage) : 1;
+
     let apiParams;
 
     if (form) {
-      const formParams = buildQueryFromForm(form);
+      const formParams = buildQueryFromForm(form, { page: currentPage });
       apiParams = new URLSearchParams(formParams);
 
       // preserva parâmetros que não fazem parte do formulário (ex: paginação)
       qs.forEach((value, key) => {
-        if (!['start_date', 'end_date', 'recipient', 'status', 'limit'].includes(key)) {
+        if (!['start_date', 'end_date', 'recipient', 'status', 'limit', 'order', 'page'].includes(key)) {
           apiParams.set(key, value);
         }
       });
 
       // Atualiza a URL visível com os filtros (sem o limit auxiliar)
-      const urlParams = buildQueryFromForm(form, { includeLimit: false });
+      const urlParams = buildQueryFromForm(form, { includeLimit: false, page: currentPage });
       const urlSearch = urlParams.toString();
       const targetSearch = urlSearch ? `?${urlSearch}` : '';
       if (targetSearch !== url.search) {
@@ -275,15 +318,30 @@ async function carregarRecados() {
     } else {
       apiParams = new URLSearchParams(qs);
       if (!apiParams.has('limit')) {
-        apiParams.set('limit', '10');
+        apiParams.set('limit', String(PAGE_SIZE));
+      }
+      if (!apiParams.has('page')) {
+        apiParams.set('page', String(currentPage));
       }
     }
+
+    apiParams.set('include_total', '1');
+    apiParams.set('order_by', 'created_at');
+    if (!apiParams.has('limit')) apiParams.set('limit', String(PAGE_SIZE));
 
     const queryString = apiParams.toString();
     const resp = await request(`/api/messages${queryString ? `?${queryString}` : ''}`);
     const list = asItems(resp);
+    const pagination = resp.pagination || {};
+    const total = Number(pagination.total ?? list.length ?? 0);
+    const limit = Number(pagination.limit ?? PAGE_SIZE);
+    const page = Number(pagination.page ?? qs.get('page') ?? 1);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const displayTotal = Number.isFinite(total) && total >= 0 ? total : list.length;
 
-    if (totalEl) totalEl.textContent = `${list.length} resultado(s)`;
+    if (totalEl) {
+      totalEl.textContent = `${displayTotal} resultado(s) · página ${page} de ${totalPages}`;
+    }
 
     if (!list.length) {
       if (container) container.innerHTML = `
@@ -358,6 +416,10 @@ async function carregarRecados() {
     }).join('');
 
     if (container) container.innerHTML = html;
+
+    if (paginationEl) {
+      renderPagination(paginationEl, totalPages, page);
+    }
   } catch (err) {
     console.error('❌ Erro ao carregar registros:', err);
     if (container) {
@@ -378,6 +440,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hydrateFormFromUrl(form);
   }
 
+  const paginationEl = document.getElementById('paginacao');
+
   // Inicial
   carregarRecados();
 
@@ -385,6 +449,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (form) {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
+      // reset página ao aplicar filtro
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', '1');
+      history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
       carregarRecados();
     });
     const btnLimpar = document.getElementById('btnLimpar');
@@ -396,6 +464,20 @@ document.addEventListener('DOMContentLoaded', () => {
         carregarRecados();
       });
     }
+  }
+
+  if (paginationEl) {
+    paginationEl.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-page]');
+      if (!target) return;
+      e.preventDefault();
+      const page = Number(target.getAttribute('data-page'));
+      if (!Number.isFinite(page) || page < 1) return;
+      const params = new URLSearchParams(window.location.search);
+      params.set('page', String(page));
+      history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+      carregarRecados();
+    });
   }
 
   const listContainer = document.getElementById('listaRecados');
