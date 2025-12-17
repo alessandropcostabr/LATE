@@ -126,3 +126,11 @@ module.exports = {
   updateStage,
   listOpportunities,
 };
+
+async function updateProbability(id, value) {
+  const sql = 'UPDATE opportunities SET probability_override = $2, updated_at = NOW() WHERE id = $1 RETURNING *';
+  const { rows } = await db.query(sql, [id, value]);
+  return rows?.[0] || null;
+}
+
+module.exports.updateProbability = updateProbability;
