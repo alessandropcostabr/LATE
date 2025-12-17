@@ -5,6 +5,7 @@ const PipelineModel = require('../models/pipeline');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
 const ActivityModel = require('../models/activity');
+const ContactModel = require('../models/contact');
 const CrmStats = require('../models/crmStats');
 const CustomFieldModel = require('../models/customField');
 const CustomFieldValueModel = require('../models/customFieldValue');
@@ -68,7 +69,6 @@ function checkRequiredFields(rule = {}, data = {}, customInput = {}, existingCus
   });
   return missing;
 }
-
 
 async function scheduleStageSla(stage, opportunity) {
   if (!stage || !stage.sla_minutes) return;
@@ -286,8 +286,8 @@ async function createOpportunity(req, res) {
 
     const opp = await OpportunityModel.createOpportunity(payload);
     await persistCustomFields('opportunity', opp.id, customInput);
-    await applyAutoActions(stage, opp);
     await scheduleStageSla(stage, opp);
+    await applyAutoActions(stage, opp);
     return res.json({ success: true, data: opp });
   } catch (err) {
     console.error('[crm] createOpportunity', err);
@@ -339,8 +339,8 @@ async function moveOpportunityStage(req, res) {
 
     const updated = await OpportunityModel.updateStage(id, targetStageId);
     if (isUuid(id)) { await persistCustomFields('opportunity', id, customInput); }
-    await applyAutoActions(targetStage, { ...opp, stage_id: targetStageId });
-    await scheduleStageSla(targetStage, { ...opp, stage_id: targetStageId });
+    await scheduleStageSla(targetStage, updated);
+    await applyAutoActions(targetStage, updated);
     return res.json({ success: true, data: updated });
   } catch (err) {
     console.error('[crm] moveOpportunityStage', err);
@@ -417,6 +417,43 @@ async function statsPipeline(req, res) {
   }
 }
 
+
+async function updateStageConfig(req, res) {
+  try {
+    const id = req.params.id;
+    const payload = {
+      name: req.body.name,
+      position: req.body.position,
+      probability: req.body.probability,
+      color: req.body.color,
+      sla_minutes: req.body.sla_minutes,
+    };
+    const updated = await PipelineModel.updateStage(id, payload);
+    if (!updated) return res.status(404).json({ success: false, error: 'Estágio não encontrado' });
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('[crm] updateStageConfig', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar estágio' });
+  }
+}
+
+async function updateStageRule(req, res) {
+  try {
+    const id = req.params.id;
+    const rule = {
+      required_fields: Array.isArray(req.body.required_fields) ? req.body.required_fields : [],
+      forbid_jump: req.body.forbid_jump === true || String(req.body.forbid_jump).toLowerCase() === 'true',
+      forbid_back: req.body.forbid_back === true || String(req.body.forbid_back).toLowerCase() === 'true',
+      auto_actions: req.body.auto_actions || [],
+    };
+    const updated = await PipelineModel.upsertRule(id, rule);
+    return res.json({ success: true, data: updated });
+  } catch (err) {
+    console.error('[crm] updateStageRule', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar regra' });
+  }
+}
+
 async function statsActivities(req, res) {
   try {
     const data = await CrmStats.activitiesByOwner({ user: req.session?.user });
@@ -475,6 +512,52 @@ async function exportActivitiesICS(req, res) {
   }
 }
 
+
+function splitCsvLine(line = '') {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i += 1; continue; }
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  result.push(current);
+  return result;
+}
+
+function parseCsvRows(csv = '') {
+  const lines = csv.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return { header: [], rows: [] };
+  const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const rows = lines.slice(1).map((line) => splitCsvLine(line));
+  return { header, rows };
+}
+
+function mapLeadRow(header, row) {
+  const idx = (name) => header.indexOf(name);
+  const get = (name) => {
+    const i = idx(name);
+    return i >= 0 ? (row[i] || '').trim() : '';
+  };
+  return {
+    name: get('name'),
+    phone: get('phone') || get('telefone') || get('celular'),
+    email: get('email'),
+    source: get('source') || get('fonte') || null,
+    notes: get('notes') || get('observacao') || null,
+  };
+}
+
 function toCsvRow(values = []) {
   return values
     .map((v) => {
@@ -519,29 +602,56 @@ async function exportOpportunitiesCsv(_req, res) {
   }
 }
 
+
+async function previewLeadsCsv(req, res) {
+  try {
+    const csv = req.body?.csv;
+    if (!csv || typeof csv !== 'string') {
+      return res.status(400).json({ success: false, error: 'CSV obrigatório' });
+    }
+    const { header, rows } = parseCsvRows(csv);
+    if (!rows.length) return res.json({ success: true, data: { total: 0, duplicates: 0, rows: [] } });
+
+    const parsed = [];
+    let duplicates = 0;
+    for (const raw of rows) {
+      const lead = mapLeadRow(header, raw);
+      if (!lead.name && !lead.phone && !lead.email) continue;
+      const dup = await ContactModel.findByIdentifiers({ phone: lead.phone, email: lead.email });
+      parsed.push({ ...lead, duplicate: Boolean(dup), contact_id: dup?.id || null });
+      if (dup) duplicates += 1;
+    }
+    return res.json({ success: true, data: { total: parsed.length, duplicates, rows: parsed } });
+  } catch (err) {
+    console.error('[crm] previewLeadsCsv', err);
+    return res.status(500).json({ success: false, error: 'Erro ao pré-visualizar CSV' });
+  }
+}
+
 async function importLeadsCsv(req, res) {
   try {
     const csv = req.body?.csv;
     if (!csv || typeof csv !== 'string') {
       return res.status(400).json({ success: false, error: 'CSV obrigatório' });
     }
-    const lines = csv.split(/\r?\n/).filter((l) => l.trim());
-    const dataLines = lines.slice(1); // assume primeira linha cabeçalho
-    let created = 0;
-    for (const line of dataLines) {
-      const cols = line.split(',');
-      const [name, phone, email, source, notes] = cols.map((c) => c.trim());
-      if (!name && !phone && !email) continue;
+    const skipDuplicates = String(req.body?.skip_duplicates || '').toLowerCase() === 'true';
+    const { header, rows } = parseCsvRows(csv);
+    let created = 0; let skipped = 0;
+    for (const raw of rows) {
+      const lead = mapLeadRow(header, raw);
+      if (!lead.name && !lead.phone && !lead.email) { skipped += 1; continue; }
+      const dup = await ContactModel.findByIdentifiers({ phone: lead.phone, email: lead.email });
+      if (dup && skipDuplicates) { skipped += 1; continue; }
       await LeadModel.createLead({
-        contact: { name, phone, email },
+        contact: { name: lead.name, phone: lead.phone, email: lead.email },
         pipeline_id: req.body.pipeline_id || null,
         owner_id: req.session.user.id,
-        source: source || 'import_csv',
-        notes: notes || null,
+        source: lead.source || req.body.source || 'import_csv',
+        notes: lead.notes || null,
       });
       created += 1;
     }
-    return res.json({ success: true, data: { imported: created } });
+    return res.json({ success: true, data: { imported: created, skipped } });
   } catch (err) {
     console.error('[crm] importLeadsCsv', err);
     return res.status(500).json({ success: false, error: 'Erro ao importar CSV' });
@@ -563,6 +673,9 @@ module.exports = {
   exportActivitiesICS,
   exportLeadsCsv,
   exportOpportunitiesCsv,
+  previewLeadsCsv,
   importLeadsCsv,
   refreshStats,
+  updateStageConfig,
+  updateStageRule,
 };

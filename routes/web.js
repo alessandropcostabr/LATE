@@ -15,6 +15,7 @@ const notificationController = require('../controllers/notificationController');
 const messageViewController = require('../controllers/messageViewController');
 const contactController = require('../controllers/contactController');
 const crmViewController = require('../controllers/crmViewController');
+const crmConfigViewController = require('../controllers/crmConfigViewController');
 const { getClientIp, normalizeAccessRestrictions } = require('../utils/ipAccess');
 const messageSendEventController = require('../controllers/messageSendEventController');
 
@@ -224,6 +225,8 @@ router.get('/recados/kanban', requireAuth, requirePermission('read'), csrfProtec
 router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfProtection, messageViewController.calendarPage);
 
 // CRM páginas
+router.get('/crm/config', requireAuth, requirePermission('read'), csrfProtection, crmConfigViewController.configPage);
+
 router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
   res.render('crm-dashboard', { title: 'CRM · Dashboard', user: req.session.user || null });
 });

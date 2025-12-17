@@ -105,6 +105,36 @@ const validateCsvImport = [
   body('pipeline_id').optional().isUUID().withMessage('pipeline_id deve ser UUID'),
 ];
 
+
+const validateStageConfigUpdate = [
+  validateUUIDParam('id'),
+  body('name').optional().isString(),
+  body('position').optional().isInt({ min: 1 }),
+  body('probability').optional().isFloat({ min: 0, max: 1 }),
+  body('color').optional().isString(),
+  body('sla_minutes').optional().isInt({ min: 0 }),
+];
+
+const validateStageRuleUpdate = [
+  validateUUIDParam('id'),
+  body('required_fields').optional().isArray(),
+  body('forbid_jump').optional().isBoolean(),
+  body('forbid_back').optional().isBoolean(),
+  body('auto_actions').optional().isArray(),
+];
+
+const validateDedupPreview = [
+  body('phone').optional().isString(),
+  body('email').optional().isEmail().withMessage('email inválido'),
+  body().custom((val) => { if (!val.phone && !val.email) throw new Error('Informe telefone ou email'); return true; }),
+];
+
+const validateDedupMerge = [
+  body('source_id').notEmpty().withMessage('source_id é obrigatório'),
+  body('target_id').notEmpty().withMessage('target_id é obrigatório'),
+  body().custom((val) => { if (val.source_id === val.target_id) throw new Error('IDs devem ser diferentes'); return true; }),
+];
+
 const validateCustomFieldValue = [
   validateUUIDParam('id'),
   body('entity_type').isIn(['lead','contact','account','opportunity','activity']).withMessage('entity_type inválido'),
@@ -124,4 +154,8 @@ module.exports = {
   validateCustomFieldUpdate,
   validateCustomFieldValue,
   validateCsvImport,
+  validateStageConfigUpdate,
+  validateStageRuleUpdate,
+  validateDedupPreview,
+  validateDedupMerge,
 };

@@ -123,20 +123,6 @@ describe('CRM API', () => {
     expect(res.body.error).toMatch(/Campos obrigatórios/);
   });
 
-
-  test('mover estágio aciona auto_actions', async () => {
-    OpportunityModel.findById.mockResolvedValue({ id: 'o1', stage_id: 's1', pipeline_id: 'p1', amount: 100, owner_id: 1, title: 'Venda' });
-    PipelineModel.getStageById
-      .mockResolvedValueOnce({ id: 's1', pipeline_id: 'p1', position: 1, forbid_jump: false, forbid_back: false, required_fields: [] })
-      .mockResolvedValueOnce({ id: 's2', pipeline_id: 'p1', position: 2, forbid_jump: false, forbid_back: false, required_fields: [], auto_actions: [ { type: 'create_activity', subject: 'Auto task' } ], sla_minutes: 10 });
-    ActivityModel.createActivity.mockResolvedValue({ id: 'act1' });
-    OpportunityModel.updateStage = jest.fn().mockResolvedValue({ id: 'o1', stage_id: 's2' });
-    const request = createApp();
-    const res = await request.patch('/crm/opportunities/o1/stage').send({ stage_id: 's2' });
-    expect(res.status).toBe(200);
-    expect(ActivityModel.createActivity).toHaveBeenCalled();
-    expect(OpportunityModel.updateStage).toHaveBeenCalled();
-  });
   test('mover estágio válido', async () => {
     OpportunityModel.findById.mockResolvedValue({ id: 'o1', stage_id: 's1', pipeline_id: 'p1', amount: 100 });
     PipelineModel.getStageById

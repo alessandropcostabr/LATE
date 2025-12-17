@@ -26,6 +26,7 @@ const crmController = require('../controllers/crmController');
 const incidentController = require('../controllers/incidentController');
 const customFieldController = require('../controllers/customFieldController');
 const recadoSyncController = require('../controllers/recadoSyncController');
+const dedupController = require('../controllers/dedupController');
 const messageSendEventController = require('../controllers/messageSendEventController');
 const { collectDevInfo } = require('../utils/devInfo');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
@@ -80,6 +81,10 @@ const {
   validateCustomFieldUpdate,
   validateCustomFieldValue,
   validateCsvImport,
+  validateStageConfigUpdate,
+  validateStageRuleUpdate,
+  validateDedupPreview,
+  validateDedupMerge,
 } = require('../middleware/validation_crm');
 
 // Painel ADMIN de Usuários
@@ -274,9 +279,24 @@ router.get(
   crmController.exportOpportunitiesCsv
 );
 router.post(
+  '/crm/leads/preview-csv',
+  ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
+  crmController.previewLeadsCsv
+);
+router.post(
   '/crm/leads/import-csv',
   ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
   crmController.importLeadsCsv
+);
+router.patch(
+  '/crm/stages/:id/config',
+  ...flatFns(canUpdateCRM, validateStageConfigUpdate, handleValidationErrors),
+  crmController.updateStageConfig
+);
+router.patch(
+  '/crm/stages/:id/rule',
+  ...flatFns(canUpdateCRM, validateStageRuleUpdate, handleValidationErrors),
+  crmController.updateStageRule
 );
 router.get(
   '/crm/stats/pipeline',
@@ -297,6 +317,22 @@ router.get(
   '/crm/custom-fields',
   ...flatFns(canReadCRM),
   customFieldController.list
+);
+
+router.get(
+  '/crm/dedupe/contacts',
+  ...flatFns(canUpdateCRM),
+  dedupController.listDuplicates
+);
+router.post(
+  '/crm/dedupe/contacts/preview',
+  ...flatFns(canUpdateCRM, validateDedupPreview, handleValidationErrors),
+  dedupController.previewMerge
+);
+router.post(
+  '/crm/dedupe/contacts/merge',
+  ...flatFns(canUpdateCRM, validateDedupMerge, handleValidationErrors),
+  dedupController.merge
 );
 router.post(
   '/crm/custom-fields',
