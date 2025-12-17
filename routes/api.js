@@ -81,6 +81,8 @@ const {
   validateCustomFieldUpdate,
   validateCustomFieldValue,
   validateCsvImport,
+  validateStageConfigUpdate,
+  validateStageRuleUpdate,
   validateDedupPreview,
   validateDedupMerge,
 } = require('../middleware/validation_crm');
@@ -277,9 +279,24 @@ router.get(
   crmController.exportOpportunitiesCsv
 );
 router.post(
+  '/crm/leads/preview-csv',
+  ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
+  crmController.previewLeadsCsv
+);
+router.post(
   '/crm/leads/import-csv',
   ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
   crmController.importLeadsCsv
+);
+router.patch(
+  '/crm/stages/:id/config',
+  ...flatFns(canUpdateCRM, validateStageConfigUpdate, handleValidationErrors),
+  crmController.updateStageConfig
+);
+router.patch(
+  '/crm/stages/:id/rule',
+  ...flatFns(canUpdateCRM, validateStageRuleUpdate, handleValidationErrors),
+  crmController.updateStageRule
 );
 router.get(
   '/crm/stats/pipeline',
