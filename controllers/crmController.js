@@ -599,6 +599,7 @@ async function importLeadsCsv(req, res) {
     return res.status(500).json({ success: false, error: 'Erro ao importar CSV' });
   }
 }
+
 module.exports = {
   listPipelines,
   listLeads,
