@@ -1,7 +1,7 @@
 # 📦 LATE — Sprints Executadas (Histórico Completo)
 > Atualizado em 2025/11/12.
 
-**Período:** Outubro - Novembro 2025  
+**Período:** Outubro - Dezembro 2025  
 **Versão Atual:** 2.0.0
 
 ---
@@ -17,6 +17,36 @@
 | Sprint D | ✅ Concluída | Out/2025 | #247 | 2 |
 | **Correções Pós-D** | ✅ Concluída | Out-Nov/2025 | #248-257 | - |
 | Sprint 02B | ✅ Concluída | Nov/2025 | #266-268 | 0 |
+| Sprint CRM Core | ✅ Concluída | Dez/2025 | #292 (consolidado) | 3 |
+
+---
+
+## Sprint CRM Core — Dez/2025
+
+### Objetivo
+Entregar o núcleo do CRM no LATE: pipelines, leads/contatos/oportunidades, atividades, calendário com ICS, dedup, integrações de message-events e telefonia, exports/health gate.
+
+### Entregas Principais
+1. **Pipelines/Estágios/Regras**: criação/movimentação com required_fields, forbid_jump/back e validação de custom fields.
+2. **Leads/Contacts/Opps**: criação com dedup por email/telefone normalizado; export CSV com escopo de owner; import simples de leads.
+3. **Atividades & Calendário**: CRUD de activities, filtros owner/status/tipo/data, drag/drop/resize no FullCalendar, export ICS.
+4. **Dedup UI**: preview e merge seguro; validação UUID e IDs distintos.
+5. **Integrações**: message-events idempotente (Sender) com UI /relatorios/whatsapp; ingestão de telefonia com HMAC/bearer/allowlist; health gate 503 JSON para /api.
+6. **Seeds & MVs**: snapshot Salesforce (6 contas, 6 opps, 5 leads) e views materializadas para stats (pipeline/activities) com cron de refresh.
+
+### Arquivos Atualizados
+- controllers: crmController, dedupController, messageSendEventController, telephonyController, crmViewController, callLogController
+- middleware/validation_crm, middleware/healthGate
+- models: pipeline, lead, contact, opportunity, activity, customField/Value, crmStats, messageSendEvent, telephonyEvent, recadoSync
+- migrations: CRM core + MVs + seeds Salesforce
+- public/js e views: crm-kanban, crm-calendar, crm-dashboard, crm-dedup, crm-leads, crm-opportunities, call-logs
+- docs: LATE_CRM.md, LATE_message_events.md, news, roadmap, status
+- scripts: refresh-crm-stats.js
+- tests: activities (time/list/ics), dedup merge, CRM API básicas, web dashboard
+
+### Encerramento
+- ✅ Núcleo CRM em develop; branches antigas removidas.
+- 🔜 RBAC de equipe, import CSV avançado (preview/dedup), automações de estágio/SLA, custom fields UI.
 
 ---
 
