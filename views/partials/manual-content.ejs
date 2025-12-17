@@ -1,6 +1,6 @@
 <h2>🎯 Objetivo</h2>
 <blockquote>
-<p>Atualizado em 2025/11/12.</p>
+<p>Atualizado em 2025/12/16.</p>
 </blockquote>
 <p>Este manual orienta o uso diário do sistema LATE por equipes operacionais e administrativas, desde o registro até a conclusão dos recados, fortalecendo o relacionamento com os clientes e garantindo a rastreabilidade das interações.</p>
 <h2>🧑‍💼 Perfis de Acesso</h2>
@@ -59,6 +59,42 @@
 <li>Clique em <strong>Ver detalhes</strong> para visualizar o histórico completo da ação (quem fez, qual setor, antes e depois).</li>
 <li>Gere arquivos CSV/JSON em <strong>Relatórios › Exportações</strong>; aplique os filtros desejados e acompanhe o status de cada arquivo no próprio painel (a exportação roda em segundo plano e você recebe um aviso assim que estiver pronta).</li>
 </ul>
+<h2>🎯 CRM — Gestão de Relacionamento</h2>
+<p>O LATE agora conta com um módulo de CRM completo para gerenciar leads, contatos e oportunidades de negócio.</p>
+<h3>Pipelines e Funis</h3>
+<ul>
+<li>Acesse <strong>CRM → Dashboard</strong> para ver o resumo de oportunidades por estágio</li>
+<li>Cada pipeline possui estágios configuráveis (ex.: Qualificação → Proposta → Negociação → Fechado)</li>
+<li>Arraste oportunidades entre estágios no <strong>CRM → Kanban</strong></li>
+</ul>
+<h3>Leads e Contatos</h3>
+<ul>
+<li><strong>CRM → Leads</strong> lista todos os leads com filtros por status, origem e responsável</li>
+<li>Deduplicação automática por email e telefone evita cadastros duplicados</li>
+<li>Exporte leads em CSV respeitando seu escopo de acesso</li>
+</ul>
+<h3>Oportunidades</h3>
+<ul>
+<li><strong>CRM → Oportunidades</strong> mostra negócios em andamento</li>
+<li>Cada oportunidade pode ter atividades (tarefas, reuniões, chamadas) associadas</li>
+<li>Mova oportunidades entre estágios; o sistema valida campos obrigatórios por etapa</li>
+</ul>
+<h3>Calendário de Atividades</h3>
+<ul>
+<li><strong>CRM → Calendário</strong> exibe tarefas e compromissos em formato visual</li>
+<li>Arraste para reagendar, redimensione para ajustar duração</li>
+<li>Exporte em ICS para sincronizar com seu calendário pessoal</li>
+</ul>
+<h3>Configuração do CRM</h3>
+<ul>
+<li><strong>CRM → Config</strong> permite gerenciar pipelines, estágios e regras</li>
+<li>Defina campos obrigatórios por estágio, restrições de movimentação e automações</li>
+</ul>
+<h3>Relatório de WhatsApp</h3>
+<ul>
+<li><strong>Relatórios → WhatsApp</strong> mostra eventos de envio de mensagens</li>
+<li>Útil para acompanhar comunicações enviadas pelo sistema</li>
+</ul>
 <h2>🔔 Notificações</h2>
 <ul>
 <li>Envio por e-mail para:<ul>
@@ -80,8 +116,8 @@
 <h3>Restrições por IP e Horário</h3>
 <ul>
 <li>Em <strong>Admin → Usuários → Editar</strong>, a seção <em>Restrições de acesso</em> permite:<ul>
-<li>Ativar “Acesso restrito por IP” e informar os IPs externos liberados (ex.: <code>191.9.115.129</code>). Tudo desativado = usuário pode acessar de qualquer lugar.</li>
-<li>Ativar “Acesso restrito por horário” e definir faixas por dia da semana (segunda a sexta, 08h–18h, por exemplo).</li>
+<li>Ativar &quot;Acesso restrito por IP&quot; e informar os IPs externos liberados (ex.: <code>191.9.115.129</code>). Tudo desativado = usuário pode acessar de qualquer lugar.</li>
+<li>Ativar &quot;Acesso restrito por horário&quot; e definir faixas por dia da semana (segunda a sexta, 08h–18h, por exemplo).</li>
 </ul>
 </li>
 <li>O painel <strong>Relatórios → Status</strong> mostra o IP atual, o escopo aplicado (liberado/restrito) e a lista de regras ativas.</li>
