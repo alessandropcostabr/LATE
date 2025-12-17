@@ -1,0 +1,23 @@
+<%- include(partials/header, { title }) %>
+<%- include(partials/navbar, { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Deduplicação de Contatos</h1>
+      <p class="muted">Detecta contatos com mesmo telefone/email. Merge reatribui leads/oportunidades/atividades.</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <header class="card__header">
+      <h2>Duplicados detectados</h2>
+      <button class="btn" id="btnReload">Recarregar</button>
+    </header>
+    <div class="card__body">
+      <div id="dupList" class="list simple-list" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+<script src="/js/crm-dedup.js"></script>
+<%- include(partials/footer) %>

@@ -328,50 +328,102 @@ function collectJournalAlerts() {
 }
 
 function collectHAProxy() {
-  try {
-    const raw = ssh(
-      nodes.find((n) => n.name === 'mach2'),
-      `${sudoPrefix(
-        "bash -c \"printf 'show stat\\n' | socat stdio /run/haproxy/admin.sock\"",
-      )}`,
-    );
-    const payload = raw.trim();
-    if (!payload) {
-      addSection('HAProxy (late_back)', [
-        'Admin socket não retornou dados (verificar permissões do sudo ou nível do socket).',
-      ]);
+  const candidates = [nodes.find((n) => n.name === 'mach3'), nodes.find((n) => n.name === 'mach2'), nodes.find((n) => n.name === 'mach1')].filter(Boolean);
+  let lastError = null;
+
+  for (const target of candidates) {
+    try {
+      const raw = ssh(
+        target,
+        `${sudoPrefix(
+          "bash -c \"printf 'show stat\\n' | socat stdio /run/haproxy/admin.sock\"",
+        )}`,
+      );
+      const payload = raw.trim();
+      if (!payload) continue;
+
+      const lines = payload
+        .split('\n')
+        .filter((line) => line && !line.startsWith('#') && line.startsWith('late_back,'))
+        .map((line) => {
+          const cols = line.split(',');
+          const backend = cols[0];
+          const server = cols[1];
+          const status = cols[17] || cols[32] || 'N/D';
+          const checkStatus = cols[34] || '';
+          return `- (${target.name}) ${backend}/${server} -> ${status}${
+            checkStatus ? ` (${checkStatus})` : ''
+          }`;
+        });
+
+      if (lines.length === 0) {
+        lastError = new Error('Sem linhas de backend');
+        continue;
+      }
+
+      addSection('HAProxy (late_back)', lines);
       return;
+    } catch (err) {
+      lastError = err;
+      // tenta próximo nó
     }
-    const lines = payload
-      .split('\n')
-      .filter((line) => line && !line.startsWith('#') && line.startsWith('late_back,'))
-      .map((line) => {
-        const cols = line.split(',');
-        const backend = cols[0];
-        const server = cols[1];
-        const status = cols[17] || cols[32] || 'N/D';
-        const checkStatus = cols[34] || '';
-        return `- ${backend}/${server} -> ${status}${checkStatus ? ` (${checkStatus})` : ''}`;
-      });
-    addSection('HAProxy (late_back)', lines.length ? lines : ['Sem servidores listados']);
-  } catch (err) {
-    addSection('HAProxy (late_back)', [`Erro ao consultar: ${err.message}`]);
   }
+
+  if (lastError) {
+    addSection('HAProxy (late_back)', [
+      'Admin socket não retornou dados (verificar permissões do sudo ou nível do socket).',
+    ]);
+  } else {
+    addSection('HAProxy (late_back)', ['Admin socket indisponível em todos os nós']);
+  }
+}
+
+function findPrimaryNode() {
+  for (const node of nodes) {
+    try {
+      const cmd = sudoPrefix(
+        "crm_mon -1 | sed -n 's/.*Promoted: \\[ \\([^ ]*\\) .*/\\1/p' | head -n1",
+      );
+      const out = ssh(node, cmd);
+      if (out) return out.trim();
+    } catch (err) {
+      // tenta próximo nó
+    }
+  }
+  return null;
 }
 
 function collectPostgres() {
   try {
-    const out = ssh(
-      nodes.find((n) => n.name === 'mach2'),
-      `${sudoPrefix("psql -At -c \"select client_addr||' state='||state||' sync='||sync_state from pg_stat_replication;\"", { user: 'postgres' })}`,
-    );
-    const lines = out
-      ? out
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => `- ${line}`)
-      : ['Sem conexões de réplica detectadas'];
-    addSection('PostgreSQL (pg_stat_replication)', lines);
+    const primaryName = findPrimaryNode();
+    const candidates = primaryName
+      ? nodes.filter((n) => n.name === primaryName || n.host === primaryName)
+      : nodes;
+
+    let lastError = null;
+    for (const target of candidates) {
+      try {
+        const out = ssh(
+          target,
+          `${sudoPrefix(
+            "psql -At -c \"select client_addr||' state='||state||' sync='||sync_state from pg_stat_replication;\"",
+            { user: 'postgres' },
+          )}`,
+        );
+        const lines = out
+          ? out
+              .split('\n')
+              .filter(Boolean)
+              .map((line) => `- (${target.name}) ${line}`)
+          : [`- (${target.name}) Sem conexões de réplica detectadas`];
+        addSection('PostgreSQL (pg_stat_replication)', lines);
+        return;
+      } catch (err) {
+        lastError = err;
+        // tenta próximo candidato
+      }
+    }
+    if (lastError) throw lastError;
   } catch (err) {
     addSection('PostgreSQL (pg_stat_replication)', [`Erro ao consultar: ${err.message}`]);
   }
