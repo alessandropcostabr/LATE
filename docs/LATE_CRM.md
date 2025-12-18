@@ -1,5 +1,5 @@
 # LATE_CRM – Visão, Benchmarking e Plano de Execução
-_Atualizado em 16 de dezembro de 2025_
+_Atualizado em 17 de dezembro de 2025_
 
 ## 1) Objetivo
 Transformar o LATE em um CRM completo, flexível e configurável, mantendo licença MIT e a arquitetura Node.js/Express/PostgreSQL já existente. Reuso de terceiros segue: (a) código MIT/Apache com cabeçalho preservado; (b) GPL/AGPL apenas como referência conceitual (clean room) ou via API externa.
@@ -20,7 +20,7 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 6. Segurança: owners, filtros “Meus”, RBAC do LATE, audit_logs, CSRF/rate-limit.
 
 ## 4) Benchmarking (reuso ou inspiração)
-- MIT/Apache (pode reusar código): BottleCRM (kanban/filtros), Creamy CRM (dedup), Krayin (MIT), OFBiz (Apache-2.0, modelagem Party/Contact/Opp), openCRX (BSD-like, CalDAV/WebDAV), Hydra OMS (Apache-2.0). 
+- MIT/Apache (pode reusar código): BottleCRM (kanban/filtros — inativo pós-2023, inspiração), Creamy CRM (dedup — inativo), Krayin (MIT — ativo, releases 2025, priorizar reuso), OFBiz (Apache-2.0, modelagem Party/Contact/Opp — atividade baixa), openCRX (BSD-like, CalDAV/WebDAV — atividade baixa), Hydra OMS (Apache-2.0 — sem updates recentes).
 - Conceitual/API apenas (GPL/AGPL): Dolibarr, SuiteCRM, ERPNext, Pipedrive/HubSpot (conceitos), Vtiger, YetiForce, etc.
 
 ## 5) Requisitos funcionais
@@ -37,6 +37,7 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 
 ## 6) Modelo de dados (já migrado)
 `pipelines`, `pipeline_stages`, `pipeline_rules`, `accounts`, `contacts` (phone/email normalizados), `leads`, `opportunities`, `activities`, `campaigns`, `labels`/`label_links`, `custom_fields`/`custom_field_values`, `attachments`, `audit_logs`, `message_send_events`, `telephony_events`, MVs `mv_crm_*` para stats.
+- Audit logs: eventos mínimos a registrar — `created`, `updated`, `stage_moved`, `owner_changed`, `merged`.
 
 ## 7) Regras de negócio
 - Criar oportunidade: valida regras do estágio inicial; `account_id` só se pipeline exigir.
@@ -61,13 +62,5 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 ## 10) Licenciamento
 - LATE permanece MIT; código MIT/Apache reutilizado mantém cabeçalho; GPL/AGPL apenas referência/API.
 
-## 11) Próximos passos (prioridade)
-1. RBAC fino e filtros “Meus/equipe” em todas as listagens e transições.
-2. Wiring final de stats/dashboards (usar MVs) e UI consolidada.
-3. Importador CSV avançado (preview, dedup/merge, dry-run, aplicar) para leads/contacts/opps.
-4. Custom fields UI e required_fields incluindo custom; editor de pipelines/estágios/regras (cores, prob, forbid_*).
-5. Recados → activities: mapear recados existentes, navegação recado→contato/lead/opp, ICS/agenda integrada.
-6. ICS/CalDAV avançado: subscribe/export full, filtros por owner/pipeline; opcional CalDAV.
-7. Automações de estágio/SLA (on_enter/on_exit): criar activity, notificar owner, ajustar probabilidade, lembretes.
-8. Tests adicionais: filtros, activities, custom fields, recado→lead→opp, CSV importer.
-
+## 11) Continuidade
+Backlog, sprints futuras e pendências foram movidos para `docs/LATE_CRM_II.md` (atualizado em 17 de dezembro de 2025).

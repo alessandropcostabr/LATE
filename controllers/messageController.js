@@ -555,14 +555,52 @@ exports.list = async (req, res) => {
       label,
       order_by,
       order,
+      page,
+      include_total,
     } = req.query;
 
     const viewer = await resolveViewerWithSectors(req);
     const actor = getSessionActor(req);
+    const parsedLimit = Math.min(Number(limit) || 10, 200);
+    const parsedPage = Number(page) > 0 ? Math.floor(Number(page)) : null;
+    const parsedOffset = parsedPage
+      ? (parsedPage - 1) * parsedLimit
+      : Number(offset) || 0;
+
+    const wantsTotal = String(include_total || '').toLowerCase() === 'true' || include_total === '1';
+
+    if (wantsTotal) {
+      const { rows, total } = await Message.listWithTotal({
+        limit: parsedLimit,
+        offset: parsedOffset,
+        start_date,
+        end_date,
+        status,
+        recipient,
+        sector_id,
+        label,
+        order_by,
+        order,
+        viewer,
+      });
+      await attachCreatorNames(rows);
+      const pageNumber = parsedPage || Math.floor(parsedOffset / parsedLimit) + 1;
+      return res.json({
+        success: true,
+        data: rows.map((row) => toClient(row, viewer)),
+        pagination: {
+          total,
+          limit: parsedLimit,
+          offset: parsedOffset,
+          page: pageNumber,
+          pages: Math.max(1, Math.ceil(total / parsedLimit)),
+        },
+      });
+    }
 
     const rows = await Message.list({
-      limit,
-      offset,
+      limit: parsedLimit,
+      offset: parsedOffset,
       start_date,
       end_date,
       status,
@@ -575,7 +613,10 @@ exports.list = async (req, res) => {
     });
     await attachCreatorNames(rows);
 
-    return res.json({ success: true, data: rows.map((row) => toClient(row, viewer)) });
+    return res.json({
+      success: true,
+      data: rows.map((row) => toClient(row, viewer)),
+    });
   } catch (err) {
     console.error('[messages] erro ao listar:', err);
     return res.status(500).json({ success: false, error: 'Falha ao listar registros' });

@@ -1285,6 +1285,113 @@ async function list(options = {}, retrying = false) {
   }
 }
 
+async function listWithTotal(options = {}, retrying = false) {
+  const {
+    limit = 10,
+    offset = 0,
+    status,
+    start_date,
+    end_date,
+    recipient,
+    order_by = 'created_at',
+    order = 'desc',
+    viewer,
+    use_callback_date = false,
+  } = options;
+
+  const { selectColumns, includeCreatedBy, includeRecipientSectorId } = await resolveSelectColumns();
+  const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
+
+  const parsedLimit = Number(limit);
+  const parsedOffset = Number(offset);
+  const sanitizedLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 10;
+  const sanitizedOffset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+
+  const orderByAllowed = ['created_at', 'updated_at', 'id', 'status', 'date_ref', 'callback_at'];
+  const orderKey = orderByAllowed.includes(String(order_by)) ? String(order_by) : 'created_at';
+  const sort = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const dateOrderSql = `(${DATE_REF_SQL.trim()})`;
+  let primaryOrderClause;
+  if (orderKey === 'date_ref') {
+    primaryOrderClause = `${dateOrderSql} ${sort}`;
+  } else if (orderKey === 'callback_at') {
+    primaryOrderClause = `callback_at ${sort} NULLS LAST`;
+  } else {
+    primaryOrderClause = `${orderKey} ${sort}`;
+  }
+
+  const statusFilter = translateStatusForQuery(status);
+  const startDate = trim(start_date);
+  const endDate = trim(end_date);
+  const recipientFilter = trim(recipient);
+  const sectorId = normalizeRecipientSectorId(
+    options.sector_id ??
+    options.recipient_sector_id ??
+    options.sectorId
+  );
+  const labelFilter = normalizeLabelFilter(
+    options.label ??
+    (Array.isArray(options.labels) ? options.labels[0] : null)
+  );
+
+  const filterResult = await buildFilterClause(
+    {
+      status: statusFilter,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      recipient: recipientFilter || null,
+      sectorId,
+      label: labelFilter,
+      dateMode: use_callback_date ? 'callback' : 'date_ref',
+    },
+    {
+      viewer,
+      includeCreatedBy,
+      recipientSectorEnabled,
+      supportsSectorMembership,
+      startIndex: 1,
+    }
+  );
+
+  if (filterResult.emptyResult) {
+    return { rows: [], total: 0 };
+  }
+
+  let whereClause = filterResult.clause;
+  const queryParams = [...filterResult.params];
+  let nextIndex = filterResult.nextIndex;
+
+  const dataSql = `
+    SELECT ${selectColumns}
+      FROM messages
+      ${whereClause}
+  ORDER BY ${primaryOrderClause}, id DESC
+     LIMIT ${ph(nextIndex)} OFFSET ${ph(nextIndex + 1)}
+  `;
+
+  const countSql = `
+    SELECT COUNT(*)::int AS count
+      FROM messages
+      ${whereClause}
+  `;
+
+  try {
+    const [dataResult, countResult] = await Promise.all([
+      db.query(dataSql, [...queryParams, sanitizedLimit, sanitizedOffset]),
+      db.query(countSql, queryParams),
+    ]);
+
+    const total = Number(countResult.rows?.[0]?.count || 0);
+    return {
+      rows: dataResult.rows.map(mapRow),
+      total,
+    };
+  } catch (err) {
+    return handleSchemaError(err, retrying, () => listWithTotal(options, true));
+  }
+}
+
 async function listRecent(limit = 10, { viewer } = {}) {
   return list({ limit, order_by: 'created_at', order: 'desc', viewer });
 }
@@ -1500,6 +1607,7 @@ module.exports = {
   updateStatus,
   remove,
   list,
+  listWithTotal,
   listRelatedMessages,
   listContactHistory,
   listRecent,
