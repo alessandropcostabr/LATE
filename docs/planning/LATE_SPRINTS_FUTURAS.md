@@ -1,8 +1,9 @@
-# 🚀 LATE — Sprints Futuras (Roadmap 2025-2026)
-> Atualizado em 2025/11/12.
 
-**Versão:** 2.0.1  
-**Última atualização:** 2025/11/12
+# 🚀 LATE — Sprints Futuras (Roadmap 2025-2026)
+> Atualizado em 2025/12/18.
+
+**Versão:** 2.0.2  
+**Última atualização:** 2025/12/18
 
 ---
 
@@ -28,10 +29,12 @@ Este documento consolida todas as sprints futuras planejadas para o projeto LATE
 
 ### Próximas Prioridades
 
-1. ✅ **Sprint 02B — Auditoria (UI & Exportações + Status Operacional)** (concluída em 12/11/2025: cards e filtros salvos, exportações com fila/notificações e health-check no painel)
-2. 🟡 **Sprint — Controle de Acesso por IP** (DEV: policy de rede, exceções por usuário, whoami e badges no `/relatorios/status`)
-3. 🟡 **Sprint Hardening PG + CSP** (TLS no PostgreSQL, middleware Helmet report-only/enforce e refatoração de `health/status`)
-4. 🟠 **Correção PR #217 — Watchers fora do escopo** (rotas `/api/messages/:id/watchers` e `messageWatcherController` devem validar o escopo antes de listar watchers; hoje basta permissão de leitura e permite enumerar recados fora do setor)
+1. ✅ **Sprint 02B — Auditoria (UI & Exportações + Status Operacional)** (concluída em 12/11/2025)
+2. 🟢 **Sprint CRM Fase I — RBAC & Escopos** (entregue: filtros Me/Equipe/All em listagens CRM)
+3. 🟡 **Sprint CRM Fase II — Stats/Dashboards MVs** (em andamento na branch `feature/crm-stats-mv`)
+4. 🟡 **Sprint — Controle de Acesso por IP** (policy de rede, exceções por usuário, whoami e badges no `/relatorios/status`)
+5. 🟡 **Sprint Hardening PG + CSP** (TLS no PostgreSQL, Helmet report-only/enforce; refator de `health/status`)
+6. 🟠 **Correção PR #217 — Watchers fora do escopo** (rotas `/api/messages/:id/watchers` e controller precisam validar escopo)
 
 ---
 

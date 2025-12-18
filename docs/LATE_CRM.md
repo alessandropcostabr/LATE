@@ -1,5 +1,5 @@
 # LATE_CRM – Visão, Benchmarking e Plano de Execução
-_Atualizado em 17 de dezembro de 2025_
+_Atualizado em 18 de dezembro de 2025_
 
 ## 1) Objetivo
 Transformar o LATE em um CRM completo, flexível e configurável, mantendo licença MIT e a arquitetura Node.js/Express/PostgreSQL já existente. Reuso de terceiros segue: (a) código MIT/Apache com cabeçalho preservado; (b) GPL/AGPL apenas como referência conceitual (clean room) ou via API externa.
@@ -63,4 +63,4 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 - LATE permanece MIT; código MIT/Apache reutilizado mantém cabeçalho; GPL/AGPL apenas referência/API.
 
 ## 11) Continuidade
-Backlog, sprints futuras e pendências foram movidos para `docs/LATE_CRM_II.md` (atualizado em 17 de dezembro de 2025).
+Backlog, sprints futuras e pendências estão em `docs/LATE_CRM_II.md` (atualizado em 18 de dezembro de 2025). Este arquivo mantém apenas o que já foi entregue ou decidido.

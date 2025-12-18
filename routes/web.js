@@ -228,7 +228,13 @@ router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfPr
 router.get('/crm/config', requireAuth, requirePermission('read'), csrfProtection, crmConfigViewController.configPage);
 
 router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
-  res.render('crm-dashboard', { title: 'CRM · Dashboard', user: req.session.user || null });
+  const csrfToken = req.csrfToken ? req.csrfToken() : null;
+  res.render('crm-dashboard', {
+    title: 'CRM · Dashboard',
+    user: req.session.user || null,
+    csrfToken,
+    scope: 'me'
+  });
 });
 
 router.get('/crm/leads', requireAuth, requirePermission('read'), csrfProtection, crmViewController.leadsPage);
@@ -237,7 +243,13 @@ router.get('/crm/opportunities/kanban', requireAuth, requirePermission('read'), 
   res.render('crm-kanban', { title: 'CRM · Kanban', user: req.session.user || null });
 });
 router.get('/crm/activities/calendario', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
-  res.render('crm-calendar', { title: 'CRM · Calendário', user: req.session.user || null });
+  const csrfToken = req.csrfToken ? req.csrfToken() : null;
+  res.render('crm-calendar', {
+    title: 'CRM · Calendário',
+    user: req.session.user || null,
+    csrfToken,
+    scope: 'me'
+  });
 });
 
 router.get(

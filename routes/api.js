@@ -28,6 +28,7 @@ const customFieldController = require('../controllers/customFieldController');
 const recadoSyncController = require('../controllers/recadoSyncController');
 const dedupController = require('../controllers/dedupController');
 const messageSendEventController = require('../controllers/messageSendEventController');
+const crmStatsController = require('../controllers/crmStatsController');
 const { collectDevInfo } = require('../utils/devInfo');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
 
@@ -268,6 +269,11 @@ router.get(
   '/crm/activities.ics',
   ...flatFns(canReadCRM),
   crmController.exportActivitiesICS
+);
+router.get(
+  '/crm/stats',
+  ...flatFns(canReadCRM, validateScopeParam()),
+  crmStatsController.list,
 );
 router.get(
   '/crm/leads.csv',

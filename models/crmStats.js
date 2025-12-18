@@ -79,13 +79,31 @@ async function activitiesByOwner({ user } = {}) {
 
 
 async function refreshMaterializedViews() {
-  await db.query(`REFRESH MATERIALIZED VIEW ${MV_PIPELINE}`);
-  await db.query(`REFRESH MATERIALIZED VIEW ${MV_ACTIVITIES}`);
+  await db.query('SELECT pg_advisory_lock(90210)');
+  try {
+    // Usa concurrently; se não houver índice unique, cairá em erro — handled fora
+    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${MV_PIPELINE}`);
+    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${MV_ACTIVITIES}`);
+  } finally {
+    await db.query('SELECT pg_advisory_unlock(90210)');
+  }
+}
+
+async function refreshedAt() {
+  // Sem tabela de log, usa age do relfile
+  const sql = `
+    SELECT GREATEST(pg_catalog.pg_relation_size($1::regclass)::bigint, 0) AS size,
+           GREATEST(pg_catalog.pg_stat_get_last_analyze_time($1::regclass),
+                    pg_catalog.pg_stat_get_last_analyze_time($2::regclass)) AS ts
+  `;
+  const { rows } = await db.query(sql, [MV_PIPELINE, MV_ACTIVITIES]);
+  const ts = rows?.[0]?.ts;
+  return ts ? new Date(ts) : null;
 }
 
 module.exports = {
   pipelineByStageMonth,
   activitiesByOwner,
   refreshMaterializedViews,
+  refreshedAt,
 };
-

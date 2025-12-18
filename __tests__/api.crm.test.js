@@ -5,6 +5,29 @@ jest.mock('../models/pipeline');
 jest.mock('../models/lead');
 jest.mock('../models/opportunity');
 jest.mock('../models/activity');
+jest.mock('../models/customField');
+jest.mock('../models/customFieldValue');
+jest.mock('../config/database', () => {
+  const { newDb } = require('pg-mem');
+  const mem = newDb({ autoCreateForeignKeyIndices: true });
+  const adapter = mem.adapters.createPg();
+  const pool = new adapter.Pool();
+  return {
+    query: (...args) => pool.query(...args),
+    prepare: (sql) => ({
+      run: (params = []) => pool.query(sql, params),
+      get: async (params = []) => (await pool.query(sql, params)).rows[0],
+      all: async (params = []) => (await pool.query(sql, params)).rows,
+    }),
+    exec: async (sql) => {
+      const stmts = String(sql || '')
+        .split(/;(?:\s*[\r\n]+|\s*$)/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      for (const st of stmts) await pool.query(st);
+    },
+  };
+});
 
 jest.mock('../middleware/csrf', () => jest.fn((_req, _res, next) => next()));
 
@@ -12,6 +35,8 @@ const PipelineModel = require('../models/pipeline');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
 const ActivityModel = require('../models/activity');
+const CustomFieldModel = require('../models/customField');
+const CustomFieldValueModel = require('../models/customFieldValue');
 
 const crmController = require('../controllers/crmController');
 
@@ -31,6 +56,18 @@ function createApp() {
 describe('CRM API', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    // Defaults para mocks
+    PipelineModel.getStageById.mockResolvedValue(null);
+    PipelineModel.listPipelines?.mockResolvedValue([]);
+    PipelineModel.getStages?.mockResolvedValue([]);
+    LeadModel.createLead.mockResolvedValue({ id: 'lead-mock' });
+    OpportunityModel.createOpportunity.mockResolvedValue({ id: 'opp-mock' });
+    OpportunityModel.findById.mockResolvedValue(null);
+    OpportunityModel.updateStage.mockResolvedValue({ id: 'opp-updated', stage_id: 's2' });
+    ActivityModel.createActivity.mockResolvedValue({ id: 'act-mock' });
+    CustomFieldModel.listRequired.mockResolvedValue([]);
+    CustomFieldValueModel.listValues.mockResolvedValue([]);
+    CustomFieldValueModel.upsert.mockResolvedValue();
   });
 
   test('criar lead exige telefone ou e-mail', async () => {

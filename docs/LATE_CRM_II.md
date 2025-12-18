@@ -1,9 +1,9 @@
 # LATE_CRM_II – Backlog e Sprints
-_Atualizado em 17 de dezembro de 2025_
+_Atualizado em 18 de dezembro de 2025_
 
 > Documento para organizar pendências e próximas sprints do CRM. O histórico concluído permanece em `docs/LATE_CRM.md`.
 
-## Sprint 1 — RBAC & Filtros “Meus/Equipe”
+## Sprint 1 — RBAC & Filtros “Meus/Equipe” (✅ concluída)
 - Backend: reforçar escopo por owner/team em queries de leads/contacts/opps/activities; garantir uso consistente de `currentUser.team_id`.
 - API: parâmetros `scope=me|team|all`, validação por perfil (admin pode `all`; gestor equipe pode `team`; default `me`).
 - UI: adicionar filtros rápidos “Meus”/“Equipe” em todas as listagens e kanbans; persistência em querystring.
@@ -57,6 +57,7 @@ function withScope(q, user, scope = 'me', opts = {}) {
 ```
 
 ## Sprint 2 — Stats & Dashboards (MVs)
+_Status: em andamento (branch `feature/crm-stats-mv`, código OK; falta validar testes e métricas de staleness/performances)._ 
 - Revisar MVs `mv_crm_*` e agendamento `refresh-crm-stats.js` (10 min) para cobrir novos filtros.
 - Wiring final no frontend: dashboards únicos por escopo (me/team/all) e pipelines; gráficos de conversão e funil.
 - Permissões: esconder cards/gráficos quando escopo não autorizado.
@@ -93,6 +94,12 @@ try {
   await client.query('select pg_advisory_unlock(90210)');
 }
 ```
+
+### TO_DO sprint 2
+- Rodar `npm test` focando stats/escopo e ajustar fixtures conforme necessário.
+- Validar MVs em staging com `EXPLAIN ANALYZE` e revisar índices/UNIQUE para `REFRESH CONCURRENTLY`.
+- Exercitar UI do dashboard e calendário com `scope=me|team|all`, verificar staleness >20 min e logs.
+- Abrir PR `feature/crm-stats-mv` → `develop`; depois merge para prod.
 
 ## Sprint 3 — Import CSV Avançado
 - Fluxo: upload → mapeamento de colunas → preview (primeiras 50) com validação → dedup/merge sugerido → dry-run → aplicar.
