@@ -18,10 +18,13 @@ async function leadsPage(req, res) {
       filter.owner_id = userId;
     }
     const leads = await LeadModel.listLeads(filter, { limit: 100, offset: 0 });
+    const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     return res.render('crm-leads', {
       title: 'CRM · Leads',
       user: req.session.user || null,
       leads,
+      csrfToken,
+      scope: 'me',
     });
   } catch (err) {
     console.error('[web][crm-leads] erro:', err);
@@ -38,10 +41,13 @@ async function opportunitiesPage(req, res) {
       filter.owner_id = userId;
     }
     const opps = await OpportunityModel.listOpportunities(filter, { limit: 100, offset: 0 });
+    const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     return res.render('crm-opportunities', {
       title: 'CRM · Oportunidades',
       user: req.session.user || null,
       opportunities: opps,
+      csrfToken,
+      scope: 'me',
     });
   } catch (err) {
     console.error('[web][crm-opportunities] erro:', err);
