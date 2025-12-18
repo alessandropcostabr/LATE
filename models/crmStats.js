@@ -79,8 +79,14 @@ async function activitiesByOwner({ user } = {}) {
 
 
 async function refreshMaterializedViews() {
-  await db.query(`REFRESH MATERIALIZED VIEW ${MV_PIPELINE}`);
-  await db.query(`REFRESH MATERIALIZED VIEW ${MV_ACTIVITIES}`);
+  await db.query('SELECT pg_advisory_lock(90210)');
+  try {
+    // Usa concurrently; se não houver índice unique, cairá em erro — handled fora
+    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${MV_PIPELINE}`);
+    await db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${MV_ACTIVITIES}`);
+  } finally {
+    await db.query('SELECT pg_advisory_unlock(90210)');
+  }
 }
 
 module.exports = {
@@ -88,4 +94,3 @@ module.exports = {
   activitiesByOwner,
   refreshMaterializedViews,
 };
-
