@@ -7,6 +7,12 @@
       <h1>Dashboard CRM</h1>
       <p class="muted">Visão rápida de pipeline, atividades e oportunidades recentes.</p>
     </div>
+    <div style="display:flex;gap:1rem;align-items:flex-end;">
+      <div>
+        <%- include('partials/scope-filter', { scope: scope || 'me', id: 'scope' }) %>
+      </div>
+      <div class="muted" id="statsStaleness">Staleness: --</div>
+    </div>
   </header>
 
   <section class="card-grid">

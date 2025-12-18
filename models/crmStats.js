@@ -89,8 +89,21 @@ async function refreshMaterializedViews() {
   }
 }
 
+async function refreshedAt() {
+  // Sem tabela de log, usa age do relfile
+  const sql = `
+    SELECT GREATEST(pg_catalog.pg_relation_size($1::regclass)::bigint, 0) AS size,
+           GREATEST(pg_catalog.pg_stat_get_last_analyze_time($1::regclass),
+                    pg_catalog.pg_stat_get_last_analyze_time($2::regclass)) AS ts
+  `;
+  const { rows } = await db.query(sql, [MV_PIPELINE, MV_ACTIVITIES]);
+  const ts = rows?.[0]?.ts;
+  return ts ? new Date(ts) : null;
+}
+
 module.exports = {
   pipelineByStageMonth,
   activitiesByOwner,
   refreshMaterializedViews,
+  refreshedAt,
 };

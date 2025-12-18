@@ -3,6 +3,8 @@
   const pipelineChartEl = document.getElementById('pipelineChart');
   const activityChartEl = document.getElementById('activityChart');
   const recentListEl = document.getElementById('recentOpportunities');
+  const stalenessEl = document.getElementById('statsStaleness');
+  const scopeSel = document.getElementById('scope');
 
   let pipelinesCache = [];
   let pipelineChart;
@@ -12,6 +14,13 @@
     const res = await fetch(url);
     if (!res.ok) return { success: false, error: 'Falha na requisição' };
     return res.json();
+  }
+
+  function buildScopeQS() {
+    const scope = scopeSel?.value || 'me';
+    const qs = new URLSearchParams();
+    qs.set('scope', scope);
+    return qs.toString();
   }
 
   async function loadPipelines() {
@@ -39,12 +48,12 @@
     return `rgba(${r}, ${g}, ${b}, 0.75)`;
   }
 
-  async function renderPipelineChart() {
+  async function renderStats() {
     await loadPipelines();
-    const json = await fetchJSON('/api/crm/stats/pipeline');
+    const qs = buildScopeQS();
+    const json = await fetchJSON(`/api/crm/stats?${qs}`);
     if (!json.success) return;
-    const rows = json.data || [];
-
+    const rows = json.data.pipeline || [];
     const months = Array.from(new Set(rows.map((r) => r.month))).sort();
     const datasetMap = new Map();
     rows.forEach((row, idx) => {
@@ -80,18 +89,15 @@
         scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
       }
     });
-  }
 
-  async function renderActivityChart() {
-    const json = await fetchJSON('/api/crm/stats/activities');
-    if (!json.success) return;
-    const rows = json.data || [];
-    const owners = Array.from(new Set(rows.map((r) => r.owner_id))).filter(Boolean).map(String);
-    const statuses = Array.from(new Set(rows.map((r) => r.status))).map(String);
+    // Activities
+    const actRows = json.data.activities || [];
+    const owners = Array.from(new Set(actRows.map((r) => r.owner_id))).filter(Boolean).map(String);
+    const statuses = Array.from(new Set(actRows.map((r) => r.status))).map(String);
 
     const datasets = statuses.map((status, idx) => {
       const data = owners.map((owner) => {
-        const row = rows.find((r) => String(r.owner_id) === owner && String(r.status) === status);
+        const row = actRows.find((r) => String(r.owner_id) === owner && String(r.status) === status);
         return row ? row.total : 0;
       });
       return {
@@ -112,22 +118,26 @@
         scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
       }
     });
-  }
 
-  function formatCurrency(value) {
-    const n = Number(value || 0);
-    if (Number.isNaN(n)) return '-';
-    return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  }
-
-  function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return Number.isNaN(d.getTime()) ? '-' : d.toLocaleDateString('pt-BR');
+    // Staleness
+    if (stalenessEl) {
+      const stalenessSec = json.data.staleness_seconds;
+      if (stalenessSec == null) {
+        stalenessEl.textContent = 'Staleness: indeterminado';
+      } else {
+        const minutes = Math.floor(stalenessSec / 60);
+        stalenessEl.textContent = `Staleness: ${minutes} min`;
+        if (stalenessSec > 20 * 60) {
+          stalenessEl.classList.add('text-error');
+        } else {
+          stalenessEl.classList.remove('text-error');
+        }
+      }
+    }
   }
 
   async function loadRecentOpportunities() {
-    const json = await fetchJSON('/api/crm/opportunities?limit=10');
+    const json = await fetchJSON(`/api/crm/opportunities?limit=10&${buildScopeQS()}`);
     if (!json.success) return;
     const opps = json.data || [];
     recentListEl.innerHTML = '';
@@ -144,8 +154,8 @@
             <p class="muted">${opp.contact_name || ''}</p>
           </div>
           <div class="text-right">
-            <div>${formatCurrency(opp.amount)}</div>
-            <div class="muted">Fecha: ${formatDate(opp.close_date)}</div>
+            <div>${opp.amount ? Number(opp.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</div>
+            <div class="muted">Fecha: ${opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-'}</div>
           </div>
         </div>
       `;
@@ -153,12 +163,29 @@
     });
   }
 
-  async function init() {
-    await loadPipelines();
-    renderPipelineChart();
-    renderActivityChart();
-    loadRecentOpportunities();
+  function hydrateFromUrl() {
+    const qs = new URLSearchParams(window.location.search);
+    if (scopeSel && qs.has('scope')) scopeSel.value = qs.get('scope');
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  function syncUrl() {
+    const qs = buildScopeQS();
+    const target = qs ? `?${qs}` : '';
+    if (target !== window.location.search) {
+      window.history.replaceState({}, '', `${window.location.pathname}${target}`);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    hydrateFromUrl();
+    renderStats();
+    loadRecentOpportunities();
+    if (scopeSel) {
+      scopeSel.addEventListener('change', () => {
+        syncUrl();
+        renderStats();
+        loadRecentOpportunities();
+      });
+    }
+  });
 })();
