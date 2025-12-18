@@ -87,6 +87,7 @@ const {
   validateDedupPreview,
   validateDedupMerge,
 } = require('../middleware/validation_crm');
+const { validateScopeParam } = require('../middleware/scope');
 
 // Painel ADMIN de Usuários
 const {
