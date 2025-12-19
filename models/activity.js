@@ -57,8 +57,15 @@ async function updateStatus(id, status) {
   return rows?.[0] || null;
 }
 
+async function findById(id) {
+  const sql = 'SELECT * FROM activities WHERE id = $1 LIMIT 1';
+  const { rows } = await db.query(sql, [id]);
+  return rows?.[0] || null;
+}
+
 module.exports = {
   createActivity,
   listActivities,
   updateStatus,
+  findById,
 };
