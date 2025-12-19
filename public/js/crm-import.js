@@ -26,6 +26,10 @@
   let currentHeaders = [];
   let currentMapping = {};
   let lastDryRun = null;
+  const flowState = {
+    previewReady: false,
+    dryRunReady: false,
+  };
 
   const TARGET_FIELDS = {
     lead: [
@@ -66,6 +70,41 @@
         item.classList.toggle('is-active', Number(item.dataset.step) === step);
       });
     }
+  }
+
+  function getSelectedFile() {
+    const input = document.getElementById('csvFile');
+    return input?.files?.[0] || null;
+  }
+
+  function isOpportunityTarget() {
+    return targetTypeSelect?.value === 'opportunity';
+  }
+
+  function validateStep1() {
+    if (!getSelectedFile()) {
+      return { ok: false, message: 'CSV obrigatório.' };
+    }
+    if (isOpportunityTarget()) {
+      if (!pipelineSelect?.value) {
+        return { ok: false, message: 'Selecione o pipeline para oportunidades.' };
+      }
+      if (!stageSelect?.value) {
+        return { ok: false, message: 'Selecione o estágio para oportunidades.' };
+      }
+    }
+    return { ok: true };
+  }
+
+  function updateControls() {
+    const step1Valid = validateStep1().ok;
+    if (btnStep1Next) btnStep1Next.disabled = !step1Valid;
+    if (btnStep2Next) btnStep2Next.disabled = !step1Valid;
+    if (btnStep3Next) btnStep3Next.disabled = !flowState.previewReady;
+    if (btnDryRun) btnDryRun.disabled = !flowState.previewReady;
+    if (btnStep4Next) btnStep4Next.disabled = !flowState.dryRunReady;
+    if (btnDownloadJson) btnDownloadJson.disabled = !flowState.dryRunReady;
+    if (btnDownloadCsv) btnDownloadCsv.disabled = !flowState.dryRunReady;
   }
 
   function getFormData(extra = {}) {
@@ -177,6 +216,12 @@
   }
 
   async function handlePreview({ advanceTo = 3 } = {}) {
+    const validation = validateStep1();
+    if (!validation.ok) {
+      renderSummary(`Erro: ${validation.message}`, null);
+      updateControls();
+      return;
+    }
     renderSummary('Processando preview...', null);
     try {
       mappingInput.value = JSON.stringify(currentMapping || {});
@@ -187,13 +232,23 @@
       buildMappingTable();
       renderSummary(`Pré-visualização: ${data.total} linhas (${data.duplicates} duplicadas).`, data);
       renderRows(data.rows || []);
+      flowState.previewReady = true;
+      flowState.dryRunReady = false;
+      updateControls();
       setStep(advanceTo);
     } catch (err) {
+      flowState.previewReady = false;
+      flowState.dryRunReady = false;
+      updateControls();
       renderSummary(`Erro: ${err.message}`, null);
     }
   }
 
   async function handleDryRun() {
+    if (!flowState.previewReady) {
+      renderSummary('Erro: execute a pré-visualização antes do dry-run.', null);
+      return;
+    }
     renderSummary('Processando simulação...', null);
     try {
       mappingInput.value = JSON.stringify(currentMapping || {});
@@ -204,13 +259,21 @@
         data
       );
       renderRows(data.items || []);
+      flowState.dryRunReady = true;
+      updateControls();
       setStep(4);
     } catch (err) {
+      flowState.dryRunReady = false;
+      updateControls();
       renderSummary(`Erro: ${err.message}`, null);
     }
   }
 
   async function handleImport() {
+    if (!flowState.dryRunReady) {
+      renderSummary('Erro: execute o dry-run antes de importar.', null);
+      return;
+    }
     renderSummary('Executando importação...', null);
     try {
       mappingInput.value = JSON.stringify(currentMapping || {});
@@ -260,12 +323,14 @@
   if (pipelineSelect) {
     pipelineSelect.addEventListener('change', () => {
       renderStages(pipelineSelect.value);
+      updateControls();
     });
   }
 
   if (targetTypeSelect) {
     targetTypeSelect.addEventListener('change', () => {
       toggleOpportunityFields();
+      updateControls();
     });
   }
 
@@ -280,7 +345,6 @@
 
   if (btnStep1Next) {
     btnStep1Next.addEventListener('click', () => {
-      setStep(2);
       handlePreview({ advanceTo: 2 });
     });
   }
@@ -311,5 +375,11 @@
     });
   }
 
+  if (form) {
+    form.addEventListener('change', updateControls);
+    form.addEventListener('input', updateControls);
+  }
+
   setStep(1);
+  updateControls();
 })();
