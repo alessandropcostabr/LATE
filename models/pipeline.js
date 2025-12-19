@@ -37,7 +37,7 @@ async function getStages(pipelineId) {
   return rows || [];
 }
 
-async function getStageById(stageId) {
+async function getStageById(stageId, client = null) {
   const sql = `
     SELECT ps.*,
            pr.required_fields,
@@ -54,7 +54,8 @@ async function getStageById(stageId) {
      WHERE ps.id = $1
      LIMIT 1
   `;
-  const { rows } = await db.query(sql, [stageId]);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, [stageId]);
   return rows?.[0] || null;
 }
 

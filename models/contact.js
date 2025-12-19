@@ -35,7 +35,7 @@ function normalizeName(value) {
   return trimmed === '' ? null : trimmed;
 }
 
-async function upsert(contactInput = {}) {
+async function upsert(contactInput = {}, client = null) {
   const normalized = normalizeContactPayload(contactInput);
   if (!normalized) return null;
 
@@ -73,20 +73,21 @@ async function upsert(contactInput = {}) {
     emailNormalized,
   ];
 
-  const { rows } = await db.query(sql, params);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return mapRow(rows?.[0]);
 }
 
-async function updateFromMessage(message = {}) {
+async function updateFromMessage(message = {}, client = null) {
   const input = {
     name: message.sender_name ?? message.senderName ?? null,
     phone: message.sender_phone ?? message.senderPhone ?? null,
     email: message.sender_email ?? message.senderEmail ?? null,
   };
-  return upsert(input);
+  return upsert(input, client);
 }
 
-async function findByIdentifiers({ phone, email } = {}) {
+async function findByIdentifiers({ phone, email } = {}, client = null) {
   const lookup = buildLookup({ phone, email });
   if (!lookup) return null;
   const sql = `
@@ -96,11 +97,12 @@ async function findByIdentifiers({ phone, email } = {}) {
        AND phone_normalized = $2
      LIMIT 1
   `;
-  const { rows } = await db.query(sql, [lookup.emailNormalized, lookup.phoneNormalized]);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, [lookup.emailNormalized, lookup.phoneNormalized]);
   return mapRow(rows?.[0]);
 }
 
-async function findByAnyIdentifier({ phone, email } = {}) {
+async function findByAnyIdentifier({ phone, email } = {}, client = null) {
   const lookup = buildLookup({ phone, email });
   if (!lookup) return null;
   const clauses = [];
@@ -122,11 +124,12 @@ async function findByAnyIdentifier({ phone, email } = {}) {
      ORDER BY updated_at DESC
      LIMIT 1
   `;
-  const { rows } = await db.query(sql, params);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return mapRow(rows?.[0]);
 }
 
-async function updateById(contactId, { name, phone, email } = {}) {
+async function updateById(contactId, { name, phone, email } = {}, client = null) {
   if (!contactId) return null;
   const normalizedName = normalizeName(name);
   const normalizedPhone = normalizePhone(phone);
@@ -150,7 +153,8 @@ async function updateById(contactId, { name, phone, email } = {}) {
     normalizedPhone,
     normalizedEmail,
   ];
-  const { rows } = await db.query(sql, params);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return mapRow(rows?.[0]);
 }
 

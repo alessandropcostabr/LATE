@@ -59,17 +59,24 @@ describe('CrmImportService', () => {
   test('applyImport cria lead com contact_id quando duplicado', async () => {
     const csv = 'name,email,phone\nAlice,alice@example.com,119999\n';
     ContactModel.findByAnyIdentifier.mockResolvedValueOnce({ id: 'dup-1' });
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({}),
+      release: jest.fn(),
+    };
 
     const result = await CrmImportService.applyImport({
       csv,
       targetType: 'lead',
       options: { duplicate_mode: 'merge' },
       user: { id: 10 },
+      dbClient: fakeClient,
     });
 
     expect(result.updated).toBe(1);
     expect(LeadModel.createLead).toHaveBeenCalledWith(
-      expect.objectContaining({ contact_id: 'dup-1', owner_id: 10 })
+      expect.objectContaining({ contact_id: 'dup-1', owner_id: 10 }),
+      fakeClient
     );
+    expect(fakeClient.query).toHaveBeenCalled();
   });
 });

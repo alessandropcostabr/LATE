@@ -136,11 +136,13 @@ const existing = await db('contacts')
 ```
 
 ### TO_DO sprint 3
-- (Em andamento) Preview/dry-run/apply via upload multipart, auto‑mapping e modo merge/skip para duplicados.
-- (Em andamento) UI simples de importação (`/crm/importar`) com preview e simulação.
-- (Em andamento) Wizard em 5 passos com mapeamento interativo de colunas.
-- (Em andamento) Relatório exportável (CSV/JSON) após dry‑run.
-- Aplicar chunking por 1k linhas e transação com rollback opcional.
+- (Concluído) Preview/dry-run/apply via upload multipart, auto‑mapping e modo merge/skip para duplicados.
+- (Concluído) UI simples de importação (`/crm/importar`) com preview e simulação.
+- (Concluído) Wizard em 5 passos com mapeamento interativo de colunas.
+- (Concluído) Relatório exportável (CSV/JSON) após dry‑run.
+- (Concluído) Aplicar chunking por 1k linhas com transação e rollback.
+- TO_DO UI: consolidar botões “Voltar” duplicados no wizard.
+- TO_DO UI: adicionar barra de progresso e validações visuais (erros por coluna/campo).
 - Testes: dedup/rollback e carga 200k linhas (sem OOM).
 
 ## Sprint 4 — Custom Fields UI

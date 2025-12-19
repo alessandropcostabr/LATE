@@ -1,5 +1,13 @@
 <%- include('partials/header', { title }) %>
 <%- include('partials/navbar', { title, user }) %>
+<style>
+  .wizard-steps ol { display: flex; gap: 0.75rem; flex-wrap: wrap; padding-left: 0; list-style: none; }
+  .wizard-steps li { padding: 0.35rem 0.6rem; border-radius: 999px; background: #f2f4f8; color: #6b7280; font-size: 0.85rem; }
+  .wizard-steps li.is-active { background: #e6f0ff; color: #1d4ed8; font-weight: 600; }
+  .wizard-step { display: none; }
+  .wizard-step.is-active { display: block; }
+  .wizard-step .step-title { font-weight: 600; margin-bottom: 0.75rem; }
+</style>
 <main class="container page">
   <header class="page__header">
     <div>
@@ -29,6 +37,7 @@
         <input type="hidden" id="mapping" name="mapping">
 
         <section data-step="1" class="wizard-step is-active">
+          <div class="step-title">Etapa 1 — Upload</div>
           <div class="grid">
             <div>
               <label for="csvFile">Arquivo CSV</label>
@@ -74,6 +83,7 @@
         </section>
 
         <section data-step="2" class="wizard-step">
+          <div class="step-title">Etapa 2 — Mapeamento</div>
           <p class="muted">Mapeie as colunas do CSV. Se não preencher, o sistema usa auto‑mapping.</p>
           <div id="mappingTable" class="table-responsive"></div>
           <div class="form-actions">
@@ -83,6 +93,7 @@
         </section>
 
         <section data-step="3" class="wizard-step">
+          <div class="step-title">Etapa 3 — Preview</div>
           <div class="form-actions">
             <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="button" class="btn btn-outline" id="btnDryRun">Simular (dry‑run)</button>
@@ -91,6 +102,7 @@
         </section>
 
         <section data-step="4" class="wizard-step">
+          <div class="step-title">Etapa 4 — Dry‑run</div>
           <div class="form-actions">
             <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="button" class="btn btn-outline" id="btnDownloadJson">Baixar JSON</button>
@@ -100,6 +112,7 @@
         </section>
 
         <section data-step="5" class="wizard-step">
+          <div class="step-title">Etapa 5 — Importar</div>
           <div class="form-actions">
             <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="submit" class="btn btn-primary">Executar importação</button>
