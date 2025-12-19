@@ -163,6 +163,11 @@ const existing = await db('contacts')
 - Kanban inline: componentes reutilizáveis que consomem o registry; valida required antes de salvar estágio.
 - Testes: snapshots de forms com dois tipos, validação de required e visibilidade por role.
 
+### Status sprint 4
+- (Em andamento) UI de gestão em `/crm/config` com criar/editar/excluir campos e filtro por entidade.
+- TO_DO: renderizar custom fields nos formulários de lead/opp/activity (create/edit) e no kanban inline.
+- TO_DO: validar required por estágio com feedback visual na UI.
+
 ### Issues sugeridas
 - `crm-cf-builder-ui`: builder de campos custom (CRUD) para admin.
 - `crm-cf-renderer`: registry de tipos e renderização nos forms/kanban.
