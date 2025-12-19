@@ -145,7 +145,11 @@ function createSourceStream({ csv, filePath }) {
 }
 
 function normalizeNameKey(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 async function buildPipelineLookup() {
@@ -432,7 +436,15 @@ async function dryRunImport({ csv, filePath, mapping = {}, targetType = 'lead', 
   return summary;
 }
 
-async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', options = {}, user } = {}) {
+async function applyImport({
+  csv,
+  filePath,
+  mapping = {},
+  targetType = 'lead',
+  options = {},
+  user,
+  dbClient,
+} = {}) {
   assertTargetType(targetType);
   const normalizedMapping = normalizeMapping(mapping, targetType);
   const summary = {
@@ -452,7 +464,8 @@ async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', o
     return pipelineLookup;
   };
 
-  const client = await db.connect();
+  const client = dbClient || await db.connect();
+  const shouldRelease = !dbClient;
   try {
     await client.query('BEGIN');
     const batch = [];
@@ -553,7 +566,9 @@ async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', o
     await client.query('ROLLBACK');
     throw err;
   } finally {
-    client.release();
+    if (shouldRelease && client?.release) {
+      client.release();
+    }
   }
 
   summary.targetType = targetType;

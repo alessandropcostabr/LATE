@@ -113,7 +113,7 @@ try {
 ### Desenho técnico
 - Pipeline: endpoint de upload salva em storage temporário; parser streaming (csv-parse) com limites de memória; preview captura 50 linhas.
 - Dedup: normalizar phone/email; buscas por hash (`email_norm`, `phone_norm`) com índice; sugerir merge e exibir causas.
-- Oportunidades: aceitar `pipeline_name`/`stage_name` no CSV e resolver para IDs automaticamente (fallback para IDs quando informados).
+- Oportunidades: aceitar `pipeline_name`/`stage_name` no CSV e resolver para IDs automaticamente (case-insensitive e sem acentos; fallback para IDs quando informados).
 - Dry-run: executar em transação com `ROLLBACK` no final ou em tabela temporária; relatório consolidado por tipo de ação.
 - Aplicar: mesma lógica do dry-run, mas com `COMMIT`; chunking por 1k linhas para evitar locks longos.
 - UI: wizard de 5 passos com persistência de mapeamento; barra de progresso; download do relatório final.
@@ -136,13 +136,13 @@ const existing = await db('contacts')
 ```
 
 ### TO_DO sprint 3
-- (Em andamento) Preview/dry-run/apply via upload multipart, auto‑mapping e modo merge/skip para duplicados.
-- (Em andamento) UI simples de importação (`/crm/importar`) com preview e simulação.
-- (Em andamento) Wizard em 5 passos com mapeamento interativo de colunas.
-- (Em andamento) Relatório exportável (CSV/JSON) após dry‑run.
+- (Concluído) Preview/dry-run/apply via upload multipart, auto‑mapping e modo merge/skip para duplicados.
+- (Concluído) UI simples de importação (`/crm/importar`) com preview e simulação.
+- (Concluído) Wizard em 5 passos com mapeamento interativo de colunas.
+- (Concluído) Relatório exportável (CSV/JSON) após dry‑run.
+- (Concluído) Aplicar chunking por 1k linhas com transação e rollback.
 - TO_DO UI: consolidar botões “Voltar” duplicados no wizard.
 - TO_DO UI: adicionar barra de progresso e validações visuais (erros por coluna/campo).
-- (Concluído) Aplicar chunking por 1k linhas com transação e rollback.
 - Testes: dedup/rollback e carga 200k linhas (sem OOM).
 
 ## Sprint 4 — Custom Fields UI
