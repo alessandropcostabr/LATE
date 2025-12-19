@@ -17,6 +17,7 @@ data/sessions.sqlite-wal
 *.swp
 *.txt
 *.tar.gz
+tmp/
 
 # PM2 logs e dump
 .pids/
