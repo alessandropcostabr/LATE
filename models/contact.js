@@ -29,6 +29,12 @@ function buildLookup({ phone, email } = {}) {
   return { phoneNormalized, emailNormalized };
 }
 
+function normalizeName(value) {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  return trimmed === '' ? null : trimmed;
+}
+
 async function upsert(contactInput = {}) {
   const normalized = normalizeContactPayload(contactInput);
   if (!normalized) return null;
@@ -94,6 +100,60 @@ async function findByIdentifiers({ phone, email } = {}) {
   return mapRow(rows?.[0]);
 }
 
+async function findByAnyIdentifier({ phone, email } = {}) {
+  const lookup = buildLookup({ phone, email });
+  if (!lookup) return null;
+  const clauses = [];
+  const params = [];
+  let i = 1;
+  if (lookup.emailNormalized) {
+    clauses.push(`email_normalized = $${i++}`);
+    params.push(lookup.emailNormalized);
+  }
+  if (lookup.phoneNormalized) {
+    clauses.push(`phone_normalized = $${i++}`);
+    params.push(lookup.phoneNormalized);
+  }
+  if (!clauses.length) return null;
+  const sql = `
+    SELECT *
+      FROM contacts
+     WHERE ${clauses.join(' OR ')}
+     ORDER BY updated_at DESC
+     LIMIT 1
+  `;
+  const { rows } = await db.query(sql, params);
+  return mapRow(rows?.[0]);
+}
+
+async function updateById(contactId, { name, phone, email } = {}) {
+  if (!contactId) return null;
+  const normalizedName = normalizeName(name);
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedEmail = normalizeEmail(email);
+  const sql = `
+    UPDATE contacts
+       SET name = COALESCE($2, name),
+           phone = COALESCE($3, phone),
+           email = COALESCE($4, email),
+           phone_normalized = COALESCE($5, phone_normalized),
+           email_normalized = COALESCE($6, email_normalized),
+           updated_at = NOW()
+     WHERE id = $1
+     RETURNING *
+  `;
+  const params = [
+    contactId,
+    normalizedName,
+    normalizedPhone,
+    normalizedEmail,
+    normalizedPhone,
+    normalizedEmail,
+  ];
+  const { rows } = await db.query(sql, params);
+  return mapRow(rows?.[0]);
+}
+
 async function touch(contactInput = {}) {
   return upsert(contactInput);
 }
@@ -103,6 +163,8 @@ module.exports = {
   touch,
   updateFromMessage,
   findByIdentifiers,
+  findByAnyIdentifier,
+  updateById,
   mapRow,
 };
 

@@ -287,12 +287,17 @@ router.get(
 );
 router.post(
   '/crm/leads/preview-csv',
-  ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
+  ...flatFns(canUpdateCRM, handleValidationErrors),
   crmController.previewLeadsCsv
 );
 router.post(
+  '/crm/leads/dry-run',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  crmController.dryRunImportCsv
+);
+router.post(
   '/crm/leads/import-csv',
-  ...flatFns(canUpdateCRM, validateCsvImport, handleValidationErrors),
+  ...flatFns(canUpdateCRM, handleValidationErrors),
   crmController.importLeadsCsv
 );
 router.patch(

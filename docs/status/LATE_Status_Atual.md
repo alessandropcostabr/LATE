@@ -1,8 +1,8 @@
 # LATE — Status Atual do Projeto (v2.2)
-**Data:** 18/12/2025  
+**Data:** 19/12/2025  
 **Ambiente:** DEV (`late-dev`) + PROD (`late-prod`)
 
-> Atualizado em 18/12/2025. Inclui o **CRM nativo** com pipelines, leads/contatos/oportunidades, activities, calendário ICS, dedup, integrações de message-events/telefonia, automações de estágio/SLA e configuração de pipelines. Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
+> Atualizado em 19/12/2025. Inclui o **CRM nativo** com pipelines, leads/contatos/oportunidades, activities, calendário ICS, dedup, integrações de message-events/telefonia, automações de estágio/SLA e configuração de pipelines. Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
 
 ---
 
@@ -11,7 +11,7 @@
 | Item | Estado | Observação |
 |------|--------|------------|
 | Produção | Estável | VIP `192.168.0.250` ativo; HA Pacemaker/Corosync em 3 nós |
-| Desenvolvimento | Ativo | Sprint 2 (Stats/Dashboards) em `feature/crm-stats-mv`; RBAC/escopos já em `develop` |
+| Desenvolvimento | Ativo | Sprint 3 (Import CSV avançado) em `feature/crm-import-csv`; Stats/Dashboards já mergeados |
 | Banco | Primário em `mach2` | Standbys `mach1` e `mach3` ativos |
 | Deploy | Automatizado | GitHub → Bastion → Ansible/PM2 |
 | Auditoria | Em uso | `/relatorios/auditoria` |
@@ -31,7 +31,7 @@
 | Automações | SLA automático, auto-actions (create_activity, notify_owner, set_probability) | ✅ |
 | Configuração | Página `/crm/config` para gerenciar pipelines e estágios | ✅ |
 | Integrações | WhatsApp Sender, Telefonia HMAC, healthGate | ✅ |
-| Stats | Views materializadas com cron de refresh; UI com escopo (me/team/all) em andamento | 🟡 |
+| Stats | Views materializadas com cron de refresh; UI com escopo (me/team/all) | ✅ |
 
 ---
 
@@ -56,8 +56,8 @@
 | Prioridade | Ação | Descrição |
 |------------|------|-----------|
 | 1 | RBAC fino | ✅ Entregue (escopos Me/Equipe/All nas listagens CRM) |
-| 2 | Stats/Dashboards | 🟡 Wiring final usando MVs; UI consolidada (pipeline por estágio/mês) |
-| 3 | Import CSV avançado | Preview, dedup/merge, dry-run para leads/contacts/opps |
+| 2 | Stats/Dashboards | ✅ Wiring final usando MVs; UI consolidada (pipeline por estágio/mês) |
+| 3 | Import CSV avançado | 🚧 Preview/dry-run + upload multipart e UI básica em andamento |
 | 4 | Custom fields UI | Interface para campos customizados; editor de pipelines/estágios |
 | 5 | Recados → Activities | Mapear recados existentes; navegação integrada |
 | 6 | ICS/CalDAV | Subscribe/export avançado; filtros por owner/pipeline |

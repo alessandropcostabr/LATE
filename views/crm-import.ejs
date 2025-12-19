@@ -1,0 +1,107 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Importar CSV</h1>
+      <p class="muted">Pré-visualize, simule e importe leads ou oportunidades com dedup/merge.</p>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="importTitle">
+    <header class="card__header">
+      <h2 id="importTitle">Arquivo e mapeamento</h2>
+      <p class="muted">Envie um CSV até 100MB. Se não informar mapeamento, usamos auto‑mapping.</p>
+    </header>
+    <div class="card__body">
+      <form id="crmImportForm" class="stack">
+        <div class="grid">
+          <div>
+            <label for="csvFile">Arquivo CSV</label>
+            <input id="csvFile" name="file" type="file" accept=".csv,text/csv" class="input" required>
+          </div>
+          <div>
+            <label for="targetType">Tipo alvo</label>
+            <select id="targetType" name="target_type" class="input">
+              <option value="lead">Lead</option>
+              <option value="opportunity">Oportunidade</option>
+            </select>
+          </div>
+          <div>
+            <label for="pipelineId">Pipeline (oportunidades)</label>
+            <select id="pipelineId" name="pipeline_id" class="input">
+              <option value="">Selecionar pipeline</option>
+              <% pipelines.forEach((p) => { %>
+                <option value="<%= p.id %>"><%= p.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
+            <label for="stageId">Estágio (oportunidades)</label>
+            <select id="stageId" name="stage_id" class="input">
+              <option value="">Selecionar estágio</option>
+            </select>
+          </div>
+          <div>
+            <label for="duplicateMode">Duplicados</label>
+            <select id="duplicateMode" name="duplicate_mode" class="input">
+              <option value="merge">Mesclar (default)</option>
+              <option value="skip">Pular duplicados</option>
+            </select>
+          </div>
+          <div>
+            <label for="source">Fonte (opcional)</label>
+            <input id="source" name="source" class="input" placeholder="import_csv">
+          </div>
+        </div>
+
+        <div>
+          <label for="mapping">Mapeamento (JSON opcional)</label>
+          <textarea id="mapping" name="mapping" class="input" rows="4" placeholder='{"email":"email","telefone":"phone","nome":"name"}'></textarea>
+          <p class="muted">Se vazio, o sistema tenta mapear automaticamente pelos nomes das colunas.</p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline" id="btnPreview">Pré‑visualizar</button>
+          <button type="button" class="btn btn-outline" id="btnDryRun">Simular (dry‑run)</button>
+          <button type="submit" class="btn btn-primary">Importar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="previewTitle">
+    <header class="card__header">
+      <h2 id="previewTitle">Resultados</h2>
+      <p class="muted" id="crmImportSummary">Nenhum processamento executado ainda.</p>
+    </header>
+    <div class="card__body">
+      <div id="crmImportMapping" class="muted" style="margin-bottom:1rem;"></div>
+      <div class="table-responsive">
+        <table class="table" id="crmImportTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>E-mail</th>
+              <th>Título</th>
+              <th>Duplicado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="6" class="muted">Aguardando preview.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script>
+  window.CRM_IMPORT_DATA = <%- JSON.stringify({ pipelines, stagesByPipeline }) %>;
+</script>
+<script src="/js/crm-import.js"></script>
+<%- include('partials/footer') %>
