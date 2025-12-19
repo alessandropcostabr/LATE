@@ -10,6 +10,73 @@
   </header>
 
   <section class="card">
+    <header class="card__header">
+      <h2>Nova oportunidade</h2>
+      <p class="muted">Cadastre uma oportunidade com contato e campos customizados.</p>
+    </header>
+    <div class="card__body">
+      <form id="opportunityCreateForm" class="stack">
+        <div class="grid">
+          <div>
+            <label>Título</label>
+            <input name="title" class="input" required>
+          </div>
+          <div>
+            <label>Nome do contato</label>
+            <input name="contact_name" class="input">
+          </div>
+          <div>
+            <label>E-mail do contato</label>
+            <input name="contact_email" type="email" class="input">
+          </div>
+          <div>
+            <label>Telefone do contato</label>
+            <input name="contact_phone" class="input">
+          </div>
+          <div>
+            <label>Pipeline</label>
+            <select name="pipeline_id" class="input" id="oppPipelineSelect" required>
+              <option value="">Selecionar pipeline</option>
+              <% (pipelines || []).forEach((p) => { %>
+                <option value="<%= p.id %>"><%= p.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
+            <label>Estágio</label>
+            <select name="stage_id" class="input" id="oppStageSelect" required>
+              <option value="">Selecionar estágio</option>
+            </select>
+          </div>
+          <div>
+            <label>Valor</label>
+            <input name="amount" type="number" class="input" min="0">
+          </div>
+          <div>
+            <label>Fechamento</label>
+            <input name="close_date" type="date" class="input">
+          </div>
+          <div>
+            <label>Fonte</label>
+            <input name="source" class="input" placeholder="desconhecida">
+          </div>
+          <div style="grid-column:1 / -1;">
+            <label>Descrição</label>
+            <textarea name="description" class="input" rows="2"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;">
+          <h3 class="muted" style="margin:0 0 0.5rem;">Campos customizados</h3>
+          <%- include('partials/custom-fields-form', { fields: customFields || [] }) %>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar oportunidade</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
     <div class="card-body">
       <form id="opportunityFilters" class="filters-grid" style="margin-bottom:1rem;">
         <div class="form-group">
@@ -57,4 +124,9 @@
     </div>
   </section>
 </main>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script>
+  window.CRM_OPP_PIPELINES = <%- JSON.stringify(pipelines || []) %>;
+  window.CRM_OPP_STAGES = <%- JSON.stringify(stagesByPipeline || {}) %>;
+</script>
 <%- include('partials/footer', { scripts: ['/js/crm-opportunities.js'] }) %>

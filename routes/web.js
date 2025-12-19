@@ -17,6 +17,7 @@ const contactController = require('../controllers/contactController');
 const crmViewController = require('../controllers/crmViewController');
 const crmConfigViewController = require('../controllers/crmConfigViewController');
 const crmImportViewController = require('../controllers/crmImportViewController');
+const CustomField = require('../models/customField');
 const { getClientIp, normalizeAccessRestrictions } = require('../utils/ipAccess');
 const messageSendEventController = require('../controllers/messageSendEventController');
 
@@ -242,16 +243,26 @@ router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtect
 router.get('/crm/leads', requireAuth, requirePermission('read'), csrfProtection, crmViewController.leadsPage);
 router.get('/crm/oportunidades', requireAuth, requirePermission('read'), csrfProtection, crmViewController.opportunitiesPage);
 router.get('/crm/opportunities/kanban', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
-  res.render('crm-kanban', { title: 'CRM · Kanban', user: req.session.user || null });
+  const csrfToken = req.csrfToken ? req.csrfToken() : null;
+  res.render('crm-kanban', { title: 'CRM · Kanban', user: req.session.user || null, csrfToken });
 });
 router.get('/crm/activities/calendario', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
   const csrfToken = req.csrfToken ? req.csrfToken() : null;
-  res.render('crm-calendar', {
-    title: 'CRM · Calendário',
-    user: req.session.user || null,
-    csrfToken,
-    scope: 'me'
-  });
+  const customFieldsPromise = CustomField.list('activity');
+  Promise.resolve(customFieldsPromise)
+    .then((customFields) => {
+      res.render('crm-calendar', {
+        title: 'CRM · Calendário',
+        user: req.session.user || null,
+        csrfToken,
+        scope: 'me',
+        customFields,
+      });
+    })
+    .catch((err) => {
+      console.error('[web][crm-calendar] erro:', err);
+      res.status(500).render('500', { title: 'Erro', user: req.session.user || null });
+    });
 });
 
 router.get(

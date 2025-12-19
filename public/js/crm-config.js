@@ -36,27 +36,108 @@
   });
 
   const form = document.getElementById('newFieldForm');
+  const fieldIdInput = document.getElementById('customFieldId');
+  const submitBtn = document.getElementById('customFieldSubmit');
+  const cancelBtn = document.getElementById('customFieldCancel');
+  const filterSelect = document.getElementById('customFieldFilter');
+  const optionsInput = form?.querySelector('[name="options"]');
+
+  function normalizeOptions(raw) {
+    if (!raw) return [];
+    try { return JSON.parse(raw); } catch { return raw.split(',').map((v) => v.trim()).filter(Boolean); }
+  }
+
+  function resetForm() {
+    if (!form) return;
+    form.reset();
+    if (fieldIdInput) fieldIdInput.value = '';
+    if (submitBtn) submitBtn.textContent = 'Adicionar';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+  }
+
+  function setEditMode(row) {
+    if (!row || !form) return;
+    form.querySelector('[name="entity"]').value = row.dataset.entity || 'opportunity';
+    form.querySelector('[name="name"]').value = row.dataset.name || '';
+    form.querySelector('[name="type"]').value = row.dataset.type || 'text';
+    form.querySelector('[name="position"]').value = row.dataset.position || 0;
+    form.querySelector('[name="required"]').checked = row.dataset.required === '1';
+    if (optionsInput) optionsInput.value = row.dataset.options ? row.dataset.options.replace(/&quot;/g, '"') : '';
+    if (fieldIdInput) fieldIdInput.value = row.dataset.id || '';
+    if (submitBtn) submitBtn.textContent = 'Salvar alterações';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+  }
+
+  function applyFilter() {
+    const val = filterSelect?.value || '';
+    document.querySelectorAll('table tbody tr[data-id]').forEach((row) => {
+      if (!val || row.dataset.entity === val) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(form).entries());
       data.required = form.querySelector('[name="required"]').checked;
-      if (data.options) {
-        try { data.options = JSON.parse(data.options); } catch { data.options = []; }
-      }
+      data.options = normalizeOptions(data.options);
       data.position = Number(data.position || 0);
-      const res = await fetch('/api/crm/custom-fields', {
-        method: 'POST',
+      const fieldId = fieldIdInput?.value || '';
+      const method = fieldId ? 'PATCH' : 'POST';
+      const url = fieldId ? `/api/crm/custom-fields/${fieldId}` : '/api/crm/custom-fields';
+      const res = await fetch(url, {
+        method,
         headers,
         body: JSON.stringify(data)
       });
       const json = await res.json();
       if (json.success) {
-        alert('Campo criado');
+        alert(fieldId ? 'Campo atualizado' : 'Campo criado');
         window.location.reload();
       } else {
         alert(json.error || 'Falha ao criar campo');
       }
     });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => resetForm());
+  }
+
+  document.querySelectorAll('.js-edit-custom-field').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      setEditMode(btn.closest('tr'));
+    });
+  });
+
+  document.querySelectorAll('.js-delete-custom-field').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const row = btn.closest('tr');
+      const id = row?.dataset?.id;
+      if (!id) return;
+      if (!confirm('Excluir este campo customizado?')) return;
+      const res = await fetch(`/api/crm/custom-fields/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      const json = await res.json();
+      if (json.success) {
+        row.remove();
+        resetForm();
+      } else {
+        alert(json.error || 'Falha ao remover campo');
+      }
+    });
+  });
+
+  if (filterSelect) {
+    filterSelect.addEventListener('change', applyFilter);
+    applyFilter();
   }
 })();

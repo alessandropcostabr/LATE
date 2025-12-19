@@ -60,6 +60,7 @@
     </header>
     <div class="card__body">
       <form id="newFieldForm" class="stack" aria-label="Criar campo">
+        <input type="hidden" name="field_id" id="customFieldId">
         <div class="grid">
           <div>
             <label>Entidade</label>
@@ -82,6 +83,7 @@
               <option value="number">number</option>
               <option value="select">select</option>
               <option value="boolean">boolean</option>
+              <option value="date">date</option>
             </select>
           </div>
           <div>
@@ -97,22 +99,55 @@
             <input name="position" type="number" class="input" min="0" value="0">
           </div>
         </div>
-        <button type="submit" class="btn btn-primary">Adicionar</button>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="customFieldSubmit">Adicionar</button>
+          <button type="button" class="btn btn-outline" id="customFieldCancel" style="display:none;">Cancelar</button>
+        </div>
       </form>
 
       <div class="table-responsive" style="margin-top:1rem;">
+        <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;">
+          <label for="customFieldFilter" class="muted">Filtrar entidade:</label>
+          <select id="customFieldFilter" class="input" style="max-width:240px;">
+            <option value="">Todas</option>
+            <option value="lead">lead</option>
+            <option value="contact">contact</option>
+            <option value="account">account</option>
+            <option value="opportunity">opportunity</option>
+            <option value="activity">activity</option>
+          </select>
+        </div>
         <table class="table">
           <thead>
-            <tr><th>Entidade</th><th>Nome</th><th>Tipo</th><th>Obrigatório</th><th>Posição</th></tr>
+            <tr>
+              <th>Entidade</th>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Obrigatório</th>
+              <th>Posição</th>
+              <th>Opções</th>
+              <th>Ações</th>
+            </tr>
           </thead>
           <tbody>
             <% customFields.forEach((f) => { %>
-              <tr>
+              <tr data-id="<%= f.id %>"
+                  data-entity="<%= f.entity %>"
+                  data-name="<%= f.name %>"
+                  data-type="<%= f.type %>"
+                  data-required="<%= f.required ? '1' : '0' %>"
+                  data-position="<%= f.position %>"
+                  data-options="<%- JSON.stringify(f.options || []).replace(/\"/g, '&quot;') %>">
                 <td><%= f.entity %></td>
                 <td><%= f.name %></td>
                 <td><%= f.type %></td>
                 <td><%= f.required ? 'sim' : 'não' %></td>
                 <td><%= f.position %></td>
+                <td><%= Array.isArray(f.options) && f.options.length ? f.options.join(', ') : '-' %></td>
+                <td>
+                  <button class="btn btn-outline btn-sm js-edit-custom-field">Editar</button>
+                  <button class="btn btn-outline btn-sm js-delete-custom-field">Excluir</button>
+                </td>
               </tr>
             <% }); %>
           </tbody>

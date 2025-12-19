@@ -145,6 +145,19 @@ async function validateOpportunityRequired({ stage, payload, customInput, existi
   return missing;
 }
 
+async function validateCustomRequired(entity, customInput = {}, existingCustomValues = []) {
+  const missing = [];
+  const requiredCustom = await CustomFieldModel.listRequired(entity);
+  requiredCustom.forEach((field) => {
+    const val = resolveCustomValue(field.id, customInput, existingCustomValues)
+      ?? resolveCustomValue(field.name, customInput, existingCustomValues);
+    if (val === undefined || val === null || val === '') {
+      missing.push(`custom:${field.name}`);
+    }
+  });
+  return missing;
+}
+
 async function persistCustomFields(entity, entityId, customInput = {}) {
   const entries = Object.entries(customInput || {});
   if (!entries.length) return;
@@ -216,6 +229,7 @@ async function listOpportunities(req, res) {
 async function createLead(req, res) {
   try {
     const contact = normalizeContactInput(req.body || {});
+    const customInput = req.body.custom_fields || {};
     if (!contact.phone && !contact.email) {
       return res.status(400).json({ success: false, error: 'Informe telefone ou e-mail do lead' });
     }
@@ -230,7 +244,13 @@ async function createLead(req, res) {
       notes: req.body.notes || null,
     };
 
+    const missingCustom = await validateCustomRequired('lead', customInput);
+    if (missingCustom.length) {
+      return res.status(400).json({ success: false, error: `Campos obrigatórios: ${missingCustom.join(', ')}` });
+    }
+
     const lead = await LeadModel.createLead(payload);
+    await persistCustomFields('lead', lead.id, customInput);
     return res.json({ success: true, data: lead });
   } catch (err) {
     console.error('[crm] createLead', err);
@@ -344,6 +364,7 @@ async function moveOpportunityStage(req, res) {
 
 async function createActivity(req, res) {
   try {
+    const customInput = req.body.custom_fields || {};
     const payload = {
       type: req.body.type || 'task',
       subject: req.body.subject,
@@ -355,7 +376,12 @@ async function createActivity(req, res) {
       status: req.body.status || 'pending',
       location: req.body.location || null,
     };
+    const missingCustom = await validateCustomRequired('activity', customInput);
+    if (missingCustom.length) {
+      return res.status(400).json({ success: false, error: `Campos obrigatórios: ${missingCustom.join(', ')}` });
+    }
     const activity = await ActivityModel.createActivity(payload);
+    await persistCustomFields('activity', activity.id, customInput);
     return res.json({ success: true, data: activity });
   } catch (err) {
     console.error('[crm] createActivity', err);

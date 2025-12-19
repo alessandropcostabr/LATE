@@ -2,6 +2,20 @@
 (function() {
   const el = document.getElementById('crmCalendar');
   if (!el) return;
+  const form = document.getElementById('activityCreateForm');
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+  function collectCustomFields(formEl) {
+    const custom = {};
+    formEl.querySelectorAll('[name^="custom_fields["]').forEach((input) => {
+      const key = input.name.slice('custom_fields['.length, -1);
+      const value = input.type === 'checkbox' ? (input.checked ? true : '') : input.value;
+      if (value !== '' && value !== null && value !== undefined) {
+        custom[key] = value;
+      }
+    });
+    return custom;
+  }
 
   function buildQuery() {
     const params = new URLSearchParams();
@@ -60,6 +74,28 @@
     if (scopeSel) {
       scopeSel.addEventListener('change', () => {
         syncUrl();
+        renderCalendar();
+      });
+    }
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(form).entries());
+        data.custom_fields = collectCustomFields(form);
+        const res = await fetch('/api/crm/activities', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+          },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          alert(json.error || 'Erro ao criar atividade');
+          return;
+        }
+        form.reset();
         renderCalendar();
       });
     }
