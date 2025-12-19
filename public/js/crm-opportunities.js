@@ -127,11 +127,9 @@
           close_date: data.close_date || null,
           source: data.source || 'desconhecida',
           description: data.description || null,
-          contact: {
-            name: data.contact_name || null,
-            email: data.contact_email || null,
-            phone: data.contact_phone || null,
-          },
+          contact_name: data.contact_name || null,
+          contact_email: data.contact_email || null,
+          contact_phone: data.contact_phone || null,
           custom_fields: data.custom_fields,
         };
         const res = await fetch('/api/crm/opportunities', {
