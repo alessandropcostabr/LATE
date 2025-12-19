@@ -596,7 +596,8 @@ async function parseImportRequest(req) {
     return new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) return reject(err);
-        const file = files?.csv || files?.file || files?.upload || null;
+        const fileCandidate = files?.csv || files?.file || files?.upload || null;
+        const file = Array.isArray(fileCandidate) ? fileCandidate[0] : fileCandidate;
         const filePath = file?.filepath || null;
         resolve({
           csv: fields?.csv || null,
