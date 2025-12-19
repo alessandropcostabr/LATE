@@ -586,6 +586,16 @@ function parseBooleanField(value) {
   return text === 'true' || text === '1' || text === 'yes';
 }
 
+function normalizeFormValue(value) {
+  if (Array.isArray(value)) {
+    return normalizeFormValue(value[0]);
+  }
+  if (value === undefined || value === null) return null;
+  const text = String(value).trim();
+  if (!text || text === 'null' || text === 'undefined') return null;
+  return text;
+}
+
 async function parseImportRequest(req) {
   if (req.is('multipart/form-data')) {
     const form = formidable({
@@ -596,7 +606,8 @@ async function parseImportRequest(req) {
     return new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) return reject(err);
-        const file = files?.csv || files?.file || files?.upload || null;
+        const fileCandidate = files?.csv || files?.file || files?.upload || null;
+        const file = Array.isArray(fileCandidate) ? fileCandidate[0] : fileCandidate;
         const filePath = file?.filepath || null;
         resolve({
           csv: fields?.csv || null,
@@ -651,11 +662,11 @@ async function previewLeadsCsv(req, res) {
   try {
     payload = await parseImportRequest(req);
     const mapping = parseJsonField(payload.fields?.mapping, {});
-    const targetType = String(payload.fields?.target_type || 'lead').toLowerCase();
+    const targetType = String(normalizeFormValue(payload.fields?.target_type) || 'lead').toLowerCase();
     if (!['lead', 'opportunity'].includes(targetType)) {
       return res.status(400).json({ success: false, error: 'target_type inválido' });
     }
-    const limit = Number(payload.fields?.limit) || 50;
+    const limit = Number(normalizeFormValue(payload.fields?.limit)) || 50;
     if (!payload.csv && !payload.filePath) {
       return res.status(400).json({ success: false, error: 'CSV obrigatório' });
     }
@@ -682,7 +693,7 @@ async function importLeadsCsv(req, res) {
   try {
     payload = await parseImportRequest(req);
     const mapping = parseJsonField(payload.fields?.mapping, {});
-    const targetType = String(payload.fields?.target_type || 'lead').toLowerCase();
+    const targetType = String(normalizeFormValue(payload.fields?.target_type) || 'lead').toLowerCase();
     if (!['lead', 'opportunity'].includes(targetType)) {
       return res.status(400).json({ success: false, error: 'target_type inválido' });
     }
@@ -697,10 +708,12 @@ async function importLeadsCsv(req, res) {
       targetType,
       options: {
         skipDuplicates,
-        duplicate_mode: payload.fields?.duplicate_mode || null,
-        pipeline_id: payload.fields?.pipeline_id || null,
-        stage_id: payload.fields?.stage_id || null,
-        source: payload.fields?.source || 'import_csv',
+        duplicate_mode: normalizeFormValue(payload.fields?.duplicate_mode),
+        pipeline_id: normalizeFormValue(payload.fields?.pipeline_id),
+        stage_id: normalizeFormValue(payload.fields?.stage_id),
+        pipeline_name: normalizeFormValue(payload.fields?.pipeline_name),
+        stage_name: normalizeFormValue(payload.fields?.stage_name),
+        source: normalizeFormValue(payload.fields?.source) || 'import_csv',
       },
       user: req.session?.user,
     });
@@ -720,7 +733,7 @@ async function dryRunImportCsv(req, res) {
   try {
     payload = await parseImportRequest(req);
     const mapping = parseJsonField(payload.fields?.mapping, {});
-    const targetType = String(payload.fields?.target_type || 'lead').toLowerCase();
+    const targetType = String(normalizeFormValue(payload.fields?.target_type) || 'lead').toLowerCase();
     if (!['lead', 'opportunity'].includes(targetType)) {
       return res.status(400).json({ success: false, error: 'target_type inválido' });
     }
@@ -733,11 +746,13 @@ async function dryRunImportCsv(req, res) {
       mapping,
       targetType,
       options: {
-        pipeline_id: payload.fields?.pipeline_id || null,
-        stage_id: payload.fields?.stage_id || null,
-        source: payload.fields?.source || 'import_csv',
-        duplicate_mode: payload.fields?.duplicate_mode || null,
-        sample_limit: payload.fields?.sample_limit || null,
+        pipeline_id: normalizeFormValue(payload.fields?.pipeline_id),
+        stage_id: normalizeFormValue(payload.fields?.stage_id),
+        pipeline_name: normalizeFormValue(payload.fields?.pipeline_name),
+        stage_name: normalizeFormValue(payload.fields?.stage_name),
+        source: normalizeFormValue(payload.fields?.source) || 'import_csv',
+        duplicate_mode: normalizeFormValue(payload.fields?.duplicate_mode),
+        sample_limit: normalizeFormValue(payload.fields?.sample_limit),
       },
     });
     return res.json({ success: true, data });
