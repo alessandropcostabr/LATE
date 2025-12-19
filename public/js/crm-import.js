@@ -107,6 +107,12 @@
     if (btnDownloadCsv) btnDownloadCsv.disabled = !flowState.dryRunReady;
   }
 
+  function resetFlowState() {
+    flowState.previewReady = false;
+    flowState.dryRunReady = false;
+    lastDryRun = null;
+  }
+
   function getFormData(extra = {}) {
     const fd = new FormData(form);
     Object.entries(extra).forEach(([key, value]) => {
@@ -376,8 +382,14 @@
   }
 
   if (form) {
-    form.addEventListener('change', updateControls);
-    form.addEventListener('input', updateControls);
+    form.addEventListener('change', () => {
+      resetFlowState();
+      updateControls();
+    });
+    form.addEventListener('input', () => {
+      resetFlowState();
+      updateControls();
+    });
   }
 
   setStep(1);

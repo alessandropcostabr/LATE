@@ -74,7 +74,8 @@ describe('CrmImportService', () => {
 
     expect(result.updated).toBe(1);
     expect(LeadModel.createLead).toHaveBeenCalledWith(
-      expect.objectContaining({ contact_id: 'dup-1', owner_id: 10 })
+      expect.objectContaining({ contact_id: 'dup-1', owner_id: 10 }),
+      fakeClient
     );
     expect(fakeClient.query).toHaveBeenCalled();
   });
