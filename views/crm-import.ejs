@@ -12,61 +12,99 @@
   <section class="card" aria-labelledby="importTitle">
     <header class="card__header">
       <h2 id="importTitle">Arquivo e mapeamento</h2>
-      <p class="muted">Envie um CSV até 100MB. Se não informar mapeamento, usamos auto‑mapping.</p>
+      <p class="muted">Envie um CSV até 100MB. O wizard guia por upload, mapeamento, preview, dry‑run e import.</p>
     </header>
     <div class="card__body">
+      <nav class="wizard-steps" aria-label="Etapas do importador">
+        <ol class="simple-list" id="crmImportSteps">
+          <li data-step="1" class="is-active">1. Upload</li>
+          <li data-step="2">2. Mapeamento</li>
+          <li data-step="3">3. Preview</li>
+          <li data-step="4">4. Dry‑run</li>
+          <li data-step="5">5. Importar</li>
+        </ol>
+      </nav>
+
       <form id="crmImportForm" class="stack">
-        <div class="grid">
-          <div>
-            <label for="csvFile">Arquivo CSV</label>
-            <input id="csvFile" name="csv" type="file" accept=".csv,text/csv" class="input" required>
-          </div>
-          <div>
-            <label for="targetType">Tipo alvo</label>
-            <select id="targetType" name="target_type" class="input">
-              <option value="lead">Lead</option>
-              <option value="opportunity">Oportunidade</option>
-            </select>
-          </div>
-          <div>
-            <label for="pipelineId">Pipeline (oportunidades)</label>
-            <select id="pipelineId" name="pipeline_id" class="input">
-              <option value="">Selecionar pipeline</option>
-              <% pipelines.forEach((p) => { %>
-                <option value="<%= p.id %>"><%= p.name %></option>
-              <% }); %>
-            </select>
-          </div>
-          <div>
-            <label for="stageId">Estágio (oportunidades)</label>
-            <select id="stageId" name="stage_id" class="input">
-              <option value="">Selecionar estágio</option>
-            </select>
-          </div>
-          <div>
-            <label for="duplicateMode">Duplicados</label>
-            <select id="duplicateMode" name="duplicate_mode" class="input">
-              <option value="merge">Mesclar (default)</option>
-              <option value="skip">Pular duplicados</option>
-            </select>
-          </div>
-          <div>
-            <label for="source">Fonte (opcional)</label>
-            <input id="source" name="source" class="input" placeholder="import_csv">
-          </div>
-        </div>
+        <input type="hidden" id="mapping" name="mapping">
 
-        <div>
-          <label for="mapping">Mapeamento (JSON opcional)</label>
-          <textarea id="mapping" name="mapping" class="input" rows="4" placeholder='{"email":"email","telefone":"phone","nome":"name"}'></textarea>
-          <p class="muted">Se vazio, o sistema tenta mapear automaticamente pelos nomes das colunas.</p>
-        </div>
+        <section data-step="1" class="wizard-step is-active">
+          <div class="grid">
+            <div>
+              <label for="csvFile">Arquivo CSV</label>
+              <input id="csvFile" name="csv" type="file" accept=".csv,text/csv" class="input" required>
+            </div>
+            <div>
+              <label for="targetType">Tipo alvo</label>
+              <select id="targetType" name="target_type" class="input">
+                <option value="lead">Lead</option>
+                <option value="opportunity">Oportunidade</option>
+              </select>
+            </div>
+            <div class="js-opportunity-field">
+              <label for="pipelineId">Pipeline (oportunidades)</label>
+              <select id="pipelineId" name="pipeline_id" class="input">
+                <option value="">Selecionar pipeline</option>
+                <% pipelines.forEach((p) => { %>
+                  <option value="<%= p.id %>"><%= p.name %></option>
+                <% }); %>
+              </select>
+            </div>
+            <div class="js-opportunity-field">
+              <label for="stageId">Estágio (oportunidades)</label>
+              <select id="stageId" name="stage_id" class="input">
+                <option value="">Selecionar estágio</option>
+              </select>
+            </div>
+            <div>
+              <label for="duplicateMode">Duplicados</label>
+              <select id="duplicateMode" name="duplicate_mode" class="input">
+                <option value="merge">Mesclar (default)</option>
+                <option value="skip">Pular duplicados</option>
+              </select>
+            </div>
+            <div>
+              <label for="source">Fonte (opcional)</label>
+              <input id="source" name="source" class="input" placeholder="import_csv">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="btnStep1Next">Continuar</button>
+          </div>
+        </section>
 
-        <div class="form-actions">
-          <button type="button" class="btn btn-outline" id="btnPreview">Pré‑visualizar</button>
-          <button type="button" class="btn btn-outline" id="btnDryRun">Simular (dry‑run)</button>
-          <button type="submit" class="btn btn-primary">Importar</button>
-        </div>
+        <section data-step="2" class="wizard-step">
+          <p class="muted">Mapeie as colunas do CSV. Se não preencher, o sistema usa auto‑mapping.</p>
+          <div id="mappingTable" class="table-responsive"></div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="button" class="btn btn-primary" id="btnStep2Next">Pré‑visualizar</button>
+          </div>
+        </section>
+
+        <section data-step="3" class="wizard-step">
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="button" class="btn btn-outline" id="btnDryRun">Simular (dry‑run)</button>
+            <button type="button" class="btn btn-primary" id="btnStep3Next">Continuar</button>
+          </div>
+        </section>
+
+        <section data-step="4" class="wizard-step">
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="button" class="btn btn-outline" id="btnDownloadJson">Baixar JSON</button>
+            <button type="button" class="btn btn-outline" id="btnDownloadCsv">Baixar CSV</button>
+            <button type="button" class="btn btn-primary" id="btnStep4Next">Importar</button>
+          </div>
+        </section>
+
+        <section data-step="5" class="wizard-step">
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="submit" class="btn btn-primary">Executar importação</button>
+          </div>
+        </section>
       </form>
     </div>
   </section>
