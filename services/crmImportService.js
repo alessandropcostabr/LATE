@@ -4,6 +4,7 @@
 const fs = require('fs');
 const { parse } = require('csv-parse');
 const { Readable } = require('stream');
+const db = require('../config/database');
 const ContactModel = require('../models/contact');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
@@ -230,11 +231,11 @@ async function iterateCsv({ csv, filePath, limit, onRow }) {
   return count;
 }
 
-async function findDuplicates({ phone, email } = {}) {
+async function findDuplicates({ phone, email } = {}, client = null) {
   const phoneNorm = normalizePhone(phone);
   const emailNorm = normalizeEmail(email);
   if (!phoneNorm && !emailNorm) return null;
-  return ContactModel.findByAnyIdentifier({ phone: phoneNorm, email: emailNorm });
+  return ContactModel.findByAnyIdentifier({ phone: phoneNorm, email: emailNorm }, client);
 }
 
 function buildLeadPayload(mapped = {}, options = {}, user) {
@@ -442,6 +443,7 @@ async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', o
     errors: 0,
   };
   const duplicateMode = getDuplicateMode(options);
+  const chunkSize = Number(options.chunk_size || 1000);
   let headers = [];
   let finalMapping = normalizedMapping;
   let pipelineLookup = null;
@@ -450,84 +452,109 @@ async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', o
     return pipelineLookup;
   };
 
-  await iterateCsv({
-    csv,
-    filePath,
-    onRow: async (row, idx) => {
-      if (idx === 1) {
-        headers = Object.keys(row);
-        if (!Object.keys(finalMapping).length) {
-          finalMapping = buildAutoMapping(headers, targetType);
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const batch = [];
+
+    const processBatch = async () => {
+      if (!batch.length) return;
+      for (const item of batch) {
+        summary.total += 1;
+        const resolved = item.resolved;
+        if (targetType === 'opportunity') {
+          const lookup = await ensureLookup();
+          const resolvedIds = resolvePipelineStage(resolved, options, lookup);
+          if (resolvedIds.pipeline_id) resolved.pipeline_id = resolvedIds.pipeline_id;
+          if (resolvedIds.stage_id) resolved.stage_id = resolvedIds.stage_id;
+          const nameErrors = resolveOpportunityErrors(resolved, options);
+          if (nameErrors.length) {
+            summary.errors += 1;
+            continue;
+          }
         }
-      }
-      summary.total += 1;
-      const resolved = resolveMappedRow(row, finalMapping);
-      if (targetType === 'opportunity') {
-        const lookup = await ensureLookup();
-        const resolvedIds = resolvePipelineStage(resolved, options, lookup);
-        if (resolvedIds.pipeline_id) resolved.pipeline_id = resolvedIds.pipeline_id;
-        if (resolvedIds.stage_id) resolved.stage_id = resolvedIds.stage_id;
-        const nameErrors = resolveOpportunityErrors(resolved, options);
-        if (nameErrors.length) {
+        const error = validateRequired(resolved, targetType, options);
+        if (error) {
           summary.errors += 1;
-          return;
+          continue;
+        }
+
+        const dup = await findDuplicates({ phone: resolved.phone, email: resolved.email }, client);
+        if (dup && duplicateMode === 'skip') {
+          summary.skipped += 1;
+          continue;
+        }
+
+        if (dup && duplicateMode === 'merge') {
+          await ContactModel.updateById(dup.id, {
+            name: resolved.name,
+            phone: resolved.phone,
+            email: resolved.email,
+          }, client);
+        }
+
+        if (targetType === 'lead') {
+          const payload = buildLeadPayload(resolved, options, user);
+          if (dup) {
+            await LeadModel.createLead({
+              contact_id: dup.id,
+              pipeline_id: payload.pipeline_id,
+              owner_id: payload.owner_id,
+              source: payload.source,
+              status: payload.status,
+              score: payload.score,
+              notes: payload.notes,
+            }, client);
+            summary.updated += 1;
+          } else {
+            await LeadModel.createLead(payload, client);
+            summary.created += 1;
+          }
+          continue;
+        }
+
+        if (targetType === 'opportunity') {
+          const payload = buildOpportunityPayload(resolved, options, user);
+          if (dup) {
+            await OpportunityModel.createOpportunity({
+              ...payload,
+              contact_id: dup.id,
+            }, client);
+            summary.updated += 1;
+          } else {
+            await OpportunityModel.createOpportunity(payload, client);
+            summary.created += 1;
+          }
         }
       }
-      const error = validateRequired(resolved, targetType, options);
-      if (error) {
-        summary.errors += 1;
-        return;
-      }
+      batch.length = 0;
+    };
 
-      const dup = await findDuplicates({ phone: resolved.phone, email: resolved.email });
-      if (dup && duplicateMode === 'skip') {
-        summary.skipped += 1;
-        return;
-      }
-
-      if (dup && duplicateMode === 'merge') {
-        await ContactModel.updateById(dup.id, {
-          name: resolved.name,
-          phone: resolved.phone,
-          email: resolved.email,
-        });
-      }
-
-      if (targetType === 'lead') {
-        const payload = buildLeadPayload(resolved, options, user);
-        if (dup) {
-          await LeadModel.createLead({
-            contact_id: dup.id,
-            pipeline_id: payload.pipeline_id,
-            owner_id: payload.owner_id,
-            source: payload.source,
-            status: payload.status,
-            score: payload.score,
-            notes: payload.notes,
-          });
-          summary.updated += 1;
-        } else {
-          await LeadModel.createLead(payload);
-          summary.created += 1;
+    await iterateCsv({
+      csv,
+      filePath,
+      onRow: async (row, idx) => {
+        if (idx === 1) {
+          headers = Object.keys(row);
+          if (!Object.keys(finalMapping).length) {
+            finalMapping = buildAutoMapping(headers, targetType);
+          }
         }
-        return;
-      }
-
-      if (targetType === 'opportunity') {
-        const payload = buildOpportunityPayload(resolved, options, user);
-        if (dup) {
-          await OpportunityModel.createOpportunity({
-            ...payload,
-            contact_id: dup.id,
-          });
-          summary.updated += 1;
-        } else {
-          await OpportunityModel.createOpportunity(payload);
-          summary.created += 1;
+        batch.push({ resolved: resolveMappedRow(row, finalMapping) });
+        if (batch.length >= chunkSize) {
+          await processBatch();
         }
-      }
-    },
-  });
+      },
+    });
+
+    await processBatch();
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   summary.targetType = targetType;
   summary.options = { ...options, duplicate_mode: duplicateMode };

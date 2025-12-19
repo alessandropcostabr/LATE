@@ -38,11 +38,11 @@ async function listLeads(filter = {}, { limit = 50, offset = 0 } = {}) {
   return rows || [];
 }
 
-async function createLead({ contact, contact_id = null, pipeline_id = null, owner_id = null, source = 'desconhecida', status = 'open', score = 0, notes = null }) {
+async function createLead({ contact, contact_id = null, pipeline_id = null, owner_id = null, source = 'desconhecida', status = 'open', score = 0, notes = null }, client = null) {
   let contactRow = null;
   let contactId = contact_id || null;
   if (!contactId) {
-    contactRow = await ContactModel.upsert(contact || {});
+    contactRow = await ContactModel.upsert(contact || {}, client);
     if (!contactRow) {
       throw new Error('Contato inválido para o lead');
     }
@@ -73,7 +73,8 @@ async function createLead({ contact, contact_id = null, pipeline_id = null, owne
     notes,
   ];
 
-  const { rows } = await db.query(sql, params);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return rows?.[0] || null;
 }
 

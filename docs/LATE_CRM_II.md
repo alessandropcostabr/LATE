@@ -140,7 +140,9 @@ const existing = await db('contacts')
 - (Em andamento) UI simples de importação (`/crm/importar`) com preview e simulação.
 - (Em andamento) Wizard em 5 passos com mapeamento interativo de colunas.
 - (Em andamento) Relatório exportável (CSV/JSON) após dry‑run.
-- Aplicar chunking por 1k linhas e transação com rollback opcional.
+- TO_DO UI: consolidar botões “Voltar” duplicados no wizard.
+- TO_DO UI: adicionar barra de progresso e validações visuais (erros por coluna/campo).
+- (Concluído) Aplicar chunking por 1k linhas com transação e rollback.
 - Testes: dedup/rollback e carga 200k linhas (sem OOM).
 
 ## Sprint 4 — Custom Fields UI

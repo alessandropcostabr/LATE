@@ -58,20 +58,20 @@ async function createOpportunity({
   source = 'desconhecida',
   description = null,
   probability_override = null,
-}) {
+}, client = null) {
   if (!title || (!contact && !contact_id)) {
     throw new Error('Título e contato são obrigatórios');
   }
 
   let contactId = contact_id;
   if (!contactId) {
-    const contactRow = await ContactModel.upsert(contact);
+    const contactRow = await ContactModel.upsert(contact, client);
     if (!contactRow) throw new Error('Contato inválido');
     contactId = contactRow.id;
   }
 
   // valida pipeline / stage coerentes
-  const stage = await PipelineModel.getStageById(stage_id);
+  const stage = await PipelineModel.getStageById(stage_id, client);
   if (!stage || stage.pipeline_id !== pipeline_id) {
     throw new Error('Pipeline/estágio inválidos');
   }
@@ -98,7 +98,8 @@ async function createOpportunity({
     description,
   ];
 
-  const { rows } = await db.query(sql, params);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return rows?.[0] || null;
 }
 
