@@ -144,7 +144,11 @@ function createSourceStream({ csv, filePath }) {
 }
 
 function normalizeNameKey(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 async function buildPipelineLookup() {
