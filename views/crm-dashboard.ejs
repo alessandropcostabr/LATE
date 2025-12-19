@@ -9,7 +9,7 @@
     </div>
     <div style="display:flex;gap:1rem;align-items:flex-end;">
       <div>
-        <%- include('partials/scope-filter', { scope: scope || 'me', id: 'scope' }) %>
+        <%- include('partials/scope-filter.ejs', { scope: scope || 'me', id: 'scope' }) %>
       </div>
       <div class="muted" id="statsStaleness">Staleness: --</div>
     </div>
