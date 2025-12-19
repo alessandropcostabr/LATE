@@ -1,9 +1,9 @@
 
 # 🚀 LATE — Sprints Futuras (Roadmap 2025-2026)
-> Atualizado em 2025/12/18.
+> Atualizado em 2025/12/19.
 
 **Versão:** 2.0.2  
-**Última atualização:** 2025/12/18
+**Última atualização:** 2025/12/19
 
 ---
 
@@ -31,14 +31,40 @@ Este documento consolida todas as sprints futuras planejadas para o projeto LATE
 
 1. ✅ **Sprint 02B — Auditoria (UI & Exportações + Status Operacional)** (concluída em 12/11/2025)
 2. 🟢 **Sprint CRM Fase I — RBAC & Escopos** (entregue: filtros Me/Equipe/All em listagens CRM)
-3. 🟡 **Sprint CRM Fase II — Stats/Dashboards MVs** (em andamento na branch `feature/crm-stats-mv`)
-4. 🟡 **Sprint — Controle de Acesso por IP** (policy de rede, exceções por usuário, whoami e badges no `/relatorios/status`)
+3. ✅ **Sprint CRM Fase II — Stats/Dashboards MVs** (entregue em 19/12/2025)
+4. 🟡 **Sprint CRM Fase III — Import CSV Avançado** (em andamento na branch `feature/crm-import-csv`)
 5. 🟡 **Sprint Hardening PG + CSP** (TLS no PostgreSQL, Helmet report-only/enforce; refator de `health/status`)
 6. 🟠 **Correção PR #217 — Watchers fora do escopo** (rotas `/api/messages/:id/watchers` e controller precisam validar escopo)
 
 ---
 
 ## 📦 Sprints Planejadas
+
+### Sprint CRM Fase II — Stats/Dashboards (MVs)
+
+**Status:** ✅ Concluída  
+**Prioridade:** 🔴 Alta
+
+#### Objetivo
+Consolidar dashboards do CRM com views materializadas e filtro de escopo (Me/Equipe/All).
+
+#### Entregas
+- API `/api/crm/stats` com staleness e escopo.
+- UI do dashboard e calendário com filtro de escopo.
+- Refresh MV com lock e logs.
+
+### Sprint CRM Fase III — Import CSV Avançado
+
+**Status:** 🟡 Em andamento  
+**Prioridade:** 🔴 Alta
+
+#### Objetivo
+Entregar import CSV com preview, dedup/merge e dry-run para leads/contatos/oportunidades.
+
+#### Entregas
+- Wizard em 5 passos (mapeamento, preview, dedup, dry-run, aplicar).
+- Limite de upload 100MB e validação de 200k linhas.
+- Relatório final CSV/JSON e rollback seguro.
 
 ### Sprint 00-PRE — Hardening & Sanidade do Ambiente
 

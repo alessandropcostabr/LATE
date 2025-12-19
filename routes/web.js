@@ -16,6 +16,7 @@ const messageViewController = require('../controllers/messageViewController');
 const contactController = require('../controllers/contactController');
 const crmViewController = require('../controllers/crmViewController');
 const crmConfigViewController = require('../controllers/crmConfigViewController');
+const crmImportViewController = require('../controllers/crmImportViewController');
 const { getClientIp, normalizeAccessRestrictions } = require('../utils/ipAccess');
 const messageSendEventController = require('../controllers/messageSendEventController');
 
@@ -226,6 +227,7 @@ router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfPr
 
 // CRM páginas
 router.get('/crm/config', requireAuth, requirePermission('read'), csrfProtection, crmConfigViewController.configPage);
+router.get('/crm/importar', requireAuth, requirePermission('read'), csrfProtection, crmImportViewController.importPage);
 
 router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
   const csrfToken = req.csrfToken ? req.csrfToken() : null;

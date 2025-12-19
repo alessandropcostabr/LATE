@@ -27,6 +27,7 @@ jest.mock('../models/messageWatcher', () => ({
 
 jest.mock('../models/userSector', () => ({
   listByUser: jest.fn(async () => []),
+  listUserSectors: jest.fn(async () => []),
   isUserInSector: jest.fn(async () => false),
 }));
 

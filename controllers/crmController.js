@@ -1,6 +1,8 @@
 // controllers/crmController.js
 // CRM: pipelines, leads, oportunidades, atividades, stats e utilitários (ICS/CSV).
 
+const fs = require('fs');
+const formidable = require('formidable');
 const PipelineModel = require('../models/pipeline');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
@@ -9,6 +11,7 @@ const ContactModel = require('../models/contact');
 const CrmStats = require('../models/crmStats');
 const CustomFieldModel = require('../models/customField');
 const CustomFieldValueModel = require('../models/customFieldValue');
+const CrmImportService = require('../services/crmImportService');
 const { normalizePhone } = require('../utils/phone');
 const { normalizeEmail } = require('../utils/normalizeContact');
 
@@ -570,6 +573,54 @@ function toCsvRow(values = []) {
     .join(',');
 }
 
+function parseJsonField(value, fallback = {}) {
+  if (!value) return fallback;
+  if (Array.isArray(value)) {
+    return parseJsonField(value[0], fallback);
+  }
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch (_err) {
+    return fallback;
+  }
+}
+
+function parseBooleanField(value) {
+  if (Array.isArray(value)) {
+    return parseBooleanField(value[0]);
+  }
+  const text = String(value || '').toLowerCase();
+  return text === 'true' || text === '1' || text === 'yes';
+}
+
+async function parseImportRequest(req) {
+  if (req.is('multipart/form-data')) {
+    const form = formidable({
+      maxFileSize: 100 * 1024 * 1024,
+      allowEmptyFiles: false,
+      multiples: false,
+    });
+    return new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) return reject(err);
+        const file = files?.csv || files?.file || files?.upload || null;
+        const filePath = file?.filepath || null;
+        resolve({
+          csv: fields?.csv || null,
+          filePath,
+          fields: fields || {},
+        });
+      });
+    });
+  }
+  return {
+    csv: req.body?.csv || null,
+    filePath: null,
+    fields: req.body || {},
+  };
+}
+
 async function exportLeadsCsv(_req, res) {
   try {
     const rows = await LeadModel.listLeads({}, { limit: 1000, offset: 0 });
@@ -604,57 +655,107 @@ async function exportOpportunitiesCsv(_req, res) {
 
 
 async function previewLeadsCsv(req, res) {
+  let payload;
   try {
-    const csv = req.body?.csv;
-    if (!csv || typeof csv !== 'string') {
+    payload = await parseImportRequest(req);
+    const mapping = parseJsonField(payload.fields?.mapping, {});
+    const targetType = String(payload.fields?.target_type || 'lead').toLowerCase();
+    if (!['lead', 'opportunity'].includes(targetType)) {
+      return res.status(400).json({ success: false, error: 'target_type inválido' });
+    }
+    const limit = Number(payload.fields?.limit) || 50;
+    if (!payload.csv && !payload.filePath) {
       return res.status(400).json({ success: false, error: 'CSV obrigatório' });
     }
-    const { header, rows } = parseCsvRows(csv);
-    if (!rows.length) return res.json({ success: true, data: { total: 0, duplicates: 0, rows: [] } });
-
-    const parsed = [];
-    let duplicates = 0;
-    for (const raw of rows) {
-      const lead = mapLeadRow(header, raw);
-      if (!lead.name && !lead.phone && !lead.email) continue;
-      const dup = await ContactModel.findByIdentifiers({ phone: lead.phone, email: lead.email });
-      parsed.push({ ...lead, duplicate: Boolean(dup), contact_id: dup?.id || null });
-      if (dup) duplicates += 1;
-    }
-    return res.json({ success: true, data: { total: parsed.length, duplicates, rows: parsed } });
+    const data = await CrmImportService.previewCsv({
+      csv: payload.csv,
+      filePath: payload.filePath,
+      mapping,
+      targetType,
+      limit,
+    });
+    return res.json({ success: true, data });
   } catch (err) {
     console.error('[crm] previewLeadsCsv', err);
     return res.status(500).json({ success: false, error: 'Erro ao pré-visualizar CSV' });
+  } finally {
+    if (payload?.filePath) {
+      fs.unlink(payload.filePath, () => {});
+    }
   }
 }
 
 async function importLeadsCsv(req, res) {
+  let payload;
   try {
-    const csv = req.body?.csv;
-    if (!csv || typeof csv !== 'string') {
+    payload = await parseImportRequest(req);
+    const mapping = parseJsonField(payload.fields?.mapping, {});
+    const targetType = String(payload.fields?.target_type || 'lead').toLowerCase();
+    if (!['lead', 'opportunity'].includes(targetType)) {
+      return res.status(400).json({ success: false, error: 'target_type inválido' });
+    }
+    if (!payload.csv && !payload.filePath) {
       return res.status(400).json({ success: false, error: 'CSV obrigatório' });
     }
-    const skipDuplicates = String(req.body?.skip_duplicates || '').toLowerCase() === 'true';
-    const { header, rows } = parseCsvRows(csv);
-    let created = 0; let skipped = 0;
-    for (const raw of rows) {
-      const lead = mapLeadRow(header, raw);
-      if (!lead.name && !lead.phone && !lead.email) { skipped += 1; continue; }
-      const dup = await ContactModel.findByIdentifiers({ phone: lead.phone, email: lead.email });
-      if (dup && skipDuplicates) { skipped += 1; continue; }
-      await LeadModel.createLead({
-        contact: { name: lead.name, phone: lead.phone, email: lead.email },
-        pipeline_id: req.body.pipeline_id || null,
-        owner_id: req.session.user.id,
-        source: lead.source || req.body.source || 'import_csv',
-        notes: lead.notes || null,
-      });
-      created += 1;
-    }
-    return res.json({ success: true, data: { imported: created, skipped } });
+    const skipDuplicates = parseBooleanField(payload.fields?.skip_duplicates);
+    const data = await CrmImportService.applyImport({
+      csv: payload.csv,
+      filePath: payload.filePath,
+      mapping,
+      targetType,
+      options: {
+        skipDuplicates,
+        duplicate_mode: payload.fields?.duplicate_mode || null,
+        pipeline_id: payload.fields?.pipeline_id || null,
+        stage_id: payload.fields?.stage_id || null,
+        source: payload.fields?.source || 'import_csv',
+      },
+      user: req.session?.user,
+    });
+    return res.json({ success: true, data });
   } catch (err) {
     console.error('[crm] importLeadsCsv', err);
     return res.status(500).json({ success: false, error: 'Erro ao importar CSV' });
+  } finally {
+    if (payload?.filePath) {
+      fs.unlink(payload.filePath, () => {});
+    }
+  }
+}
+
+async function dryRunImportCsv(req, res) {
+  let payload;
+  try {
+    payload = await parseImportRequest(req);
+    const mapping = parseJsonField(payload.fields?.mapping, {});
+    const targetType = String(payload.fields?.target_type || 'lead').toLowerCase();
+    if (!['lead', 'opportunity'].includes(targetType)) {
+      return res.status(400).json({ success: false, error: 'target_type inválido' });
+    }
+    if (!payload.csv && !payload.filePath) {
+      return res.status(400).json({ success: false, error: 'CSV obrigatório' });
+    }
+    const data = await CrmImportService.dryRunImport({
+      csv: payload.csv,
+      filePath: payload.filePath,
+      mapping,
+      targetType,
+      options: {
+        pipeline_id: payload.fields?.pipeline_id || null,
+        stage_id: payload.fields?.stage_id || null,
+        source: payload.fields?.source || 'import_csv',
+        duplicate_mode: payload.fields?.duplicate_mode || null,
+        sample_limit: payload.fields?.sample_limit || null,
+      },
+    });
+    return res.json({ success: true, data });
+  } catch (err) {
+    console.error('[crm] dryRunImportCsv', err);
+    return res.status(500).json({ success: false, error: 'Erro ao simular importação' });
+  } finally {
+    if (payload?.filePath) {
+      fs.unlink(payload.filePath, () => {});
+    }
   }
 }
 
@@ -675,6 +776,7 @@ module.exports = {
   exportOpportunitiesCsv,
   previewLeadsCsv,
   importLeadsCsv,
+  dryRunImportCsv,
   refreshStats,
   updateStageConfig,
   updateStageRule,

@@ -49,7 +49,7 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 ## 8) UX / Front-end entregues
 - Kanban de oportunidades, listas com filtros, dedup UI, calendário com filtros e edição de horário, dashboards iniciais, pages de leads/opps/activities.
 - Export: ICS de activities; CSV de leads/opps com escopo/owner aplicado.
-- Import: CSV simples de leads (sem preview/dedup ainda).
+- Import: CSV com preview/dry‑run e dedup/merge básico; upload multipart e UI inicial em `/crm/importar`.
 
 ## 9) Integrações/infra entregues
 - Message Send Events: API idempotente, UI /relatorios/whatsapp, constraint (source,idempotency_key).
@@ -63,4 +63,4 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 - LATE permanece MIT; código MIT/Apache reutilizado mantém cabeçalho; GPL/AGPL apenas referência/API.
 
 ## 11) Continuidade
-Backlog, sprints futuras e pendências estão em `docs/LATE_CRM_II.md` (atualizado em 18 de dezembro de 2025). Este arquivo mantém apenas o que já foi entregue ou decidido.
+Backlog, sprints futuras e pendências estão em `docs/LATE_CRM_II.md` (atualizado em 19 de dezembro de 2025). Este arquivo mantém apenas o que já foi entregue ou decidido.

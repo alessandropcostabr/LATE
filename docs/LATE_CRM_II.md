@@ -1,5 +1,5 @@
 # LATE_CRM_II – Backlog e Sprints
-_Atualizado em 18 de dezembro de 2025_
+_Atualizado em 19 de dezembro de 2025_
 
 > Documento para organizar pendências e próximas sprints do CRM. O histórico concluído permanece em `docs/LATE_CRM.md`.
 
@@ -56,8 +56,7 @@ function withScope(q, user, scope = 'me', opts = {}) {
 }
 ```
 
-## Sprint 2 — Stats & Dashboards (MVs)
-_Status: em andamento (branch `feature/crm-stats-mv`, código OK; falta validar testes e métricas de staleness/performances)._ 
+## Sprint 2 — Stats & Dashboards (MVs) (✅ concluída)
 - Revisar MVs `mv_crm_*` e agendamento `refresh-crm-stats.js` (10 min) para cobrir novos filtros.
 - Wiring final no frontend: dashboards únicos por escopo (me/team/all) e pipelines; gráficos de conversão e funil.
 - Permissões: esconder cards/gráficos quando escopo não autorizado.
@@ -96,12 +95,9 @@ try {
 ```
 
 ### TO_DO sprint 2
-- Rodar `npm test` focando stats/escopo e ajustar fixtures conforme necessário.
-- Validar MVs em staging com `EXPLAIN ANALYZE` e revisar índices/UNIQUE para `REFRESH CONCURRENTLY`.
-- Exercitar UI do dashboard e calendário com `scope=me|team|all`, verificar staleness >20 min e logs.
-- Abrir PR `feature/crm-stats-mv` → `develop`; depois merge para prod.
+- (Concluída) Revisões e merge realizados em 19 de dezembro de 2025.
 
-## Sprint 3 — Import CSV Avançado
+## Sprint 3 — Import CSV Avançado (🚧 em andamento)
 - Fluxo: upload → mapeamento de colunas → preview (primeiras 50) com validação → dedup/merge sugerido → dry-run → aplicar.
 - Dedup: regras phone/email normalizados (E.164), match opcional por documento; opção “force new”.
 - Escopo: suportar leads, contacts e opportunities; vincular pipeline/owner default por param.
@@ -137,6 +133,14 @@ const existing = await db('contacts')
   .where({ phone_norm: phoneNorm })
   .orWhere({ email_norm: normalizeEmail(input.email) });
 ```
+
+### TO_DO sprint 3
+- (Em andamento) Preview/dry-run/apply via upload multipart, auto‑mapping e modo merge/skip para duplicados.
+- (Em andamento) UI simples de importação (`/crm/importar`) com preview e simulação.
+- Implementar wizard completo com mapeamento interativo de colunas e indicadores de risco.
+- Adicionar relatório final exportável (CSV/JSON) e download após dry‑run.
+- Aplicar chunking por 1k linhas e transação com rollback opcional.
+- Testes: dedup/rollback e carga 200k linhas (sem OOM).
 
 ## Sprint 4 — Custom Fields UI
 - UI: builder para `custom_fields` (tipo, label, required, options, alvo: lead/contact/opp/activity).
