@@ -138,8 +138,8 @@ const existing = await db('contacts')
 ### TO_DO sprint 3
 - (Em andamento) Preview/dry-run/apply via upload multipart, auto‑mapping e modo merge/skip para duplicados.
 - (Em andamento) UI simples de importação (`/crm/importar`) com preview e simulação.
-- Implementar wizard completo com mapeamento interativo de colunas e indicadores de risco.
-- Adicionar relatório final exportável (CSV/JSON) e download após dry‑run.
+- (Em andamento) Wizard em 5 passos com mapeamento interativo de colunas.
+- (Em andamento) Relatório exportável (CSV/JSON) após dry‑run.
 - Aplicar chunking por 1k linhas e transação com rollback opcional.
 - Testes: dedup/rollback e carga 200k linhas (sem OOM).
 
