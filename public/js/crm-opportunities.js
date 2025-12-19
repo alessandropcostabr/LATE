@@ -2,6 +2,34 @@
 (function () {
   const form = document.getElementById('opportunityFilters');
   const tableBody = document.querySelector('table tbody');
+  const createForm = document.getElementById('opportunityCreateForm');
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+  const pipelines = window.CRM_OPP_PIPELINES || [];
+  const stagesByPipeline = window.CRM_OPP_STAGES || {};
+
+  function collectCustomFields(formEl) {
+    const custom = {};
+    formEl.querySelectorAll('[name^="custom_fields["]').forEach((input) => {
+      const key = input.name.slice('custom_fields['.length, -1);
+      const value = input.type === 'checkbox' ? (input.checked ? true : '') : input.value;
+      if (value !== '' && value !== null && value !== undefined) {
+        custom[key] = value;
+      }
+    });
+    return custom;
+  }
+
+  function renderStages(pipelineId) {
+    const select = document.getElementById('oppStageSelect');
+    if (!select) return;
+    select.innerHTML = '<option value="">Selecionar estágio</option>';
+    (stagesByPipeline[pipelineId] || []).forEach((stage) => {
+      const opt = document.createElement('option');
+      opt.value = stage.id;
+      opt.textContent = stage.name;
+      select.appendChild(opt);
+    });
+  }
 
   function buildQuery(params) {
     const qs = new URLSearchParams();
@@ -54,20 +82,72 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (!form) return;
-    hydrateFromUrl();
-    loadOpps();
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      syncUrl();
+    if (form) {
+      hydrateFromUrl();
       loadOpps();
-    });
-    const resetBtn = document.getElementById('opportunityFiltersReset');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', (e) => {
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
-        form.reset();
         syncUrl();
+        loadOpps();
+      });
+      const resetBtn = document.getElementById('opportunityFiltersReset');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          form.reset();
+          syncUrl();
+          loadOpps();
+        });
+      }
+    }
+
+    if (createForm) {
+      const pipelineSelect = document.getElementById('oppPipelineSelect');
+      if (pipelineSelect) {
+        pipelineSelect.addEventListener('change', () => {
+          renderStages(pipelineSelect.value);
+        });
+        const firstPipeline = pipelineSelect.value || pipelines?.[0]?.id;
+        if (firstPipeline) {
+          pipelineSelect.value = firstPipeline;
+          renderStages(firstPipeline);
+        }
+      }
+
+      createForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(createForm).entries());
+        data.custom_fields = collectCustomFields(createForm);
+        data.amount = data.amount ? Number(data.amount) : null;
+        const payload = {
+          title: data.title,
+          pipeline_id: data.pipeline_id,
+          stage_id: data.stage_id,
+          amount: data.amount,
+          close_date: data.close_date || null,
+          source: data.source || 'desconhecida',
+          description: data.description || null,
+          contact: {
+            name: data.contact_name || null,
+            email: data.contact_email || null,
+            phone: data.contact_phone || null,
+          },
+          custom_fields: data.custom_fields,
+        };
+        const res = await fetch('/api/crm/opportunities', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          alert(json.error || 'Erro ao criar oportunidade');
+          return;
+        }
+        createForm.reset();
         loadOpps();
       });
     }

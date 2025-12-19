@@ -165,7 +165,7 @@ const existing = await db('contacts')
 
 ### Status sprint 4
 - (Em andamento) UI de gestão em `/crm/config` com criar/editar/excluir campos e filtro por entidade.
-- TO_DO: renderizar custom fields nos formulários de lead/opp/activity (create/edit) e no kanban inline.
+- (Em andamento) Render de custom fields nos formulários de lead/opp/activity e modal inline no kanban.
 - TO_DO: validar required por estágio com feedback visual na UI.
 
 ### Issues sugeridas

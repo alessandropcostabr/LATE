@@ -2,6 +2,20 @@
 (function () {
   const form = document.getElementById('leadFilters');
   const tableBody = document.querySelector('table tbody');
+  const createForm = document.getElementById('leadCreateForm');
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+  function collectCustomFields(formEl) {
+    const custom = {};
+    formEl.querySelectorAll('[name^="custom_fields["]').forEach((input) => {
+      const key = input.name.slice('custom_fields['.length, -1);
+      const value = input.type === 'checkbox' ? (input.checked ? true : '') : input.value;
+      if (value !== '' && value !== null && value !== undefined) {
+        custom[key] = value;
+      }
+    });
+    return custom;
+  }
 
   function buildQuery(params) {
     const qs = new URLSearchParams();
@@ -54,20 +68,43 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (!form) return;
-    hydrateFromUrl();
-    loadLeads();
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      syncUrl();
+    if (form) {
+      hydrateFromUrl();
       loadLeads();
-    });
-    const resetBtn = document.getElementById('leadFiltersReset');
-    if (resetBtn) {
-      resetBtn.addEventListener('click', (e) => {
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
-        form.reset();
         syncUrl();
+        loadLeads();
+      });
+      const resetBtn = document.getElementById('leadFiltersReset');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          form.reset();
+          syncUrl();
+          loadLeads();
+        });
+      }
+    }
+    if (createForm) {
+      createForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(createForm).entries());
+        data.custom_fields = collectCustomFields(createForm);
+        const res = await fetch('/api/crm/leads', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+          },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          alert(json.error || 'Erro ao criar lead');
+          return;
+        }
+        createForm.reset();
         loadLeads();
       });
     }

@@ -145,6 +145,11 @@ const validateCustomFieldValue = [
   body('value').not().isEmpty().withMessage('value é obrigatório'),
 ];
 
+const validateCustomFieldValuesList = [
+  query('entity_type').isIn(['lead','contact','account','opportunity','activity']).withMessage('entity_type inválido'),
+  query('entity_id').isUUID().withMessage('entity_id deve ser UUID'),
+];
+
 module.exports = {
   validateLeadCreate,
   validateLeadList,
@@ -156,6 +161,7 @@ module.exports = {
   validateCustomFieldCreate,
   validateCustomFieldUpdate,
   validateCustomFieldValue,
+  validateCustomFieldValuesList,
   validateCsvImport,
   validateStageConfigUpdate,
   validateStageRuleUpdate,

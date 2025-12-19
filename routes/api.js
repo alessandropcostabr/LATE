@@ -81,6 +81,7 @@ const {
   validateCustomFieldCreate,
   validateCustomFieldUpdate,
   validateCustomFieldValue,
+  validateCustomFieldValuesList,
   validateCsvImport,
   validateStageConfigUpdate,
   validateStageRuleUpdate,
@@ -330,6 +331,11 @@ router.get(
   ...flatFns(canReadCRM),
   customFieldController.list
 );
+router.get(
+  '/crm/custom-fields/values',
+  ...flatFns(canReadCRM, validateCustomFieldValuesList, handleValidationErrors),
+  customFieldController.listValues
+);
 
 router.get(
   '/crm/dedupe/contacts',
@@ -386,6 +392,11 @@ router.get(
   '/crm/custom-fields',
   ...flatFns(canReadCRM),
   customFieldController.list
+);
+router.get(
+  '/crm/custom-fields/values',
+  ...flatFns(canReadCRM, validateCustomFieldValuesList, handleValidationErrors),
+  customFieldController.listValues
 );
 router.post(
   '/crm/custom-fields',

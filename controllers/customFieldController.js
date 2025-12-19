@@ -61,10 +61,21 @@ async function upsertValue(req, res) {
   }
 }
 
+async function listValues(req, res) {
+  try {
+    const rows = await CustomFieldValue.listValues(req.query.entity_type, req.query.entity_id);
+    return res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('[crm] list custom field values', err);
+    return res.status(500).json({ success: false, error: 'Erro ao listar valores' });
+  }
+}
+
 module.exports = {
   list,
   create,
   update,
   remove,
   upsertValue,
+  listValues,
 };
