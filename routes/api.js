@@ -227,12 +227,12 @@ router.get(
 );
 router.get(
   '/crm/leads',
-  ...flatFns(canReadCRM, validateLeadList, handleValidationErrors),
+  ...flatFns(canReadCRM, validateScopeParam(), validateLeadList, handleValidationErrors),
   crmController.listLeads
 );
 router.get(
   '/crm/opportunities',
-  ...flatFns(canReadCRM, validateOpportunityList, handleValidationErrors),
+  ...flatFns(canReadCRM, validateScopeParam(), validateOpportunityList, handleValidationErrors),
   crmController.listOpportunities
 );
 router.post(

@@ -7,6 +7,9 @@
       <h1>Calendário de Atividades</h1>
       <p class="muted">Visualize tarefas, reuniões e chamadas.</p>
     </div>
+    <div style="min-width:220px;">
+      <%- include('partials/scope-filter', { scope: scope || 'me', id: 'scope' }) %>
+    </div>
   </header>
   <section class="card">
     <div id="crmCalendar"></div>

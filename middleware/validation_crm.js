@@ -32,6 +32,7 @@ const validateLeadList = [limitRule, offsetRule,
   query('owner_id').optional().isInt({ min: 1 }),
   query('status').optional().isString(),
   query('search').optional().isString(),
+  query('scope').optional().isIn(['me', 'team', 'all']).withMessage('scope inválido'),
 ];
 
 const validateOpportunityCreate = [
@@ -58,6 +59,7 @@ const validateOpportunityList = [limitRule, offsetRule,
   query('owner_id').optional().isInt({ min: 1 }),
   query('contact_id').optional().isUUID(),
   query('search').optional().isString(),
+  query('scope').optional().isIn(['me', 'team', 'all']).withMessage('scope inválido'),
 ];
 
 const validateOpportunityMove = [
@@ -78,6 +80,7 @@ const validateActivityCreate = [
 const validateActivityList = [
   query('related_type').optional().isIn(['lead', 'contact', 'account', 'opportunity']),
   query('related_id').optional().isUUID(),
+  query('scope').optional().isIn(['me', 'team', 'all']).withMessage('scope inválido'),
 ];
 
 // Custom fields

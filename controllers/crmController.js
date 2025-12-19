@@ -14,6 +14,7 @@ const CustomFieldValueModel = require('../models/customFieldValue');
 const CrmImportService = require('../services/crmImportService');
 const { normalizePhone } = require('../utils/phone');
 const { normalizeEmail } = require('../utils/normalizeContact');
+const { applyOwnerScope } = require('../utils/scope');
 
 const UUID_RE = /^[0-9a-fA-F-]{36}$/;
 function isUuid(val) { return UUID_RE.test(String(val || '')); }
@@ -181,15 +182,10 @@ async function listLeads(req, res) {
       status: req.query.status || null,
       search: req.query.search || null,
     };
-    const role = req.session?.user?.role || '';
-    const userId = req.session?.user?.id;
-    const scope = resolveViewScope(req);
-    if (!isPrivileged(role) && userId) {
-      filter.owner_id = scope === 'own' ? userId : filter.owner_id || userId;
-    }
-
-    const rows = await LeadModel.listLeads(filter, { limit, offset });
-    return res.json({ success: true, data: rows });
+    const scopeParam = req.scopeResolved || req.query.scope || resolveViewScope(req);
+    const { filter: scopedFilter, scope } = applyOwnerScope(filter, req.session?.user || {}, scopeParam);
+    const rows = await LeadModel.listLeads(scopedFilter, { limit, offset });
+    return res.json({ success: true, data: rows, scope });
   } catch (err) {
     console.error('[crm] listLeads', err);
     return res.status(500).json({ success: false, error: 'Erro ao listar leads' });
@@ -207,15 +203,10 @@ async function listOpportunities(req, res) {
       contact_id: req.query.contact_id || null,
       search: req.query.search || null,
     };
-    const role = req.session?.user?.role || '';
-    const userId = req.session?.user?.id;
-    const scope = resolveViewScope(req);
-    if (!isPrivileged(role) && userId) {
-      filter.owner_id = scope === 'own' ? userId : filter.owner_id || userId;
-    }
-
-    const rows = await OpportunityModel.listOpportunities(filter, { limit, offset });
-    return res.json({ success: true, data: rows });
+    const scopeParam = req.scopeResolved || req.query.scope || resolveViewScope(req);
+    const { filter: scopedFilter, scope } = applyOwnerScope(filter, req.session?.user || {}, scopeParam);
+    const rows = await OpportunityModel.listOpportunities(scopedFilter, { limit, offset });
+    return res.json({ success: true, data: rows, scope });
   } catch (err) {
     console.error('[crm] listOpportunities', err);
     return res.status(500).json({ success: false, error: 'Erro ao listar oportunidades' });
@@ -379,17 +370,18 @@ async function listActivities(req, res) {
       related_id: req.query.related_id || null,
       owner_id: null,
     };
-    const role = req.session?.user?.role || '';
-    const userId = req.session?.user?.id;
-    const scope = resolveViewScope(req);
-    if (!isPrivileged(role) && userId) {
-      filter.owner_id = scope === 'own' ? userId : (req.query.owner_id || userId);
-    } else if (req.query.owner_id) {
-      filter.owner_id = req.query.owner_id;
-    }
+    const scopeParam = req.scopeResolved || req.query.scope || resolveViewScope(req);
+    const { filter: scopedFilter, scope } = applyOwnerScope(
+      {
+        ...filter,
+        owner_id: req.query.owner_id || null,
+      },
+      req.session?.user || {},
+      scopeParam,
+    );
 
-    const rows = await ActivityModel.listActivities(filter);
-    return res.json({ success: true, data: rows });
+    const rows = await ActivityModel.listActivities(scopedFilter);
+    return res.json({ success: true, data: rows, scope });
   } catch (err) {
     console.error('[crm] listActivities', err);
     return res.status(500).json({ success: false, error: 'Erro ao listar atividades' });
