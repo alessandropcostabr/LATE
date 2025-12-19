@@ -113,6 +113,7 @@ try {
 ### Desenho técnico
 - Pipeline: endpoint de upload salva em storage temporário; parser streaming (csv-parse) com limites de memória; preview captura 50 linhas.
 - Dedup: normalizar phone/email; buscas por hash (`email_norm`, `phone_norm`) com índice; sugerir merge e exibir causas.
+- Oportunidades: aceitar `pipeline_name`/`stage_name` no CSV e resolver para IDs automaticamente (fallback para IDs quando informados).
 - Dry-run: executar em transação com `ROLLBACK` no final ou em tabela temporária; relatório consolidado por tipo de ação.
 - Aplicar: mesma lógica do dry-run, mas com `COMMIT`; chunking por 1k linhas para evitar locks longos.
 - UI: wizard de 5 passos com persistência de mapeamento; barra de progresso; download do relatório final.

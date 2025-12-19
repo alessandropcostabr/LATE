@@ -7,6 +7,7 @@ const { Readable } = require('stream');
 const ContactModel = require('../models/contact');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
+const PipelineModel = require('../models/pipeline');
 const { normalizeEmail, normalizePhone } = require('../utils/normalizeContact');
 
 const DEFAULT_PREVIEW_LIMIT = 50;
@@ -28,7 +29,9 @@ const TARGET_FIELDS = {
     'close_date',
     'description',
     'pipeline_id',
+    'pipeline_name',
     'stage_id',
+    'stage_name',
     'name',
     'phone',
     'email',
@@ -50,7 +53,9 @@ const FIELD_ALIASES = {
   status: ['status', 'situacao'],
   score: ['score', 'pontuacao'],
   pipeline_id: ['pipeline_id', 'pipeline'],
+  pipeline_name: ['pipeline_name', 'funil', 'pipeline_nome'],
   stage_id: ['stage_id', 'stage', 'etapa_id', 'etapa'],
+  stage_name: ['stage_name', 'etapa_nome', 'stage_nome'],
   probability_override: ['probability_override', 'probabilidade'],
 };
 
@@ -138,6 +143,70 @@ function createSourceStream({ csv, filePath }) {
   return Readable.from([csv || '']);
 }
 
+function normalizeNameKey(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+async function buildPipelineLookup() {
+  const pipelines = await PipelineModel.listPipelines('opportunity');
+  const pipelineByName = {};
+  const stageByPipeline = {};
+  const stageNameHits = {};
+
+  for (const pipeline of pipelines) {
+    const key = normalizeNameKey(pipeline.name);
+    if (key) pipelineByName[key] = pipeline.id;
+    const stages = await PipelineModel.getStages(pipeline.id);
+    const stageMap = {};
+    stages.forEach((stage) => {
+      const stageKey = normalizeNameKey(stage.name);
+      if (!stageKey) return;
+      stageMap[stageKey] = stage.id;
+      stageNameHits[stageKey] = (stageNameHits[stageKey] || 0) + 1;
+    });
+    stageByPipeline[pipeline.id] = stageMap;
+  }
+
+  const stageByNameUnique = {};
+  Object.keys(stageNameHits).forEach((key) => {
+    if (stageNameHits[key] === 1) {
+      const pipelineId = Object.keys(stageByPipeline).find((pid) => stageByPipeline[pid][key]);
+      if (pipelineId) stageByNameUnique[key] = stageByPipeline[pipelineId][key];
+    }
+  });
+
+  return { pipelineByName, stageByPipeline, stageByNameUnique };
+}
+
+function resolvePipelineStage(mapped = {}, options = {}, lookup) {
+  const resolved = {
+    pipeline_id: mapped.pipeline_id || options.pipeline_id || null,
+    stage_id: mapped.stage_id || options.stage_id || null,
+  };
+
+  if (!resolved.pipeline_id) {
+    const pipelineName = mapped.pipeline_name || options.pipeline_name;
+    const key = normalizeNameKey(pipelineName);
+    if (key && lookup.pipelineByName[key]) {
+      resolved.pipeline_id = lookup.pipelineByName[key];
+    }
+  }
+
+  if (!resolved.stage_id) {
+    const stageName = mapped.stage_name || options.stage_name;
+    const stageKey = normalizeNameKey(stageName);
+    if (stageKey) {
+      if (resolved.pipeline_id && lookup.stageByPipeline[resolved.pipeline_id]) {
+        resolved.stage_id = lookup.stageByPipeline[resolved.pipeline_id][stageKey] || null;
+      } else if (lookup.stageByNameUnique[stageKey]) {
+        resolved.stage_id = lookup.stageByNameUnique[stageKey];
+      }
+    }
+  }
+
+  return resolved;
+}
+
 async function iterateCsv({ csv, filePath, limit, onRow }) {
   const parser = createParser();
   const source = createSourceStream({ csv, filePath });
@@ -204,6 +273,17 @@ function buildOpportunityPayload(mapped = {}, options = {}, user) {
   };
 }
 
+function resolveOpportunityErrors(mapped = {}, options = {}) {
+  const errors = [];
+  if ((mapped.pipeline_name || options.pipeline_name) && !mapped.pipeline_id) {
+    errors.push(`Pipeline não encontrado: ${mapped.pipeline_name || options.pipeline_name}`);
+  }
+  if ((mapped.stage_name || options.stage_name) && !mapped.stage_id) {
+    errors.push(`Etapa não encontrada: ${mapped.stage_name || options.stage_name}`);
+  }
+  return errors;
+}
+
 function validateRequired(mapped = {}, targetType = 'lead', options = {}) {
   if (targetType === 'lead') {
     if (!mapped.phone && !mapped.email) {
@@ -214,11 +294,11 @@ function validateRequired(mapped = {}, targetType = 'lead', options = {}) {
   if (!mapped.title && !mapped.name) {
     return 'Título da oportunidade é obrigatório.';
   }
-  if (!mapped.pipeline_id && !options.pipeline_id) {
-    return 'pipeline_id é obrigatório para oportunidades.';
+  if (!mapped.pipeline_id && !mapped.pipeline_name && !options.pipeline_id && !options.pipeline_name) {
+    return 'pipeline_id ou pipeline_name é obrigatório para oportunidades.';
   }
-  if (!mapped.stage_id && !options.stage_id) {
-    return 'stage_id é obrigatório para oportunidades.';
+  if (!mapped.stage_id && !mapped.stage_name && !options.stage_id && !options.stage_name) {
+    return 'stage_id ou stage_name é obrigatório para oportunidades.';
   }
   if (!mapped.phone && !mapped.email) {
     return 'Informe telefone ou e-mail do contato.';
@@ -282,6 +362,11 @@ async function dryRunImport({ csv, filePath, mapping = {}, targetType = 'lead', 
   const sampleLimit = Number(options.sample_limit || DEFAULT_SAMPLE_LIMIT);
   let headers = [];
   let finalMapping = normalizedMapping;
+  let pipelineLookup = null;
+  const ensureLookup = async () => {
+    if (!pipelineLookup) pipelineLookup = await buildPipelineLookup();
+    return pipelineLookup;
+  };
 
   await iterateCsv({
     csv,
@@ -295,6 +380,20 @@ async function dryRunImport({ csv, filePath, mapping = {}, targetType = 'lead', 
       }
       summary.total += 1;
       const resolved = resolveMappedRow(row, finalMapping);
+      if (targetType === 'opportunity') {
+        const lookup = await ensureLookup();
+        const resolvedIds = resolvePipelineStage(resolved, options, lookup);
+        if (resolvedIds.pipeline_id) resolved.pipeline_id = resolvedIds.pipeline_id;
+        if (resolvedIds.stage_id) resolved.stage_id = resolvedIds.stage_id;
+        const nameErrors = resolveOpportunityErrors(resolved, options);
+        if (nameErrors.length) {
+          summary.errors += 1;
+          if (summary.items.length < sampleLimit) {
+            summary.items.push({ action: 'error', error: nameErrors.join(' | '), data: resolved });
+          }
+          return;
+        }
+      }
       const error = validateRequired(resolved, targetType, options);
       if (error) {
         summary.errors += 1;
@@ -345,6 +444,11 @@ async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', o
   const duplicateMode = getDuplicateMode(options);
   let headers = [];
   let finalMapping = normalizedMapping;
+  let pipelineLookup = null;
+  const ensureLookup = async () => {
+    if (!pipelineLookup) pipelineLookup = await buildPipelineLookup();
+    return pipelineLookup;
+  };
 
   await iterateCsv({
     csv,
@@ -358,6 +462,17 @@ async function applyImport({ csv, filePath, mapping = {}, targetType = 'lead', o
       }
       summary.total += 1;
       const resolved = resolveMappedRow(row, finalMapping);
+      if (targetType === 'opportunity') {
+        const lookup = await ensureLookup();
+        const resolvedIds = resolvePipelineStage(resolved, options, lookup);
+        if (resolvedIds.pipeline_id) resolved.pipeline_id = resolvedIds.pipeline_id;
+        if (resolvedIds.stage_id) resolved.stage_id = resolvedIds.stage_id;
+        const nameErrors = resolveOpportunityErrors(resolved, options);
+        if (nameErrors.length) {
+          summary.errors += 1;
+          return;
+        }
+      }
       const error = validateRequired(resolved, targetType, options);
       if (error) {
         summary.errors += 1;
