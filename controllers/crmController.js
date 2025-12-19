@@ -2,7 +2,7 @@
 // CRM: pipelines, leads, oportunidades, atividades, stats e utilitários (ICS/CSV).
 
 const fs = require('fs');
-const formidable = require('formidable');
+const { formidable } = require('formidable');
 const PipelineModel = require('../models/pipeline');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
