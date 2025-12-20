@@ -260,3 +260,34 @@ const Loading = {
 window.Normalizer = Normalizer;
 window.Form = Form;
 window.Loading = Loading;
+
+// ==== Funções de Segurança XSS ==============================================
+
+/**
+ * Escapa caracteres HTML para prevenir XSS
+ * @param {string} text - Texto a ser escapado
+ * @returns {string} - Texto seguro para inserir no HTML
+ */
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text || '';
+  return div.innerHTML;
+}
+
+/**
+ * Escapa atributos HTML
+ * @param {string} attr - Valor do atributo
+ * @returns {string} - Valor seguro para atributo HTML
+ */
+function escapeAttr(attr) {
+  return String(attr || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Exporta funções de escape globalmente
+window.escapeHtml = escapeHtml;
+window.escapeAttr = escapeAttr;

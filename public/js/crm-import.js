@@ -163,10 +163,10 @@
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${idx + 1}</td>
-        <td>${mapped.name || '-'}</td>
-        <td>${mapped.phone || '-'}</td>
-        <td>${mapped.email || '-'}</td>
-        <td>${mapped.title || '-'}</td>
+        <td>${escapeHtml(mapped.name || '-')}</td>
+        <td>${escapeHtml(mapped.phone || '-')}</td>
+        <td>${escapeHtml(mapped.email || '-')}</td>
+        <td>${escapeHtml(mapped.title || '-')}</td>
         <td>${item.duplicate ? 'sim' : '-'}</td>
       `;
       tableBody.appendChild(row);
@@ -186,13 +186,13 @@
       const options = [''].concat(fields).map((field) => {
         const label = field ? field : 'ignorar';
         const value = field;
-        return `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`;
+        return `<option value="${escapeAttr(value)}" ${selected === value ? 'selected' : ''}>${escapeHtml(label)}</option>`;
       }).join('');
       return `
         <tr>
-          <td>${header}</td>
+          <td>${escapeHtml(header)}</td>
           <td>
-            <select class="input" data-header="${header}">
+            <select class="input" data-header="${escapeAttr(header)}">
               ${options}
             </select>
           </td>

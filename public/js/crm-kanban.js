@@ -43,22 +43,22 @@
     const safeValue = value ?? '';
     if (field.type === 'select') {
       const options = (field.options || []).map((opt) => (
-        `<option value="${opt}" ${String(opt) === String(safeValue) ? 'selected' : ''}>${opt}</option>`
+        `<option value="${escapeAttr(opt)}" ${String(opt) === String(safeValue) ? 'selected' : ''}>${escapeHtml(opt)}</option>`
       )).join('');
-      return `<select class="input" name="custom_fields[${field.id}]">
+      return `<select class="input" name="custom_fields[${escapeAttr(field.id)}]">
         <option value="">Selecionar</option>${options}
       </select>`;
     }
     if (field.type === 'number') {
-      return `<input class="input" type="number" name="custom_fields[${field.id}]" value="${safeValue}">`;
+      return `<input class="input" type="number" name="custom_fields[${escapeAttr(field.id)}]" value="${escapeAttr(safeValue)}">`;
     }
     if (field.type === 'boolean') {
-      return `<input type="checkbox" name="custom_fields[${field.id}]" value="true" ${safeValue ? 'checked' : ''}>`;
+      return `<input type="checkbox" name="custom_fields[${escapeAttr(field.id)}]" value="true" ${safeValue ? 'checked' : ''}>`;
     }
     if (field.type === 'date') {
-      return `<input class="input" type="date" name="custom_fields[${field.id}]" value="${safeValue}">`;
+      return `<input class="input" type="date" name="custom_fields[${escapeAttr(field.id)}]" value="${escapeAttr(safeValue)}">`;
     }
-    return `<input class="input" type="text" name="custom_fields[${field.id}]" value="${safeValue}">`;
+    return `<input class="input" type="text" name="custom_fields[${escapeAttr(field.id)}]" value="${escapeAttr(safeValue)}">`;
   }
 
   async function openCustomFieldsModal(opp) {
@@ -78,7 +78,7 @@
         <div class="grid">
           ${fields.map((f) => `
             <div>
-              <label>${f.name}${f.required ? ' *' : ''}</label>
+              <label>${escapeHtml(f.name)}${f.required ? ' *' : ''}</label>
               ${buildCustomFieldInput(f, valuesMap[f.id])}
             </div>
           `).join('')}
@@ -111,7 +111,7 @@
       const col = document.createElement('div');
       col.className = 'kanban__column';
       col.dataset.stageId = stage.id;
-      col.innerHTML = `<header class="kanban__column-header">${stage.name}</header><div class="kanban__items"></div>`;
+      col.innerHTML = `<header class="kanban__column-header">${escapeHtml(stage.name)}</header><div class="kanban__items"></div>`;
       board.appendChild(col);
     });
     opps.forEach((opp) => {
@@ -125,9 +125,9 @@
       const amount = opp.amount ? `R$ ${Number(opp.amount).toFixed(2)}` : '-';
       const close = opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-';
       card.innerHTML = `
-        <strong>${opp.title}</strong>
-        <p class="muted">${opp.contact_name || ''}</p>
-        <p class="muted">Valor: ${amount} · Fecha: ${close}</p>
+        <strong>${escapeHtml(opp.title)}</strong>
+        <p class="muted">${escapeHtml(opp.contact_name || '')}</p>
+        <p class="muted">Valor: ${escapeHtml(amount)} · Fecha: ${escapeHtml(close)}</p>
       `;
       card.addEventListener('click', () => openCustomFieldsModal(opp));
       card.addEventListener('dragstart', (ev) => {
