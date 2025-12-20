@@ -12,11 +12,11 @@ BEGIN
   ON CONFLICT (object_type, name) DO NOTHING;
 
   INSERT INTO pipelines (object_type, name, requires_account, requires_contact, active)
-  VALUES ('opportunity', 'Clínica', FALSE, TRUE, TRUE)
+  VALUES ('opportunity', 'Clinica', FALSE, TRUE, TRUE)
   ON CONFLICT (object_type, name) DO NOTHING;
 
   SELECT id INTO pip_train FROM pipelines WHERE object_type = 'opportunity' AND name = 'Treinamentos' LIMIT 1;
-  SELECT id INTO pip_clinic FROM pipelines WHERE object_type = 'opportunity' AND name = 'Clínica' LIMIT 1;
+  SELECT id INTO pip_clinic FROM pipelines WHERE object_type = 'opportunity' AND name = 'Clinica' LIMIT 1;
 
   -- Estágios
   INSERT INTO pipeline_stages (pipeline_id, name, position, probability, color)
@@ -76,39 +76,39 @@ WITH pip_train AS (
 )
 INSERT INTO leads (id, contact_id, pipeline_id, status, owner_id, source, score, notes)
 SELECT * FROM (
-  SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000001'::uuid, (SELECT id FROM pip_train), 'open', 1, 'salesforce', 10, NULL
-  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000002'::uuid, (SELECT id FROM pip_train), 'open', 1, 'salesforce', 8, NULL
-  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000003'::uuid, (SELECT id FROM pip_train), 'open', 1, 'salesforce', 7, NULL
-  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000004'::uuid, (SELECT id FROM pip_train), 'open', 1, 'salesforce', 6, NULL
-  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000005'::uuid, (SELECT id FROM pip_train), 'open', 1, 'salesforce', 5, NULL
+  SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000001'::uuid, (SELECT id FROM pip_train), 'open', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', 10, NULL
+  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000002'::uuid, (SELECT id FROM pip_train), 'open', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', 8, NULL
+  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000003'::uuid, (SELECT id FROM pip_train), 'open', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', 7, NULL
+  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000004'::uuid, (SELECT id FROM pip_train), 'open', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', 6, NULL
+  UNION ALL SELECT gen_random_uuid(), 'c2220000-0000-4000-8000-000000000005'::uuid, (SELECT id FROM pip_train), 'open', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', 5, NULL
 ) s
 ON CONFLICT (contact_id) DO NOTHING;
 
 -- Oportunidades
 WITH
   pip_train AS (SELECT id FROM pipelines WHERE name='Treinamentos' LIMIT 1),
-  pip_clinic AS (SELECT id FROM pipelines WHERE name='Clínica' LIMIT 1),
+  pip_clinic AS (SELECT id FROM pipelines WHERE name='Clinica' LIMIT 1),
   stage_train AS (SELECT id FROM pipeline_stages WHERE pipeline_id = (SELECT id FROM pip_train) AND position = 1 LIMIT 1),
   stage_clinic AS (SELECT id FROM pipeline_stages WHERE pipeline_id = (SELECT id FROM pip_clinic) AND position = 1 LIMIT 1)
 INSERT INTO opportunities (id, title, account_id, contact_id, pipeline_id, stage_id, amount, close_date, owner_id, source, description)
 SELECT * FROM (
   SELECT gen_random_uuid(), 'Treinamento - Juju', NULL::uuid, 'c1110000-0000-4000-8000-000000000001'::uuid,
-         (SELECT id FROM pip_train), (SELECT id FROM stage_train), 9000, '2025-06-30'::date, 1, 'salesforce', NULL
+         (SELECT id FROM pip_train), (SELECT id FROM stage_train), 9000, '2025-06-30'::date, (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', NULL
   UNION ALL
   SELECT gen_random_uuid(), 'Treinamento - Dulce Maria', NULL, 'c1110000-0000-4000-8000-000000000002'::uuid,
-         (SELECT id FROM pip_train), (SELECT id FROM stage_train), 2000, '2025-08-30', 1, 'salesforce', NULL
+         (SELECT id FROM pip_train), (SELECT id FROM stage_train), 2000, '2025-08-30', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', NULL
   UNION ALL
   SELECT gen_random_uuid(), 'Treinamento - Adriana', NULL, 'c1110000-0000-4000-8000-000000000003'::uuid,
-         (SELECT id FROM pip_train), (SELECT id FROM stage_train), 4000, '2025-09-30', 1, 'salesforce', NULL
+         (SELECT id FROM pip_train), (SELECT id FROM stage_train), 4000, '2025-09-30', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', NULL
   UNION ALL
   SELECT gen_random_uuid(), 'Clínica - Ary', NULL, 'c1110000-0000-4000-8000-000000000004'::uuid,
-         (SELECT id FROM pip_clinic), (SELECT id FROM stage_clinic), 1500, '2025-07-15', 1, 'salesforce', NULL
+         (SELECT id FROM pip_clinic), (SELECT id FROM stage_clinic), 1500, '2025-07-15', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', NULL
   UNION ALL
   SELECT gen_random_uuid(), 'Clínica - Lais', NULL, 'c1110000-0000-4000-8000-000000000005'::uuid,
-         (SELECT id FROM pip_clinic), (SELECT id FROM stage_clinic), 800, '2025-08-10', 1, 'salesforce', NULL
+         (SELECT id FROM pip_clinic), (SELECT id FROM stage_clinic), 800, '2025-08-10', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', NULL
   UNION ALL
   SELECT gen_random_uuid(), 'Clínica - Cris Rico', NULL, 'c1110000-0000-4000-8000-000000000006'::uuid,
-         (SELECT id FROM pip_clinic), (SELECT id FROM stage_clinic), 1200, '2025-09-05', 1, 'salesforce', NULL
+         (SELECT id FROM pip_clinic), (SELECT id FROM stage_clinic), 1200, '2025-09-05', (SELECT id FROM users ORDER BY id LIMIT 1), 'salesforce', NULL
 ) s
 ON CONFLICT DO NOTHING;
 
