@@ -8,6 +8,7 @@ const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
 const ActivityModel = require('../models/activity');
 const ContactModel = require('../models/contact');
+const { validateCsvFile } = require('../middleware/fileValidation');
 const CrmStats = require('../models/crmStats');
 const CustomFieldModel = require('../models/customField');
 const CustomFieldValueModel = require('../models/customFieldValue');
@@ -625,7 +626,7 @@ function normalizeFormValue(value) {
 async function parseImportRequest(req) {
   if (req.is('multipart/form-data')) {
     const form = formidable({
-      maxFileSize: 100 * 1024 * 1024,
+      maxFileSize: 10 * 1024 * 1024, // Reduced from 100MB to 10MB for security
       allowEmptyFiles: false,
       multiples: false,
     });
@@ -635,6 +636,19 @@ async function parseImportRequest(req) {
         const fileCandidate = files?.csv || files?.file || files?.upload || null;
         const file = Array.isArray(fileCandidate) ? fileCandidate[0] : fileCandidate;
         const filePath = file?.filepath || null;
+
+        // Validate CSV file if uploaded
+        if (filePath && file) {
+          const validation = validateCsvFile(filePath, file.originalFilename || file.name);
+          if (!validation.valid) {
+            // Clean up the file
+            if (filePath) {
+              fs.unlink(filePath, () => {});
+            }
+            return reject(new Error(validation.error));
+          }
+        }
+
         resolve({
           csv: fields?.csv || null,
           filePath,
