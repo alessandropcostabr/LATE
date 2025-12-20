@@ -207,8 +207,8 @@ if (file) {
 - [ ] Estimar ganho: 50ms → 5ms por execução
 
 ### 4. Performance N+1 CRM — CONFIRMADO
-- [ ] Criar `listPipelinesWithStages()` com agregação JSON
-- [ ] Eliminar loop de queries em `controllers/crmController.js:172-180`
+- [x] Criar `listPipelinesWithStages()` com agregação JSON (20 de dezembro de 2025)
+- [x] Eliminar loop de queries em `controllers/crmController.js:172-180` (20 de dezembro de 2025)
 - [ ] Benchmark antes/depois
 
 ---
