@@ -195,9 +195,9 @@ if (file) {
 ### 2. Rate Limiting Específico CRM — CONFIRMADO
 **Problema:** Rotas CRM não têm rate limit dedicado, vulnerável a DoS.
 
-- [ ] Criar `middleware/rateLimitCRM.js` com política específica
-- [ ] Import CSV: 5 requisições / 15 minutos
-- [ ] APIs gerais CRM: 100 requisições / 15 minutos
+- [x] Criar `middleware/rateLimitCRM.js` com política específica (20 de dezembro de 2025)
+- [x] Import CSV: 5 requisições / 15 minutos (20 de dezembro de 2025)
+- [x] APIs gerais CRM: 100 requisições / 15 minutos (20 de dezembro de 2025)
 - [ ] Integrar com Redis para distribuir entre workers
 - [ ] Teste de rate limit
 
