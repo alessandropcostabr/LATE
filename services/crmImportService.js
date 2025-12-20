@@ -13,6 +13,9 @@ const { normalizeEmail, normalizePhone } = require('../utils/normalizeContact');
 
 const DEFAULT_PREVIEW_LIMIT = 50;
 const DEFAULT_SAMPLE_LIMIT = 200;
+const MAX_IMPORT_TIME_MS = 5 * 60 * 1000; // 5 minutes max for import
+const MAX_ROWS_PER_IMPORT = 10000; // Maximum rows allowed per import
+const BACKPRESSURE_THRESHOLD = 100; // Pause stream after this many pending rows
 
 const TARGET_FIELDS = {
   lead: [
@@ -212,17 +215,56 @@ function resolvePipelineStage(mapped = {}, options = {}, lookup) {
   return resolved;
 }
 
-async function iterateCsv({ csv, filePath, limit, onRow }) {
+async function iterateCsv({ csv, filePath, limit, onRow, timeout = MAX_IMPORT_TIME_MS }) {
   const parser = createParser();
   const source = createSourceStream({ csv, filePath });
   source.pipe(parser);
 
   let count = 0;
+  let isPaused = false;
+  let pendingRows = 0;
+  const startTime = Date.now();
+
+  // Timeout handler
+  const timeoutId = setTimeout(() => {
+    if (typeof source.destroy === 'function') source.destroy();
+    if (typeof parser.destroy === 'function') parser.destroy();
+    throw new Error(`Import timeout: exceeded ${timeout / 1000} seconds`);
+  }, timeout);
+
   try {
     for await (const record of parser) {
+      // Check timeout
+      if (Date.now() - startTime > timeout) {
+        throw new Error(`Import timeout: exceeded ${timeout / 1000} seconds`);
+      }
+
       count += 1;
+
+      // Check row limit
+      if (count > MAX_ROWS_PER_IMPORT) {
+        throw new Error(`Import limit exceeded: maximum ${MAX_ROWS_PER_IMPORT} rows allowed`);
+      }
+
       const normalized = normalizeRow(record);
+
+      // Backpressure: pause stream if too many pending rows
+      pendingRows += 1;
+      if (pendingRows >= BACKPRESSURE_THRESHOLD && !isPaused) {
+        isPaused = true;
+        parser.pause();
+      }
+
+      // Process row
       await onRow(normalized, count);
+
+      // Resume stream if backpressure reduced
+      pendingRows -= 1;
+      if (pendingRows < BACKPRESSURE_THRESHOLD / 2 && isPaused) {
+        isPaused = false;
+        parser.resume();
+      }
+
       if (limit && count >= limit) {
         if (typeof source.destroy === 'function') source.destroy();
         if (typeof parser.destroy === 'function') parser.destroy();
@@ -230,6 +272,7 @@ async function iterateCsv({ csv, filePath, limit, onRow }) {
       }
     }
   } finally {
+    clearTimeout(timeoutId);
     if (typeof source.destroy === 'function') source.destroy();
   }
   return count;
@@ -455,7 +498,7 @@ async function applyImport({
     errors: 0,
   };
   const duplicateMode = getDuplicateMode(options);
-  const chunkSize = Number(options.chunk_size || 1000);
+  const chunkSize = Math.min(Number(options.chunk_size || 100), 500); // Limit batch size for memory control
   let headers = [];
   let finalMapping = normalizedMapping;
   let pipelineLookup = null;
@@ -466,6 +509,18 @@ async function applyImport({
 
   const client = dbClient || await db.connect();
   const shouldRelease = !dbClient;
+  const startTime = Date.now();
+  let lastProgressLog = Date.now();
+
+  // Log progress periodically
+  const logProgress = () => {
+    const now = Date.now();
+    if (now - lastProgressLog > 5000) { // Log every 5 seconds
+      console.log(`[CRM Import] Progress: ${summary.total} processed, ${summary.created} created, ${summary.updated} updated, ${summary.skipped} skipped, ${summary.errors} errors`);
+      lastProgressLog = now;
+    }
+  };
+
   try {
     await client.query('BEGIN');
     const batch = [];
@@ -541,6 +596,12 @@ async function applyImport({
         }
       }
       batch.length = 0;
+      logProgress(); // Log progress after each batch
+
+      // Check for timeout
+      if (Date.now() - startTime > MAX_IMPORT_TIME_MS) {
+        throw new Error(`Import timeout: exceeded ${MAX_IMPORT_TIME_MS / 1000} seconds`);
+      }
     };
 
     await iterateCsv({
@@ -562,8 +623,13 @@ async function applyImport({
 
     await processBatch();
     await client.query('COMMIT');
+
+    // Final progress log
+    const elapsed = (Date.now() - startTime) / 1000;
+    console.log(`[CRM Import] Completed in ${elapsed.toFixed(1)}s: ${summary.total} processed, ${summary.created} created, ${summary.updated} updated, ${summary.skipped} skipped, ${summary.errors} errors`);
   } catch (err) {
     await client.query('ROLLBACK');
+    console.error(`[CRM Import] Failed after ${(Date.now() - startTime) / 1000}s:`, err.message);
     throw err;
   } finally {
     if (shouldRelease && client?.release) {
