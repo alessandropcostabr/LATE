@@ -34,6 +34,7 @@ Transformar o LATE em um CRM completo, flexível e configurável, mantendo licen
 - Calendário: FullCalendar, filtros owner/status/tipo/data, drag/drop/resize, export ICS.
 - Ações em lote: mudar owner/status, campanha, email, tag.
 - Auditoria: audit_logs por mutação.
+- Hardening (Opus Review, 20/12/2025): XSS sanitizado no frontend CRM, validação de upload CSV (extensão/MIME/1KB/binário), rate limit dedicado CRM, timeout/backpressure no import.
 
 ## 6) Modelo de dados (já migrado)
 `pipelines`, `pipeline_stages`, `pipeline_rules`, `accounts`, `contacts` (phone/email normalizados), `leads`, `opportunities`, `activities`, `campaigns`, `labels`/`label_links`, `custom_fields`/`custom_field_values`, `attachments`, `audit_logs`, `message_send_events`, `telephony_events`, MVs `mv_crm_*` para stats.
