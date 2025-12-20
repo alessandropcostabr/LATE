@@ -626,26 +626,31 @@ function normalizeFormValue(value) {
 async function parseImportRequest(req) {
   if (req.is('multipart/form-data')) {
     const form = formidable({
-      maxFileSize: 10 * 1024 * 1024, // Reduced from 100MB to 10MB for security
+      maxFileSize: 100 * 1024 * 1024, // 100MB
       allowEmptyFiles: false,
       multiples: false,
     });
     return new Promise((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
-        if (err) return reject(err);
+        if (err) {
+          err.statusCode = err.statusCode || 400;
+          return reject(err);
+        }
         const fileCandidate = files?.csv || files?.file || files?.upload || null;
         const file = Array.isArray(fileCandidate) ? fileCandidate[0] : fileCandidate;
         const filePath = file?.filepath || null;
 
         // Validate CSV file if uploaded
         if (filePath && file) {
-          const validation = validateCsvFile(filePath, file.originalFilename || file.name);
+          const validation = validateCsvFile(filePath, file.originalFilename || file.name, file.mimetype);
           if (!validation.valid) {
             // Clean up the file
             if (filePath) {
               fs.unlink(filePath, () => {});
             }
-            return reject(new Error(validation.error));
+            const error = new Error(validation.error);
+            error.statusCode = 400;
+            return reject(error);
           }
         }
 
@@ -719,7 +724,14 @@ async function previewLeadsCsv(req, res) {
     });
     return res.json({ success: true, data });
   } catch (err) {
-    console.error('[crm] previewLeadsCsv', err);
+    if (err?.statusCode === 400) {
+      console.warn('[crm] previewLeadsCsv', err.message);
+    } else {
+      console.error('[crm] previewLeadsCsv', err);
+    }
+    if (err?.statusCode === 400) {
+      return res.status(400).json({ success: false, error: err.message || 'CSV inválido' });
+    }
     return res.status(500).json({ success: false, error: 'Erro ao pré-visualizar CSV' });
   } finally {
     if (payload?.filePath) {
@@ -759,7 +771,14 @@ async function importLeadsCsv(req, res) {
     });
     return res.json({ success: true, data });
   } catch (err) {
-    console.error('[crm] importLeadsCsv', err);
+    if (err?.statusCode === 400) {
+      console.warn('[crm] importLeadsCsv', err.message);
+    } else {
+      console.error('[crm] importLeadsCsv', err);
+    }
+    if (err?.statusCode === 400) {
+      return res.status(400).json({ success: false, error: err.message || 'CSV inválido' });
+    }
     return res.status(500).json({ success: false, error: 'Erro ao importar CSV' });
   } finally {
     if (payload?.filePath) {
@@ -797,7 +816,14 @@ async function dryRunImportCsv(req, res) {
     });
     return res.json({ success: true, data });
   } catch (err) {
-    console.error('[crm] dryRunImportCsv', err);
+    if (err?.statusCode === 400) {
+      console.warn('[crm] dryRunImportCsv', err.message);
+    } else {
+      console.error('[crm] dryRunImportCsv', err);
+    }
+    if (err?.statusCode === 400) {
+      return res.status(400).json({ success: false, error: err.message || 'CSV inválido' });
+    }
     return res.status(500).json({ success: false, error: 'Erro ao simular importação' });
   } finally {
     if (payload?.filePath) {
