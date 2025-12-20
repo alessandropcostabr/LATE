@@ -11,11 +11,11 @@ Documentar benchmark antes/depois das correções de N+1 para:
 2. **Alertas:** medir quantidade de queries por ciclo (log ou pg_stat_statements) + tempo total.
 
 ## Resultado (antes)
-- CRM pipelines: _pendente_
+- CRM pipelines: _não medido antes da correção_
 - Alertas: _pendente_
 
 ## Resultado (depois)
-- CRM pipelines: _pendente_
+- CRM pipelines: média **0.115s** (avg=0.115263s, 10 amostras via `curl` em 20/12/2025)
 - Alertas: _pendente_
 
 ## Notas
