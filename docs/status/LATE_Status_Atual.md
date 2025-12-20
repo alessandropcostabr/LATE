@@ -1,46 +1,71 @@
-# LATE — Status Atual do Projeto (v2.1)
-**Data:** 11/11/2025  
+# LATE — Status Atual do Projeto (v2.2)
+**Data:** 19/12/2025  
 **Ambiente:** DEV (`late-dev`) + PROD (`late-prod`)
 
-> Atualizado em 2025/11/12. Este documento reflete a migração para o **novo cluster de produção** (Ubuntu 24.04 LTS, 3 nós: mach1, mach2, mach3), com **HA por Pacemaker/Corosync** (VIP app/DB `192.168.0.250`), **deploy automatizado** (GitHub → Bastion → Ansible/PM2) e operação remota via **Apache Guacamole**. 
-> Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
+> Atualizado em 19/12/2025. Inclui o **CRM nativo** com pipelines, leads/contatos/oportunidades, activities, calendário ICS, dedup, integrações de message-events/telefonia, automações de estágio/SLA e configuração de pipelines. Convenções do LATE mantidas: **identificadores em inglês**, **mensagens/UX em pt‑BR**, **API JSON apenas**, **DB = PostgreSQL**.
 
+---
 
-## Situacao Geral
-| Item | Estado | Observacao |
-|---|---|---|
-| Producao | Estável | VIP `192.168.0.250` ativo via mach2; mach3 reintegrado (standby, monitorar disco) |
-| Desenvolvimento | Ativo | Sprint 02B concluída; controle de acesso por IP (restrições por usuário) em validação |
-| Banco | Primario em `mach2` (VIP `192.168.0.250`) | Standbys `mach1` e `mach3` ativos (`mach1_slot`, `mach3_slot`); observar health do SSD/HDD de mach3 |
+## Situação Geral
+
+| Item | Estado | Observação |
+|------|--------|------------|
+| Produção | Estável | VIP `192.168.0.250` ativo; HA Pacemaker/Corosync em 3 nós |
+| Desenvolvimento | Ativo | Sprint 3 (Import CSV avançado) em `feature/crm-import-csv`; Stats/Dashboards já mergeados |
+| Banco | Primário em `mach2` | Standbys `mach1` e `mach3` ativos |
 | Deploy | Automatizado | GitHub → Bastion → Ansible/PM2 |
-| Auditoria Leve | Em uso | `/relatorios/auditoria` (rascunho UI) |
-| Status Operacional | Disponivel | `/relatorios/status` |
-| Guacamole | Operacional | Conexoes SSH para mach1‑3 via web |
-| Monitoramento | Reforçado | Cron + Landscape SaaS (conta `eltdqqsb`) coletam health-report com checagem de Ubuntu Pro/ESM/Livepatch |
+| Auditoria | Em uso | `/relatorios/auditoria` |
+| Status Operacional | Disponível | `/relatorios/status` |
+| CRM | Operacional | Pipelines, Leads, Oportunidades, Calendário, Dedup |
+
+---
+
+## Módulos do CRM Entregues
+
+| Módulo | Funcionalidades | Status |
+|--------|-----------------|--------|
+| Pipelines | Múltiplos pipelines, estágios configuráveis, regras (required_fields, forbid_jump/back) | ✅ |
+| Leads/Contacts | Criação com dedup por email/telefone, export CSV | ✅ |
+| Oportunidades | Criação flexível (B2B/B2C), movimentação entre estágios | ✅ |
+| Atividades | CRUD, filtros, drag/drop no calendário, export ICS | ✅ |
+| Automações | SLA automático, auto-actions (create_activity, notify_owner, set_probability) | ✅ |
+| Configuração | Página `/crm/config` para gerenciar pipelines e estágios | ✅ |
+| Integrações | WhatsApp Sender, Telefonia HMAC, healthGate | ✅ |
+| Stats | Views materializadas com cron de refresh; UI com escopo (me/team/all) | ✅ |
+
+---
 
 ## Branches / Worktrees
+
 - **`develop` → `~/late-dev` → :3001**
 - **`main` → `~/late-prod` → :3000**
 - Fluxo: *feature → PR → develop → (homologa) → main → deploy automatizado*
 
+---
+
 ## Infra & HA
+
 - **Pacemaker/Corosync**: recurso `VirtualIP` (IPaddr2) com monitor 30s
-- **Testes de failover**: parar `corosync` em um no → VIP migra em ~30s
-- **tmux cluster**: sessao sincronizada para comandos em massa
-- **Estado atual (11/11/2025)**: `mach3` reinserido como standby, HAProxy com os três backends ativos; manter monitoramento do disco até substituição.
+- **Testes de failover**: parar `corosync` em um nó → VIP migra em ~30s
+- **tmux cluster**: sessão sincronizada para comandos em massa
 
-## Deploy Automatizado
-- Workflow **Deploy Cluster** (GitHub Actions): rsync `infra/deploy` + `ansible-playbook -i inventory.ini deploy.yml`
-- Playbook: `git pull --ff-only`, `npm install` (opcional), `pm2 reload ecosystem.config.js`, `pm2 start ecosystem.config.js --only late-prod[...]` (confirmar `HOST=0.0.0.0` com `pm2 env`)
+---
 
-## Testes Essenciais
+## Próximas Ações
+
+| Prioridade | Ação | Descrição |
+|------------|------|-----------|
+| 1 | RBAC fino | ✅ Entregue (escopos Me/Equipe/All nas listagens CRM) |
+| 2 | Stats/Dashboards | ✅ Wiring final usando MVs; UI consolidada (pipeline por estágio/mês) |
+| 3 | Import CSV avançado | 🚧 Preview/dry-run + upload multipart e UI básica em andamento |
+| 4 | Custom fields UI | Interface para campos customizados; editor de pipelines/estágios |
+| 5 | Recados → Activities | Mapear recados existentes; navegação integrada |
+| 6 | ICS/CalDAV | Subscribe/export avançado; filtros por owner/pipeline |
+
+---
+
+## Testes
+
 - `npm test` / cobertura ~70%+
-- `__tests__/api.status.test.js`, `auth.session-version`, `dev-info`
-
-## Proximas Acoes
-1) Monitorar o hardware de `mach3` (SMART/logs) e planejar troca preventiva do SSD/HDD.  
-2) Automatizar validação `pm2 env` (`HOST=0.0.0.0`) no pós-deploy e checagem de `.env` unificado.  
-3) Finalizar Sprint de controle de acesso por IP em DEV (testes para `access_restrictions`, /api/whoami e formulário Admin; preparar rollout com todos os usuários liberados por padrão).  
-4) Planejar Hardening PG + CSP (TLS em mach1, middleware Helmet report-only/enforce, `models/diagnostics.js`).  
-5) Reforçar permissões de watchers (`GET /api/messages/:id/watchers`, `messageWatcherController`) — validar escopo antes de listar watchers, conforme PR #217.  
-6) Health-check pos-playbook e alerta no Slack (proximo passo do workflow).
+- Testes de CRM: activities (time/list/ics), dedup merge, API básicas
+- Testes de status, auth, session-version, dev-info

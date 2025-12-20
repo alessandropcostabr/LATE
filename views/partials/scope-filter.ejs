@@ -1,0 +1,9 @@
+<div class="form-group">
+  <label for="<%= id || 'scope' %>" class="form-label">Escopo</label>
+  <select id="<%= id || 'scope' %>" name="scope" class="form-input">
+    <option value="me" <%= scope === 'me' ? 'selected' : '' %>>Meus</option>
+    <option value="team" <%= scope === 'team' ? 'selected' : '' %>>Equipe</option>
+    <option value="all" <%= scope === 'all' ? 'selected' : '' %>>Todos</option>
+  </select>
+  <p class="form-hint">Admin vê tudo; operadores veem apenas “Meus”.</p>
+</div>

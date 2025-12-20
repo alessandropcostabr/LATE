@@ -88,6 +88,22 @@
       <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Registros', icon: iconMap.records, items: registroItems, defaultOpen: true }); } %>
     <% } %>
 
+    <% if (user) { %>
+      <% navSections.push({
+        key: 'crm',
+        label: 'CRM',
+        icon: iconMap.records,
+        defaultOpen: false,
+        items: [
+          { label: 'Dashboard', href: '/crm/dashboard', active: title === 'CRM · Dashboard' },
+          { label: 'Pipelines (API)', href: '/api/crm/pipelines', active: false, external: true },
+          { label: 'Leads', href: '/crm/leads', active: title === 'CRM · Leads' },
+          { label: 'Oportunidades', href: '/crm/oportunidades', active: title === 'CRM · Oportunidades' },
+          { label: 'Importar CSV', href: '/crm/importar', active: title === 'CRM · Importação' },
+        ]
+      }); %>
+    <% } %>
+
     <% if (showReports) { %>
       <% navSections.push({
         key: 'reports',

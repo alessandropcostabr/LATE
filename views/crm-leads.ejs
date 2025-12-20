@@ -1,0 +1,112 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Leads</h1>
+      <p class="muted">Visão rápida dos leads recentes (máx 100).</p>
+    </div>
+  </header>
+
+  <section class="card">
+    <header class="card__header">
+      <h2>Novo lead</h2>
+      <p class="muted">Crie um lead rapidamente (com campos customizados).</p>
+    </header>
+    <div class="card__body">
+      <form id="leadCreateForm" class="stack">
+        <div class="grid">
+          <div>
+            <label>Nome</label>
+            <input name="name" class="input" required>
+          </div>
+          <div>
+            <label>E-mail</label>
+            <input name="email" type="email" class="input">
+          </div>
+          <div>
+            <label>Telefone</label>
+            <input name="phone" class="input">
+          </div>
+          <div>
+            <label>Fonte</label>
+            <input name="source" class="input" placeholder="desconhecida">
+          </div>
+          <div>
+            <label>Status</label>
+            <select name="status" class="input">
+              <option value="open">open</option>
+              <option value="closed">closed</option>
+            </select>
+          </div>
+          <div>
+            <label>Score</label>
+            <input name="score" type="number" class="input" min="0" value="0">
+          </div>
+          <div style="grid-column:1 / -1;">
+            <label>Notas</label>
+            <textarea name="notes" class="input" rows="2"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;">
+          <h3 class="muted" style="margin:0 0 0.5rem;">Campos customizados</h3>
+          <%- include('partials/custom-fields-form', { fields: customFields || [], values: {} }) %>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar lead</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-body">
+      <form id="leadFilters" class="filters-grid" style="margin-bottom:1rem;">
+        <div class="form-group">
+          <label for="search" class="form-label">Buscar</label>
+          <input id="search" name="search" type="text" class="form-input" placeholder="Nome, e-mail ou telefone">
+        </div>
+        <%- include('partials/scope-filter', { scope: scope || 'me', id: 'scope' }) %>
+        <div class="form-actions" style="align-items:flex-end;">
+          <button type="submit" class="btn btn-primary">Aplicar</button>
+          <button type="reset" class="btn btn-outline" id="leadFiltersReset">Limpar</button>
+        </div>
+      </form>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>E-mail</th>
+            <th>Status</th>
+            <th>Pipeline</th>
+            <th>Score</th>
+            <th>Criado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!leads || leads.length === 0) { %>
+            <tr><td colspan="7" class="muted">Nenhum lead encontrado.</td></tr>
+          <% } else { %>
+            <% leads.forEach((lead) => { %>
+              <tr>
+                <td><%= lead.contact_name || '-' %></td>
+                <td><%= lead.phone || lead.phone_normalized || '-' %></td>
+                <td><%= lead.email || '-' %></td>
+                <td><%= lead.status || '-' %></td>
+                <td><%= lead.pipeline_id ? lead.pipeline_id : '-' %></td>
+                <td><%= lead.score || 0 %></td>
+                <td><%= lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-' %></td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<%- include('partials/footer', { scripts: ['/js/crm-leads.js'] }) %>

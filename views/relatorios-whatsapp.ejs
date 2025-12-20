@@ -1,0 +1,72 @@
+<%- include('partials/header', { title, user }) %>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Relatórios · WhatsApp Sender</h1>
+  </div>
+
+  <form class="row g-2 mb-3" method="get" action="/relatorios/whatsapp">
+    <div class="col-sm-3 col-md-2">
+      <label class="form-label mb-1">Status</label>
+      <select class="form-select form-select-sm" name="status">
+        <option value="" <%= !filters.status ? 'selected' : '' %>>Todos</option>
+        <option value="sent" <%= filters.status === 'sent' ? 'selected' : '' %>>Sent</option>
+        <option value="failed" <%= filters.status === 'failed' ? 'selected' : '' %>>Failed</option>
+        <option value="skipped-duplicate" <%= filters.status === 'skipped-duplicate' ? 'selected' : '' %>>Skipped duplicate</option>
+        <option value="invalid_number" <%= filters.status === 'invalid_number' ? 'selected' : '' %>>Invalid number</option>
+      </select>
+    </div>
+    <div class="col-sm-3 col-md-2">
+      <label class="form-label mb-1">Telefone (contém)</label>
+      <input type="text" class="form-control form-control-sm" name="phone" value="<%= filters.phone %>">
+    </div>
+    <div class="col-sm-3 col-md-2">
+      <label class="form-label mb-1">De</label>
+      <input type="datetime-local" class="form-control form-control-sm" name="from" value="<%= filters.from %>">
+    </div>
+    <div class="col-sm-3 col-md-2">
+      <label class="form-label mb-1">Até</label>
+      <input type="datetime-local" class="form-control form-control-sm" name="to" value="<%= filters.to %>">
+    </div>
+    <div class="col-sm-3 col-md-2 align-self-end">
+      <button class="btn btn-primary btn-sm w-100" type="submit">Filtrar</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Data</th>
+          <th>Status</th>
+          <th>Telefone</th>
+          <th>Nome</th>
+          <th>Mensagem</th>
+          <th>Session</th>
+          <th>Template</th>
+          <th>Idempotency</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!events || !events.length) { %>
+          <tr><td colspan="9" class="text-center text-muted">Nenhum evento encontrado.</td></tr>
+        <% } else { %>
+          <% events.forEach(ev => { %>
+            <tr>
+              <td><%= ev.id %></td>
+              <td><%= new Date(ev.created_at).toLocaleString('pt-BR') %></td>
+              <td><span class="badge bg-<%= ev.status === 'sent' ? 'success' : (ev.status === 'failed' ? 'danger' : 'secondary') %>"><%= ev.status %></span></td>
+              <td><%= ev.phone_e164 || '' %></td>
+              <td><%= ev.nome || '' %></td>
+              <td class="text-truncate" style="max-width: 280px" title="<%= ev.mensagem_final || '' %>"><%= ev.mensagem_final || '' %></td>
+              <td><small><%= ev.session_id || '' %></small></td>
+              <td><small><%= ev.template_id || '' %></small></td>
+              <td><small><%= ev.idempotency_key %></small></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<%- include('partials/footer') %>

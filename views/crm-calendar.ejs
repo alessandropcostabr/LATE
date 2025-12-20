@@ -1,0 +1,86 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Calendário de Atividades</h1>
+      <p class="muted">Visualize tarefas, reuniões e chamadas.</p>
+    </div>
+    <div style="min-width:220px;">
+      <%- include('partials/scope-filter', { scope: scope || 'me', id: 'scope' }) %>
+    </div>
+  </header>
+  <section class="card">
+    <header class="card__header">
+      <h2>Nova atividade</h2>
+      <p class="muted">Crie atividades com campos customizados.</p>
+    </header>
+    <div class="card__body">
+      <form id="activityCreateForm" class="stack">
+        <div class="grid">
+          <div>
+            <label>Tipo</label>
+            <select name="type" class="input">
+              <option value="task">task</option>
+              <option value="meeting">meeting</option>
+              <option value="call">call</option>
+            </select>
+          </div>
+          <div>
+            <label>Assunto</label>
+            <input name="subject" class="input" required>
+          </div>
+          <div>
+            <label>Início</label>
+            <input name="starts_at" type="datetime-local" class="input">
+          </div>
+          <div>
+            <label>Fim</label>
+            <input name="ends_at" type="datetime-local" class="input">
+          </div>
+          <div>
+            <label>Status</label>
+            <select name="status" class="input">
+              <option value="pending">pending</option>
+              <option value="done">done</option>
+            </select>
+          </div>
+          <div>
+            <label>Relacionar a</label>
+            <select name="related_type" class="input">
+              <option value="">Nenhum</option>
+              <option value="lead">lead</option>
+              <option value="contact">contact</option>
+              <option value="account">account</option>
+              <option value="opportunity">opportunity</option>
+            </select>
+          </div>
+          <div>
+            <label>ID relacionado</label>
+            <input name="related_id" class="input" placeholder="UUID">
+          </div>
+          <div>
+            <label>Local</label>
+            <input name="location" class="input">
+          </div>
+        </div>
+        <div style="margin-top:0.5rem;">
+          <h3 class="muted" style="margin:0 0 0.5rem;">Campos customizados</h3>
+          <%- include('partials/custom-fields-form', { fields: customFields || [], values: {} }) %>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar atividade</button>
+        </div>
+      </form>
+    </div>
+  </section>
+  <section class="card">
+    <div id="crmCalendar"></div>
+  </section>
+</main>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.js"></script>
+<script src="/js/crm-calendar.js"></script>
+<%- include('partials/footer') %>

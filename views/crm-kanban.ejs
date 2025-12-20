@@ -1,0 +1,43 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Kanban de Oportunidades</h1>
+      <p class="muted">Arraste entre estágios. Filtros: pipeline e owner.</p>
+    </div>
+    <div class="page__actions">
+      <select id="pipelineSelect" class="input">
+        <option value="">Selecione um pipeline</option>
+      </select>
+      <select id="ownerSelect" class="input">
+        <option value="">Todos</option>
+        <option value="me">Meus</option>
+      </select>
+    </div>
+  </header>
+
+  <section class="kanban" id="kanbanBoard" aria-live="polite"></section>
+</main>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<div class="modal fade" id="customFieldsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <form class="modal-content" id="customFieldsForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Campos customizados</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="muted" id="customFieldsModalTitle">Oportunidade</p>
+        <div id="customFieldsContainer"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script src="/js/crm-kanban.js"></script>
+<%- include('partials/footer') %>

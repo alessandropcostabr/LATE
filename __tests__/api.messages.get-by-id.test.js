@@ -5,6 +5,32 @@ jest.mock('../models/message', () => ({
   findById: jest.fn(),
 }));
 
+jest.mock('../models/messageEvent', () => ({
+  listByMessage: jest.fn(async () => []),
+}));
+
+jest.mock('../models/messageLabel', () => ({
+  listByMessage: jest.fn(async () => []),
+}));
+
+jest.mock('../models/messageChecklist', () => ({
+  listByMessage: jest.fn(async () => []),
+}));
+
+jest.mock('../models/messageComment', () => ({
+  listByMessage: jest.fn(async () => []),
+}));
+
+jest.mock('../models/messageWatcher', () => ({
+  listForMessage: jest.fn(async () => []),
+}));
+
+jest.mock('../models/userSector', () => ({
+  listByUser: jest.fn(async () => []),
+  listUserSectors: jest.fn(async () => []),
+  isUserInSector: jest.fn(async () => false),
+}));
+
 jest.mock('../models/contact', () => ({
   updateFromMessage: jest.fn(),
 }));
@@ -19,6 +45,7 @@ jest.mock('../models/user', () => ({
     view_scope: 'all',
     session_version: 1,
   })),
+  getNamesByIds: jest.fn(async () => ({})),
 }));
 
 const messageModel = require('../models/message');
@@ -66,7 +93,7 @@ describe('GET /api/messages/:id', () => {
     });
 
     const app = createApp('reader');
-    const response = await supertest(app).get('/api/messages/1');
+    const response = await supertest(app).get('/api/messages/1').timeout({ response: 2000, deadline: 4000 });
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({

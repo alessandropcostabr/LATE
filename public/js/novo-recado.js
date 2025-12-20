@@ -1,11 +1,9 @@
 // public/js/novo-recado.js
 // Página "Novo Registro" — coleta do formulário, normalização e envio para a API.
-// Por quê: garantir JSON válido e presença de 'message' (fallback de 'notes').
 
 (() => {
   console.log('✅ Novo Registro JS carregado');
 
-  // Helper seguro para capturar valor de input/textarea
   const val = (sel) => {
     const el = document.querySelector(sel);
     if (!el) return '';
@@ -35,9 +33,7 @@
       saveButton.disabled = false;
       saveButton.removeAttribute('aria-busy');
       saveButton.classList.remove('is-loading');
-      if (originalButtonLabel !== null) {
-        saveButton.innerHTML = originalButtonLabel;
-      }
+      if (originalButtonLabel !== null) saveButton.innerHTML = originalButtonLabel;
     }
   }
 
@@ -68,22 +64,19 @@
     let recipientName = '';
 
     if (recipientType === 'sector') {
-      const recipientSectorRaw = recipientSectorSelect ? recipientSectorSelect.value : '';
-      const parsedSector = recipientSectorRaw ? Number(recipientSectorRaw) : null;
+      const parsedSector = Number(recipientSectorSelect?.value || 0);
       recipientSectorId = Number.isFinite(parsedSector) && parsedSector > 0 ? parsedSector : null;
       if (recipientSectorSelect && recipientSectorSelect.selectedIndex > 0) {
-        const option = recipientSectorSelect.options[recipientSectorSelect.selectedIndex];
-        recipientName = String(option?.text || '').trim();
+        recipientName = String(recipientSectorSelect.options[recipientSectorSelect.selectedIndex]?.text || '').trim();
       }
     } else {
-      const recipientUserRaw = recipientUserSelect ? recipientUserSelect.value : '';
-      const parsedUser = recipientUserRaw ? Number(recipientUserRaw) : null;
+      const parsedUser = Number(recipientUserSelect?.value || 0);
       recipientUserId = Number.isFinite(parsedUser) && parsedUser > 0 ? parsedUser : null;
       if (recipientUserSelect && recipientUserSelect.selectedIndex > 0) {
-        const option = recipientUserSelect.options[recipientUserSelect.selectedIndex];
-        recipientName = String(option?.text || '').trim();
+        recipientName = String(recipientUserSelect.options[recipientUserSelect.selectedIndex]?.text || '').trim();
       }
     }
+
     const sender_name = val('#sender_name');
     const sender_phone = val('#sender_phone');
     const sender_email = val('#sender_email');
@@ -93,8 +86,7 @@
     const notes = val('#notes');
     const parentMessageId = parentMessageInput ? Number(parentMessageInput.value) : null;
 
-    // 'message' pode não existir no template atual; tentamos capturar, senão criamos fallback
-    const messageRaw = val('#message'); // se não existir, retorna ''
+    const messageRaw = val('#message');
     const message = (messageRaw || notes || '(sem mensagem)');
 
     const basePayload = {
@@ -108,7 +100,7 @@
       sender_phone,
       sender_email,
       subject,
-      message,            // <- obrigatório no banco; garantimos aqui
+      message,
       status,
       callback_at,
       visibility: (visibilitySelect?.value || 'private').toLowerCase(),
@@ -126,16 +118,13 @@
 
   async function handleSubmit(ev) {
     ev.preventDefault();
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
     let keepLocked = false;
     try {
       isSubmitting = true;
       toggleSubmitState(true);
       const recado = coletarDados();
 
-      // Validação mínima no front para UX (backend também valida)
       const faltando = [];
       if (!recado.call_date) faltando.push('Data da ligação');
       if (!recado.call_time) faltando.push('Hora da ligação');
@@ -153,7 +142,6 @@
       const resp = await API.createMessage(recado);
       console.log('✅ Registro criado:', resp);
 
-      // Redireciona para lista/detalhe após criar (ajuste conforme sua navegação)
       if (resp?.success) {
         keepLocked = true;
         window.location.href = '/recados';
@@ -165,10 +153,62 @@
       console.error('❌ Erro do servidor:', err?.message || err);
       alert(err?.message || 'Erro ao salvar registro. Tente novamente.');
     } finally {
-      if (!keepLocked) {
-        toggleSubmitState(false);
-      }
+      if (!keepLocked) toggleSubmitState(false);
       isSubmitting = keepLocked;
+    }
+  }
+
+  function prefillFromQuery() {
+    const params = new URLSearchParams(window.location.search || '');
+    const caller = params.get('caller');
+    const callId = params.get('call_id');
+    const startTs = params.get('start_ts');
+    const trunk = params.get('trunk');
+    const callee = params.get('callee');
+
+    if (caller) {
+      const phoneInput = document.getElementById('sender_phone');
+      if (phoneInput) {
+        const digits = String(caller).replace(/\D+/g, '');
+        if (digits.length >= 10) {
+          const n = digits.slice(-11);
+          if (n.length === 11) {
+            phoneInput.value = `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`;
+          } else {
+            phoneInput.value = digits;
+          }
+        } else {
+          phoneInput.value = caller;
+        }
+      }
+    }
+    if (callId) {
+      const subjectInput = document.getElementById('subject');
+      // Mantém assunto em branco; apenas sugere placeholder, se quiser
+      if (subjectInput && !subjectInput.placeholder) subjectInput.placeholder = `Retorno de chamada ${callId}`;
+    }
+    if (startTs) {
+      const d = new Date(startTs);
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n) => String(n).padStart(2, '0');
+        const dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const dateInput = document.getElementById('call_date');
+        const timeInput = document.getElementById('call_time');
+        if (dateInput && !dateInput.value) dateInput.value = dateStr;
+        if (timeInput && !timeInput.value) timeInput.value = timeStr;
+      }
+    }
+    const notesInput = document.getElementById('notes');
+    if (notesInput) {
+      const extras = [];
+      if (trunk) extras.push(`Tronco/DID: ${trunk}`);
+      if (callee) extras.push(`Destino: ${callee}`);
+      if (callId) extras.push(`Chamada: ${callId}`);
+      if (extras.length) {
+        const current = notesInput.value ? notesInput.value + '\n' : '';
+        notesInput.value = current + extras.join('\n');
+      }
     }
   }
 
@@ -177,6 +217,7 @@
       console.warn('⚠️ Formulário de novo contato não encontrado.');
       return;
     }
+    prefillFromQuery();
     form.addEventListener('submit', handleSubmit);
     console.log('✅ Manipuladores de evento configurados para Novo Registro');
   }

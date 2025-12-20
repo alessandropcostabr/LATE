@@ -1,0 +1,32 @@
+<% if (fields && fields.length) { %>
+  <div class="grid" style="margin-top:0.5rem;">
+    <% fields.forEach((f) => { %>
+      <div>
+        <label>
+          <%= f.name %>
+          <% if (f.required) { %><span class="muted">*</span><% } %>
+        </label>
+        <% const inputName = `custom_fields[${f.id}]`; %>
+        <% const value = (values && values[f.id] !== undefined) ? values[f.id] : ''; %>
+        <% if (f.type === 'select') { %>
+          <select name="<%= inputName %>" class="input">
+            <option value="">Selecionar</option>
+            <% (f.options || []).forEach((opt) => { %>
+              <option value="<%= opt %>" <%= String(value) === String(opt) ? 'selected' : '' %>><%= opt %></option>
+            <% }); %>
+          </select>
+        <% } else if (f.type === 'number') { %>
+          <input name="<%= inputName %>" type="number" class="input" value="<%= value %>">
+        <% } else if (f.type === 'boolean') { %>
+          <input name="<%= inputName %>" type="checkbox" value="true" <%= value ? 'checked' : '' %>>
+        <% } else if (f.type === 'date') { %>
+          <input name="<%= inputName %>" type="date" class="input" value="<%= value %>">
+        <% } else { %>
+          <input name="<%= inputName %>" type="text" class="input" value="<%= value %>">
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+<% } else { %>
+  <p class="muted" style="margin:0.5rem 0 0;">Nenhum campo customizado disponível.</p>
+<% } %>

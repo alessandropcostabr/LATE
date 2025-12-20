@@ -29,7 +29,13 @@ function buildLookup({ phone, email } = {}) {
   return { phoneNormalized, emailNormalized };
 }
 
-async function upsert(contactInput = {}) {
+function normalizeName(value) {
+  if (value === null || value === undefined) return null;
+  const trimmed = String(value).trim();
+  return trimmed === '' ? null : trimmed;
+}
+
+async function upsert(contactInput = {}, client = null) {
   const normalized = normalizeContactPayload(contactInput);
   if (!normalized) return null;
 
@@ -67,20 +73,21 @@ async function upsert(contactInput = {}) {
     emailNormalized,
   ];
 
-  const { rows } = await db.query(sql, params);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return mapRow(rows?.[0]);
 }
 
-async function updateFromMessage(message = {}) {
+async function updateFromMessage(message = {}, client = null) {
   const input = {
     name: message.sender_name ?? message.senderName ?? null,
     phone: message.sender_phone ?? message.senderPhone ?? null,
     email: message.sender_email ?? message.senderEmail ?? null,
   };
-  return upsert(input);
+  return upsert(input, client);
 }
 
-async function findByIdentifiers({ phone, email } = {}) {
+async function findByIdentifiers({ phone, email } = {}, client = null) {
   const lookup = buildLookup({ phone, email });
   if (!lookup) return null;
   const sql = `
@@ -90,7 +97,64 @@ async function findByIdentifiers({ phone, email } = {}) {
        AND phone_normalized = $2
      LIMIT 1
   `;
-  const { rows } = await db.query(sql, [lookup.emailNormalized, lookup.phoneNormalized]);
+  const runner = client || db;
+  const { rows } = await runner.query(sql, [lookup.emailNormalized, lookup.phoneNormalized]);
+  return mapRow(rows?.[0]);
+}
+
+async function findByAnyIdentifier({ phone, email } = {}, client = null) {
+  const lookup = buildLookup({ phone, email });
+  if (!lookup) return null;
+  const clauses = [];
+  const params = [];
+  let i = 1;
+  if (lookup.emailNormalized) {
+    clauses.push(`email_normalized = $${i++}`);
+    params.push(lookup.emailNormalized);
+  }
+  if (lookup.phoneNormalized) {
+    clauses.push(`phone_normalized = $${i++}`);
+    params.push(lookup.phoneNormalized);
+  }
+  if (!clauses.length) return null;
+  const sql = `
+    SELECT *
+      FROM contacts
+     WHERE ${clauses.join(' OR ')}
+     ORDER BY updated_at DESC
+     LIMIT 1
+  `;
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
+  return mapRow(rows?.[0]);
+}
+
+async function updateById(contactId, { name, phone, email } = {}, client = null) {
+  if (!contactId) return null;
+  const normalizedName = normalizeName(name);
+  const normalizedPhone = normalizePhone(phone);
+  const normalizedEmail = normalizeEmail(email);
+  const sql = `
+    UPDATE contacts
+       SET name = COALESCE($2, name),
+           phone = COALESCE($3, phone),
+           email = COALESCE($4, email),
+           phone_normalized = COALESCE($5, phone_normalized),
+           email_normalized = COALESCE($6, email_normalized),
+           updated_at = NOW()
+     WHERE id = $1
+     RETURNING *
+  `;
+  const params = [
+    contactId,
+    normalizedName,
+    normalizedPhone,
+    normalizedEmail,
+    normalizedPhone,
+    normalizedEmail,
+  ];
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
   return mapRow(rows?.[0]);
 }
 
@@ -103,5 +167,35 @@ module.exports = {
   touch,
   updateFromMessage,
   findByIdentifiers,
+  findByAnyIdentifier,
+  updateById,
   mapRow,
 };
+
+
+async function findDuplicates({ limit = 50 } = {}) {
+  const sql = `
+    SELECT phone_normalized, email_normalized, array_agg(id) AS ids, COUNT(*) AS total
+      FROM contacts
+     WHERE (phone_normalized <> '' OR email_normalized <> '')
+     GROUP BY phone_normalized, email_normalized
+    HAVING COUNT(*) > 1
+     ORDER BY total DESC
+     LIMIT $1`;
+  const { rows } = await db.query(sql, [limit]);
+  return rows || [];
+}
+
+async function mergeContacts(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) return false;
+  // Reatribui relacionamentos
+  await db.query('UPDATE leads SET contact_id = $2 WHERE contact_id = $1', [sourceId, targetId]);
+  await db.query('UPDATE opportunities SET contact_id = $2 WHERE contact_id = $1', [sourceId, targetId]);
+  await db.query("UPDATE activities SET related_id = $2 WHERE related_type = 'contact' AND related_id = $1", [sourceId, targetId]);
+  // Remove contato duplicado
+  await db.query('DELETE FROM contacts WHERE id = $1', [sourceId]);
+  return true;
+}
+
+module.exports.findDuplicates = findDuplicates;
+module.exports.mergeContacts = mergeContacts;

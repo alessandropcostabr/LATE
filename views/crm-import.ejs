@@ -1,0 +1,158 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<style>
+  .wizard-steps ol { display: flex; gap: 0.75rem; flex-wrap: wrap; padding-left: 0; list-style: none; }
+  .wizard-steps li { padding: 0.35rem 0.6rem; border-radius: 999px; background: #f2f4f8; color: #6b7280; font-size: 0.85rem; }
+  .wizard-steps li.is-active { background: #e6f0ff; color: #1d4ed8; font-weight: 600; }
+  .wizard-step { display: none; }
+  .wizard-step.is-active { display: block; }
+  .wizard-step .step-title { font-weight: 600; margin-bottom: 0.75rem; }
+</style>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Importar CSV</h1>
+      <p class="muted">Pré-visualize, simule e importe leads ou oportunidades com dedup/merge.</p>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="importTitle">
+    <header class="card__header">
+      <h2 id="importTitle">Arquivo e mapeamento</h2>
+      <p class="muted">Envie um CSV até 100MB. O wizard guia por upload, mapeamento, preview, dry‑run e import.</p>
+    </header>
+    <div class="card__body">
+      <nav class="wizard-steps" aria-label="Etapas do importador">
+        <ol class="simple-list" id="crmImportSteps">
+          <li data-step="1" class="is-active">1. Upload</li>
+          <li data-step="2">2. Mapeamento</li>
+          <li data-step="3">3. Preview</li>
+          <li data-step="4">4. Dry‑run</li>
+          <li data-step="5">5. Importar</li>
+        </ol>
+      </nav>
+
+      <form id="crmImportForm" class="stack">
+        <input type="hidden" id="mapping" name="mapping">
+
+        <section data-step="1" class="wizard-step is-active">
+          <div class="step-title">Etapa 1 — Upload</div>
+          <div class="grid">
+            <div>
+              <label for="csvFile">Arquivo CSV</label>
+              <input id="csvFile" name="csv" type="file" accept=".csv,text/csv" class="input" required>
+            </div>
+            <div>
+              <label for="targetType">Tipo alvo</label>
+              <select id="targetType" name="target_type" class="input">
+                <option value="lead">Lead</option>
+                <option value="opportunity">Oportunidade</option>
+              </select>
+            </div>
+            <div class="js-opportunity-field">
+              <label for="pipelineId">Pipeline (oportunidades)</label>
+              <select id="pipelineId" name="pipeline_id" class="input">
+                <option value="">Selecionar pipeline</option>
+                <% pipelines.forEach((p) => { %>
+                  <option value="<%= p.id %>"><%= p.name %></option>
+                <% }); %>
+              </select>
+            </div>
+            <div class="js-opportunity-field">
+              <label for="stageId">Estágio (oportunidades)</label>
+              <select id="stageId" name="stage_id" class="input">
+                <option value="">Selecionar estágio</option>
+              </select>
+            </div>
+            <div>
+              <label for="duplicateMode">Duplicados</label>
+              <select id="duplicateMode" name="duplicate_mode" class="input">
+                <option value="merge">Mesclar (default)</option>
+                <option value="skip">Pular duplicados</option>
+              </select>
+            </div>
+            <div>
+              <label for="source">Fonte (opcional)</label>
+              <input id="source" name="source" class="input" placeholder="import_csv">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" id="btnStep1Next">Continuar</button>
+          </div>
+        </section>
+
+        <section data-step="2" class="wizard-step">
+          <div class="step-title">Etapa 2 — Mapeamento</div>
+          <p class="muted">Mapeie as colunas do CSV. Se não preencher, o sistema usa auto‑mapping.</p>
+          <div id="mappingTable" class="table-responsive"></div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="button" class="btn btn-primary" id="btnStep2Next">Pré‑visualizar</button>
+          </div>
+        </section>
+
+        <section data-step="3" class="wizard-step">
+          <div class="step-title">Etapa 3 — Preview</div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="button" class="btn btn-outline" id="btnDryRun">Simular (dry‑run)</button>
+            <button type="button" class="btn btn-primary" id="btnStep3Next">Continuar</button>
+          </div>
+        </section>
+
+        <section data-step="4" class="wizard-step">
+          <div class="step-title">Etapa 4 — Dry‑run</div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="button" class="btn btn-outline" id="btnDownloadJson">Baixar JSON</button>
+            <button type="button" class="btn btn-outline" id="btnDownloadCsv">Baixar CSV</button>
+            <button type="button" class="btn btn-primary" id="btnStep4Next">Importar</button>
+          </div>
+        </section>
+
+        <section data-step="5" class="wizard-step">
+          <div class="step-title">Etapa 5 — Importar</div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
+            <button type="submit" class="btn btn-primary">Executar importação</button>
+          </div>
+        </section>
+      </form>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="previewTitle">
+    <header class="card__header">
+      <h2 id="previewTitle">Resultados</h2>
+      <p class="muted" id="crmImportSummary">Nenhum processamento executado ainda.</p>
+    </header>
+    <div class="card__body">
+      <div id="crmImportMapping" class="muted" style="margin-bottom:1rem;"></div>
+      <div class="table-responsive">
+        <table class="table" id="crmImportTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>E-mail</th>
+              <th>Título</th>
+              <th>Duplicado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="6" class="muted">Aguardando preview.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script>
+  window.CRM_IMPORT_DATA = <%- JSON.stringify({ pipelines, stagesByPipeline }) %>;
+</script>
+<script src="/js/crm-import.js"></script>
+<%- include('partials/footer') %>

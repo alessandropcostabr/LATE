@@ -14,7 +14,12 @@ const authController = require('../controllers/authController');
 const notificationController = require('../controllers/notificationController');
 const messageViewController = require('../controllers/messageViewController');
 const contactController = require('../controllers/contactController');
+const crmViewController = require('../controllers/crmViewController');
+const crmConfigViewController = require('../controllers/crmConfigViewController');
+const crmImportViewController = require('../controllers/crmImportViewController');
+const CustomField = require('../models/customField');
 const { getClientIp, normalizeAccessRestrictions } = require('../utils/ipAccess');
+const messageSendEventController = require('../controllers/messageSendEventController');
 
 const UserModel = require('../models/user');
 const SectorModel = require('../models/sector');
@@ -163,6 +168,10 @@ router.get('/roadmap', requireAuth, (req, res) => {
   res.render('roadmap', { title: 'Roadmap', user: req.session.user || null });
 });
 
+router.get('/chamadas', requireAuth, requirePermission('read'), (req, res) => {
+  res.render('call-logs', { title: 'Chamadas', user: req.session.user || null });
+});
+
 router.get('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.showSettings);
 router.post('/admin/notificacoes', requireAuth, requireRole('ADMIN'), csrfProtection, notificationController.updateSettings);
 
@@ -216,6 +225,45 @@ router.get('/recados', requireAuth, requirePermission('read'), csrfProtection, a
 router.get('/recados/kanban', requireAuth, requirePermission('read'), csrfProtection, messageViewController.kanbanPage);
 
 router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfProtection, messageViewController.calendarPage);
+
+// CRM páginas
+router.get('/crm/config', requireAuth, requirePermission('read'), csrfProtection, crmConfigViewController.configPage);
+router.get('/crm/importar', requireAuth, requirePermission('read'), csrfProtection, crmImportViewController.importPage);
+
+router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+  const csrfToken = req.csrfToken ? req.csrfToken() : null;
+  res.render('crm-dashboard', {
+    title: 'CRM · Dashboard',
+    user: req.session.user || null,
+    csrfToken,
+    scope: 'me'
+  });
+});
+
+router.get('/crm/leads', requireAuth, requirePermission('read'), csrfProtection, crmViewController.leadsPage);
+router.get('/crm/oportunidades', requireAuth, requirePermission('read'), csrfProtection, crmViewController.opportunitiesPage);
+router.get('/crm/opportunities/kanban', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+  const csrfToken = req.csrfToken ? req.csrfToken() : null;
+  res.render('crm-kanban', { title: 'CRM · Kanban', user: req.session.user || null, csrfToken });
+});
+router.get('/crm/activities/calendario', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+  const csrfToken = req.csrfToken ? req.csrfToken() : null;
+  const customFieldsPromise = CustomField.list('activity');
+  Promise.resolve(customFieldsPromise)
+    .then((customFields) => {
+      res.render('crm-calendar', {
+        title: 'CRM · Calendário',
+        user: req.session.user || null,
+        csrfToken,
+        scope: 'me',
+        customFields,
+      });
+    })
+    .catch((err) => {
+      console.error('[web][crm-calendar] erro:', err);
+      res.status(500).render('500', { title: 'Erro', user: req.session.user || null });
+    });
+});
 
 router.get(
   '/contatos/:sender_phone/historico',
@@ -366,6 +414,12 @@ router.get('/relatorios/exportacoes', requireAuth, requireRole('ADMIN', 'SUPERVI
     scripts: ['/js/relatorios-exportacoes.js'],
   });
 });
+
+router.get('/relatorios/whatsapp',
+  requireAuth,
+  requireRole('ADMIN', 'SUPERVISOR'),
+  messageSendEventController.renderList
+);
 
 // 404 handler para rotas web
 router.use((req, res) => {

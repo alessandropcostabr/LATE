@@ -4,7 +4,7 @@ const express = require('express');
 const request = require('supertest');
 const { newDb } = require('pg-mem');
 
-const eventLogsController = require('../controllers/eventLogsController');
+let eventLogsController;
 
 describe('EventLogsController', () => {
   let mem;
@@ -35,8 +35,8 @@ describe('EventLogsController', () => {
     const adapter = mem.adapters.createPg();
     global.__LATE_POOL_FACTORY = () => new adapter.Pool();
     jest.resetModules();
-
     dbPool = require('../config/database');
+    eventLogsController = require('../controllers/eventLogsController');
 
     await dbPool.query(`
       CREATE TABLE users (
@@ -107,6 +107,8 @@ describe('EventLogsController', () => {
   function createApp(sessionUser) {
     const app = express();
     app.use(express.json());
+    // injeta req.csrfToken opcional para evitar dependência do middleware real
+    app.use((req, _res, next) => { req.csrfToken = () => 'test-csrf'; next(); });
     app.get(
       '/api/event-logs',
       fakeRequireAuth(sessionUser),

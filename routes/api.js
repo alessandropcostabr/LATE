@@ -21,7 +21,17 @@ const intakeController = require('../controllers/intakeController');
 const reportExportController = require('../controllers/reportExportController');
 const statusController = require('../controllers/statusController');
 const whoamiController = require('../controllers/whoamiController');
+const callLogController = require('../controllers/callLogController');
+const telephonyController = require('../controllers/telephonyController');
+const crmController = require('../controllers/crmController');
+const incidentController = require('../controllers/incidentController');
+const customFieldController = require('../controllers/customFieldController');
+const recadoSyncController = require('../controllers/recadoSyncController');
+const dedupController = require('../controllers/dedupController');
+const messageSendEventController = require('../controllers/messageSendEventController');
+const crmStatsController = require('../controllers/crmStatsController');
 const { collectDevInfo } = require('../utils/devInfo');
+const apiKeyAuth = require('../middleware/apiKeyAuth');
 
 // Validation (NOMES DEVEM BATER com middleware/validation.js)
 const validation = require('../middleware/validation');
@@ -61,6 +71,25 @@ const {
   validateUserPassword,
   validateIdParam,
 } = validation;
+const {
+  validateLeadCreate,
+  validateLeadList,
+  validateOpportunityCreate,
+  validateOpportunityList,
+  validateOpportunityMove,
+  validateActivityCreate,
+  validateActivityList,
+  validateCustomFieldCreate,
+  validateCustomFieldUpdate,
+  validateCustomFieldValue,
+  validateCustomFieldValuesList,
+  validateCsvImport,
+  validateStageConfigUpdate,
+  validateStageRuleUpdate,
+  validateDedupPreview,
+  validateDedupMerge,
+} = require('../middleware/validation_crm');
+const { validateScopeParam } = require('../middleware/scope');
 
 // Painel ADMIN de Usuários
 const {
@@ -140,6 +169,9 @@ const canManageMessageAccess = [requireAuth, requireMessageUpdatePermission, csr
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
 const canChangeOwnPassword = [requireAuth, csrfProtection];
 const canAudit = [requireAuth, requireRole('ADMIN', 'SUPERVISOR')];
+const canReadCRM = [requireAuth, requirePermission('read')];
+const canCreateCRM = [requireAuth, requirePermission('create'), csrfProtection];
+const canUpdateCRM = [requireAuth, requirePermission('update'), csrfProtection];
 
 const intakeLimiter = rateLimit({
   windowMs: Number(process.env.INTAKE_RATE_WINDOW_MS || 60 * 1000),
@@ -165,7 +197,7 @@ router.get('/csrf', csrfProtection, (req, res) => {
 });
 
 // Utilitários
-router.get('/health', healthController.check);
+router.get('/health', healthController.getHealth);
 router.get('/version', metaController.version);
 router.get(
   '/status',
@@ -177,6 +209,228 @@ router.get(
   ...flatFns(requireAuth),
   whoamiController.get
 );
+router.post(
+  '/report-incident',
+  incidentController.report
+);
+
+// Telephony ingress (AMI listener)
+router.post(
+  '/telephony/events',
+  telephonyController.ingest
+);
+
+// Call logs
+router.get(
+  '/call-logs',
+  ...flatFns(requireAuth, requirePermission('read')),
+  callLogController.list
+);
+
+// CRM: pipelines, leads e oportunidades
+router.get(
+  '/crm/pipelines',
+  ...flatFns(canReadCRM),
+  crmController.listPipelines
+);
+router.get(
+  '/crm/leads',
+  ...flatFns(canReadCRM, validateScopeParam(), validateLeadList, handleValidationErrors),
+  crmController.listLeads
+);
+router.get(
+  '/crm/opportunities',
+  ...flatFns(canReadCRM, validateScopeParam(), validateOpportunityList, handleValidationErrors),
+  crmController.listOpportunities
+);
+router.post(
+  '/crm/leads',
+  ...flatFns(canCreateCRM, validateLeadCreate, handleValidationErrors),
+  crmController.createLead
+);
+router.post(
+  '/crm/opportunities',
+  ...flatFns(canCreateCRM, validateOpportunityCreate, handleValidationErrors),
+  crmController.createOpportunity
+);
+router.patch(
+  '/crm/opportunities/:id/stage',
+  ...flatFns(canUpdateCRM, validateOpportunityMove, handleValidationErrors),
+  crmController.moveOpportunityStage
+);
+router.post(
+  '/crm/activities',
+  ...flatFns(canCreateCRM, validateActivityCreate, handleValidationErrors),
+  crmController.createActivity
+);
+router.get(
+  '/crm/activities',
+  ...flatFns(canReadCRM, validateScopeParam(), validateActivityList, handleValidationErrors),
+  crmController.listActivities
+);
+router.patch(
+  '/crm/activities/:id/status',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  crmController.updateActivityStatus
+);
+router.get(
+  '/crm/activities.ics',
+  ...flatFns(canReadCRM),
+  crmController.exportActivitiesICS
+);
+router.get(
+  '/crm/stats',
+  ...flatFns(canReadCRM, validateScopeParam()),
+  crmStatsController.list,
+);
+router.get(
+  '/crm/leads.csv',
+  ...flatFns(canReadCRM),
+  crmController.exportLeadsCsv
+);
+router.get(
+  '/crm/opportunities.csv',
+  ...flatFns(canReadCRM),
+  crmController.exportOpportunitiesCsv
+);
+router.post(
+  '/crm/leads/preview-csv',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  crmController.previewLeadsCsv
+);
+router.post(
+  '/crm/leads/dry-run',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  crmController.dryRunImportCsv
+);
+router.post(
+  '/crm/leads/import-csv',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  crmController.importLeadsCsv
+);
+router.patch(
+  '/crm/stages/:id/config',
+  ...flatFns(canUpdateCRM, validateStageConfigUpdate, handleValidationErrors),
+  crmController.updateStageConfig
+);
+router.patch(
+  '/crm/stages/:id/rule',
+  ...flatFns(canUpdateCRM, validateStageRuleUpdate, handleValidationErrors),
+  crmController.updateStageRule
+);
+router.get(
+  '/crm/stats/pipeline',
+  ...flatFns(canReadCRM),
+  crmController.statsPipeline
+);
+router.get(
+  '/crm/stats/activities',
+  ...flatFns(canReadCRM),
+  crmController.statsActivities
+);
+router.post(
+  '/crm/stats/refresh',
+  ...flatFns(canAudit),
+  crmController.refreshStats
+);
+router.get(
+  '/crm/custom-fields',
+  ...flatFns(canReadCRM),
+  customFieldController.list
+);
+router.get(
+  '/crm/custom-fields/values',
+  ...flatFns(canReadCRM, validateCustomFieldValuesList, handleValidationErrors),
+  customFieldController.listValues
+);
+
+router.get(
+  '/crm/dedupe/contacts',
+  ...flatFns(canUpdateCRM),
+  dedupController.listDuplicates
+);
+router.post(
+  '/crm/dedupe/contacts/preview',
+  ...flatFns(canUpdateCRM, validateDedupPreview, handleValidationErrors),
+  dedupController.previewMerge
+);
+router.post(
+  '/crm/dedupe/contacts/merge',
+  ...flatFns(canUpdateCRM, validateDedupMerge, handleValidationErrors),
+  dedupController.merge
+);
+router.post(
+  '/crm/custom-fields',
+  ...flatFns(canUpdateCRM, validateCustomFieldCreate, handleValidationErrors),
+  customFieldController.create
+);
+router.patch(
+  '/crm/custom-fields/:id',
+  ...flatFns(canUpdateCRM, validateCustomFieldUpdate, handleValidationErrors),
+  customFieldController.update
+);
+router.delete(
+  '/crm/custom-fields/:id',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  customFieldController.remove
+);
+router.put(
+  '/crm/custom-fields/:id/value',
+  ...flatFns(canUpdateCRM, validateCustomFieldValue, handleValidationErrors),
+  customFieldController.upsertValue
+);
+router.post(
+  '/crm/sync/recados',
+  ...flatFns(requireAuth, requireRole('ADMIN'), csrfProtection),
+  recadoSyncController.sync
+);
+
+router.get(
+  '/crm/stats/pipeline',
+  ...flatFns(canReadCRM),
+  crmController.statsPipeline
+);
+router.get(
+  '/crm/stats/activities',
+  ...flatFns(canReadCRM),
+  crmController.statsActivities
+);
+router.get(
+  '/crm/custom-fields',
+  ...flatFns(canReadCRM),
+  customFieldController.list
+);
+router.get(
+  '/crm/custom-fields/values',
+  ...flatFns(canReadCRM, validateCustomFieldValuesList, handleValidationErrors),
+  customFieldController.listValues
+);
+router.post(
+  '/crm/custom-fields',
+  ...flatFns(canUpdateCRM, validateCustomFieldCreate, handleValidationErrors),
+  customFieldController.create
+);
+router.patch(
+  '/crm/custom-fields/:id',
+  ...flatFns(canUpdateCRM, validateCustomFieldUpdate, handleValidationErrors),
+  customFieldController.update
+);
+router.delete(
+  '/crm/custom-fields/:id',
+  ...flatFns(canUpdateCRM, handleValidationErrors),
+  customFieldController.remove
+);
+router.put(
+  '/crm/custom-fields/:id/value',
+  ...flatFns(canUpdateCRM, validateCustomFieldValue, handleValidationErrors),
+  customFieldController.upsertValue
+);
+router.post(
+  '/crm/sync/recados',
+  ...flatFns(requireAuth, requireRole('ADMIN'), csrfProtection),
+  recadoSyncController.sync
+);
+
 
 const nodeEnv = (process.env.NODE_ENV || '').toLowerCase();
 if (nodeEnv === 'development' || nodeEnv === 'test') {
@@ -580,6 +834,18 @@ router.put('/users/:id/sectors',
   requireRole('ADMIN'),
   ...flatFns(sectorController.validateUserSectors),
   sectorController.setUserSectors
+);
+
+// Integrations: Message Send Events (Sender)
+router.post('/message-events',
+  apiKeyAuth,
+  messageSendEventController.createApi
+);
+
+router.get('/message-events',
+  requireAuth,
+  requireRole('ADMIN', 'SUPERVISOR'),
+  messageSendEventController.listApi
 );
 
 // Export

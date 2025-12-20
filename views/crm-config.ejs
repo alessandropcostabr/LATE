@@ -1,0 +1,161 @@
+<%- include('partials/header', { title }) %>
+<%- include('partials/navbar', { title, user }) %>
+<main class="container page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">CRM</p>
+      <h1>Configuração do CRM</h1>
+      <p class="muted">Pipelines, estágios e campos customizados.</p>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="pipelinesTitle">
+    <header class="card__header">
+      <h2 id="pipelinesTitle">Pipelines e Estágios</h2>
+      <p class="muted">Ajuste cor, probabilidade e regras de salto/volta.</p>
+    </header>
+    <div class="card__body">
+      <% pipelines.forEach((p) => { %>
+        <div class="pipeline-block">
+          <h3><%= p.name %></h3>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Etapa</th>
+                  <th>Prob.</th>
+                  <th>Cor</th>
+                  <th>Forbid jump</th>
+                  <th>Forbid back</th>
+                  <th>Required fields</th>
+                  <th>SLA (min)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% (stagesByPipeline[p.id] || []).forEach((s) => { %>
+                  <tr data-stage-id="<%= s.id %>">
+                    <td><input class="input" name="name" value="<%= s.name %>"></td>
+                    <td><input class="input" name="probability" type="number" min="0" max="1" step="0.01" value="<%= s.probability %>"></td>
+                    <td><input class="input" name="color" value="<%= s.color %>"></td>
+                    <td><input type="checkbox" name="forbid_jump" <%= s.forbid_jump ? 'checked' : '' %>></td>
+                    <td><input type="checkbox" name="forbid_back" <%= s.forbid_back ? 'checked' : '' %>></td>
+                    <td><input class="input" name="required_fields" placeholder="ex.: amount,close_date" value="<%= Array.isArray(s.required_fields) ? s.required_fields.join(',') : '' %>"></td>
+                    <td><input class="input" name="sla_minutes" type="number" min="0" value="<%= s.sla_minutes || '' %>"></td>
+                    <td><button class="btn btn-primary js-save-stage" data-id="<%= s.id %>">Salvar</button></td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="customFieldsTitle">
+    <header class="card__header">
+      <h2 id="customFieldsTitle">Campos customizados</h2>
+      <p class="muted">Crie ou edite campos (lead, contact, account, opportunity, activity).</p>
+    </header>
+    <div class="card__body">
+      <form id="newFieldForm" class="stack" aria-label="Criar campo">
+        <input type="hidden" name="field_id" id="customFieldId">
+        <div class="grid">
+          <div>
+            <label>Entidade</label>
+            <select name="entity" class="input">
+              <option value="opportunity">opportunity</option>
+              <option value="lead">lead</option>
+              <option value="contact">contact</option>
+              <option value="account">account</option>
+              <option value="activity">activity</option>
+            </select>
+          </div>
+          <div>
+            <label>Nome</label>
+            <input name="name" class="input" required>
+          </div>
+          <div>
+            <label>Tipo</label>
+            <select name="type" class="input">
+              <option value="text">text</option>
+              <option value="number">number</option>
+              <option value="select">select</option>
+              <option value="boolean">boolean</option>
+              <option value="date">date</option>
+            </select>
+          </div>
+          <div>
+            <label>Options (JSON)</label>
+            <input name="options" class="input" placeholder='["op1","op2"]'>
+          </div>
+          <div>
+            <label>Obrigatório</label><br>
+            <input type="checkbox" name="required">
+          </div>
+          <div>
+            <label>Posição</label>
+            <input name="position" type="number" class="input" min="0" value="0">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="customFieldSubmit">Adicionar</button>
+          <button type="button" class="btn btn-outline" id="customFieldCancel" style="display:none;">Cancelar</button>
+        </div>
+      </form>
+
+      <div class="table-responsive" style="margin-top:1rem;">
+        <div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;">
+          <label for="customFieldFilter" class="muted">Filtrar entidade:</label>
+          <select id="customFieldFilter" class="input" style="max-width:240px;">
+            <option value="">Todas</option>
+            <option value="lead">lead</option>
+            <option value="contact">contact</option>
+            <option value="account">account</option>
+            <option value="opportunity">opportunity</option>
+            <option value="activity">activity</option>
+          </select>
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Entidade</th>
+              <th>Nome</th>
+              <th>Tipo</th>
+              <th>Obrigatório</th>
+              <th>Posição</th>
+              <th>Opções</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% customFields.forEach((f) => { %>
+              <tr data-id="<%= f.id %>"
+                  data-entity="<%= f.entity %>"
+                  data-name="<%= f.name %>"
+                  data-type="<%= f.type %>"
+                  data-required="<%= f.required ? '1' : '0' %>"
+                  data-position="<%= f.position %>"
+                  data-options="<%- JSON.stringify(f.options || []).replace(/\"/g, '&quot;') %>">
+                <td><%= f.entity %></td>
+                <td><%= f.name %></td>
+                <td><%= f.type %></td>
+                <td><%= f.required ? 'sim' : 'não' %></td>
+                <td><%= f.position %></td>
+                <td><%= Array.isArray(f.options) && f.options.length ? f.options.join(', ') : '-' %></td>
+                <td>
+                  <button class="btn btn-outline btn-sm js-edit-custom-field">Editar</button>
+                  <button class="btn btn-outline btn-sm js-delete-custom-field">Excluir</button>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<meta name="csrf-token" content="<%= csrfToken %>">
+<script src="/js/crm-config.js"></script>
+<%- include('partials/footer') %>
