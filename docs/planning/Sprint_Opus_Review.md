@@ -117,6 +117,7 @@
   - [x] `crm-dedup.js` - telefone, email, total
 - [x] Ajustar ordem de scripts do CRM para garantir `utils.js` antes dos scripts de tela (20 de dezembro de 2025)
 - [ ] Criar teste específico de XSS
+  - [x] Validação manual em `/crm/oportunidades` com payload XSS (20 de dezembro de 2025)
 
 **Correção sugerida:**
 ```javascript
