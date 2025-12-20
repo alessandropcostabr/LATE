@@ -140,11 +140,13 @@ card.innerHTML = `
 
 - [x] Validar extensão `.csv` em `controllers/crmController.js:625-644`
 - [x] Criar `middleware/fileValidation.js` com validação completa
-- [x] Verificar primeiros 8KB do arquivo para confirmar formato CSV
+- [x] Validar MIME type (`text/csv`, `application/csv`, `text/plain`, `application/vnd.ms-excel`)
+- [x] Verificar primeiros 1KB do arquivo para confirmar formato CSV
 - [x] Rejeitar arquivos executáveis ou binários
 - [x] Detectar CSV injection (fórmulas, scripts)
-- [x] Reduzir limite de 100MB para 10MB
-- [ ] Adicionar teste de upload malicioso
+- [x] Limite máximo 100MB alinhado ao UI
+- [x] Adicionar teste de upload malicioso (20 de dezembro de 2025)
+- [x] Validação manual de upload malicioso (nao_csv.txt, binario.csv, injecao.csv) (20 de dezembro de 2025)
 
 **Correção sugerida:**
 ```javascript
@@ -174,7 +176,7 @@ if (file) {
 ### 3. Suite de Testes de Segurança Focada
 - [x] Criar `__tests__/crm-security.test.js` focado em XSS e upload (20 de dezembro de 2025)
 - [ ] Reaproveitar fixtures de `crmImportService.test.js`
-- [ ] Adicionar casos: XSS em títulos, upload de .exe, CSV malformado
+- [x] Adicionar casos: XSS em títulos, upload de .exe (extensão inválida), CSV malformado/binário (20 de dezembro de 2025)
 
 ---
 
