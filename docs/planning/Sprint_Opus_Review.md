@@ -116,7 +116,7 @@
   - [x] `crm-opportunities.js` - todos os campos
   - [x] `crm-dedup.js` - telefone, email, total
 - [x] Ajustar ordem de scripts do CRM para garantir `utils.js` antes dos scripts de tela (20 de dezembro de 2025)
-- [ ] Criar teste específico de XSS
+- [x] Criar teste específico de XSS (20 de dezembro de 2025)
   - [x] Validação manual em `/crm/oportunidades` com payload XSS (20 de dezembro de 2025)
 
 **Correção sugerida:**
@@ -172,7 +172,7 @@ if (file) {
 ```
 
 ### 3. Suite de Testes de Segurança Focada
-- [ ] Criar `__tests__/crm-security.test.js` focado em XSS e upload
+- [x] Criar `__tests__/crm-security.test.js` focado em XSS e upload (20 de dezembro de 2025)
 - [ ] Reaproveitar fixtures de `crmImportService.test.js`
 - [ ] Adicionar casos: XSS em títulos, upload de .exe, CSV malformado
 
