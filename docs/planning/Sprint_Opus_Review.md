@@ -202,13 +202,13 @@ if (file) {
 - [ ] Teste de rate limit
 
 ### 3. Performance N+1 Sistema Base — MANTIDO
-- [ ] Refatorar loop em `services/messageAlerts.js:141-179`
-- [ ] Query única com JOIN para buscar todos os dados
+- [x] Refatorar loop em `services/messageAlerts.js:141-179` (20 de dezembro de 2025)
+- [x] Query única com JOIN para buscar todos os dados (20 de dezembro de 2025)
 - [ ] Estimar ganho: 50ms → 5ms por execução
 
 ### 4. Performance N+1 CRM — CONFIRMADO
-- [ ] Criar `listPipelinesWithStages()` com agregação JSON
-- [ ] Eliminar loop de queries em `controllers/crmController.js:172-180`
+- [x] Criar `listPipelinesWithStages()` com agregação JSON (20 de dezembro de 2025)
+- [x] Eliminar loop de queries em `controllers/crmController.js:172-180` (20 de dezembro de 2025)
 - [ ] Benchmark antes/depois
 
 ---

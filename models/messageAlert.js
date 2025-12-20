@@ -26,6 +26,24 @@ class MessageAlertModel {
     const { rows } = await db.query(sql, [message_id, alert_type]);
     return rows?.[0]?.last_sent || null;
   }
+
+  async getLastAlertsByType(messageIds = [], alert_type) {
+    const ids = Array.from(new Set(messageIds)).filter(Boolean);
+    if (ids.length === 0) return {};
+    const placeholders = ids.map((_, index) => ph(index + 1)).join(', ');
+    const sql = `
+      SELECT message_id, MAX(sent_at) AS last_sent
+        FROM message_alerts
+       WHERE message_id IN (${placeholders})
+         AND alert_type = ${ph(ids.length + 1)}
+       GROUP BY message_id
+    `;
+    const { rows } = await db.query(sql, [...ids, alert_type]);
+    return rows.reduce((acc, row) => {
+      acc[row.message_id] = row.last_sent;
+      return acc;
+    }, {});
+  }
 }
 
 module.exports = new MessageAlertModel();

@@ -37,6 +37,38 @@ async function getStages(pipelineId) {
   return rows || [];
 }
 
+async function listPipelinesWithStages(objectType = 'opportunity') {
+  const sql = `
+    SELECT p.id AS pipeline_id,
+           p.object_type,
+           p.name AS pipeline_name,
+           p.requires_account,
+           p.requires_contact,
+           p.active,
+           p.created_at AS pipeline_created_at,
+           p.updated_at AS pipeline_updated_at,
+           ps.id AS stage_id,
+           ps.name AS stage_name,
+           ps.position AS stage_position,
+           ps.probability AS stage_probability,
+           ps.color AS stage_color,
+           ps.sla_minutes AS stage_sla_minutes,
+           ps.created_at AS stage_created_at,
+           ps.updated_at AS stage_updated_at,
+           pr.required_fields,
+           pr.forbid_jump,
+           pr.forbid_back,
+           pr.auto_actions
+      FROM pipelines p
+      LEFT JOIN pipeline_stages ps ON ps.pipeline_id = p.id
+      LEFT JOIN pipeline_rules pr ON pr.pipeline_stage_id = ps.id
+     WHERE p.object_type = $1
+     ORDER BY p.name, ps.position
+  `;
+  const { rows } = await db.query(sql, [objectType]);
+  return rows || [];
+}
+
 async function getStageById(stageId, client = null) {
   const sql = `
     SELECT ps.*,
@@ -61,6 +93,7 @@ async function getStageById(stageId, client = null) {
 
 module.exports = {
   listPipelines,
+  listPipelinesWithStages,
   getPipelineById,
   getStages,
   getStageById,

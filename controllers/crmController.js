@@ -172,14 +172,41 @@ async function persistCustomFields(entity, entityId, customInput = {}) {
 
 async function listPipelines(req, res) {
   try {
-    const pipelines = await PipelineModel.listPipelines('opportunity');
-    const withStages = await Promise.all(
-      pipelines.map(async (p) => ({
-        ...p,
-        stages: await PipelineModel.getStages(p.id),
-      })),
-    );
-    return res.json({ success: true, data: withStages });
+    const rows = await PipelineModel.listPipelinesWithStages('opportunity');
+    const pipelines = new Map();
+    rows.forEach((row) => {
+      if (!pipelines.has(row.pipeline_id)) {
+        pipelines.set(row.pipeline_id, {
+          id: row.pipeline_id,
+          object_type: row.object_type,
+          name: row.pipeline_name,
+          requires_account: row.requires_account,
+          requires_contact: row.requires_contact,
+          active: row.active,
+          created_at: row.pipeline_created_at,
+          updated_at: row.pipeline_updated_at,
+          stages: [],
+        });
+      }
+      if (row.stage_id) {
+        pipelines.get(row.pipeline_id).stages.push({
+          id: row.stage_id,
+          pipeline_id: row.pipeline_id,
+          name: row.stage_name,
+          position: row.stage_position,
+          probability: row.stage_probability,
+          color: row.stage_color,
+          sla_minutes: row.stage_sla_minutes,
+          created_at: row.stage_created_at,
+          updated_at: row.stage_updated_at,
+          required_fields: row.required_fields,
+          forbid_jump: row.forbid_jump,
+          forbid_back: row.forbid_back,
+          auto_actions: row.auto_actions,
+        });
+      }
+    });
+    return res.json({ success: true, data: Array.from(pipelines.values()) });
   } catch (err) {
     console.error('[crm] listPipelines', err);
     return res.status(500).json({ success: false, error: 'Erro ao listar pipelines' });
