@@ -127,6 +127,8 @@
           close_date: data.close_date || null,
           source: data.source || 'desconhecida',
           description: data.description || null,
+          phone: data.contact_phone || null,
+          email: data.contact_email || null,
           contact_name: data.contact_name || null,
           contact_email: data.contact_email || null,
           contact_phone: data.contact_phone || null,
