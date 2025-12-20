@@ -70,13 +70,20 @@ async function alertPendentes(settings) {
     limit: 200,
   });
 
+  const messageIds = messages.map((messageRow) => messageRow.id);
+  const userIds = messages.map((messageRow) => messageRow.recipient_user_id).filter(Boolean);
+  const sectorIds = messages.map((messageRow) => messageRow.recipient_sector_id).filter(Boolean);
+  const lastAlerts = await MessageAlert.getLastAlertsByType(messageIds, 'pending');
+  const usersById = await UserModel.getUsersByIds(userIds);
+  const sectorMembers = await UserModel.getActiveUsersBySectors(sectorIds);
+
   const now = Date.now();
   for (const messageRow of messages) {
-    const last = await MessageAlert.getLastAlertAt(messageRow.id, 'pending');
+    const last = lastAlerts[messageRow.id] || null;
     const lastMs = last ? new Date(last).getTime() : new Date(messageRow.created_at).getTime();
     if (Number.isNaN(lastMs) || now - lastMs >= settings.pending_interval_hours * ONE_MINUTE * 60) {
       if (messageRow.recipient_user_id) {
-        const user = await UserModel.findById(messageRow.recipient_user_id);
+        const user = usersById[messageRow.recipient_user_id];
         const email = user?.email?.trim();
         if (!email) continue;
         const templateData = {
@@ -96,7 +103,7 @@ async function alertPendentes(settings) {
           await logAlertFailure(messageRow.id, 'pending_alert', { email, reason });
         }
       } else if (messageRow.recipient_sector_id) {
-        const members = await UserModel.getActiveUsersBySector(messageRow.recipient_sector_id);
+        const members = sectorMembers[messageRow.recipient_sector_id] || [];
         const recipients = members.map((m) => m.email?.trim()).filter(Boolean);
         if (!recipients.length) continue;
         const templateData = {
@@ -134,15 +141,19 @@ async function alertPendentes(settings) {
 async function alertEmAndamento(settings) {
   if (!settings.in_progress_enabled) return;
   const messages = await Message.list({ status: 'in_progress', limit: 200 });
+  const messageIds = messages.map((messageRow) => messageRow.id);
+  const userIds = messages.map((messageRow) => messageRow.recipient_user_id).filter(Boolean);
+  const lastAlerts = await MessageAlert.getLastAlertsByType(messageIds, 'in_progress');
+  const usersById = await UserModel.getUsersByIds(userIds);
   const now = Date.now();
 
   for (const messageRow of messages) {
     if (!messageRow.recipient_user_id) continue;
 
-    const last = await MessageAlert.getLastAlertAt(messageRow.id, 'in_progress');
+    const last = lastAlerts[messageRow.id] || null;
     const lastMs = last ? new Date(last).getTime() : new Date(messageRow.updated_at).getTime();
     if (Number.isNaN(lastMs) || now - lastMs >= settings.in_progress_interval_hours * ONE_MINUTE * 60) {
-      const user = await UserModel.findById(messageRow.recipient_user_id);
+      const user = usersById[messageRow.recipient_user_id];
       const email = user?.email?.trim();
       if (!email) continue;
 
