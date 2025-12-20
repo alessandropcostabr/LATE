@@ -154,5 +154,4 @@
 <script>
   window.CRM_IMPORT_DATA = <%- JSON.stringify({ pipelines, stagesByPipeline }) %>;
 </script>
-<script src="/js/crm-import.js"></script>
-<%- include('partials/footer') %>
+<%- include('partials/footer', { scripts: ['/js/crm-import.js'] }) %>

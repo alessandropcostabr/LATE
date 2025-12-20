@@ -150,12 +150,12 @@
       li.innerHTML = `
         <div class="flex-between">
           <div>
-            <strong>${opp.title}</strong>
-            <p class="muted">${opp.contact_name || ''}</p>
+            <strong>${escapeHtml(opp.title)}</strong>
+            <p class="muted">${escapeHtml(opp.contact_name || '')}</p>
           </div>
           <div class="text-right">
-            <div>${opp.amount ? Number(opp.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</div>
-            <div class="muted">Fecha: ${opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-'}</div>
+            <div>${escapeHtml(opp.amount ? Number(opp.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-')}</div>
+            <div class="muted">Fecha: ${escapeHtml(opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-')}</div>
           </div>
         </div>
       `;

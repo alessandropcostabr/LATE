@@ -56,7 +56,7 @@
         <td>${escapeHtml(opp.title)}</td>
         <td>${escapeHtml(opp.contact_name || '-')}</td>
         <td>${escapeHtml(opp.phone || '-')}</td>
-        <td>${escapeHtml(opp.pipeline_id)} / ${escapeHtml(opp.stage_id)}</td>
+        <td>${escapeHtml(`${opp.pipeline_id} / ${opp.stage_id}`)}</td>
         <td>${escapeHtml(opp.amount ? `R$ ${Number(opp.amount).toFixed(2)}` : '-')}</td>
         <td>${escapeHtml(opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-')}</td>
         <td>${escapeHtml(opp.source || '-')}</td>
