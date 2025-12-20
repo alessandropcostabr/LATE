@@ -95,3 +95,8 @@ data/*.db
 # Export / storage artifacts
 storage/*
 !storage/.gitkeep
+
+# Track migration runner (mantenha outros scripts fora do versionamento)
+!scripts/
+scripts/*
+!scripts/migrate.js
