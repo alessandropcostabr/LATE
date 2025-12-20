@@ -626,7 +626,7 @@ function normalizeFormValue(value) {
 async function parseImportRequest(req) {
   if (req.is('multipart/form-data')) {
     const form = formidable({
-      maxFileSize: 10 * 1024 * 1024, // Reduced from 100MB to 10MB for security
+      maxFileSize: 100 * 1024 * 1024, // 100MB
       allowEmptyFiles: false,
       multiples: false,
     });
@@ -639,7 +639,7 @@ async function parseImportRequest(req) {
 
         // Validate CSV file if uploaded
         if (filePath && file) {
-          const validation = validateCsvFile(filePath, file.originalFilename || file.name);
+          const validation = validateCsvFile(filePath, file.originalFilename || file.name, file.mimetype);
           if (!validation.valid) {
             // Clean up the file
             if (filePath) {
