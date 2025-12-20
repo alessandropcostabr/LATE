@@ -39,13 +39,13 @@
     }
     tableBody.innerHTML = leads.map((lead) => `
       <tr>
-        <td>${lead.contact_name || '-'}</td>
-        <td>${lead.phone || lead.phone_normalized || '-'}</td>
-        <td>${lead.email || '-'}</td>
-        <td>${lead.status || '-'}</td>
-        <td>${lead.pipeline_id ? lead.pipeline_id : '-'}</td>
-        <td>${lead.score || 0}</td>
-        <td>${lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-'}</td>
+        <td>${escapeHtml(lead.contact_name || '-')}</td>
+        <td>${escapeHtml(lead.phone || lead.phone_normalized || '-')}</td>
+        <td>${escapeHtml(lead.email || '-')}</td>
+        <td>${escapeHtml(lead.status || '-')}</td>
+        <td>${escapeHtml(lead.pipeline_id ? lead.pipeline_id : '-')}</td>
+        <td>${escapeHtml(lead.score || 0)}</td>
+        <td>${escapeHtml(lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-')}</td>
       </tr>
     `).join('');
   }

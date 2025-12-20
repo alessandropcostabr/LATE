@@ -18,7 +18,7 @@
     container.className = 'card';
     const header = document.createElement('header');
     header.className = 'card__header';
-    header.innerHTML = '<strong>Telefone:</strong> ' + (group.phone_normalized || '-') + ' · <strong>Email:</strong> ' + (group.email_normalized || '-') + ' · <strong>Total:</strong> ' + group.total;
+    header.innerHTML = '<strong>Telefone:</strong> ' + escapeHtml(group.phone_normalized || '-') + ' · <strong>Email:</strong> ' + escapeHtml(group.email_normalized || '-') + ' · <strong>Total:</strong> ' + escapeHtml(group.total);
     container.appendChild(header);
 
     const body = document.createElement('div');

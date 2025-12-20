@@ -1,3 +1,6 @@
+# Infra e scripts fora de versionamento
+infra/
+scripts/
 # Node modules
 node_modules/
 
