@@ -115,6 +115,7 @@
   - [x] `crm-leads.js` - sanitização completa da tabela
   - [x] `crm-opportunities.js` - todos os campos
   - [x] `crm-dedup.js` - telefone, email, total
+- [x] Ajustar ordem de scripts do CRM para garantir `utils.js` antes dos scripts de tela (20 de dezembro de 2025)
 - [ ] Criar teste específico de XSS
 
 **Correção sugerida:**
