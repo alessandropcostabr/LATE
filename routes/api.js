@@ -22,6 +22,7 @@ const reportExportController = require('../controllers/reportExportController');
 const statusController = require('../controllers/statusController');
 const whoamiController = require('../controllers/whoamiController');
 const callLogController = require('../controllers/callLogController');
+const telephonyController = require('../controllers/telephonyController');
 const crmController = require('../controllers/crmController');
 const incidentController = require('../controllers/incidentController');
 const customFieldController = require('../controllers/customFieldController');
@@ -211,6 +212,12 @@ router.get(
 router.post(
   '/report-incident',
   incidentController.report
+);
+
+// Telephony ingress (AMI listener)
+router.post(
+  '/telephony/events',
+  telephonyController.ingest
 );
 
 // Call logs
