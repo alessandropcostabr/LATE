@@ -51,7 +51,7 @@
         </div>
         <div style="margin-top:0.5rem;">
           <h3 class="muted" style="margin:0 0 0.5rem;">Campos customizados</h3>
-          <%- include('partials/custom-fields-form', { fields: customFields || [] }) %>
+          <%- include('partials/custom-fields-form', { fields: customFields || [], values: {} }) %>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Salvar lead</button>
