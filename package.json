@@ -45,7 +45,8 @@
     "morgan": "^1.10.0",
     "nodemailer": "^7.0.10",
     "pg": "^8.13.1",
-    "phone": "^3.1.68"
+    "phone": "^3.1.68",
+    "rate-limit-redis": "^4.3.1"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
