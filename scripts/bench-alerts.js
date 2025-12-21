@@ -14,6 +14,7 @@ const stats = {
 const PROGRESS_INTERVAL_MS = Math.max(1000, Number(process.env.BENCH_ALERTS_PROGRESS_MS || 15000));
 const TIMEOUT_MS = Number(process.env.BENCH_ALERTS_TIMEOUT_MS || 0);
 const USE_DEFAULTS = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_USE_DEFAULTS || '').toLowerCase());
+const SKIP_LOCK = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_SKIP_LOCK || '').toLowerCase());
 
 if (!process.env.BENCH_ALERTS_VERBOSE) {
   process.env.BENCH_ALERTS_VERBOSE = '1';
@@ -79,9 +80,13 @@ async function main() {
   if (USE_DEFAULTS) {
     console.log('[bench-alerts] usando defaults (sem notification_settings)');
   }
+  if (SKIP_LOCK) {
+    console.log('[bench-alerts] ignorando advisory lock (skipLock)');
+  }
 
   const result = await runAlertCycle({
     settingsOverride: USE_DEFAULTS ? DEFAULT_SETTINGS : null,
+    skipLock: SKIP_LOCK,
   });
 
   const endNs = process.hrtime.bigint();

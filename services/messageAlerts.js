@@ -237,7 +237,7 @@ async function withSchedulerLock(task) {
 async function runAlertCycle(options = {}) {
   const start = Date.now();
   benchLog('ciclo: inicio');
-  return withSchedulerLock(async () => {
+  const runTask = async () => {
     let settings;
     if (options.settingsOverride) {
       settings = options.settingsOverride;
@@ -252,7 +252,14 @@ async function runAlertCycle(options = {}) {
     const elapsedMs = Date.now() - start;
     benchLog(`ciclo: fim (${elapsedMs}ms)`);
     return { pending, in_progress: inProgress };
-  });
+  };
+
+  if (options.skipLock) {
+    benchLog('lock: skip');
+    return runTask();
+  }
+
+  return withSchedulerLock(runTask);
 }
 
 function startAlertScheduler() {
