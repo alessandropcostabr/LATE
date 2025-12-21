@@ -224,19 +224,21 @@ async function iterateCsv({ csv, filePath, limit, onRow, timeout = MAX_IMPORT_TI
   let isPaused = false;
   let pendingRows = 0;
   const startTime = Date.now();
+  let timeoutError = null;
 
   // Timeout handler
   const timeoutId = setTimeout(() => {
+    timeoutError = new Error(`Import timeout: exceeded ${timeout / 1000} seconds`);
     if (typeof source.destroy === 'function') source.destroy();
     if (typeof parser.destroy === 'function') parser.destroy();
-    throw new Error(`Import timeout: exceeded ${timeout / 1000} seconds`);
   }, timeout);
 
   try {
     for await (const record of parser) {
       // Check timeout
-      if (Date.now() - startTime > timeout) {
-        throw new Error(`Import timeout: exceeded ${timeout / 1000} seconds`);
+      if (timeoutError || Date.now() - startTime > timeout) {
+        timeoutError = timeoutError || new Error(`Import timeout: exceeded ${timeout / 1000} seconds`);
+        throw timeoutError;
       }
 
       count += 1;
@@ -256,13 +258,15 @@ async function iterateCsv({ csv, filePath, limit, onRow, timeout = MAX_IMPORT_TI
       }
 
       // Process row
-      await onRow(normalized, count);
-
-      // Resume stream if backpressure reduced
-      pendingRows -= 1;
-      if (pendingRows < BACKPRESSURE_THRESHOLD / 2 && isPaused) {
-        isPaused = false;
-        parser.resume();
+      try {
+        await onRow(normalized, count);
+      } finally {
+        // Resume stream if backpressure reduced
+        pendingRows -= 1;
+        if (pendingRows < BACKPRESSURE_THRESHOLD / 2 && isPaused) {
+          isPaused = false;
+          parser.resume();
+        }
       }
 
       if (limit && count >= limit) {
@@ -271,6 +275,14 @@ async function iterateCsv({ csv, filePath, limit, onRow, timeout = MAX_IMPORT_TI
         break;
       }
     }
+    if (timeoutError) {
+      throw timeoutError;
+    }
+  } catch (err) {
+    if (timeoutError && err !== timeoutError) {
+      throw timeoutError;
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
     if (typeof source.destroy === 'function') source.destroy();

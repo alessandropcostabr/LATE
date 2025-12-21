@@ -195,20 +195,20 @@ if (file) {
 ### 2. Rate Limiting Específico CRM — CONFIRMADO
 **Problema:** Rotas CRM não têm rate limit dedicado, vulnerável a DoS.
 
-- [ ] Criar `middleware/rateLimitCRM.js` com política específica
-- [ ] Import CSV: 5 requisições / 15 minutos
-- [ ] APIs gerais CRM: 100 requisições / 15 minutos
+- [x] Criar `middleware/rateLimitCRM.js` com política específica (20 de dezembro de 2025)
+- [x] Import CSV: 5 requisições / 15 minutos (20 de dezembro de 2025)
+- [x] APIs gerais CRM: 100 requisições / 15 minutos (20 de dezembro de 2025)
 - [ ] Integrar com Redis para distribuir entre workers
 - [ ] Teste de rate limit
 
 ### 3. Performance N+1 Sistema Base — MANTIDO
-- [ ] Refatorar loop em `services/messageAlerts.js:141-179`
-- [ ] Query única com JOIN para buscar todos os dados
+- [x] Refatorar loop em `services/messageAlerts.js:141-179` (20 de dezembro de 2025)
+- [x] Query única com JOIN para buscar todos os dados (20 de dezembro de 2025)
 - [ ] Estimar ganho: 50ms → 5ms por execução
 
 ### 4. Performance N+1 CRM — CONFIRMADO
-- [ ] Criar `listPipelinesWithStages()` com agregação JSON
-- [ ] Eliminar loop de queries em `controllers/crmController.js:172-180`
+- [x] Criar `listPipelinesWithStages()` com agregação JSON (20 de dezembro de 2025)
+- [x] Eliminar loop de queries em `controllers/crmController.js:172-180` (20 de dezembro de 2025)
 - [ ] Benchmark antes/depois
 
 ---

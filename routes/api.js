@@ -161,6 +161,7 @@ function flatFns(...mws) {
 }
 
 const csrfProtection = require('../middleware/csrf');
+const { crmLimiter, crmImportLimiter } = require('../middleware/rateLimitCRM');
 
 const canReadMessages = [requireAuth, requirePermission('read')];
 const canCreateMessages = [requireAuth, requirePermission('create'), csrfProtection];
@@ -228,6 +229,7 @@ router.get(
 );
 
 // CRM: pipelines, leads e oportunidades
+router.use('/crm', crmLimiter);
 router.get(
   '/crm/pipelines',
   ...flatFns(canReadCRM),
@@ -295,17 +297,17 @@ router.get(
 );
 router.post(
   '/crm/leads/preview-csv',
-  ...flatFns(canUpdateCRM, handleValidationErrors),
+  ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
   crmController.previewLeadsCsv
 );
 router.post(
   '/crm/leads/dry-run',
-  ...flatFns(canUpdateCRM, handleValidationErrors),
+  ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
   crmController.dryRunImportCsv
 );
 router.post(
   '/crm/leads/import-csv',
-  ...flatFns(canUpdateCRM, handleValidationErrors),
+  ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
   crmController.importLeadsCsv
 );
 router.patch(

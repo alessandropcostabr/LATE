@@ -459,6 +459,51 @@ class UserModel {
     }));
   }
 
+  async getActiveUsersBySectors(sectorIds = []) {
+    const ids = Array.from(new Set(sectorIds)).filter(Boolean);
+    if (ids.length === 0) return {};
+    const placeholders = ids.map((_, index) => ph(index + 1)).join(', ');
+    const sql = `
+      SELECT us.sector_id, u.id, u.name, u.email
+        FROM user_sectors us
+        JOIN users u ON u.id = us.user_id
+       WHERE us.sector_id IN (${placeholders})
+         AND u.is_active = TRUE
+         AND COALESCE(NULLIF(TRIM(u.email), ''), NULL) IS NOT NULL
+       ORDER BY u.name ASC
+    `;
+    const { rows } = await db.query(sql, ids);
+    return rows.reduce((acc, row) => {
+      if (!acc[row.sector_id]) acc[row.sector_id] = [];
+      acc[row.sector_id].push({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+      });
+      return acc;
+    }, {});
+  }
+
+  async getUsersByIds(ids = []) {
+    const uniqueIds = [...new Set(ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
+    if (uniqueIds.length === 0) return {};
+    const placeholders = uniqueIds.map((_, index) => ph(index + 1)).join(', ');
+    const sql = `
+      SELECT id, name, email
+        FROM users
+       WHERE id IN (${placeholders})
+    `;
+    const { rows } = await db.query(sql, uniqueIds);
+    return rows.reduce((acc, row) => {
+      acc[row.id] = {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+      };
+      return acc;
+    }, {});
+  }
+
   async getNamesByIds(ids = []) {
     const uniqueIds = [...new Set(ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
     if (uniqueIds.length === 0) return {};

@@ -150,6 +150,22 @@ Entradas (`server.js`, scripts em `scripts/`) chamam `dotenv` diretamente e carr
 
 ---
 
+## 📌 Princípios OPUS / Manifesto LATE
+
+- **KISS sempre:** solução mais simples que funcione e seja fácil de manter.
+- **Boring tech vence:** stack enxuta e conhecida; sem complexidade “só porque dá”.
+- **PostgreSQL é a fonte de verdade:** consistência e rastreabilidade antes de atalhos.
+- **API é contrato:** endpoints retornam JSON apenas; erros padronizados.
+- **Segurança por padrão:** sessão segura, CSRF, rate-limit, CORS restrito, mínimo privilégio.
+- **Separação clara:** rotas → controllers → models (SQL no model); middlewares fazem o corte transversal.
+- **Convenções > opinião:** código/identificadores em inglês; UX/mensagens em pt-BR.
+- **Deploy repetível:** produção previsível, automatizada e auditável.
+- **Resiliência real:** falhas acontecem; degradar com dignidade e recuperar rápido.
+- **Métrica e auditoria sem burocracia:** observar o essencial, registrar o importante, painel útil.
+- **UI consistente e reaproveitável:** layout padrão + partials EJS; evitar duplicação sem aprovação.
+
+---
+
 ## 🔐 Segurança
 
 - Helmet + CSP (API); HSTS somente em produção HTTPS.
@@ -164,6 +180,7 @@ Entradas (`server.js`, scripts em `scripts/`) chamam `dotenv` diretamente e carr
 ## 📚 Referências Rápidas
 
 - `README.md` — visão geral, instruções de deploy, rate limits.
+- `MANIFESTO.md` — princípios operacionais do LATE (KISS, boring tech, API contrato).
 - `docs/manuals/manual-operacional.md` — operação do sistema para times de atendimento.
 - `docs/tecnicos/LATE_Cheatsheet_Comandos.md` — comandos Git/PM2/Deploy.
 - `docs/planning/LATE_SPRINTS_EXECUTADAS.md` — histórico de sprints concluídas.
