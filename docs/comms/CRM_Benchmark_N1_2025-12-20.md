@@ -16,18 +16,27 @@ Documentar benchmark antes/depois das correções de N+1 para:
 - **Comparação:** métricas de CRM (HTTP) e alertas (scheduler/DB) não são diretamente equivalentes; comparar antes/depois dentro do mesmo tipo de medição.
 
 ## Resultado (antes)
-- CRM pipelines: _não medido antes da correção_
-- Alertas: _pendente_
+- CRM pipelines (legado N+1, pg_stat_statements em 21/12/2025)
+  - Script: `bench-crm-pipelines-baseline.js` (0,12s; pipelines=3, stages=14)
+  - `pipelines`: 1 call, mean 0,151s, total 0,151s
+  - `pipeline_stages` + `pipeline_rules`: 3 calls, mean 0,114s, total 0,343s
+- Alertas (legado N+1, pg_stat_statements em 21/12/2025)
+  - Script: `bench-alerts-baseline.js` (0,13s; pending=2, in_progress=0)
+  - `messages` (status IN): 2 calls, mean 0,063s, total 0,127s
+  - `message_alerts` (MAX por mensagem): 2 calls, mean 0,021s, total 0,042s
+  - `user_sectors`/`users` (setores): 2 calls, mean 0,039s, total 0,078s
 
 ## Resultado (depois)
 - CRM pipelines: média **0.115s** (avg=0.115263s, 10 amostras via `curl` em 20/12/2025)
-- Alertas (pg_stat_statements): ciclo **0,12s** (21/12/2025)
-  - Contexto: `runAlertCycle` com defaults (24h/48h), `skipLock=1`, `skip_schema=1`
+- CRM pipelines (query única, pg_stat_statements em 21/12/2025)
+  - `pipelines` + `stages` + `rules`: 1 call, mean 0,384s, total 0,384s
+- Alertas (pg_stat_statements): ciclo **0,13s** (21/12/2025)
+  - Contexto: `runAlertCycle` com defaults (99999h), `skipLock=1`, `skip_schema=1`
   - Volume: pending=2, in_progress=0
   - Consultas relevantes (pg_stat_statements):
-    - `messages` (status IN): 2 calls, mean 0,045s, total 0,090s
-    - `message_alerts` (MAX sent_at): 1 call, mean 0,017s, total 0,017s
-    - `user_sectors`/`users` (setores): 1 call, mean 0,033s, total 0,033s
+    - `messages` (status IN): 2 calls, mean 0,058s, total 0,116s
+    - `message_alerts` (MAX por lote): 1 call, mean 0,023s, total 0,023s
+    - `user_sectors`/`users` (setores): 1 call, mean 0,047s, total 0,047s
 
 ## Notas
 - Registrar data/hora do teste e volume de dados aproximado.

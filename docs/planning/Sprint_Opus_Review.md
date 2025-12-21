@@ -198,20 +198,20 @@ if (file) {
 - [x] Criar `middleware/rateLimitCRM.js` com política específica (20 de dezembro de 2025)
 - [x] Import CSV: 5 requisições / 15 minutos (20 de dezembro de 2025)
 - [x] APIs gerais CRM: 100 requisições / 15 minutos (20 de dezembro de 2025)
-- [ ] Integrar com Redis para distribuir entre workers
-- [ ] Teste de rate limit
+- [x] Integrar com Redis para distribuir entre workers (21 de dezembro de 2025)
+- [x] Teste de rate limit (21 de dezembro de 2025)
 
 ### 3. Performance N+1 Sistema Base — MANTIDO
 - [x] Refatorar loop em `services/messageAlerts.js:141-179` (20 de dezembro de 2025)
 - [x] Query única com JOIN para buscar todos os dados (20 de dezembro de 2025)
 - [x] Benchmark depois registrado (21 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
-- [ ] Benchmark antes (baseline) pendente — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
+- [x] Benchmark antes (baseline) registrado (21 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
 
 ### 4. Performance N+1 CRM — CONFIRMADO
 - [x] Criar `listPipelinesWithStages()` com agregação JSON (20 de dezembro de 2025)
 - [x] Eliminar loop de queries em `controllers/crmController.js:172-180` (20 de dezembro de 2025)
 - [x] Benchmark depois registrado (20 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
-- [ ] Benchmark antes (baseline) pendente — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
+- [x] Benchmark antes (baseline) registrado (21 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
 
 ---
 
