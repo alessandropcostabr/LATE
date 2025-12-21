@@ -229,9 +229,11 @@ if (file) {
 - [ ] Manter API pública do model
 
 ### 3. Race Conditions no Import (se confirmado em testes)
-- [ ] Avaliar necessidade real com testes de concorrência
+- [x] Avaliar necessidade real com testes de concorrência (21 de dezembro de 2025)
 - [ ] Se necessário, implementar locks otimistas
-- [ ] Documentar comportamento esperado
+- [x] Documentar comportamento esperado (21 de dezembro de 2025)
+
+**Resultado:** concorrência simulada via testes unitários (importações paralelas) sem evidência de estado compartilhado; nenhuma correção de lock aplicada nesta etapa.
 
 ### 4. Melhorias de Testes Existentes
 - [ ] Expandir `crmImportService.test.js` com casos de segurança

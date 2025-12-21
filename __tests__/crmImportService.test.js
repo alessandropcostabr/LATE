@@ -79,4 +79,38 @@ describe('CrmImportService', () => {
     );
     expect(fakeClient.query).toHaveBeenCalled();
   });
+
+  test('applyImport em paralelo não compartilha estado entre execuções', async () => {
+    const csv = 'name,email,phone\nAlice,alice@example.com,119999\nBob,bob@example.com,119888\n';
+    ContactModel.findByAnyIdentifier.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return null;
+    });
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({}),
+      release: jest.fn(),
+    };
+
+    const [resultA, resultB] = await Promise.all([
+      CrmImportService.applyImport({
+        csv,
+        targetType: 'lead',
+        options: { duplicate_mode: 'merge' },
+        user: { id: 10 },
+        dbClient: fakeClient,
+      }),
+      CrmImportService.applyImport({
+        csv,
+        targetType: 'lead',
+        options: { duplicate_mode: 'merge' },
+        user: { id: 11 },
+        dbClient: fakeClient,
+      }),
+    ]);
+
+    expect(resultA.created).toBe(2);
+    expect(resultB.created).toBe(2);
+    expect(LeadModel.createLead).toHaveBeenCalledTimes(4);
+    expect(fakeClient.query).toHaveBeenCalled();
+  });
 });
