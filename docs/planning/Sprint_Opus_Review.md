@@ -190,7 +190,7 @@ if (file) {
 - [x] Limitar linhas máximas para 10.000 por importação
 - [x] Reduzir batch size de 1000 para 100-500
 - [x] Progress logging a cada 5 segundos
-- [ ] Teste de stress com CSV de 10MB
+- [x] Teste de stress com CSV de 10MB (21 de dezembro de 2025) — `scripts/stress-crm-import.js`
 
 ### 2. Rate Limiting Específico CRM — CONFIRMADO
 **Problema:** Rotas CRM não têm rate limit dedicado, vulnerável a DoS.

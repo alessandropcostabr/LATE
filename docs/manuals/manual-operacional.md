@@ -68,6 +68,12 @@ O LATE agora conta com um módulo de CRM completo para gerenciar leads, contatos
 - Deduplicação automática por email e telefone evita cadastros duplicados
 - Exporte leads em CSV respeitando seu escopo de acesso
 
+### Importação CSV
+- Limite por arquivo: **10MB** e **10.000 linhas**.
+- Apenas arquivos `.csv` são aceitos; arquivos binários ou com conteúdo perigoso são rejeitados.
+- Importações possuem **timeout de 5 minutos** e backpressure para evitar travamentos.
+- Rate limit: **5 imports a cada 15 minutos** por usuário.
+
 ### Oportunidades
 - **CRM → Oportunidades** mostra negócios em andamento
 - Cada oportunidade pode ter atividades (tarefas, reuniões, chamadas) associadas

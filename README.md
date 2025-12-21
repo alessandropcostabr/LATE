@@ -23,6 +23,13 @@ LATE é uma aplicação web para registro, triagem e acompanhamento de recados o
 - Ferramentas de diagnóstico (CLI `scripts/dev-info.js` e endpoint `/api/debug/info` em DEV/TEST)
 - Follow-up obrigatório: ao resolver um recado, registrar comentário com a solução
 
+## 🔒 Limites do CRM
+
+- **Importação CSV:** até 10MB e no máximo 10.000 linhas por arquivo.
+- **Timeout de import:** 5 minutos por execução (com backpressure).
+- **Rate limit CRM:** 100 req/15min nas rotas gerais.
+- **Rate limit import:** 5 req/15min nas rotas de importação.
+
 ## 📌 Roteiro e Referências
 
 - [`/news`](./news): changelog com sprints e entregas

@@ -103,3 +103,4 @@ scripts/*
 !scripts/bench-alerts.js
 !scripts/bench-alerts-baseline.js
 !scripts/bench-crm-pipelines-baseline.js
+!scripts/stress-crm-import.js
