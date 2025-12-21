@@ -8,6 +8,14 @@ const {
   normalizeEmail,
 } = require('../utils/normalizeContact');
 
+const BENCH_ALERTS_VERBOSE = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_VERBOSE || '').toLowerCase());
+
+function benchListLog(...args) {
+  if (BENCH_ALERTS_VERBOSE) {
+    console.info('[bench-alerts][message.list]', ...args);
+  }
+}
+
 // ---------------------------- Metadados dinâmicos --------------------------
 const TABLE_NAME = 'messages';
 const RECIPIENT_USER_COLUMN = 'recipient_user_id';
@@ -1193,6 +1201,7 @@ async function listContactHistory(options = {}, retrying = false) {
 }
 
 async function list(options = {}, retrying = false) {
+  benchListLog('inicio');
   const {
     limit = 10,
     offset = 0,
@@ -1206,9 +1215,17 @@ async function list(options = {}, retrying = false) {
     use_callback_date = false,
   } = options;
 
+  benchListLog('resolveSelectColumns: inicio');
   const { selectColumns, includeCreatedBy, includeRecipientSectorId } = await resolveSelectColumns();
+  benchListLog('resolveSelectColumns: ok');
   const recipientSectorEnabled = !recipientSectorFeatureDisabled && includeRecipientSectorId;
+  if (recipientSectorEnabled) {
+    benchListLog('supportsUserSectorsTable: inicio');
+  }
   const supportsSectorMembership = recipientSectorEnabled && await supportsUserSectorsTable();
+  if (recipientSectorEnabled) {
+    benchListLog('supportsUserSectorsTable: ok');
+  }
 
   const parsedLimit = Number(limit);
   const parsedOffset = Number(offset);
@@ -1242,6 +1259,7 @@ async function list(options = {}, retrying = false) {
     (Array.isArray(options.labels) ? options.labels[0] : null)
   );
 
+  benchListLog('buildFilterClause: inicio');
   const filterResult = await buildFilterClause(
     {
       status: statusFilter,
@@ -1260,8 +1278,10 @@ async function list(options = {}, retrying = false) {
       startIndex: 1,
     }
   );
+  benchListLog('buildFilterClause: ok');
 
   if (filterResult.emptyResult) {
+    benchListLog('emptyResult');
     return [];
   }
 
@@ -1278,7 +1298,9 @@ async function list(options = {}, retrying = false) {
   `;
 
   try {
+    benchListLog('query: inicio');
     const { rows } = await db.query(sql, [...queryParams, sanitizedLimit, sanitizedOffset]);
+    benchListLog(`query: ok rows=${rows.length}`);
     return rows.map(mapRow);
   } catch (err) {
     return handleSchemaError(err, retrying, () => list(options, true));
