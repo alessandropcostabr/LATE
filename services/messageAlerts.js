@@ -13,6 +13,7 @@ const ONE_MINUTE = 60 * 1000;
 const DEFAULT_CHECK_INTERVAL_MIN = 60;
 const DEFAULT_LOCK_KEY = 482901;
 const BENCH_VERBOSE = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_VERBOSE || '').toLowerCase());
+const BENCH_MESSAGE_LIMIT = Number(process.env.BENCH_ALERTS_MESSAGE_LIMIT || 0);
 
 function benchLog(...args) {
   if (BENCH_VERBOSE) {
@@ -75,9 +76,12 @@ async function alertPendentes(settings) {
     return { scanned: 0, notified: 0, skipped: true };
   }
   benchLog('pending: inicio');
+  const limit = Number.isFinite(BENCH_MESSAGE_LIMIT) && BENCH_MESSAGE_LIMIT > 0
+    ? Math.min(200, Math.max(1, BENCH_MESSAGE_LIMIT))
+    : 200;
   const messages = await Message.list({
     status: 'pending',
-    limit: 200,
+    limit,
   });
   benchLog(`pending: mensagens=${messages.length}`);
 
@@ -162,7 +166,10 @@ async function alertEmAndamento(settings) {
     return { scanned: 0, notified: 0, skipped: true };
   }
   benchLog('in_progress: inicio');
-  const messages = await Message.list({ status: 'in_progress', limit: 200 });
+  const limit = Number.isFinite(BENCH_MESSAGE_LIMIT) && BENCH_MESSAGE_LIMIT > 0
+    ? Math.min(200, Math.max(1, BENCH_MESSAGE_LIMIT))
+    : 200;
+  const messages = await Message.list({ status: 'in_progress', limit });
   benchLog(`in_progress: mensagens=${messages.length}`);
   const messageIds = messages.map((messageRow) => messageRow.id);
   const userIds = messages.map((messageRow) => messageRow.recipient_user_id).filter(Boolean);
