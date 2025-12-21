@@ -33,6 +33,22 @@ const columnCheckPromises = new Map();
 const tableSupportCache = new Map();
 const tableCheckPromises = new Map();
 
+const BENCH_ALERTS_SKIP_SCHEMA = ['1', 'true', 'yes', 'on'].includes(
+  String(process.env.BENCH_ALERTS_SKIP_SCHEMA || '').toLowerCase()
+);
+
+if (BENCH_ALERTS_SKIP_SCHEMA) {
+  benchListLog('skip schema: usando cache fixo');
+  [
+    RECIPIENT_USER_COLUMN,
+    RECIPIENT_SECTOR_COLUMN,
+    CREATED_BY_COLUMN,
+    UPDATED_BY_COLUMN,
+    PARENT_MESSAGE_COLUMN,
+  ].forEach((column) => columnSupportCache.set(column, true));
+  tableSupportCache.set(USER_SECTORS_TABLE, true);
+}
+
 async function supportsColumn(column) {
   if (columnSupportCache.has(column)) {
     return columnSupportCache.get(column);
