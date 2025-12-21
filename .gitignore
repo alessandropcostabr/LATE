@@ -100,3 +100,4 @@ storage/*
 !scripts/
 scripts/*
 !scripts/migrate.js
+!scripts/bench-alerts.js

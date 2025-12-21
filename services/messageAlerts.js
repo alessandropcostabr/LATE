@@ -64,7 +64,9 @@ async function logAlertFailure(messageId, scope, payload = {}) {
 }
 
 async function alertPendentes(settings) {
-  if (!settings.pending_enabled) return;
+  if (!settings.pending_enabled) {
+    return { scanned: 0, notified: 0, skipped: true };
+  }
   const messages = await Message.list({
     status: 'pending',
     limit: 200,
@@ -78,6 +80,7 @@ async function alertPendentes(settings) {
   const sectorMembers = await UserModel.getActiveUsersBySectors(sectorIds);
 
   const now = Date.now();
+  let notified = 0;
   for (const messageRow of messages) {
     const last = lastAlerts[messageRow.id] || null;
     const lastMs = last ? new Date(last).getTime() : new Date(messageRow.created_at).getTime();
@@ -97,6 +100,7 @@ async function alertPendentes(settings) {
             data: templateData,
           });
           await logAlert(messageRow.id, 'pending', { email });
+          notified += 1;
         } catch (err) {
           const reason = err?.message || err;
           console.error('[alerts] falha ao enviar alerta pendente', { messageId: messageRow.id, email, err: reason });
@@ -118,6 +122,7 @@ async function alertPendentes(settings) {
               data: templateData,
             });
             await logAlert(messageRow.id, 'pending', { email, sector_id: messageRow.recipient_sector_id });
+            notified += 1;
           } catch (err) {
             const reason = err?.message || err;
             console.error('[alerts] falha ao enviar alerta pendente de setor', {
@@ -136,16 +141,20 @@ async function alertPendentes(settings) {
       }
     }
   }
+  return { scanned: messages.length, notified };
 }
 
 async function alertEmAndamento(settings) {
-  if (!settings.in_progress_enabled) return;
+  if (!settings.in_progress_enabled) {
+    return { scanned: 0, notified: 0, skipped: true };
+  }
   const messages = await Message.list({ status: 'in_progress', limit: 200 });
   const messageIds = messages.map((messageRow) => messageRow.id);
   const userIds = messages.map((messageRow) => messageRow.recipient_user_id).filter(Boolean);
   const lastAlerts = await MessageAlert.getLastAlertsByType(messageIds, 'in_progress');
   const usersById = await UserModel.getUsersByIds(userIds);
   const now = Date.now();
+  let notified = 0;
 
   for (const messageRow of messages) {
     if (!messageRow.recipient_user_id) continue;
@@ -169,6 +178,7 @@ async function alertEmAndamento(settings) {
           data: templateData,
         });
         await logAlert(messageRow.id, 'in_progress', { email });
+        notified += 1;
       } catch (err) {
         const reason = err?.message || err;
         console.error('[alerts] falha ao enviar alerta em andamento', { messageId: messageRow.id, email, err: reason });
@@ -176,6 +186,7 @@ async function alertEmAndamento(settings) {
       }
     }
   }
+  return { scanned: messages.length, notified };
 }
 
 let schedulerStarted = false;
@@ -188,9 +199,9 @@ async function withSchedulerLock(task) {
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [lockKey]);
     locked = rows?.[0]?.ok === true;
     if (!locked) {
-      return;
+      return { skipped: true };
     }
-    await task();
+    return await task();
   } finally {
     if (locked) {
       try {
@@ -203,6 +214,15 @@ async function withSchedulerLock(task) {
   }
 }
 
+async function runAlertCycle() {
+  return withSchedulerLock(async () => {
+    const settings = await NotificationSettings.getSettings();
+    const pending = await alertPendentes(settings);
+    const inProgress = await alertEmAndamento(settings);
+    return { pending, in_progress: inProgress };
+  });
+}
+
 function startAlertScheduler() {
   if (schedulerStarted) return;
   schedulerStarted = true;
@@ -211,11 +231,7 @@ function startAlertScheduler() {
 
   const run = async () => {
     try {
-      await withSchedulerLock(async () => {
-        const settings = await NotificationSettings.getSettings();
-        await alertPendentes(settings);
-        await alertEmAndamento(settings);
-      });
+      await runAlertCycle();
     } catch (err) {
       console.error('[alerts] ciclo de alertas falhou', err);
     }
@@ -228,4 +244,5 @@ function startAlertScheduler() {
 
 module.exports = {
   startAlertScheduler,
+  runAlertCycle,
 };
