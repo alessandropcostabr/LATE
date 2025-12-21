@@ -101,3 +101,5 @@ storage/*
 scripts/*
 !scripts/migrate.js
 !scripts/bench-alerts.js
+!scripts/bench-alerts-baseline.js
+!scripts/bench-crm-pipelines-baseline.js
