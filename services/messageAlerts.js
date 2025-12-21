@@ -74,6 +74,7 @@ async function alertPendentes(settings) {
   if (!settings.pending_enabled) {
     return { scanned: 0, notified: 0, skipped: true };
   }
+  benchLog('pending: inicio');
   const messages = await Message.list({
     status: 'pending',
     limit: 200,
@@ -160,6 +161,7 @@ async function alertEmAndamento(settings) {
   if (!settings.in_progress_enabled) {
     return { scanned: 0, notified: 0, skipped: true };
   }
+  benchLog('in_progress: inicio');
   const messages = await Message.list({ status: 'in_progress', limit: 200 });
   benchLog(`in_progress: mensagens=${messages.length}`);
   const messageIds = messages.map((messageRow) => messageRow.id);
@@ -236,7 +238,9 @@ async function runAlertCycle() {
   const start = Date.now();
   benchLog('ciclo: inicio');
   return withSchedulerLock(async () => {
+    benchLog('settings: inicio');
     const settings = await NotificationSettings.getSettings();
+    benchLog('settings: ok');
     const pending = await alertPendentes(settings);
     const inProgress = await alertEmAndamento(settings);
     const elapsedMs = Date.now() - start;
