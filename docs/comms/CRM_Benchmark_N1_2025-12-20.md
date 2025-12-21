@@ -10,6 +10,11 @@ Documentar benchmark antes/depois das correções de N+1 para:
 1. **CRM pipelines:** medir tempo de resposta em ambiente DEV (sem cache).
 2. **Alertas:** medir quantidade de queries por ciclo (log ou pg_stat_statements) + tempo total.
 
+## Metodologia (padronizada)
+- **CRM pipelines (HTTP):** tempo de resposta do endpoint, 10 amostras via `curl` em DEV, sem cache. Reportar média e data.
+- **Alertas (scheduler):** tempo do ciclo interno (`runAlertCycle`) e tempos por query via `pg_stat_statements`. Reportar volume (pending/in_progress) e flags usadas.
+- **Comparação:** métricas de CRM (HTTP) e alertas (scheduler/DB) não são diretamente equivalentes; comparar antes/depois dentro do mesmo tipo de medição.
+
 ## Resultado (antes)
 - CRM pipelines: _não medido antes da correção_
 - Alertas: _pendente_
