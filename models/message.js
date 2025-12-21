@@ -41,6 +41,7 @@ async function supportsColumn(column) {
     return columnCheckPromises.get(column);
   }
 
+  benchListLog(`supportsColumn: ${column}`);
   const sql = `
     SELECT 1
       FROM information_schema.columns
@@ -78,6 +79,7 @@ async function supportsTable(table) {
     return tableCheckPromises.get(table);
   }
 
+  benchListLog(`supportsTable: ${table}`);
   const sql = `
     SELECT 1
       FROM information_schema.tables

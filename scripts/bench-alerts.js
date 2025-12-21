@@ -7,7 +7,9 @@ const db = require('../config/database');
 const { runAlertCycle } = require('../services/messageAlerts');
 
 const stats = {
-  count: 0,
+  started: 0,
+  completed: 0,
+  inflight: 0,
   totalMs: 0,
 };
 
@@ -29,12 +31,21 @@ const DEFAULT_SETTINGS = {
 
 function wrapQuery(fn) {
   return async (...args) => {
+    stats.started += 1;
+    stats.inflight += 1;
     const start = process.hrtime.bigint();
+    const warnMs = Math.max(1000, Number(process.env.BENCH_ALERTS_QUERY_WARN_MS || 10000));
+    const sqlPreview = String(args?.[0]?.text || args?.[0] || '').trim().split(/\s+/).slice(0, 6).join(' ');
+    const warnTimer = setTimeout(() => {
+      console.warn(`[bench-alerts] query lenta >${warnMs}ms`, sqlPreview || '[sem-sql]');
+    }, warnMs);
     try {
       return await fn(...args);
     } finally {
+      clearTimeout(warnTimer);
       const end = process.hrtime.bigint();
-      stats.count += 1;
+      stats.completed += 1;
+      stats.inflight = Math.max(0, stats.inflight - 1);
       stats.totalMs += Number(end - start) / 1e6;
     }
   };
@@ -65,7 +76,12 @@ async function main() {
 
   const progressTimer = setInterval(() => {
     const elapsed = Math.round((Date.now() - startMs) / 1000);
-    console.log(`[bench-alerts] progresso ${elapsed}s | queries=${stats.count}`);
+    const poolInfo = typeof db.totalCount === 'number'
+      ? ` | pool: total=${db.totalCount} idle=${db.idleCount} waiting=${db.waitingCount}`
+      : '';
+    console.log(
+      `[bench-alerts] progresso ${elapsed}s | started=${stats.started} completed=${stats.completed} inflight=${stats.inflight}${poolInfo}`
+    );
   }, PROGRESS_INTERVAL_MS);
 
   let timeoutTimer;
@@ -91,7 +107,7 @@ async function main() {
 
   const endNs = process.hrtime.bigint();
   const durationMs = Number(endNs - startNs) / 1e6;
-  const avgQueryMs = stats.count ? stats.totalMs / stats.count : 0;
+  const avgQueryMs = stats.completed ? stats.totalMs / stats.completed : 0;
 
   clearInterval(progressTimer);
   if (timeoutTimer) clearTimeout(timeoutTimer);
@@ -100,9 +116,11 @@ async function main() {
     started_at: startedAt.toISOString(),
     duration_ms: round(durationMs),
     queries: {
-      count: stats.count,
+      count: stats.completed,
       total_ms: round(stats.totalMs),
       avg_ms: round(avgQueryMs),
+      started: stats.started,
+      inflight: stats.inflight,
     },
     result,
   }, null, 2));
