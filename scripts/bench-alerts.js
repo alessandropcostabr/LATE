@@ -13,10 +13,18 @@ const stats = {
 
 const PROGRESS_INTERVAL_MS = Math.max(1000, Number(process.env.BENCH_ALERTS_PROGRESS_MS || 15000));
 const TIMEOUT_MS = Number(process.env.BENCH_ALERTS_TIMEOUT_MS || 0);
+const USE_DEFAULTS = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_USE_DEFAULTS || '').toLowerCase());
 
 if (!process.env.BENCH_ALERTS_VERBOSE) {
   process.env.BENCH_ALERTS_VERBOSE = '1';
 }
+
+const DEFAULT_SETTINGS = {
+  pending_enabled: true,
+  pending_interval_hours: 24,
+  in_progress_enabled: true,
+  in_progress_interval_hours: 48,
+};
 
 function wrapQuery(fn) {
   return async (...args) => {
@@ -68,7 +76,13 @@ async function main() {
     }, TIMEOUT_MS);
   }
 
-  const result = await runAlertCycle();
+  if (USE_DEFAULTS) {
+    console.log('[bench-alerts] usando defaults (sem notification_settings)');
+  }
+
+  const result = await runAlertCycle({
+    settingsOverride: USE_DEFAULTS ? DEFAULT_SETTINGS : null,
+  });
 
   const endNs = process.hrtime.bigint();
   const durationMs = Number(endNs - startNs) / 1e6;

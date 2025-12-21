@@ -234,13 +234,19 @@ async function withSchedulerLock(task) {
   }
 }
 
-async function runAlertCycle() {
+async function runAlertCycle(options = {}) {
   const start = Date.now();
   benchLog('ciclo: inicio');
   return withSchedulerLock(async () => {
-    benchLog('settings: inicio');
-    const settings = await NotificationSettings.getSettings();
-    benchLog('settings: ok');
+    let settings;
+    if (options.settingsOverride) {
+      settings = options.settingsOverride;
+      benchLog('settings: override');
+    } else {
+      benchLog('settings: inicio');
+      settings = await NotificationSettings.getSettings();
+      benchLog('settings: ok');
+    }
     const pending = await alertPendentes(settings);
     const inProgress = await alertEmAndamento(settings);
     const elapsedMs = Date.now() - start;
