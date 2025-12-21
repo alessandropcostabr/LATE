@@ -23,13 +23,16 @@ const statusController = require('../controllers/statusController');
 const whoamiController = require('../controllers/whoamiController');
 const callLogController = require('../controllers/callLogController');
 const telephonyController = require('../controllers/telephonyController');
-const crmController = require('../controllers/crmController');
+const crmPipelineController = require('../controllers/crm/pipelineController');
+const crmLeadController = require('../controllers/crm/leadController');
+const crmOpportunityController = require('../controllers/crm/opportunityController');
+const crmActivityController = require('../controllers/crm/activityController');
+const crmStatsController = require('../controllers/crm/statsController');
 const incidentController = require('../controllers/incidentController');
 const customFieldController = require('../controllers/customFieldController');
 const recadoSyncController = require('../controllers/recadoSyncController');
 const dedupController = require('../controllers/dedupController');
 const messageSendEventController = require('../controllers/messageSendEventController');
-const crmStatsController = require('../controllers/crmStatsController');
 const { collectDevInfo } = require('../utils/devInfo');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
 
@@ -233,52 +236,52 @@ router.use('/crm', crmLimiter);
 router.get(
   '/crm/pipelines',
   ...flatFns(canReadCRM),
-  crmController.listPipelines
+  crmPipelineController.listPipelines
 );
 router.get(
   '/crm/leads',
   ...flatFns(canReadCRM, validateScopeParam(), validateLeadList, handleValidationErrors),
-  crmController.listLeads
+  crmLeadController.listLeads
 );
 router.get(
   '/crm/opportunities',
   ...flatFns(canReadCRM, validateScopeParam(), validateOpportunityList, handleValidationErrors),
-  crmController.listOpportunities
+  crmOpportunityController.listOpportunities
 );
 router.post(
   '/crm/leads',
   ...flatFns(canCreateCRM, validateLeadCreate, handleValidationErrors),
-  crmController.createLead
+  crmLeadController.createLead
 );
 router.post(
   '/crm/opportunities',
   ...flatFns(canCreateCRM, validateOpportunityCreate, handleValidationErrors),
-  crmController.createOpportunity
+  crmOpportunityController.createOpportunity
 );
 router.patch(
   '/crm/opportunities/:id/stage',
   ...flatFns(canUpdateCRM, validateOpportunityMove, handleValidationErrors),
-  crmController.moveOpportunityStage
+  crmOpportunityController.moveOpportunityStage
 );
 router.post(
   '/crm/activities',
   ...flatFns(canCreateCRM, validateActivityCreate, handleValidationErrors),
-  crmController.createActivity
+  crmActivityController.createActivity
 );
 router.get(
   '/crm/activities',
   ...flatFns(canReadCRM, validateScopeParam(), validateActivityList, handleValidationErrors),
-  crmController.listActivities
+  crmActivityController.listActivities
 );
 router.patch(
   '/crm/activities/:id/status',
   ...flatFns(canUpdateCRM, handleValidationErrors),
-  crmController.updateActivityStatus
+  crmActivityController.updateActivityStatus
 );
 router.get(
   '/crm/activities.ics',
   ...flatFns(canReadCRM),
-  crmController.exportActivitiesICS
+  crmActivityController.exportActivitiesICS
 );
 router.get(
   '/crm/stats',
@@ -288,52 +291,52 @@ router.get(
 router.get(
   '/crm/leads.csv',
   ...flatFns(canReadCRM),
-  crmController.exportLeadsCsv
+  crmLeadController.exportLeadsCsv
 );
 router.get(
   '/crm/opportunities.csv',
   ...flatFns(canReadCRM),
-  crmController.exportOpportunitiesCsv
+  crmOpportunityController.exportOpportunitiesCsv
 );
 router.post(
   '/crm/leads/preview-csv',
   ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
-  crmController.previewLeadsCsv
+  crmLeadController.previewLeadsCsv
 );
 router.post(
   '/crm/leads/dry-run',
   ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
-  crmController.dryRunImportCsv
+  crmLeadController.dryRunImportCsv
 );
 router.post(
   '/crm/leads/import-csv',
   ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
-  crmController.importLeadsCsv
+  crmLeadController.importLeadsCsv
 );
 router.patch(
   '/crm/stages/:id/config',
   ...flatFns(canUpdateCRM, validateStageConfigUpdate, handleValidationErrors),
-  crmController.updateStageConfig
+  crmPipelineController.updateStageConfig
 );
 router.patch(
   '/crm/stages/:id/rule',
   ...flatFns(canUpdateCRM, validateStageRuleUpdate, handleValidationErrors),
-  crmController.updateStageRule
+  crmPipelineController.updateStageRule
 );
 router.get(
   '/crm/stats/pipeline',
   ...flatFns(canReadCRM),
-  crmController.statsPipeline
+  crmStatsController.statsPipeline
 );
 router.get(
   '/crm/stats/activities',
   ...flatFns(canReadCRM),
-  crmController.statsActivities
+  crmStatsController.statsActivities
 );
 router.post(
   '/crm/stats/refresh',
   ...flatFns(canAudit),
-  crmController.refreshStats
+  crmStatsController.refreshStats
 );
 router.get(
   '/crm/custom-fields',
@@ -390,12 +393,12 @@ router.post(
 router.get(
   '/crm/stats/pipeline',
   ...flatFns(canReadCRM),
-  crmController.statsPipeline
+  crmStatsController.statsPipeline
 );
 router.get(
   '/crm/stats/activities',
   ...flatFns(canReadCRM),
-  crmController.statsActivities
+  crmStatsController.statsActivities
 );
 router.get(
   '/crm/custom-fields',

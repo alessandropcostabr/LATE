@@ -12,7 +12,8 @@ jest.mock('router', () => {
       post: register('post'),
       put: register('put'),
       patch: register('patch'),
-      delete: register('delete')
+      delete: register('delete'),
+      use: register('use'),
     };
   };
 });
