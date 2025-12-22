@@ -160,6 +160,7 @@ app.use(morgan('combined'));
 app.use(compression());
 app.use(express.json({
   limit: '10mb',
+  type: ['application/json', 'application/csp-report', 'application/reports+json'],
   verify: (req, _res, buf) => {
     req.rawBody = buf.toString();
   },
