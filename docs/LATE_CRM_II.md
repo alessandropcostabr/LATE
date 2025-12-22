@@ -148,8 +148,9 @@ const existing = await db('contacts')
 - (Concluído) Wizard em 5 passos com mapeamento interativo de colunas.
 - (Concluído) Relatório exportável (CSV/JSON) após dry‑run.
 - (Concluído) Aplicar chunking por 1k linhas com transação e rollback.
-- TO_DO UI: consolidar botões “Voltar” duplicados no wizard.
-- TO_DO UI: adicionar barra de progresso e validações visuais (erros por coluna/campo).
+- (Concluído) UI: consolidar botões “Voltar” duplicados no wizard.
+- (Concluído) UI: adicionar barra de progresso e validações visuais (erros por coluna/campo).
+- TO_DO UI: barra de progresso do upload (arquivos grandes).
 - Testes: dedup/rollback e carga 200k linhas (sem OOM).
 
 ## Sprint 4 — Custom Fields UI
