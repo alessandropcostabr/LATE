@@ -64,7 +64,7 @@ sudo systemctl start corosync
 
 ## 4) Banco de Dados (PostgreSQL) — Produção
 - **Topologia:** PostgreSQL 16 com VIP `192.168.0.250` — primário reside no nó que detém o VIP (em 11/11/2025: `mach2`); standbys: `mach1` e `mach3` (streaming `async`, sob observação de hardware).
-- **App:** driver `pg` via `Pool`; **PG only**; `PG_SSL=strict` recomendado em PROD.
+- **App:** driver `pg` via `Pool`; **PG only**; `PG_SSL_MODE=verify-full` + `PG_SSL_CA` recomendado em PROD.
 - **Acesso na app:** SQL **apenas** em `models/` (controllers sem SQL).
 
 **Verificações essenciais:**
@@ -152,7 +152,7 @@ ansible cluster_ubuntu -a "uptime"
 ## 8) Segurança
 - **Sessões:** `httpOnly`, `SameSite:'lax'`, `secure` em PROD; regenerar ID no login; **sessão única por usuário** (`session_version`).
 - **Middleware:** Helmet (CSP sem `unsafe-inline`), CORS restrito, CSRF (`csurf`), rate‑limit.
-- **Env PROD:** `PG_SSL=strict`, `SESSION_SECRET` forte (32+ hex), sem variáveis de SQLite.
+- **Env PROD:** `PG_SSL_MODE=verify-full` + `PG_SSL_CA`, `SESSION_SECRET` forte (32+ hex), sem variáveis de SQLite.
 - **API:** **sempre JSON**, nada de HTML.
 
 ---
@@ -161,7 +161,7 @@ ansible cluster_ubuntu -a "uptime"
 ### 9.1 Pré-Deploy
 - [ ] PR revisado e **tests pass** (Jest + Supertest).  
 - [ ] Migrations aplicáveis e **transacionais**.  
-- [ ] `.env` de PROD com `PG_*`, `PG_SSL=strict`, `SESSION_SECRET` válido.
+- [ ] `.env` de PROD com `PG_*`, `PG_SSL_MODE=verify-full` + `PG_SSL_CA`, `SESSION_SECRET` válido.
 
 ### 9.2 Pós-Deploy
 - [ ] `pm2 status` sem processos falhando.  
@@ -215,7 +215,8 @@ PG_PORT=5432
 PG_USER=late
 PG_PASSWORD=********
 PG_DATABASE=late_prod
-PG_SSL=strict
+PG_SSL_MODE=verify-full
+PG_SSL_CA=/caminho/ca.pem
 
 SESSION_SECRET=<openssl rand -hex 32>
 NODE_ENV=production

@@ -22,7 +22,7 @@
 ## Convencoes
 - Identificadores/codigo em **ingles**; UX e mensagens em **pt‑BR**; **API JSON** sempre.
 - SQL **somente** em `models/`; controllers **sem SQL**.  
-- Variaveis `.env`: `PG_*`, `PG_SSL=strict` em PROD recomendado. Usamos apenas `.env` (sem `.env.prod`), sincronizado entre nós e com `APP_VERSION=2.7.0@machX` para identificar o host.
+- Variaveis `.env`: `PG_*`, `PG_SSL_MODE=verify-full` + `PG_SSL_CA` em PROD recomendado. Usamos apenas `.env` (sem `.env.prod`), sincronizado entre nós e com `APP_VERSION=2.7.0@machX` para identificar o host.
 - Processos web devem ser iniciados via `pm2 start ecosystem.config.js --only late-prod` para garantir `HOST=0.0.0.0` (verificar com `pm2 env`); nós offline precisam ter backend desabilitado no HAProxy (`check disabled`).
 
 ## Testes & Saude

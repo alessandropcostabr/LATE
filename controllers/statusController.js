@@ -196,12 +196,13 @@ exports.getStatus = async (_req, res) => {
 
     const [dbHealth, vipHealth, tunnelHealth, prometheus, exportsHealth] = await Promise.all([
       getPgHealth(),
-      safeFetchJson(process.env.VIP_HEALTH_URL || 'http://127.0.0.1:3000/health'),
+      safeFetchJson(process.env.VIP_HEALTH_URL || 'http://127.0.0.1:3000/api/health'),
       safeFetchJson(process.env.TUNNEL_HEALTH_URL),
       getPrometheusNodeSummary(),
       getExportQueueHealth(),
     ]);
 
+    res.set('Cache-Control', 'no-store');
     return res.json({
       success: true,
       data: {
@@ -215,6 +216,7 @@ exports.getStatus = async (_req, res) => {
     });
   } catch (err) {
     console.error('[status] Falha ao coletar status operacional:', err);
+    res.set('Cache-Control', 'no-store');
     return res.status(500).json({
       success: false,
       error: `Falha ao coletar status: ${err?.message || err}`,
