@@ -10,14 +10,18 @@
   const targetTypeSelect = document.getElementById('targetType');
   const mappingInput = document.getElementById('mapping');
   const mappingTable = document.getElementById('mappingTable');
+  const mappingAlerts = document.getElementById('mappingAlerts');
   const summaryEl = document.getElementById('crmImportSummary');
   const mappingEl = document.getElementById('crmImportMapping');
   const tableBody = document.querySelector('#crmImportTable tbody');
+  const progressBar = document.getElementById('crmImportProgress');
+  const progressWrap = document.querySelector('.wizard-progress');
 
   const btnStep1Next = document.getElementById('btnStep1Next');
   const btnStep2Next = document.getElementById('btnStep2Next');
   const btnStep3Next = document.getElementById('btnStep3Next');
   const btnStep4Next = document.getElementById('btnStep4Next');
+  const btnWizardBack = document.getElementById('btnWizardBack');
   const btnDryRun = document.getElementById('btnDryRun');
   const btnDownloadJson = document.getElementById('btnDownloadJson');
   const btnDownloadCsv = document.getElementById('btnDownloadCsv');
@@ -42,6 +46,18 @@
     ]
   };
 
+  const REQUIRED_GROUPS = {
+    lead: [
+      { label: 'telefone ou e-mail', fields: ['phone', 'email'] },
+    ],
+    opportunity: [
+      { label: 'título ou nome do contato', fields: ['title', 'name'] },
+      { key: 'pipeline', label: 'pipeline (ID ou nome)', fields: ['pipeline_id', 'pipeline_name'] },
+      { key: 'stage', label: 'estágio (ID ou nome)', fields: ['stage_id', 'stage_name'] },
+      { label: 'telefone ou e-mail do contato', fields: ['phone', 'email'] },
+    ],
+  };
+
   function renderStages(pipelineId) {
     const stages = data.stagesByPipeline?.[pipelineId] || [];
     stageSelect.innerHTML = '<option value="">Selecionar estágio</option>';
@@ -60,6 +76,16 @@
     });
   }
 
+  function placeBackButton() {
+    if (!btnWizardBack) return;
+    const activeStep = form?.querySelector('.wizard-step.is-active');
+    const actions = activeStep?.querySelector('.form-actions');
+    btnWizardBack.hidden = currentStep <= 1 || !actions;
+    if (!btnWizardBack.hidden && actions && !actions.contains(btnWizardBack)) {
+      actions.insertBefore(btnWizardBack, actions.firstChild);
+    }
+  }
+
   function setStep(step) {
     currentStep = step;
     stepSections.forEach((section) => {
@@ -70,6 +96,15 @@
         item.classList.toggle('is-active', Number(item.dataset.step) === step);
       });
     }
+
+    if (progressBar && progressWrap) {
+      const total = Math.max(stepSections.length, 1);
+      const percent = total <= 1 ? 100 : Math.round(((step - 1) / (total - 1)) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressWrap.setAttribute('aria-valuenow', String(percent));
+    }
+
+    placeBackButton();
   }
 
   function getSelectedFile() {
@@ -97,9 +132,10 @@
   }
 
   function updateControls() {
+    const mappingStatus = validateMapping();
     const step1Valid = validateStep1().ok;
     if (btnStep1Next) btnStep1Next.disabled = !step1Valid;
-    if (btnStep2Next) btnStep2Next.disabled = !step1Valid;
+    if (btnStep2Next) btnStep2Next.disabled = !step1Valid || mappingStatus.hasErrors;
     if (btnStep3Next) btnStep3Next.disabled = !flowState.previewReady;
     if (btnDryRun) btnDryRun.disabled = !flowState.previewReady;
     if (btnStep4Next) btnStep4Next.disabled = !flowState.dryRunReady;
@@ -189,12 +225,13 @@
         return `<option value="${escapeAttr(value)}" ${selected === value ? 'selected' : ''}>${escapeHtml(label)}</option>`;
       }).join('');
       return `
-        <tr>
+        <tr class="mapping-row" data-header="${escapeAttr(header)}">
           <td>${escapeHtml(header)}</td>
           <td>
             <select class="input" data-header="${escapeAttr(header)}">
               ${options}
             </select>
+            <div class="mapping-hint" data-hint="${escapeAttr(header)}"></div>
           </td>
         </tr>
       `;
@@ -217,8 +254,68 @@
           delete currentMapping[key];
         }
         mappingInput.value = JSON.stringify(currentMapping);
+        validateMapping();
       });
     });
+    validateMapping();
+  }
+
+  function validateMapping() {
+    const targetType = targetTypeSelect?.value || 'lead';
+    const groups = REQUIRED_GROUPS[targetType] || [];
+    const mappedTargets = Object.values(currentMapping || {}).filter(Boolean);
+    const targetCounts = mappedTargets.reduce((acc, field) => {
+      acc[field] = (acc[field] || 0) + 1;
+      return acc;
+    }, {});
+
+    const missing = [];
+    const hasPipeline = pipelineSelect?.value || mappedTargets.includes('pipeline_id') || mappedTargets.includes('pipeline_name');
+    const hasStage = stageSelect?.value || mappedTargets.includes('stage_id') || mappedTargets.includes('stage_name');
+
+    groups.forEach((group) => {
+      if (group.key === 'pipeline' && hasPipeline) return;
+      if (group.key === 'stage' && hasStage) return;
+      const ok = group.fields.some((field) => mappedTargets.includes(field));
+      if (!ok) missing.push(group.label);
+    });
+
+    const rowWarnings = {};
+    Object.entries(currentMapping || {}).forEach(([header, target]) => {
+      if (!target) return;
+      if (targetCounts[target] > 1) {
+        rowWarnings[header] = `Campo duplicado: ${target}`;
+      }
+    });
+
+    const hasErrors = missing.length > 0;
+    if (mappingAlerts) {
+      mappingAlerts.classList.remove('is-error', 'is-warning');
+      mappingAlerts.textContent = '';
+      if (hasErrors) {
+        mappingAlerts.classList.add('is-error');
+        mappingAlerts.textContent = `Campos obrigatórios ausentes: ${missing.join(', ')}.`;
+      } else if (Object.keys(rowWarnings).length) {
+        mappingAlerts.classList.add('is-warning');
+        mappingAlerts.textContent = 'Alguns campos estão mapeados mais de uma vez.';
+      }
+    }
+
+    if (mappingTable) {
+      mappingTable.querySelectorAll('.mapping-row').forEach((row) => {
+        row.classList.remove('is-error', 'is-warning');
+        const header = row.getAttribute('data-header');
+        const hint = row.querySelector('.mapping-hint');
+        if (rowWarnings[header]) {
+          row.classList.add('is-warning');
+          if (hint) hint.textContent = rowWarnings[header];
+        } else if (hint) {
+          hint.textContent = '';
+        }
+      });
+    }
+
+    return { hasErrors };
   }
 
   async function handlePreview({ advanceTo = 3 } = {}) {

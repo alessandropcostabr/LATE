@@ -7,6 +7,15 @@
   .wizard-step { display: none; }
   .wizard-step.is-active { display: block; }
   .wizard-step .step-title { font-weight: 600; margin-bottom: 0.75rem; }
+  .wizard-progress { height: 6px; background: #eef2f7; border-radius: 999px; overflow: hidden; margin: 0.75rem 0 1rem; }
+  .wizard-progress__bar { height: 100%; width: 0%; background: #1d4ed8; transition: width 200ms ease; }
+  .mapping-alert { display: none; padding: 0.6rem 0.75rem; border-radius: 8px; margin: 0.75rem 0; font-size: 0.9rem; }
+  .mapping-alert.is-error { display: block; background: #fef2f2; color: #b91c1c; }
+  .mapping-alert.is-warning { display: block; background: #fffbeb; color: #92400e; }
+  .mapping-row.is-error select { border-color: #dc2626; }
+  .mapping-row.is-warning select { border-color: #f59e0b; }
+  .mapping-hint { margin-top: 0.35rem; font-size: 0.8rem; color: #b91c1c; }
+  .mapping-row.is-warning .mapping-hint { color: #92400e; }
 </style>
 <main class="container page">
   <header class="page__header">
@@ -32,9 +41,13 @@
           <li data-step="5">5. Importar</li>
         </ol>
       </nav>
+      <div class="wizard-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="wizard-progress__bar" id="crmImportProgress"></div>
+      </div>
 
       <form id="crmImportForm" class="stack">
         <input type="hidden" id="mapping" name="mapping">
+        <button type="button" class="btn btn-outline" id="btnWizardBack" data-step-back hidden>Voltar</button>
 
         <section data-step="1" class="wizard-step is-active">
           <div class="step-title">Etapa 1 — Upload</div>
@@ -85,9 +98,9 @@
         <section data-step="2" class="wizard-step">
           <div class="step-title">Etapa 2 — Mapeamento</div>
           <p class="muted">Mapeie as colunas do CSV. Se não preencher, o sistema usa auto‑mapping.</p>
+          <div id="mappingAlerts" class="mapping-alert"></div>
           <div id="mappingTable" class="table-responsive"></div>
           <div class="form-actions">
-            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="button" class="btn btn-primary" id="btnStep2Next">Pré‑visualizar</button>
           </div>
         </section>
@@ -95,7 +108,6 @@
         <section data-step="3" class="wizard-step">
           <div class="step-title">Etapa 3 — Preview</div>
           <div class="form-actions">
-            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="button" class="btn btn-outline" id="btnDryRun">Simular (dry‑run)</button>
             <button type="button" class="btn btn-primary" id="btnStep3Next">Continuar</button>
           </div>
@@ -104,7 +116,6 @@
         <section data-step="4" class="wizard-step">
           <div class="step-title">Etapa 4 — Dry‑run</div>
           <div class="form-actions">
-            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="button" class="btn btn-outline" id="btnDownloadJson">Baixar JSON</button>
             <button type="button" class="btn btn-outline" id="btnDownloadCsv">Baixar CSV</button>
             <button type="button" class="btn btn-primary" id="btnStep4Next">Importar</button>
@@ -114,7 +125,6 @@
         <section data-step="5" class="wizard-step">
           <div class="step-title">Etapa 5 — Importar</div>
           <div class="form-actions">
-            <button type="button" class="btn btn-outline" data-step-back>Voltar</button>
             <button type="submit" class="btn btn-primary">Executar importação</button>
           </div>
         </section>

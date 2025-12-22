@@ -86,6 +86,52 @@ describe('CrmImportService', () => {
     expect(fakeClient.query).toHaveBeenCalled();
   });
 
+  test('applyImport respeita duplicate_mode=skip', async () => {
+    const csv = 'name,email,phone\nAlice,alice@example.com,119999\n';
+    ContactModel.findByAnyIdentifier.mockResolvedValueOnce({ id: 'dup-1' });
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({}),
+      release: jest.fn(),
+    };
+
+    const result = await CrmImportService.applyImport({
+      csv,
+      targetType: 'lead',
+      options: { duplicate_mode: 'skip' },
+      user: { id: 10 },
+      dbClient: fakeClient,
+    });
+
+    expect(result.skipped).toBe(1);
+    expect(result.created).toBe(0);
+    expect(result.updated).toBe(0);
+    expect(ContactModel.updateById).not.toHaveBeenCalled();
+    expect(LeadModel.createLead).not.toHaveBeenCalled();
+  });
+
+  test('applyImport faz rollback quando ocorre erro', async () => {
+    const csv = 'name,email,phone\nAlice,alice@example.com,119999\n';
+    ContactModel.findByAnyIdentifier.mockResolvedValueOnce(null);
+    LeadModel.createLead.mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    const fakeClient = {
+      query: jest.fn().mockResolvedValue({}),
+      release: jest.fn(),
+    };
+
+    await expect(CrmImportService.applyImport({
+      csv,
+      targetType: 'lead',
+      options: { duplicate_mode: 'merge' },
+      user: { id: 10 },
+      dbClient: fakeClient,
+    })).rejects.toThrow('boom');
+
+    expect(fakeClient.query).toHaveBeenCalledWith('BEGIN');
+    expect(fakeClient.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
   test('dryRunImport resolve pipeline e estágio por nome em oportunidades', async () => {
     const csv = 'title,pipeline_name,stage_name,phone,email\nTeste,Clinica,Lead,119999,teste@example.com\n';
     PipelineModel.listPipelines.mockResolvedValueOnce([{ id: 'pipe-1', name: 'Clinica' }]);
