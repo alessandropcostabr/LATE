@@ -37,4 +37,4 @@ pm2 save
 - Merge `develop → main` com `--no-ff` para releases.
 - Nao editar diretamente em `late-prod` (exceto hotfix planejado).
 - Apos merge em `main`, acompanhe **Deploy Cluster** (GitHub Actions).
-- `.env` deve permanecer alinhado entre os nós de produção; somente `APP_VERSION=2.5.1@machX` identifica o host. Remova arquivos alternativos (`.env.prod`, etc.).
+- `.env` deve permanecer alinhado entre os nós de produção; somente `APP_VERSION=2.7.0@machX` identifica o host. Remova arquivos alternativos (`.env.prod`, etc.).

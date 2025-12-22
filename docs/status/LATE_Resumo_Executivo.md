@@ -23,7 +23,7 @@ O LATE (Contact & Follow‑up Hub) concentra registros operacionais, status e fo
 - **Monitoramento extra:** `ops-health-report.js` inclui verificação de Ubuntu Pro/ESM/Livepatch e foi cadastrado no Landscape SaaS (conta `eltdqqsb`) para execuções sob demanda.
 
 ## Deploy
-**Fluxo:** merge em `main` → Workflow **Deploy Cluster** → rsync para bastion → `ansible-playbook` nos 3 nos → `pm2 reload` + `pm2 start ecosystem.config.js --only late-prod` (confirmar `HOST=0.0.0.0` via `pm2 env` e `.env` idêntico em todos os nós, diferenciando apenas `APP_VERSION=2.5.1@machX`).  
+**Fluxo:** merge em `main` → Workflow **Deploy Cluster** → rsync para bastion → `ansible-playbook` nos 3 nos → `pm2 reload` + `pm2 start ecosystem.config.js --only late-prod` (confirmar `HOST=0.0.0.0` via `pm2 env` e `.env` idêntico em todos os nós, diferenciando apenas `APP_VERSION=2.7.0@machX`).  
 Fallback manual disponivel no bastion.
 
 ## Seguranca
