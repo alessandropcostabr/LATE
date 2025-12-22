@@ -4,6 +4,7 @@
 <% const roleSlug = typeof userRoleSlug === 'string' ? userRoleSlug : ''; %>
 <% const showReports = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
 <% const showCrmConfig = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
+<% const sortItems = (items = []) => items.slice().sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')); %>
 <% const rawUserName = (typeof user !== 'undefined' && user && user.name) ? String(user.name).trim() : ''; %>
 <% const userNameParts = rawUserName ? rawUserName.split(/\s+/).filter(Boolean) : []; %>
 <% const displayUserName = userNameParts.length > 1 ? `${userNameParts[0]} ${userNameParts[userNameParts.length - 1]}` : (userNameParts[0] || 'Usuário'); %>
@@ -70,10 +71,10 @@
       key: 'dashboard',
       label: 'Painel de controle',
         icon: iconMap.dashboard,
-      defaultOpen: true,
-      items: [
+      defaultOpen: false,
+      items: sortItems([
         { label: 'Dashboard', href: '/', active: title === 'Dashboard' }
-      ]
+      ])
     }); %>
 
     <% if (canReadMessages || canCreateMessages) { %>
@@ -86,7 +87,7 @@
         ); %>
       <% } %>
       <% if (canCreateMessages) { registroItems.push({ label: 'Novo Recado', href: '/novo-recado', active: title === 'Novo Recado' }); } %>
-      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Registros', icon: iconMap.records, items: registroItems, defaultOpen: true }); } %>
+      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Registros', icon: iconMap.records, items: sortItems(registroItems), defaultOpen: false }); } %>
     <% } %>
 
     <% if (user) { %>
@@ -104,7 +105,7 @@
         label: 'CRM',
         icon: iconMap.records,
         defaultOpen: false,
-        items: crmItems
+        items: sortItems(crmItems)
       }); %>
     <% } %>
 
@@ -113,12 +114,12 @@
         key: 'reports',
         label: 'Relatórios',
         icon: iconMap.reports,
-        items: [
+        items: sortItems([
           { label: 'Estatísticas', href: '/relatorios/estatisticas', active: title && title.includes('Relatórios · Estatísticas') },
           { label: 'Auditoria', href: '/relatorios/auditoria', active: title && title.includes('Relatórios · Auditoria') },
           { label: 'Exportações', href: '/relatorios/exportacoes', active: title && title.includes('Relatórios · Exportações') },
           { label: 'Status Operacional', href: '/relatorios/status', active: title && title.includes('Relatórios · Status Operacional') }
-        ]
+        ])
       }); %>
     <% } %>
 
@@ -127,11 +128,11 @@
         key: 'admin',
         label: 'Administração',
         icon: iconMap.admin,
-        items: [
+        items: sortItems([
           { label: 'Usuários', href: '/admin/usuarios', active: title === 'Admin · Usuários' },
           { label: 'Setores', href: '/admin/setores', active: title === 'Admin · Setores' },
           { label: 'Notificações', href: '/admin/notificacoes', active: title === 'Configurações de Notificações' }
-        ]
+        ])
       }); %>
     <% } %>
 
@@ -141,12 +142,12 @@
         label: 'Suporte & Docs',
         icon: iconMap.support,
         defaultOpen: false,
-        items: [
+        items: sortItems([
           { label: 'Novidades', href: '/news', active: title === 'Novidades' },
           { label: 'Manual Operacional', href: '/manual-operacional', active: title === 'Manual Operacional' },
           { label: 'Plano de evolução', href: '/roadmap', active: title === 'Roadmap' },
           { label: 'Central de ajuda', href: '/help', active: title === 'Central de Ajuda' }
-        ]
+        ])
       }); %>
     <% } %>
 

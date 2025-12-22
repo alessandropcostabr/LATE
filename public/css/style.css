@@ -569,8 +569,10 @@ main.auth-layout {
   display: none;
   left: 0;
   max-width: 320px;
+  height: calc(100vh - var(--navbar-height));
   min-height: calc(100vh - var(--navbar-height));
   overflow-y: auto;
+  overscroll-behavior: contain;
   position: fixed;
   top: var(--navbar-height);
   transform: translateX(-110%);
