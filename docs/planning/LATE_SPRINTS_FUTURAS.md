@@ -1104,7 +1104,7 @@ Finalizar a jornada de auditoria com indicadores em tempo real, exportações as
    - JSON estruturado enriquecido com `client_hostname`, `vip_health` e `tunnel_health`.
 
 3. **Automação de Deploy**
-   - Workflow GitHub Actions sincroniza `infra/deploy` para o bastion, injeta `ANSIBLE_BECOME_PASS` via secret e executa `ansible-playbook`.
+   - Workflow GitHub Actions sincroniza artefatos para `~/infra/deploy` no bastion e executa `ansible-playbook`.
    - PM2 roda em modo cluster para o app (`instances: 'max'`) e mantém workers de e-mail/export em fork.
 
 #### Resultados finais da sprint

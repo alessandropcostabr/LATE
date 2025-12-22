@@ -98,13 +98,14 @@ pg_dump late_prod | gzip > backup_prod_$(date +%Y%m%d).sql.gz
 
 ## 5) Deploy (GitHub → Bastion → Ansible/PM2)
 - **Trigger:** merge em `main` ativa workflow **Deploy Cluster** (GitHub Actions).
-- **Pipeline:** rsync de `infra/deploy` → bastion (`mach1`) → `ansible-playbook` nos 3 nós → `pm2 reload` (web em **cluster**, workers em **fork**).
+- **Pipeline:** rsync para `~/infra/deploy` no bastion (`mach1`) → `ansible-playbook` nos 3 nós → `pm2 reload` (web em **cluster**, workers em **fork**).
 
 **Fallback manual:**
 ```bash
 ssh alessandro@<BASTION_IP>
 export ANSIBLE_BECOME_PASS=<senha>
-ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml
+cd ~/infra/deploy
+ansible-playbook -i inventory.local.ini deploy.yml --private-key ~/.ssh/mach-key
 ```
 
 **Pós-deploy (health):**
@@ -118,7 +119,7 @@ curl -s https://late.miahchat.com/api/health
 
 ## 6) Operação Diária
 
-**Configuração (`.env`):** manter arquivo idêntico nos três nós; variação permitida apenas em `APP_VERSION=2.5.1@machX`. Remova `.env.prod` ou arquivos alternativos para evitar divergências.
+**Configuração (`.env`):** manter arquivo idêntico nos três nós; variação permitida apenas em `APP_VERSION=2.7.0@machX`. Remova `.env.prod` ou arquivos alternativos para evitar divergências.
 **Relatório automático:** cron em mach1 (00h/12h) executa `node scripts/ops-health-report.js --email`, verificando .env, PM2, discos, Prometheus, status público do Slack **e o estado do Ubuntu Pro/ESM/Livepatch em todos os nós**, além de gerar `pg_dump` (gzip) em `/var/backups/late/`; saída consolidada via e-mail (SMTP do `.env`). O mesmo script foi cadastrado no Landscape SaaS para execuções sob demanda e histórico centralizado.
 **PM2 (produção):**
 ```bash
