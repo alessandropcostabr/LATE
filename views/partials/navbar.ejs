@@ -154,7 +154,8 @@
     <% } %>
 
     <ul class="app-navbar__menu-list">
-      <% navSections.forEach((section, index) => {
+      <% const sortedSections = navSections.slice().sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')); %>
+      <% sortedSections.forEach((section, index) => {
         const hasItems = Array.isArray(section.items) && section.items.length;
         if (!hasItems) { return; }
         const sectionId = `navSection${index}`;
