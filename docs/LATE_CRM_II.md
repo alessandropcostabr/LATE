@@ -174,7 +174,7 @@ const existing = await db('contacts')
 ### Status sprint 4
 - (Em andamento) UI de gestão em `/crm/config` com criar/editar/excluir campos e filtro por entidade.
 - (Em andamento) Render de custom fields nos formulários de lead/opp/activity e modal inline no kanban.
-- TO_DO: validar required por estágio com feedback visual na UI.
+- (Concluído) Validação de campos obrigatórios por estágio com feedback visual na UI (22 de dezembro de 2025).
 
 ### Issues sugeridas
 - `crm-cf-builder-ui`: builder de campos custom (CRUD) para admin.

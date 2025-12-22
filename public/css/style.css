@@ -913,6 +913,10 @@ main.auth-layout {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   outline: none;
 }
+.input.is-error {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
 .form-textarea {
   min-height: 100px;
   resize: vertical;
