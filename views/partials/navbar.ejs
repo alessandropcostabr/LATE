@@ -87,7 +87,7 @@
         ); %>
       <% } %>
       <% if (canCreateMessages) { registroItems.push({ label: 'Novo Recado', href: '/novo-recado', active: title === 'Novo Recado' }); } %>
-      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Registros', icon: iconMap.records, items: sortItems(registroItems), defaultOpen: false }); } %>
+      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Recados', icon: iconMap.records, items: sortItems(registroItems), defaultOpen: false }); } %>
     <% } %>
 
     <% if (user) { %>
@@ -127,7 +127,7 @@
     <% if (roleSlug === 'admin') { %>
       <% navSections.push({
         key: 'admin',
-        label: 'Administração',
+        label: 'Configuração',
         icon: iconMap.admin,
         defaultOpen: false,
         items: sortItems([
