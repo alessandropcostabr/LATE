@@ -89,12 +89,12 @@ Fechar a Sprint 02B com a camada visual de auditoria, telemetria do cluster e de
    - Front-end com auto-refresh (10s) e mensagens de erro amigáveis.
 
 3. **Automação de Deploy**
-   - Workflow `.github/workflows/deploy.yml` sincroniza `infra/deploy` e executa `ansible-playbook` no bastion.
+   - Workflow `.github/workflows/deploy.yml` sincroniza artefatos para `~/infra/deploy` no bastion e executa `ansible-playbook`.
    - Secrets: `BASTION_HOST`, `BASTION_USER`, `BASTION_SSH_KEY`, `BASTION_SUDO_PASS`.
    - PM2 roda app em cluster (`instances: 'max'`) e mantém workers em fork.
 
 4. **Infra Documentada**
-   - Inventário Ansible sem senhas versionadas (`infra/deploy/inventory.ini`).
+   - Inventário Ansible sem senhas versionadas (artefatos em `~/infra/deploy` no bastion).
    - README e sprint docs descrevendo fluxo GitHub → Bastion → Cluster.
 
 ### Arquivos Atualizados
@@ -106,7 +106,7 @@ Fechar a Sprint 02B com a camada visual de auditoria, telemetria do cluster e de
 - `docs/roadmap/LATE_roadmap.md`
 - `docs/planning/Sprint-Automacao-deploy.md`
 - `.github/workflows/deploy.yml`
-- `infra/deploy/**`
+- `~/infra/deploy` (artefatos no bastion)
 - `views/relatorios-status.ejs`, `public/js/status.js`, `controllers/statusController.js`
 - `docs/manuals/manual-operacional.md`, `views/help.ejs`, `views/roadmap.ejs`
 

@@ -31,7 +31,8 @@ gh pr create --base develop --title "feat: X"
 # Fallback manual (bastion)
 ssh alessandro@<BASTION_IP>
 export ANSIBLE_BECOME_PASS=<senha>
-ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml
+cd ~/infra/deploy
+ansible-playbook -i inventory.local.ini deploy.yml --private-key ~/.ssh/mach-key
 ```
 
 ### `.env`
