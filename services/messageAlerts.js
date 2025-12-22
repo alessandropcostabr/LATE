@@ -12,6 +12,14 @@ const { enqueueTemplate } = require('./emailQueue');
 const ONE_MINUTE = 60 * 1000;
 const DEFAULT_CHECK_INTERVAL_MIN = 60;
 const DEFAULT_LOCK_KEY = 482901;
+const BENCH_VERBOSE = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_VERBOSE || '').toLowerCase());
+const BENCH_MESSAGE_LIMIT = Number(process.env.BENCH_ALERTS_MESSAGE_LIMIT || 0);
+
+function benchLog(...args) {
+  if (BENCH_VERBOSE) {
+    console.info('[bench-alerts]', ...args);
+  }
+}
 
 function getLockKey() {
   const raw = Number(process.env.ALERT_SCHEDULER_LOCK_KEY);
@@ -67,10 +75,15 @@ async function alertPendentes(settings) {
   if (!settings.pending_enabled) {
     return { scanned: 0, notified: 0, skipped: true };
   }
+  benchLog('pending: inicio');
+  const limit = Number.isFinite(BENCH_MESSAGE_LIMIT) && BENCH_MESSAGE_LIMIT > 0
+    ? Math.min(200, Math.max(1, BENCH_MESSAGE_LIMIT))
+    : 200;
   const messages = await Message.list({
     status: 'pending',
-    limit: 200,
+    limit,
   });
+  benchLog(`pending: mensagens=${messages.length}`);
 
   const messageIds = messages.map((messageRow) => messageRow.id);
   const userIds = messages.map((messageRow) => messageRow.recipient_user_id).filter(Boolean);
@@ -81,7 +94,10 @@ async function alertPendentes(settings) {
 
   const now = Date.now();
   let notified = 0;
+  let scanned = 0;
   for (const messageRow of messages) {
+    scanned += 1;
+    if (scanned % 50 === 0) benchLog(`pending: processados=${scanned}`);
     const last = lastAlerts[messageRow.id] || null;
     const lastMs = last ? new Date(last).getTime() : new Date(messageRow.created_at).getTime();
     if (Number.isNaN(lastMs) || now - lastMs >= settings.pending_interval_hours * ONE_MINUTE * 60) {
@@ -141,6 +157,7 @@ async function alertPendentes(settings) {
       }
     }
   }
+  benchLog(`pending: finalizado scanned=${scanned} notified=${notified}`);
   return { scanned: messages.length, notified };
 }
 
@@ -148,15 +165,23 @@ async function alertEmAndamento(settings) {
   if (!settings.in_progress_enabled) {
     return { scanned: 0, notified: 0, skipped: true };
   }
-  const messages = await Message.list({ status: 'in_progress', limit: 200 });
+  benchLog('in_progress: inicio');
+  const limit = Number.isFinite(BENCH_MESSAGE_LIMIT) && BENCH_MESSAGE_LIMIT > 0
+    ? Math.min(200, Math.max(1, BENCH_MESSAGE_LIMIT))
+    : 200;
+  const messages = await Message.list({ status: 'in_progress', limit });
+  benchLog(`in_progress: mensagens=${messages.length}`);
   const messageIds = messages.map((messageRow) => messageRow.id);
   const userIds = messages.map((messageRow) => messageRow.recipient_user_id).filter(Boolean);
   const lastAlerts = await MessageAlert.getLastAlertsByType(messageIds, 'in_progress');
   const usersById = await UserModel.getUsersByIds(userIds);
   const now = Date.now();
   let notified = 0;
+  let scanned = 0;
 
   for (const messageRow of messages) {
+    scanned += 1;
+    if (scanned % 50 === 0) benchLog(`in_progress: processados=${scanned}`);
     if (!messageRow.recipient_user_id) continue;
 
     const last = lastAlerts[messageRow.id] || null;
@@ -186,6 +211,7 @@ async function alertEmAndamento(settings) {
       }
     }
   }
+  benchLog(`in_progress: finalizado scanned=${scanned} notified=${notified}`);
   return { scanned: messages.length, notified };
 }
 
@@ -199,6 +225,7 @@ async function withSchedulerLock(task) {
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [lockKey]);
     locked = rows?.[0]?.ok === true;
     if (!locked) {
+      benchLog('lock: ocupado, ciclo ignorado');
       return { skipped: true };
     }
     return await task();
@@ -214,13 +241,32 @@ async function withSchedulerLock(task) {
   }
 }
 
-async function runAlertCycle() {
-  return withSchedulerLock(async () => {
-    const settings = await NotificationSettings.getSettings();
+async function runAlertCycle(options = {}) {
+  const start = Date.now();
+  benchLog('ciclo: inicio');
+  const runTask = async () => {
+    let settings;
+    if (options.settingsOverride) {
+      settings = options.settingsOverride;
+      benchLog('settings: override');
+    } else {
+      benchLog('settings: inicio');
+      settings = await NotificationSettings.getSettings();
+      benchLog('settings: ok');
+    }
     const pending = await alertPendentes(settings);
     const inProgress = await alertEmAndamento(settings);
+    const elapsedMs = Date.now() - start;
+    benchLog(`ciclo: fim (${elapsedMs}ms)`);
     return { pending, in_progress: inProgress };
-  });
+  };
+
+  if (options.skipLock) {
+    benchLog('lock: skip');
+    return runTask();
+  }
+
+  return withSchedulerLock(runTask);
 }
 
 function startAlertScheduler() {

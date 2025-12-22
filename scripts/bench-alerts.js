@@ -7,18 +7,45 @@ const db = require('../config/database');
 const { runAlertCycle } = require('../services/messageAlerts');
 
 const stats = {
-  count: 0,
+  started: 0,
+  completed: 0,
+  inflight: 0,
   totalMs: 0,
+};
+
+const PROGRESS_INTERVAL_MS = Math.max(1000, Number(process.env.BENCH_ALERTS_PROGRESS_MS || 15000));
+const TIMEOUT_MS = Number(process.env.BENCH_ALERTS_TIMEOUT_MS || 0);
+const USE_DEFAULTS = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_USE_DEFAULTS || '').toLowerCase());
+const SKIP_LOCK = ['1', 'true', 'yes', 'on'].includes(String(process.env.BENCH_ALERTS_SKIP_LOCK || '').toLowerCase());
+
+if (!process.env.BENCH_ALERTS_VERBOSE) {
+  process.env.BENCH_ALERTS_VERBOSE = '1';
+}
+
+const DEFAULT_SETTINGS = {
+  pending_enabled: true,
+  pending_interval_hours: 24,
+  in_progress_enabled: true,
+  in_progress_interval_hours: 48,
 };
 
 function wrapQuery(fn) {
   return async (...args) => {
+    stats.started += 1;
+    stats.inflight += 1;
     const start = process.hrtime.bigint();
+    const warnMs = Math.max(1000, Number(process.env.BENCH_ALERTS_QUERY_WARN_MS || 10000));
+    const sqlPreview = String(args?.[0]?.text || args?.[0] || '').trim().split(/\s+/).slice(0, 6).join(' ');
+    const warnTimer = setTimeout(() => {
+      console.warn(`[bench-alerts] query lenta >${warnMs}ms`, sqlPreview || '[sem-sql]');
+    }, warnMs);
     try {
       return await fn(...args);
     } finally {
+      clearTimeout(warnTimer);
       const end = process.hrtime.bigint();
-      stats.count += 1;
+      stats.completed += 1;
+      stats.inflight = Math.max(0, stats.inflight - 1);
       stats.totalMs += Number(end - start) / 1e6;
     }
   };
@@ -43,20 +70,57 @@ async function main() {
 
   const startedAt = new Date();
   const startNs = process.hrtime.bigint();
+  const startMs = Date.now();
 
-  const result = await runAlertCycle();
+  console.log(`[bench-alerts] inicio ${startedAt.toISOString()}`);
+
+  const progressTimer = setInterval(() => {
+    const elapsed = Math.round((Date.now() - startMs) / 1000);
+    const poolInfo = typeof db.totalCount === 'number'
+      ? ` | pool: total=${db.totalCount} idle=${db.idleCount} waiting=${db.waitingCount}`
+      : '';
+    console.log(
+      `[bench-alerts] progresso ${elapsed}s | started=${stats.started} completed=${stats.completed} inflight=${stats.inflight}${poolInfo}`
+    );
+  }, PROGRESS_INTERVAL_MS);
+
+  let timeoutTimer;
+  if (TIMEOUT_MS > 0) {
+    timeoutTimer = setTimeout(() => {
+      const elapsed = Math.round((Date.now() - startMs) / 1000);
+      console.error(`[bench-alerts] timeout apos ${elapsed}s (BENCH_ALERTS_TIMEOUT_MS=${TIMEOUT_MS})`);
+      process.exit(2);
+    }, TIMEOUT_MS);
+  }
+
+  if (USE_DEFAULTS) {
+    console.log('[bench-alerts] usando defaults (sem notification_settings)');
+  }
+  if (SKIP_LOCK) {
+    console.log('[bench-alerts] ignorando advisory lock (skipLock)');
+  }
+
+  const result = await runAlertCycle({
+    settingsOverride: USE_DEFAULTS ? DEFAULT_SETTINGS : null,
+    skipLock: SKIP_LOCK,
+  });
 
   const endNs = process.hrtime.bigint();
   const durationMs = Number(endNs - startNs) / 1e6;
-  const avgQueryMs = stats.count ? stats.totalMs / stats.count : 0;
+  const avgQueryMs = stats.completed ? stats.totalMs / stats.completed : 0;
+
+  clearInterval(progressTimer);
+  if (timeoutTimer) clearTimeout(timeoutTimer);
 
   console.log(JSON.stringify({
     started_at: startedAt.toISOString(),
     duration_ms: round(durationMs),
     queries: {
-      count: stats.count,
+      count: stats.completed,
       total_ms: round(stats.totalMs),
       avg_ms: round(avgQueryMs),
+      started: stats.started,
+      inflight: stats.inflight,
     },
     result,
   }, null, 2));

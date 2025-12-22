@@ -5,11 +5,11 @@
 
 **Objetivo:** Corrigir vulnerabilidades reais confirmadas no código e melhorar a segurança do sistema LATE, com foco em XSS, validação de upload e performance do módulo CRM.
 
-**Status:** 🚧 Em Progresso (30% concluído)
+**Status:** ✅ Concluída (22 de dezembro de 2025)
 **Prioridade:** 🔴 CRÍTICA
 **Duração estimada:** 10 dias
 **Dependências:** Sprint CRM Core (concluída)
-**PR Atual:** #318 (fix/xss-sanitization-crm → develop)
+**PRs principais:** #318, #330-335
 
 ---
 
@@ -190,7 +190,7 @@ if (file) {
 - [x] Limitar linhas máximas para 10.000 por importação
 - [x] Reduzir batch size de 1000 para 100-500
 - [x] Progress logging a cada 5 segundos
-- [ ] Teste de stress com CSV de 10MB
+- [x] Teste de stress com CSV de 10MB (21 de dezembro de 2025) — `scripts/stress-crm-import.js`
 
 ### 2. Rate Limiting Específico CRM — CONFIRMADO
 **Problema:** Rotas CRM não têm rate limit dedicado, vulnerável a DoS.
@@ -198,28 +198,30 @@ if (file) {
 - [x] Criar `middleware/rateLimitCRM.js` com política específica (20 de dezembro de 2025)
 - [x] Import CSV: 5 requisições / 15 minutos (20 de dezembro de 2025)
 - [x] APIs gerais CRM: 100 requisições / 15 minutos (20 de dezembro de 2025)
-- [ ] Integrar com Redis para distribuir entre workers
-- [ ] Teste de rate limit
+- [x] Integrar com Redis para distribuir entre workers (21 de dezembro de 2025)
+- [x] Teste de rate limit (21 de dezembro de 2025)
 
 ### 3. Performance N+1 Sistema Base — MANTIDO
 - [x] Refatorar loop em `services/messageAlerts.js:141-179` (20 de dezembro de 2025)
 - [x] Query única com JOIN para buscar todos os dados (20 de dezembro de 2025)
-- [ ] Estimar ganho: 50ms → 5ms por execução
+- [x] Benchmark depois registrado (21 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
+- [x] Benchmark antes (baseline) registrado (21 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
 
 ### 4. Performance N+1 CRM — CONFIRMADO
 - [x] Criar `listPipelinesWithStages()` com agregação JSON (20 de dezembro de 2025)
 - [x] Eliminar loop de queries em `controllers/crmController.js:172-180` (20 de dezembro de 2025)
-- [ ] Benchmark antes/depois
+- [x] Benchmark depois registrado (20 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
+- [x] Benchmark antes (baseline) registrado (21 de dezembro de 2025) — ver `docs/comms/CRM_Benchmark_N1_2025-12-20.md`
 
 ---
 
 ## 🟡 Fase 3 — Correções MÉDIO (1 semana)
 
 ### 1. Refatoração Controller Gigante — MANUTENIBILIDADE
-- [ ] Dividir `crmController.js` (816 linhas) em módulos menores
-- [ ] Estrutura sugerida: `controllers/crm/[pipeline|lead|opportunity|activity|import].js`
-- [ ] Manter compatibilidade das rotas existentes
-- [ ] Benefício: facilita testes e manutenção
+- [x] Dividir `crmController.js` (816 linhas) em módulos menores (21 de dezembro de 2025)
+- [x] Estrutura sugerida: `controllers/crm/[pipeline|lead|opportunity|activity|import].js` (21 de dezembro de 2025)
+- [x] Manter compatibilidade das rotas existentes (21 de dezembro de 2025)
+- [x] Benefício: facilita testes e manutenção
 
 ### 2. Manutenibilidade Sistema Base
 - [ ] Dividir `models/message.js` (1520 linhas) em módulos
@@ -227,13 +229,15 @@ if (file) {
 - [ ] Manter API pública do model
 
 ### 3. Race Conditions no Import (se confirmado em testes)
-- [ ] Avaliar necessidade real com testes de concorrência
+- [x] Avaliar necessidade real com testes de concorrência (21 de dezembro de 2025)
 - [ ] Se necessário, implementar locks otimistas
-- [ ] Documentar comportamento esperado
+- [x] Documentar comportamento esperado (21 de dezembro de 2025)
+
+**Resultado:** concorrência simulada via testes unitários (importações paralelas) sem evidência de estado compartilhado; nenhuma correção de lock aplicada nesta etapa.
 
 ### 4. Melhorias de Testes Existentes
-- [ ] Expandir `crmImportService.test.js` com casos de segurança
-- [ ] Adicionar testes de performance (N+1)
+- [x] Expandir `crmImportService.test.js` com casos de segurança (22 de dezembro de 2025)
+- [x] Adicionar testes de performance (N+1) (22 de dezembro de 2025)
 - [ ] Cobertura mínima de 70% no módulo CRM
 
 ### 5. Otimizações de Performance
@@ -255,8 +259,8 @@ if (file) {
 - [ ] Remover console.logs desnecessários
 
 ### 3. Documentação Técnica
-- [ ] Atualizar README com limites de import
-- [ ] Documentar política de rate limiting
+- [x] Atualizar README com limites de import (21 de dezembro de 2025)
+- [x] Documentar política de rate limiting (21 de dezembro de 2025)
 - [ ] Adicionar exemplos de CSV válidos
 
 ---

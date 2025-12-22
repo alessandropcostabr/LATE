@@ -73,6 +73,13 @@
 <li>Deduplicação automática por email e telefone evita cadastros duplicados</li>
 <li>Exporte leads em CSV respeitando seu escopo de acesso</li>
 </ul>
+<h3>Importação CSV</h3>
+<ul>
+<li>Limite por arquivo: <strong>10MB</strong> e <strong>10.000 linhas</strong>.</li>
+<li>Apenas arquivos <code>.csv</code> são aceitos; arquivos binários ou com conteúdo perigoso são rejeitados.</li>
+<li>Importações possuem <strong>timeout de 5 minutos</strong> e backpressure para evitar travamentos.</li>
+<li>Rate limit: <strong>5 imports a cada 15 minutos</strong> por usuário.</li>
+</ul>
 <h3>Oportunidades</h3>
 <ul>
 <li><strong>CRM → Oportunidades</strong> mostra negócios em andamento</li>
