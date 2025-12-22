@@ -119,7 +119,7 @@ curl -s https://late.miahchat.com/api/health
 
 ## 6) Operação Diária
 
-**Configuração (`.env`):** manter arquivo idêntico nos três nós; variação permitida apenas em `APP_VERSION=2.5.1@machX`. Remova `.env.prod` ou arquivos alternativos para evitar divergências.
+**Configuração (`.env`):** manter arquivo idêntico nos três nós; variação permitida apenas em `APP_VERSION=2.7.0@machX`. Remova `.env.prod` ou arquivos alternativos para evitar divergências.
 **Relatório automático:** cron em mach1 (00h/12h) executa `node scripts/ops-health-report.js --email`, verificando .env, PM2, discos, Prometheus, status público do Slack **e o estado do Ubuntu Pro/ESM/Livepatch em todos os nós**, além de gerar `pg_dump` (gzip) em `/var/backups/late/`; saída consolidada via e-mail (SMTP do `.env`). O mesmo script foi cadastrado no Landscape SaaS para execuções sob demanda e histórico centralizado.
 **PM2 (produção):**
 ```bash
