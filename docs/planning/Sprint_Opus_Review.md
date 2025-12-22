@@ -236,8 +236,8 @@ if (file) {
 **Resultado:** concorrência simulada via testes unitários (importações paralelas) sem evidência de estado compartilhado; nenhuma correção de lock aplicada nesta etapa.
 
 ### 4. Melhorias de Testes Existentes
-- [ ] Expandir `crmImportService.test.js` com casos de segurança
-- [ ] Adicionar testes de performance (N+1)
+- [x] Expandir `crmImportService.test.js` com casos de segurança (22 de dezembro de 2025)
+- [x] Adicionar testes de performance (N+1) (22 de dezembro de 2025)
 - [ ] Cobertura mínima de 70% no módulo CRM
 
 ### 5. Otimizações de Performance
