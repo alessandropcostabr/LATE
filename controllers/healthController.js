@@ -1,18 +1,17 @@
 // controllers/healthController.js
 // Health-check simples consultando o PostgreSQL (PG-only).
 
-const db = require('../config/database'); // Pool do pg (em testes, jest mocka db.query)
+const Diagnostics = require('../models/diagnostics');
 
 async function ensureDatabaseConnection() {
-  const started = Date.now();
-  await db.query('SELECT 1');
-  return { latencyMs: Date.now() - started };
+  const result = await Diagnostics.ping();
+  return { latencyMs: result.latency_ms };
 }
 
 // Compatível com testes legados: retorna { success: true, data: 'ok' }
 exports.getHealth = async (_req, res) => {
   try {
-    await db.query('SELECT 1');
+    await Diagnostics.ping();
     res.set('Cache-Control', 'no-store');
     return res.status(200).json({ success: true, data: 'ok' });
   } catch (err) {
