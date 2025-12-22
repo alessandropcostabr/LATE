@@ -14,7 +14,9 @@ const { normalizeEmail, normalizePhone } = require('../utils/normalizeContact');
 const DEFAULT_PREVIEW_LIMIT = 50;
 const DEFAULT_SAMPLE_LIMIT = 200;
 const MAX_IMPORT_TIME_MS = 5 * 60 * 1000; // 5 minutes max for import
-const MAX_ROWS_PER_IMPORT = 10000; // Maximum rows allowed per import
+const MAX_ROWS_PER_IMPORT = Number(process.env.CRM_IMPORT_MAX_ROWS) > 0
+  ? Number(process.env.CRM_IMPORT_MAX_ROWS)
+  : 10000; // Maximum rows allowed per import
 const BACKPRESSURE_THRESHOLD = 100; // Pause stream after this many pending rows
 
 const TARGET_FIELDS = {
