@@ -28,7 +28,7 @@ Fallback manual disponivel no bastion.
 
 ## Seguranca
 - Sessions httpOnly + SameSite + `secure` em PROD; CSRF; Helmet; rate-limit.
-- Banco **PG-only**; `PG_SSL` suportado e recomendado com `strict/verify` em PROD.
+- Banco **PG-only**; `PG_SSL_MODE` suportado e recomendado com `verify-full` em PROD.
 - Auditoria leve: `event_logs` + hooks (`message.*`, `user.login/logout`, etc.).
 
 ## Roadmap imediato

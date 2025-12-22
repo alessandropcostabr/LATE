@@ -5,10 +5,10 @@
 
 ### 1. TLS no PostgreSQL (PG_SSL) — prioridade alta
 - [ ] Habilitar `ssl = on` no PostgreSQL do mach1, configurar `hostssl` em `pg_hba.conf` e provisionar certificados.
-- [ ] Ajustar `.env.prod` do mach1 com `PG_SSL=true`, `PGSSLMODE=require` (e `PGSSLROOTCERT` se aplicável).
+- [ ] Ajustar `.env` do mach1 com `PG_SSL_MODE=require` (ou `verify-full`) e `PG_SSL_CA` quando aplicável.
 - [ ] `pm2 reload late-prod` no canário e validar com `psql ... sslmode=require` + logs do app.
 - [ ] Monitorar 24h; em seguida repetir para mach2/mach3.
-- [ ] Atualizar DEPLOY/README com a matriz de envs (`PG_SSL`/`PGSSLMODE`).
+- [ ] Atualizar DEPLOY/README com a matriz de envs (`PG_SSL`/`PG_SSL_MODE`).
 
 ### 2. CSP global em duas fases — prioridade média-alta
 - [ ] Criar `middleware/csp.js` com Helmet `contentSecurityPolicy({ reportOnly: true, ... })`.
