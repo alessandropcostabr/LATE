@@ -14,6 +14,7 @@ const CIRCUIT_BREAKER = {
 const BYPASS_PREFIXES = [
   '/api/health',
   '/api/report-incident',
+  '/api/csp-report',
   '/health',
   '/assets',
   '/css',
