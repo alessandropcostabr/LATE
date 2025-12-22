@@ -3,6 +3,7 @@
 <% const canCreateMessages = Boolean(perms.createMessages); %>
 <% const roleSlug = typeof userRoleSlug === 'string' ? userRoleSlug : ''; %>
 <% const showReports = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
+<% const showCrmConfig = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
 <% const rawUserName = (typeof user !== 'undefined' && user && user.name) ? String(user.name).trim() : ''; %>
 <% const userNameParts = rawUserName ? rawUserName.split(/\s+/).filter(Boolean) : []; %>
 <% const displayUserName = userNameParts.length > 1 ? `${userNameParts[0]} ${userNameParts[userNameParts.length - 1]}` : (userNameParts[0] || 'Usuário'); %>
@@ -89,18 +90,21 @@
     <% } %>
 
     <% if (user) { %>
+      <% const crmItems = [
+        { label: 'Dashboard', href: '/crm/dashboard', active: title === 'CRM · Dashboard' },
+        { label: 'Oportunidades', href: '/crm/oportunidades', active: title === 'CRM · Oportunidades' },
+        { label: 'Kanban', href: '/crm/opportunities/kanban', active: title === 'CRM · Kanban' },
+        { label: 'Leads', href: '/crm/leads', active: title === 'CRM · Leads' },
+        { label: 'Importar CSV', href: '/crm/importar', active: title === 'CRM · Importação' },
+        { label: 'Calendário', href: '/crm/activities/calendario', active: title === 'CRM · Calendário' },
+      ]; %>
+      <% if (showCrmConfig) { crmItems.push({ label: 'Configuração', href: '/crm/config', active: title === 'CRM · Configuração' }); } %>
       <% navSections.push({
         key: 'crm',
         label: 'CRM',
         icon: iconMap.records,
         defaultOpen: false,
-        items: [
-          { label: 'Dashboard', href: '/crm/dashboard', active: title === 'CRM · Dashboard' },
-          { label: 'Pipelines (API)', href: '/api/crm/pipelines', active: false, external: true },
-          { label: 'Leads', href: '/crm/leads', active: title === 'CRM · Leads' },
-          { label: 'Oportunidades', href: '/crm/oportunidades', active: title === 'CRM · Oportunidades' },
-          { label: 'Importar CSV', href: '/crm/importar', active: title === 'CRM · Importação' },
-        ]
+        items: crmItems
       }); %>
     <% } %>
 
