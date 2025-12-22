@@ -3,7 +3,7 @@ _Atualizado em 19 de dezembro de 2025_
 
 > Documento para organizar pendências e próximas sprints do CRM. O histórico concluído permanece em `docs/LATE_CRM.md`.
 
-## Opus Security Review (20/12/2025) — ✅ concluído
+## Opus Security Review (22/12/2025) — ✅ concluído
 - XSS sanitizado no frontend CRM (listas, kanban e import).
 - Validação de upload CSV (extensão/MIME/1KB/binário + CSV injection).
 - Timeout/backpressure no import CSV.

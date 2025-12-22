@@ -218,10 +218,10 @@ if (file) {
 ## 🟡 Fase 3 — Correções MÉDIO (1 semana)
 
 ### 1. Refatoração Controller Gigante — MANUTENIBILIDADE
-- [ ] Dividir `crmController.js` (816 linhas) em módulos menores
-- [ ] Estrutura sugerida: `controllers/crm/[pipeline|lead|opportunity|activity|import].js`
-- [ ] Manter compatibilidade das rotas existentes
-- [ ] Benefício: facilita testes e manutenção
+- [x] Dividir `crmController.js` (816 linhas) em módulos menores (21 de dezembro de 2025)
+- [x] Estrutura sugerida: `controllers/crm/[pipeline|lead|opportunity|activity|import].js` (21 de dezembro de 2025)
+- [x] Manter compatibilidade das rotas existentes (21 de dezembro de 2025)
+- [x] Benefício: facilita testes e manutenção
 
 ### 2. Manutenibilidade Sistema Base
 - [ ] Dividir `models/message.js` (1520 linhas) em módulos
@@ -259,8 +259,8 @@ if (file) {
 - [ ] Remover console.logs desnecessários
 
 ### 3. Documentação Técnica
-- [ ] Atualizar README com limites de import
-- [ ] Documentar política de rate limiting
+- [x] Atualizar README com limites de import (21 de dezembro de 2025)
+- [x] Documentar política de rate limiting (21 de dezembro de 2025)
 - [ ] Adicionar exemplos de CSV válidos
 
 ---

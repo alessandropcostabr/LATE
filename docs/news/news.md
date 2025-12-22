@@ -1,3 +1,24 @@
+<article class="card" aria-labelledby="news-2025-12-22">
+
+  <div class="card-header">
+    <h1 class="card-title" id="news-2025-12-22">🗞️ Novidades — 22/12/2025</h1>
+    <p class="card-subtitle">Opus Security Review: hardening do CRM</p>
+  </div>
+  <div class="card-body">
+    <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+      Publicado em 22/12/2025 · Sprint Opus Review
+    </p>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🛡️ Hardening do CRM</h2>
+      <p>Finalizamos a rodada de segurança com sanitização de XSS no frontend, validação robusta de upload CSV, rate limit dedicado para rotas CRM e melhorias de performance (N+1) com benchmark registrado.</p>
+    </section>
+    <section>
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✅ Testes e resiliência</h2>
+      <p>Reforçamos testes de importação, concorrência e performance, além de checklist atualizado para manter o CRM resiliente.</p>
+    </section>
+  </div>
+</article>
+
 <article class="card" aria-labelledby="news-2025-12-19">
 
   <div class="card-header">

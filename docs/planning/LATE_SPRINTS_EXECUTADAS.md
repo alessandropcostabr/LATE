@@ -18,6 +18,7 @@
 | **Correções Pós-D** | ✅ Concluída | Out-Nov/2025 | #248-257 | - |
 | Sprint 02B | ✅ Concluída | Nov/2025 | #266-268 | 0 |
 | Sprint CRM Core | ✅ Concluída | Dez/2025 | #292-301 | 4 |
+| Sprint Opus Security Review | ✅ Concluída | Dez/2025 | #318, #330-334 | 5 |
 
 ---
 
@@ -47,6 +48,25 @@ Entregar o núcleo do CRM no LATE: pipelines, leads/contatos/oportunidades, ativ
 ### Encerramento
 - ✅ Núcleo CRM em develop; branches antigas removidas.
 - 🔜 RBAC de equipe, import CSV avançado (preview/dedup), automações de estágio/SLA, custom fields UI.
+
+---
+
+## Sprint Opus Security Review — Dez/2025
+
+### Objetivo
+Hardening do CRM com foco em vulnerabilidades confirmadas (XSS, upload, DoS) e performance (N+1), com testes e documentação.
+
+### Entregas Principais
+1. **XSS frontend CRM**: sanitização em listas/kanban/import + ordem correta de scripts.
+2. **Upload CSV seguro**: validação de extensão/MIME/binário/injection + limpeza de arquivos inválidos.
+3. **DoS import**: timeout/backpressure/limite de 10.000 linhas + teste de stress de 10MB.
+4. **Rate limit CRM**: limites dedicados (geral + import) com Redis.
+5. **Performance**: N+1 eliminado e benchmark registrado.
+6. **Testes**: suites de segurança, concorrência e guarda de N+1.
+
+### Encerramento
+- ✅ Hardening concluído e documentado.
+- 🔜 Cobertura mínima 70% no módulo CRM e documentação de exemplos CSV válidos.
 
 ---
 
