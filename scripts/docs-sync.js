@@ -5,7 +5,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { marked } = require('marked');
+async function loadMarked() {
+  const mod = await import('marked');
+  return mod.marked || mod.default || mod;
+}
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -19,11 +22,6 @@ const targets = [
     output: 'views/partials/news-content.ejs',
   },
 ];
-
-marked.setOptions({
-  mangle: false,
-  headerIds: false,
-});
 
 function readFile(relPath) {
   const fullPath = path.join(ROOT, relPath);
@@ -39,10 +37,16 @@ function writeFile(relPath, content) {
 }
 
 function renderMarkdown(md) {
-  return marked.parse(md);
+  return renderMarkdown.marked.parse(md);
 }
 
-function syncDocs() {
+async function syncDocs() {
+  const marked = await loadMarked();
+  marked.setOptions({
+    mangle: false,
+    headerIds: false,
+  });
+  renderMarkdown.marked = marked;
   targets.forEach(({ source, output }) => {
     const raw = readFile(source);
     const html = renderMarkdown(raw);
@@ -51,9 +55,7 @@ function syncDocs() {
   });
 }
 
-try {
-  syncDocs();
-} catch (err) {
+syncDocs().catch((err) => {
   console.error('[docs-sync] falha:', err.message || err);
   process.exit(1);
-}
+});
