@@ -6,9 +6,9 @@ Garantir que cada merge de `develop` para `main` acione uma atualização autom�
 
 ## Status em 08/11/2025
 
-- ✅ Inventário (`infra/deploy/inventory.ini`) e `group_vars` com caminhos padrão.
+- ✅ Inventário e `group_vars` distribuídos via artefatos de deploy em `~/infra/deploy` no bastion.
 - ✅ Role `deploy` sincroniza `git pull` → `npm install` → `pm2 reload/start` (web em cluster + workers em fork).
-- ✅ Workflow `.github/workflows/deploy.yml` copia os artefatos para o bastion, exporta `ANSIBLE_BECOME_PASS` via secret e executa `ansible-playbook`.
+- ✅ Workflow `.github/workflows/deploy.yml` copia os artefatos para `~/infra/deploy` no bastion e executa `ansible-playbook`.
 - ✅ PM2 padronizado (`instances: 'max'` para o app + workers em `fork`) tanto em DEV quanto em PROD.
 - ✅ Documentação atualizada no README/infra e neste arquivo.
 - 🔄 Em aberto: fallback local (script + timer) e alertas automáticos em caso de falha.

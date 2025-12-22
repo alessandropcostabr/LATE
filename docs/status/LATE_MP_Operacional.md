@@ -98,13 +98,14 @@ pg_dump late_prod | gzip > backup_prod_$(date +%Y%m%d).sql.gz
 
 ## 5) Deploy (GitHub → Bastion → Ansible/PM2)
 - **Trigger:** merge em `main` ativa workflow **Deploy Cluster** (GitHub Actions).
-- **Pipeline:** rsync de `infra/deploy` → bastion (`mach1`) → `ansible-playbook` nos 3 nós → `pm2 reload` (web em **cluster**, workers em **fork**).
+- **Pipeline:** rsync para `~/infra/deploy` no bastion (`mach1`) → `ansible-playbook` nos 3 nós → `pm2 reload` (web em **cluster**, workers em **fork**).
 
 **Fallback manual:**
 ```bash
 ssh alessandro@<BASTION_IP>
 export ANSIBLE_BECOME_PASS=<senha>
-ansible-playbook -i infra/deploy/inventory.ini infra/deploy/deploy.yml
+cd ~/infra/deploy
+ansible-playbook -i inventory.local.ini deploy.yml --private-key ~/.ssh/mach-key
 ```
 
 **Pós-deploy (health):**
