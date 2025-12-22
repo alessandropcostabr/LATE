@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setOpen(false);
   setUserOpen(false);
+  collapseSections();
 
   if (toggle && menu) {
     toggle.addEventListener('click', () => {

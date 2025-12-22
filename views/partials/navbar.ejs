@@ -114,6 +114,7 @@
         key: 'reports',
         label: 'Relatórios',
         icon: iconMap.reports,
+        defaultOpen: false,
         items: sortItems([
           { label: 'Estatísticas', href: '/relatorios/estatisticas', active: title && title.includes('Relatórios · Estatísticas') },
           { label: 'Auditoria', href: '/relatorios/auditoria', active: title && title.includes('Relatórios · Auditoria') },
@@ -128,6 +129,7 @@
         key: 'admin',
         label: 'Administração',
         icon: iconMap.admin,
+        defaultOpen: false,
         items: sortItems([
           { label: 'Usuários', href: '/admin/usuarios', active: title === 'Admin · Usuários' },
           { label: 'Setores', href: '/admin/setores', active: title === 'Admin · Setores' },
