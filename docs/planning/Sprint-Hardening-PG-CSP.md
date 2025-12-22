@@ -17,6 +17,23 @@
 - [ ] Coletar violações (via logs/report-uri) por pelo menos 3 dias.
 - [ ] Após ajustes nas views, mudar para enforce (`reportOnly: false`, remover `'unsafe-inline'`) e atualizar testes.
 
+#### Endpoint de coleta (DEV)
+- Endpoint: `POST /api/csp-report`
+- Content-Types aceitos: `application/csp-report`, `application/reports+json`, `application/json`
+- Rate limit: 60 req/min
+
+Exemplo de teste manual:
+```bash
+curl -X POST http://127.0.0.1:3001/api/csp-report \
+  -H 'Content-Type: application/csp-report' \
+  --data '{"csp-report":{"document-uri":"https://dev.miahchat.com/test","violated-directive":"script-src","blocked-uri":"inline","disposition":"report"}}'
+```
+
+Exemplo de log:
+```
+[csp-report] {"document_uri":"https://dev.miahchat.com/test","blocked_uri":"inline","violated_directive":"script-src","disposition":"report","ip":"127.0.0.1","ua":"curl/8.5.0","skipped":0}
+```
+
 ### 3. SQL fora dos controllers (health/status) — prioridade média
 - [ ] Criar `models/diagnostics.js` com helpers (`ping()`, `dbVersion()` etc.).
 - [ ] Atualizar `controllers/healthController.js` e `statusController.js` para usar o model.
