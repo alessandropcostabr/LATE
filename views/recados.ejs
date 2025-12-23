@@ -48,15 +48,13 @@
               </div>
 
               <div class="form-group">
-                <label for="search" class="form-label">Pesquisar</label>
-                <input
-                  id="search"
-                  name="search"
-                  type="search"
-                  class="form-input"
-                  placeholder="Telefone, nome ou e-mail"
-                  autocomplete="off"
-                >
+                <label for="status" class="form-label">Situação</label>
+                <select id="status" name="status" class="form-input">
+                  <option value="">Todas</option>
+                  <option value="pending">Pendente</option>
+                  <option value="in_progress">Em Andamento</option>
+                  <option value="resolved">Resolvido</option>
+                </select>
               </div>
 
               <div class="form-group">
@@ -81,21 +79,23 @@
               </div>
 
               <div class="form-group">
-                <label for="status" class="form-label">Situação</label>
-                <select id="status" name="status" class="form-input">
-                  <option value="">Todas</option>
-                  <option value="pending">Pendente</option>
-                  <option value="in_progress">Em Andamento</option>
-                  <option value="resolved">Resolvido</option>
-                </select>
-              </div>
-
-              <div class="form-group">
                 <label for="order" class="form-label">Ordenar por data</label>
                 <select id="order" name="order" class="form-input">
                   <option value="desc">Mais novo → mais antigo</option>
                   <option value="asc">Mais antigo → mais novo</option>
                 </select>
+              </div>
+
+              <div class="form-group">
+                <label for="search" class="form-label">Pesquisar</label>
+                <input
+                  id="search"
+                  name="search"
+                  type="search"
+                  class="form-input"
+                  placeholder="Telefone, nome ou e-mail"
+                  autocomplete="off"
+                >
               </div>
             </div>
 
