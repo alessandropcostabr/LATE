@@ -1,10 +1,15 @@
 // controllers/crm/leadController.js
 
 const fs = require('fs');
+const ContactModel = require('../../models/contact');
+const CustomFieldValueModel = require('../../models/customFieldValue');
 const LeadModel = require('../../models/lead');
 const CrmImportService = require('../../services/crmImportService');
 const { applyOwnerScope } = require('../../utils/scope');
+const { logEvent: logAuditEvent } = require('../../utils/auditLogger');
 const {
+  buildDiff,
+  isPrivileged,
   normalizeContactInput,
   normalizeFormValue,
   parseBooleanField,
@@ -15,6 +20,30 @@ const {
   validateCustomRequired,
   persistCustomFields,
 } = require('./helpers');
+
+const LEAD_ALLOWED_FIELDS = new Set([
+  'pipeline_id',
+  'status',
+  'score',
+  'notes',
+  'source',
+  'custom_fields',
+  'name',
+  'email',
+  'phone',
+  'contact_name',
+  'contact_email',
+  'contact_phone',
+]);
+
+function hasContactPayload(body = {}) {
+  return ['name', 'email', 'phone', 'contact_name', 'contact_email', 'contact_phone']
+    .some((key) => Object.prototype.hasOwnProperty.call(body, key));
+}
+
+function collectInvalidFields(body = {}, allowedSet) {
+  return Object.keys(body).filter((key) => !allowedSet.has(key));
+}
 
 async function listLeads(req, res) {
   try {
@@ -81,6 +110,141 @@ async function exportLeadsCsv(_req, res) {
   } catch (err) {
     console.error('[crm] exportLeadsCsv', err);
     return res.status(500).json({ success: false, error: 'Erro ao exportar leads' });
+  }
+}
+
+async function updateLead(req, res) {
+  try {
+    const id = req.params.id;
+    const body = req.body || {};
+    const invalid = collectInvalidFields(body, LEAD_ALLOWED_FIELDS);
+    if (invalid.length) {
+      return res.status(400).json({ success: false, error: `Campos não permitidos: ${invalid.join(', ')}` });
+    }
+
+    const lead = await LeadModel.findById(id);
+    if (!lead) return res.status(404).json({ success: false, error: 'Lead não encontrado' });
+
+    const role = req.session?.user?.role || '';
+    const userId = req.session?.user?.id;
+    if (!isPrivileged(role) && (!userId || lead.owner_id !== userId)) {
+      return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+
+    const updates = {};
+    if (Object.prototype.hasOwnProperty.call(body, 'pipeline_id')) updates.pipeline_id = normalizeFormValue(body.pipeline_id);
+    if (Object.prototype.hasOwnProperty.call(body, 'status')) updates.status = normalizeFormValue(body.status);
+    if (Object.prototype.hasOwnProperty.call(body, 'score')) updates.score = body.score;
+    if (Object.prototype.hasOwnProperty.call(body, 'notes')) updates.notes = normalizeFormValue(body.notes);
+    if (Object.prototype.hasOwnProperty.call(body, 'source')) updates.source = normalizeFormValue(body.source);
+
+    const customInput = body.custom_fields || {};
+    let updated = null;
+    let contactAfter = null;
+    const contactBefore = await ContactModel.findById(lead.contact_id);
+
+    if (hasContactPayload(body)) {
+      const contactPayload = normalizeContactInput(body);
+      if (contactPayload.name || contactPayload.phone || contactPayload.email) {
+        contactAfter = await ContactModel.updateById(lead.contact_id, {
+          name: contactPayload.name,
+          phone: contactPayload.phone,
+          email: contactPayload.email,
+        });
+      }
+    }
+
+    if (Object.keys(updates).length) {
+      updated = await LeadModel.updateLead(id, updates);
+    }
+
+    if (Object.keys(customInput).length) {
+      const existingCustomValues = await CustomFieldValueModel.listValues('lead', id);
+      const missingCustom = await validateCustomRequired('lead', customInput, existingCustomValues);
+      if (missingCustom.length) {
+        return res.status(400).json({ success: false, error: `Campos obrigatórios: ${missingCustom.join(', ')}` });
+      }
+      await persistCustomFields('lead', id, customInput);
+    }
+
+    if (!updated && !contactAfter && !Object.keys(customInput).length) {
+      return res.status(400).json({ success: false, error: 'Nenhuma alteração informada' });
+    }
+
+    const currentLead = updated || await LeadModel.findById(id);
+    const leadDiff = buildDiff(lead, currentLead, ['pipeline_id', 'status', 'score', 'notes', 'source']);
+    const contactDiff = contactBefore && contactAfter
+      ? buildDiff(contactBefore, contactAfter, ['name', 'phone', 'email'], 'contact')
+      : {};
+
+    const changed = { ...leadDiff, ...contactDiff };
+    if (Object.keys(changed).length) {
+      await logAuditEvent('crm.lead.updated', {
+        entityType: 'lead',
+        entityId: id,
+        actorUserId: userId || null,
+        metadata: { changed },
+      });
+    }
+
+    return res.json({ success: true, data: currentLead });
+  } catch (err) {
+    console.error('[crm] updateLead', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar lead' });
+  }
+}
+
+async function deleteLead(req, res) {
+  try {
+    const id = req.params.id;
+    const lead = await LeadModel.findById(id);
+    if (!lead) return res.status(404).json({ success: false, error: 'Lead não encontrado' });
+
+    const role = req.session?.user?.role || '';
+    const userId = req.session?.user?.id;
+    if (!isPrivileged(role) && (!userId || lead.owner_id !== userId)) {
+      return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+
+    const deps = await LeadModel.dependencies(id);
+    if (deps.activities > 0) {
+      return res.status(409).json({ success: false, error: 'Lead possui atividades vinculadas' });
+    }
+
+    const removed = await LeadModel.softDelete(id);
+    if (!removed) return res.status(404).json({ success: false, error: 'Lead não encontrado' });
+
+    await logAuditEvent('crm.lead.deleted', {
+      entityType: 'lead',
+      entityId: id,
+      actorUserId: userId || null,
+      metadata: { dependencies: deps },
+    });
+
+    return res.json({ success: true, data: removed });
+  } catch (err) {
+    console.error('[crm] deleteLead', err);
+    return res.status(500).json({ success: false, error: 'Erro ao excluir lead' });
+  }
+}
+
+async function leadDependencies(req, res) {
+  try {
+    const id = req.params.id;
+    const lead = await LeadModel.findById(id);
+    if (!lead) return res.status(404).json({ success: false, error: 'Lead não encontrado' });
+
+    const role = req.session?.user?.role || '';
+    const userId = req.session?.user?.id;
+    if (!isPrivileged(role) && (!userId || lead.owner_id !== userId)) {
+      return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+
+    const deps = await LeadModel.dependencies(id);
+    return res.json({ success: true, data: { counts: deps } });
+  } catch (err) {
+    console.error('[crm] leadDependencies', err);
+    return res.status(500).json({ success: false, error: 'Erro ao carregar dependências' });
   }
 }
 
@@ -217,6 +381,9 @@ async function dryRunImportCsv(req, res) {
 module.exports = {
   listLeads,
   createLead,
+  updateLead,
+  deleteLead,
+  leadDependencies,
   exportLeadsCsv,
   previewLeadsCsv,
   importLeadsCsv,

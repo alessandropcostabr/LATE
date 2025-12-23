@@ -228,9 +228,9 @@ router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfPr
 
 // CRM páginas
 router.get('/crm/config', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), csrfProtection, crmConfigViewController.configPage);
-router.get('/crm/importar', requireAuth, requirePermission('read'), csrfProtection, crmImportViewController.importPage);
+router.get('/crm/importar', requireAuth, requirePermission('crm:read'), csrfProtection, crmImportViewController.importPage);
 
-router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+router.get('/crm/dashboard', requireAuth, requirePermission('crm:read'), csrfProtection, (req, res) => {
   const csrfToken = req.csrfToken ? req.csrfToken() : null;
   res.render('crm-dashboard', {
     title: 'CRM · Dashboard',
@@ -240,13 +240,13 @@ router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtect
   });
 });
 
-router.get('/crm/leads', requireAuth, requirePermission('read'), csrfProtection, crmViewController.leadsPage);
-router.get('/crm/oportunidades', requireAuth, requirePermission('read'), csrfProtection, crmViewController.opportunitiesPage);
-router.get('/crm/opportunities/kanban', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+router.get('/crm/leads', requireAuth, requirePermission('crm:read'), csrfProtection, crmViewController.leadsPage);
+router.get('/crm/oportunidades', requireAuth, requirePermission('crm:read'), csrfProtection, crmViewController.opportunitiesPage);
+router.get('/crm/opportunities/kanban', requireAuth, requirePermission('crm:read'), csrfProtection, (req, res) => {
   const csrfToken = req.csrfToken ? req.csrfToken() : null;
   res.render('crm-kanban', { title: 'CRM · Kanban', user: req.session.user || null, csrfToken });
 });
-router.get('/crm/activities/calendario', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {
+router.get('/crm/activities/calendario', requireAuth, requirePermission('crm:read'), csrfProtection, (req, res) => {
   const csrfToken = req.csrfToken ? req.csrfToken() : null;
   const customFieldsPromise = CustomField.list('activity');
   Promise.resolve(customFieldsPromise)

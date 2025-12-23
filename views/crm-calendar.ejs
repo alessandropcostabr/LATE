@@ -1,6 +1,10 @@
 <%- include('partials/header', { title }) %>
 <%- include('partials/navbar', { title, user }) %>
-<main class="container page">
+<main class="container page"
+  data-crm-permissions
+  data-can-update="<%= permissions && permissions.updateCrm ? 'true' : 'false' %>"
+  data-can-delete="<%= permissions && permissions.deleteCrm ? 'true' : 'false' %>"
+>
   <header class="page__header">
     <div>
       <p class="eyebrow">CRM</p>
@@ -79,6 +83,73 @@
     <div id="crmCalendar"></div>
   </section>
 </main>
+
+<div class="modal fade" id="activityEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <form class="modal-content" id="activityEditForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar atividade</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="activity_id">
+        <div class="grid">
+          <div>
+            <label>Tipo</label>
+            <select name="type" class="input">
+              <option value="task">task</option>
+              <option value="meeting">meeting</option>
+              <option value="call">call</option>
+            </select>
+          </div>
+          <div>
+            <label>Assunto</label>
+            <input name="subject" class="input">
+          </div>
+          <div>
+            <label>Início</label>
+            <input name="starts_at" type="datetime-local" class="input">
+          </div>
+          <div>
+            <label>Fim</label>
+            <input name="ends_at" type="datetime-local" class="input">
+          </div>
+          <div>
+            <label>Status</label>
+            <select name="status" class="input">
+              <option value="pending">pending</option>
+              <option value="done">done</option>
+            </select>
+          </div>
+          <div>
+            <label>Relacionar a</label>
+            <select name="related_type" class="input">
+              <option value="">Nenhum</option>
+              <option value="lead">lead</option>
+              <option value="contact">contact</option>
+              <option value="account">account</option>
+              <option value="opportunity">opportunity</option>
+            </select>
+          </div>
+          <div>
+            <label>ID relacionado</label>
+            <input name="related_id" class="input" placeholder="UUID">
+          </div>
+          <div>
+            <label>Local</label>
+            <input name="location" class="input">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-outline-danger" id="activityDeleteBtn">Excluir</button>
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <meta name="csrf-token" content="<%= csrfToken %>">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.js"></script>

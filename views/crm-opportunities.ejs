@@ -1,6 +1,10 @@
 <%- include('partials/header', { title }) %>
 <%- include('partials/navbar', { title, user }) %>
-<main class="container page">
+<main class="container page"
+  data-crm-permissions
+  data-can-update="<%= permissions && permissions.updateCrm ? 'true' : 'false' %>"
+  data-can-delete="<%= permissions && permissions.deleteCrm ? 'true' : 'false' %>"
+>
   <header class="page__header">
     <div>
       <p class="eyebrow">CRM</p>
@@ -102,11 +106,12 @@
             <th>Valor</th>
             <th>Fechamento</th>
             <th>Status</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <% if (!opportunities || opportunities.length === 0) { %>
-            <tr><td colspan="7" class="muted">Nenhuma oportunidade encontrada.</td></tr>
+            <tr><td colspan="8" class="muted">Nenhuma oportunidade encontrada.</td></tr>
           <% } else { %>
             <% opportunities.forEach((opp) => { %>
               <tr>
@@ -117,6 +122,7 @@
                 <td><%= opp.amount ? `R$ ${Number(opp.amount).toFixed(2)}` : '-' %></td>
                 <td><%= opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-' %></td>
                 <td><%= opp.source || '-' %></td>
+                <td class="muted">-</td>
               </tr>
             <% }); %>
           <% } %>
@@ -125,6 +131,59 @@
     </div>
   </section>
 </main>
+
+<div class="modal fade" id="oppEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <form class="modal-content" id="oppEditForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar oportunidade</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="opportunity_id">
+        <div class="grid">
+          <div>
+            <label class="form-label">Título</label>
+            <input name="title" class="input">
+          </div>
+          <div>
+            <label class="form-label">Nome do contato</label>
+            <input name="contact_name" class="input">
+          </div>
+          <div>
+            <label class="form-label">E-mail do contato</label>
+            <input name="contact_email" type="email" class="input">
+          </div>
+          <div>
+            <label class="form-label">Telefone do contato</label>
+            <input name="contact_phone" class="input">
+          </div>
+          <div>
+            <label class="form-label">Valor</label>
+            <input name="amount" type="number" class="input" min="0">
+          </div>
+          <div>
+            <label class="form-label">Fechamento</label>
+            <input name="close_date" type="date" class="input">
+          </div>
+          <div>
+            <label class="form-label">Fonte</label>
+            <input name="source" class="input">
+          </div>
+          <div style="grid-column:1 / -1;">
+            <label class="form-label">Descrição</label>
+            <textarea name="description" class="input" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <meta name="csrf-token" content="<%= csrfToken %>">
 <script>
   window.CRM_OPP_PIPELINES = <%- JSON.stringify(pipelines || []) %>;

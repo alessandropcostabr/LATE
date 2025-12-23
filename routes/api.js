@@ -24,6 +24,7 @@ const whoamiController = require('../controllers/whoamiController');
 const callLogController = require('../controllers/callLogController');
 const telephonyController = require('../controllers/telephonyController');
 const crmPipelineController = require('../controllers/crm/pipelineController');
+const crmContactController = require('../controllers/crm/contactController');
 const crmLeadController = require('../controllers/crm/leadController');
 const crmOpportunityController = require('../controllers/crm/opportunityController');
 const crmActivityController = require('../controllers/crm/activityController');
@@ -77,12 +78,16 @@ const {
 } = validation;
 const {
   validateLeadCreate,
+  validateLeadUpdate,
   validateLeadList,
   validateOpportunityCreate,
   validateOpportunityList,
   validateOpportunityMove,
+  validateOpportunityUpdate,
   validateActivityCreate,
   validateActivityList,
+  validateActivityUpdate,
+  validateContactUpdate,
   validateCustomFieldCreate,
   validateCustomFieldUpdate,
   validateCustomFieldValue,
@@ -174,9 +179,10 @@ const canManageMessageAccess = [requireAuth, requireMessageUpdatePermission, csr
 const canDeleteMessages = [requireAuth, requirePermission('delete'), csrfProtection];
 const canChangeOwnPassword = [requireAuth, csrfProtection];
 const canAudit = [requireAuth, requireRole('ADMIN', 'SUPERVISOR')];
-const canReadCRM = [requireAuth, requirePermission('read')];
-const canCreateCRM = [requireAuth, requirePermission('create'), csrfProtection];
-const canUpdateCRM = [requireAuth, requirePermission('update'), csrfProtection];
+const canReadCRM = [requireAuth, requirePermission('crm:read')];
+const canCreateCRM = [requireAuth, requirePermission('crm:create'), csrfProtection];
+const canUpdateCRM = [requireAuth, requirePermission('crm:update'), csrfProtection];
+const canDeleteCRM = [requireAuth, requirePermission('crm:delete'), csrfProtection];
 
 const intakeLimiter = rateLimit({
   windowMs: Number(process.env.INTAKE_RATE_WINDOW_MS || 60 * 1000),
@@ -263,10 +269,40 @@ router.post(
   ...flatFns(canCreateCRM, validateLeadCreate, handleValidationErrors),
   crmLeadController.createLead
 );
+router.patch(
+  '/crm/leads/:id',
+  ...flatFns(canUpdateCRM, validateLeadUpdate, handleValidationErrors),
+  crmLeadController.updateLead
+);
+router.delete(
+  '/crm/leads/:id',
+  ...flatFns(canDeleteCRM, validateLeadUpdate, handleValidationErrors),
+  crmLeadController.deleteLead
+);
+router.get(
+  '/crm/leads/:id/dependencies',
+  ...flatFns(canReadCRM, validateLeadUpdate, handleValidationErrors),
+  crmLeadController.leadDependencies
+);
 router.post(
   '/crm/opportunities',
   ...flatFns(canCreateCRM, validateOpportunityCreate, handleValidationErrors),
   crmOpportunityController.createOpportunity
+);
+router.patch(
+  '/crm/opportunities/:id',
+  ...flatFns(canUpdateCRM, validateOpportunityUpdate, handleValidationErrors),
+  crmOpportunityController.updateOpportunity
+);
+router.delete(
+  '/crm/opportunities/:id',
+  ...flatFns(canDeleteCRM, validateOpportunityUpdate, handleValidationErrors),
+  crmOpportunityController.deleteOpportunity
+);
+router.get(
+  '/crm/opportunities/:id/dependencies',
+  ...flatFns(canReadCRM, validateOpportunityUpdate, handleValidationErrors),
+  crmOpportunityController.opportunityDependencies
 );
 router.patch(
   '/crm/opportunities/:id/stage',
@@ -282,6 +318,21 @@ router.get(
   '/crm/activities',
   ...flatFns(canReadCRM, validateScopeParam(), validateActivityList, handleValidationErrors),
   crmActivityController.listActivities
+);
+router.patch(
+  '/crm/activities/:id',
+  ...flatFns(canUpdateCRM, validateActivityUpdate, handleValidationErrors),
+  crmActivityController.updateActivity
+);
+router.delete(
+  '/crm/activities/:id',
+  ...flatFns(canDeleteCRM, validateActivityUpdate, handleValidationErrors),
+  crmActivityController.deleteActivity
+);
+router.get(
+  '/crm/activities/:id/dependencies',
+  ...flatFns(canReadCRM, validateActivityUpdate, handleValidationErrors),
+  crmActivityController.activityDependencies
 );
 router.patch(
   '/crm/activities/:id/status',
@@ -322,6 +373,21 @@ router.post(
   '/crm/leads/import-csv',
   ...flatFns(crmImportLimiter, canUpdateCRM, handleValidationErrors),
   crmLeadController.importLeadsCsv
+);
+router.patch(
+  '/crm/contacts/:id',
+  ...flatFns(canUpdateCRM, validateContactUpdate, handleValidationErrors),
+  crmContactController.updateContact
+);
+router.delete(
+  '/crm/contacts/:id',
+  ...flatFns(canDeleteCRM, validateContactUpdate, handleValidationErrors),
+  crmContactController.deleteContact
+);
+router.get(
+  '/crm/contacts/:id/dependencies',
+  ...flatFns(canReadCRM, validateContactUpdate, handleValidationErrors),
+  crmContactController.contactDependencies
 );
 router.patch(
   '/crm/stages/:id/config',

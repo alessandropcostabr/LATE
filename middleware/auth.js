@@ -17,11 +17,18 @@ const ROLE_ALIASES = {
   leitora: 'reader',
 };
 
+const CRM_PERMISSION_SETS = {
+  reader: ['crm:read'],
+  operator: ['crm:read', 'crm:create', 'crm:update'],
+  supervisor: ['crm:read', 'crm:create', 'crm:update'],
+  admin: ['crm:read', 'crm:create', 'crm:update', 'crm:delete'],
+};
+
 const ROLE_PERMISSIONS = {
-  reader: new Set(['read']),
-  operator: new Set(['read', 'create']),
-  supervisor: new Set(['read', 'create', 'update']),
-  admin: new Set(['read', 'create', 'update', 'delete']),
+  reader: new Set(['read', ...CRM_PERMISSION_SETS.reader]),
+  operator: new Set(['read', 'create', ...CRM_PERMISSION_SETS.operator]),
+  supervisor: new Set(['read', 'create', 'update', ...CRM_PERMISSION_SETS.supervisor]),
+  admin: new Set(['read', 'create', 'update', 'delete', ...CRM_PERMISSION_SETS.admin]),
 };
 
 function isApiRequest(req) {
@@ -191,7 +198,19 @@ function requireRole(...roles) {
   };
 }
 
-function requirePermission(action) {
+function resolvePermissionKey(action, resource) {
+  if (!action) return '';
+  const base = String(action).trim().toLowerCase();
+  if (!base) return '';
+  if (base.includes(':')) return base;
+  if (resource) {
+    const scope = String(resource).trim().toLowerCase();
+    return scope ? `${scope}:${base}` : base;
+  }
+  return base;
+}
+
+function requirePermission(action, resource) {
   return function (req, res, next) {
     if (!req.session || !req.session.user) {
       return respondUnauthorized(req, res);
@@ -199,8 +218,9 @@ function requirePermission(action) {
 
     const { slug: roleSlug, permissions } = getRolePermissions(req.userRoleSlug || req.session.user.role);
     const allowed = permissions;
+    const permissionKey = resolvePermissionKey(action, resource);
 
-    if (!allowed.has(action)) {
+    if (!permissionKey || !allowed.has(permissionKey)) {
       return respondForbidden(req, res);
     }
 
@@ -268,9 +288,11 @@ async function requireMessageUpdatePermission(req, res, next) {
   }
 }
 
-function hasPermission(role, action) {
+function hasPermission(role, action, resource) {
   const { permissions } = getRolePermissions(role);
-  return permissions.has(action);
+  const permissionKey = resolvePermissionKey(action, resource);
+  if (!permissionKey) return false;
+  return permissions.has(permissionKey);
 }
 
 module.exports = {
