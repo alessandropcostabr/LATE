@@ -6,7 +6,6 @@
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
   function showToast(message, type = 'info') {
-    console.log(`[toast/${type}]`, message);
     if (window?.Toast?.show) {
       window.Toast.show(message, type);
     }

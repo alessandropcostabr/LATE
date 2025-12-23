@@ -2,8 +2,6 @@
 // Página "Novo Registro" — coleta do formulário, normalização e envio para a API.
 
 (() => {
-  console.log('✅ Novo Registro JS carregado');
-
   const val = (sel) => {
     const el = document.querySelector(sel);
     if (!el) return '';
@@ -112,7 +110,6 @@
       ? Form.prepareMessagePayload(basePayload)
       : basePayload;
 
-    console.log('✅ Dados coletados:', payload);
     return payload;
   }
 
@@ -140,7 +137,6 @@
       }
 
       const resp = await API.createMessage(recado);
-      console.log('✅ Registro criado:', resp);
 
       if (resp?.success) {
         keepLocked = true;
@@ -219,7 +215,6 @@
     }
     prefillFromQuery();
     form.addEventListener('submit', handleSubmit);
-    console.log('✅ Manipuladores de evento configurados para Novo Registro');
   }
 
   document.addEventListener('DOMContentLoaded', iniciar);
