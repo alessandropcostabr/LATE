@@ -8,9 +8,9 @@ const ContactModel = require('../models/contact');
 const LeadModel = require('../models/lead');
 const OpportunityModel = require('../models/opportunity');
 
-const TARGET_MB = 10;
-const ROWS = 10000;
-const NOTE_SIZE_START = 900;
+const TARGET_MB = Number(process.env.TARGET_MB || 10);
+const ROWS = Number(process.env.ROWS || 10000);
+const NOTE_SIZE = process.env.NOTE_SIZE ? Number(process.env.NOTE_SIZE) : null;
 
 function buildCsv(noteSize) {
   const header = 'name,email,phone,notes';
@@ -22,6 +22,20 @@ function buildCsv(noteSize) {
   return [header, ...rows].join('\n');
 }
 
+function estimateNoteSize() {
+  if (NOTE_SIZE !== null && !Number.isNaN(NOTE_SIZE)) {
+    return Math.max(1, NOTE_SIZE);
+  }
+  const header = 'name,email,phone,notes\n';
+  const baseRow = 'User0,user0@example.com,11999990000,';
+  const headerBytes = Buffer.byteLength(header);
+  const baseBytes = Buffer.byteLength(`${baseRow}\n`);
+  const targetBytes = TARGET_MB * 1024 * 1024;
+  const remaining = Math.max(targetBytes - headerBytes - (baseBytes * ROWS), 0);
+  const perRow = Math.floor(remaining / Math.max(ROWS, 1));
+  return Math.min(Math.max(perRow, 1), 2000);
+}
+
 async function main() {
   // stub models to avoid touching DB
   ContactModel.findByAnyIdentifier = async () => null;
@@ -29,14 +43,9 @@ async function main() {
   LeadModel.createLead = async () => ({ id: 'noop' });
   OpportunityModel.createOpportunity = async () => ({ id: 'noop' });
 
-  let noteSize = NOTE_SIZE_START;
-  let csv = buildCsv(noteSize);
-  let sizeMB = Buffer.byteLength(csv) / (1024 * 1024);
-  while (sizeMB < TARGET_MB && noteSize < 2000) {
-    noteSize += 50;
-    csv = buildCsv(noteSize);
-    sizeMB = Buffer.byteLength(csv) / (1024 * 1024);
-  }
+  const noteSize = estimateNoteSize();
+  const csv = buildCsv(noteSize);
+  const sizeMB = Buffer.byteLength(csv) / (1024 * 1024);
   console.log(`[stress] CSV gerado: ${sizeMB.toFixed(2)}MB (target ~${TARGET_MB}MB), linhas=${ROWS}, noteSize=${noteSize}`);
 
   const fakeClient = {

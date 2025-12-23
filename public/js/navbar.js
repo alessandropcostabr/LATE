@@ -3,6 +3,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const menu = document.getElementById('appNavbarMenu');
   const userToggle = document.getElementById('appNavbarUserToggle');
   const userMenu = document.getElementById('appNavbarUserMenu');
+  const sectionToggles = document.querySelectorAll('.app-navbar__section-toggle');
+
+  const collapseSections = () => {
+    sectionToggles.forEach((button) => {
+      const targetSelector = button.getAttribute('data-target');
+      const target = targetSelector ? document.querySelector(targetSelector) : null;
+      const section = button.closest('.app-navbar__menu-section');
+      button.setAttribute('aria-expanded', 'false');
+      if (section) section.classList.remove('is-open');
+      if (target) {
+        target.setAttribute('hidden', '');
+        target.setAttribute('aria-hidden', 'true');
+      }
+    });
+  };
 
   const setOpen = (state) => {
     if (!toggle || !menu) return;
@@ -10,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     menu.classList.toggle('is-open', isOpen);
     toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     document.body.classList.toggle('has-navbar-menu', isOpen);
+    if (isOpen) {
+      collapseSections();
+    }
   };
 
   const setUserOpen = (state) => {
@@ -22,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setOpen(false);
   setUserOpen(false);
+  collapseSections();
 
   if (toggle && menu) {
     toggle.addEventListener('click', () => {
@@ -69,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setUserOpen(false);
   });
 
-  const sectionToggles = document.querySelectorAll('.app-navbar__section-toggle');
   sectionToggles.forEach((button) => {
     const targetSelector = button.getAttribute('data-target');
     const target = targetSelector ? document.querySelector(targetSelector) : null;

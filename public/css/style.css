@@ -569,8 +569,11 @@ main.auth-layout {
   display: none;
   left: 0;
   max-width: 320px;
+  max-height: calc(100vh - var(--navbar-height));
+  height: calc(100vh - var(--navbar-height));
   min-height: calc(100vh - var(--navbar-height));
   overflow-y: auto;
+  overscroll-behavior: contain;
   position: fixed;
   top: var(--navbar-height);
   transform: translateX(-110%);
@@ -913,6 +916,10 @@ main.auth-layout {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   outline: none;
 }
+.input.is-error {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
 .form-textarea {
   min-height: 100px;
   resize: vertical;
@@ -1148,6 +1155,9 @@ main.auth-layout {
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   margin-bottom: 1rem;
+}
+.filters-grid--three {
+  grid-template-columns: repeat(3, minmax(200px, 1fr));
 }
 .filters-actions {
   display: flex;

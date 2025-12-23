@@ -59,8 +59,17 @@ app.use(helmet({
   hsts: isProd ? undefined : false, // Por quê: HSTS apenas em produção/HTTPS
 }));
 
+const cspReportOnly = String(process.env.CSP_REPORT_ONLY || '').toLowerCase() === 'true';
+const cspReportUri = (process.env.CSP_REPORT_URI || '').trim();
+
+function withReportUri(directives) {
+  if (!cspReportUri) return directives;
+  return { ...directives, 'report-uri': [cspReportUri], 'report-to': ['default'] };
+}
+
 const apiCsp = helmet.contentSecurityPolicy({
-  directives: {
+  reportOnly: cspReportOnly,
+  directives: withReportUri({
     'default-src': ["'self'"],
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
@@ -73,7 +82,25 @@ const apiCsp = helmet.contentSecurityPolicy({
     'font-src': ["'self'", 'https:', 'data:'],
     'connect-src': ["'self'"],
     'object-src': ["'none'"],
-  },
+  }),
+});
+
+const webCsp = helmet.contentSecurityPolicy({
+  reportOnly: cspReportOnly,
+  directives: withReportUri({
+    'default-src': ["'self'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"],
+    'frame-ancestors': ["'self'"],
+    'script-src': ["'self'"],
+    'script-src-attr': ["'none'"],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'style-src-attr': ["'unsafe-inline'"],
+    'img-src': ["'self'", 'data:'],
+    'font-src': ["'self'", 'https:', 'data:'],
+    'connect-src': ["'self'"],
+    'object-src': ["'none'"],
+  }),
 });
 
 console.log(`[BOOT] trust proxy = ${app.get('trust proxy')}, NODE_ENV=${process.env.NODE_ENV || 'undefined'}`);
@@ -103,6 +130,12 @@ app.use('/api', apiCsp);
 
 if (isProd && validateOrigin) app.use(validateOrigin);
 
+// CSP para páginas web (não-API)
+app.use((req, res, next) => {
+  if ((req.originalUrl || req.path || '').startsWith('/api')) return next();
+  return webCsp(req, res, next);
+});
+
 // Rate limits
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -127,6 +160,7 @@ app.use(morgan('combined'));
 app.use(compression());
 app.use(express.json({
   limit: '10mb',
+  type: ['application/json', 'application/csp-report', 'application/reports+json'],
   verify: (req, _res, buf) => {
     req.rawBody = buf.toString();
   },

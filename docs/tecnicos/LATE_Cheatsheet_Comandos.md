@@ -133,6 +133,7 @@ openssl rand -hex 32
 # .env (produção)
 HOST=0.0.0.0
 PGHOST=192.168.0.250   # VIP do cluster
-PG_SSL=require
+PG_SSL_MODE=verify-full
+PG_SSL_CA=/caminho/ca.pem
 SESSION_SECRET=<secret>
 ```

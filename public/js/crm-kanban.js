@@ -10,8 +10,10 @@
   const modalForm = document.getElementById('customFieldsForm');
   const modalTitle = document.getElementById('customFieldsModalTitle');
   const modalContainer = document.getElementById('customFieldsContainer');
+  const modalAlert = document.getElementById('customFieldsRequiredAlert');
   const customFieldsCache = { opportunity: null };
   let currentModalOppId = null;
+  let currentModalRequiredCustom = new Set();
   let modalInstance = null;
 
   let pipelinesCache = [];
@@ -39,6 +41,42 @@
     return json.success ? json.data : [];
   }
 
+  function parseRequiredFields(raw) {
+    if (Array.isArray(raw)) {
+      return raw.map((v) => String(v || '').trim()).filter(Boolean);
+    }
+    if (typeof raw === 'string') {
+      return raw.split(',').map((v) => v.trim()).filter(Boolean);
+    }
+    return [];
+  }
+
+  function normalizeKey(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function getStageRuleById(stageId) {
+    if (!stageId) return null;
+    for (const pipeline of pipelinesCache) {
+      const stage = (pipeline.stages || []).find((s) => s.id === stageId);
+      if (stage) return stage;
+    }
+    return null;
+  }
+
+  function resolveStageRequiredCustom(stageId) {
+    const stage = getStageRuleById(stageId);
+    const required = parseRequiredFields(stage?.required_fields);
+    const custom = new Set();
+    required.forEach((field) => {
+      const key = normalizeKey(field);
+      if (key.startsWith('custom:')) {
+        custom.add(normalizeKey(key.slice(7)));
+      }
+    });
+    return custom;
+  }
+
   function buildCustomFieldInput(field, value) {
     const safeValue = value ?? '';
     if (field.type === 'select') {
@@ -61,30 +99,89 @@
     return `<input class="input" type="text" name="custom_fields[${escapeAttr(field.id)}]" value="${escapeAttr(safeValue)}">`;
   }
 
+  function renderCustomFields(fields, valuesMap, requiredCustom) {
+    if (!fields.length) {
+      return '<p class="muted">Nenhum campo customizado disponível.</p>';
+    }
+    return `
+      <div class="grid">
+        ${fields.map((f) => {
+          const idKey = normalizeKey(f.id);
+          const nameKey = normalizeKey(f.name);
+          const stageRequired = (idKey && requiredCustom.has(idKey)) || (nameKey && requiredCustom.has(nameKey));
+          const isRequired = Boolean(f.required || stageRequired);
+          const labelClass = isRequired ? 'form-label required' : 'form-label';
+          return `
+            <div class="custom-field" data-field-id="${escapeAttr(f.id)}" data-field-name="${escapeAttr(f.name)}" data-required-base="${f.required ? '1' : '0'}">
+              <label class="${labelClass}">${escapeHtml(f.name)}</label>
+              ${buildCustomFieldInput(f, valuesMap[f.id])}
+              <div class="form-error custom-field-error" hidden></div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function validateModalRequired() {
+    if (!modalForm) return true;
+    const missing = [];
+    modalForm.querySelectorAll('.custom-field').forEach((field) => {
+      field.classList.remove('is-error');
+      const input = field.querySelector('.input');
+      if (input) input.classList.remove('is-error');
+      const errorEl = field.querySelector('.custom-field-error');
+      if (errorEl) {
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+      }
+
+      const baseRequired = field.dataset.requiredBase === '1';
+      const idKey = normalizeKey(field.dataset.fieldId);
+      const nameKey = normalizeKey(field.dataset.fieldName);
+      const stageRequired = (idKey && currentModalRequiredCustom.has(idKey))
+        || (nameKey && currentModalRequiredCustom.has(nameKey));
+      if (!baseRequired && !stageRequired) return;
+      if (!input) return;
+      const value = input.type === 'checkbox' ? (input.checked ? '1' : '') : String(input.value || '').trim();
+      if (!value) {
+        field.classList.add('is-error');
+        if (input) input.classList.add('is-error');
+        if (errorEl) {
+          errorEl.hidden = false;
+          errorEl.textContent = 'Campo obrigatório para este estágio.';
+        }
+        const label = field.querySelector('label.form-label');
+        missing.push(label ? label.textContent.trim() : field.dataset.fieldName || 'custom');
+      }
+    });
+
+    if (modalAlert) {
+      if (missing.length) {
+        modalAlert.hidden = false;
+        modalAlert.textContent = `Campos obrigatórios no estágio: ${missing.join(', ')}`;
+      } else {
+        modalAlert.hidden = true;
+        modalAlert.textContent = '';
+      }
+    }
+
+    return missing.length === 0;
+  }
+
   async function openCustomFieldsModal(opp) {
     if (!modalEl || !modalForm || !modalContainer) return;
     currentModalOppId = opp.id;
     modalTitle.textContent = `${opp.title || 'Oportunidade'}`;
+    await fetchPipelines();
+    currentModalRequiredCustom = resolveStageRequiredCustom(opp.stage_id);
     const [fields, values] = await Promise.all([
       fetchCustomFields('opportunity'),
       fetchCustomFieldValues('opportunity', opp.id),
     ]);
     const valuesMap = {};
     values.forEach((row) => { valuesMap[row.field_id] = row.value; });
-    if (!fields.length) {
-      modalContainer.innerHTML = '<p class="muted">Nenhum campo customizado disponível.</p>';
-    } else {
-      modalContainer.innerHTML = `
-        <div class="grid">
-          ${fields.map((f) => `
-            <div>
-              <label>${escapeHtml(f.name)}${f.required ? ' *' : ''}</label>
-              ${buildCustomFieldInput(f, valuesMap[f.id])}
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
+    modalContainer.innerHTML = renderCustomFields(fields, valuesMap, currentModalRequiredCustom);
     modalInstance = modalInstance || new bootstrap.Modal(modalEl);
     modalInstance.show();
   }
@@ -208,6 +305,7 @@
     modalForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentModalOppId) return;
+      if (!validateModalRequired()) return;
       const inputs = modalForm.querySelectorAll('[name^="custom_fields["]');
       for (const input of inputs) {
         const fieldId = input.name.slice('custom_fields['.length, -1);

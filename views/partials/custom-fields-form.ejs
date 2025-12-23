@@ -1,10 +1,9 @@
 <% if (fields && fields.length) { %>
   <div class="grid" style="margin-top:0.5rem;">
     <% fields.forEach((f) => { %>
-      <div>
-        <label>
+      <div class="custom-field" data-field-id="<%= f.id %>" data-field-name="<%= f.name %>" data-required-base="<%= f.required ? '1' : '0' %>">
+        <label class="form-label <%= f.required ? 'required' : '' %>">
           <%= f.name %>
-          <% if (f.required) { %><span class="muted">*</span><% } %>
         </label>
         <% const inputName = `custom_fields[${f.id}]`; %>
         <% const value = (values && values[f.id] !== undefined) ? values[f.id] : ''; %>
@@ -24,6 +23,7 @@
         <% } else { %>
           <input name="<%= inputName %>" type="text" class="input" value="<%= value %>">
         <% } %>
+        <div class="form-error custom-field-error" hidden></div>
       </div>
     <% }); %>
   </div>

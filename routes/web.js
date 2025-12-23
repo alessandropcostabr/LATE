@@ -227,7 +227,7 @@ router.get('/recados/kanban', requireAuth, requirePermission('read'), csrfProtec
 router.get('/recados/calendario', requireAuth, requirePermission('read'), csrfProtection, messageViewController.calendarPage);
 
 // CRM páginas
-router.get('/crm/config', requireAuth, requirePermission('read'), csrfProtection, crmConfigViewController.configPage);
+router.get('/crm/config', requireAuth, requireRole('ADMIN', 'SUPERVISOR'), csrfProtection, crmConfigViewController.configPage);
 router.get('/crm/importar', requireAuth, requirePermission('read'), csrfProtection, crmImportViewController.importPage);
 
 router.get('/crm/dashboard', requireAuth, requirePermission('read'), csrfProtection, (req, res) => {

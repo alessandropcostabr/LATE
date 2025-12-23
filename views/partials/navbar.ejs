@@ -3,6 +3,8 @@
 <% const canCreateMessages = Boolean(perms.createMessages); %>
 <% const roleSlug = typeof userRoleSlug === 'string' ? userRoleSlug : ''; %>
 <% const showReports = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
+<% const showCrmConfig = roleSlug === 'admin' || roleSlug === 'supervisor'; %>
+<% const sortItems = (items = []) => items.slice().sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')); %>
 <% const rawUserName = (typeof user !== 'undefined' && user && user.name) ? String(user.name).trim() : ''; %>
 <% const userNameParts = rawUserName ? rawUserName.split(/\s+/).filter(Boolean) : []; %>
 <% const displayUserName = userNameParts.length > 1 ? `${userNameParts[0]} ${userNameParts[userNameParts.length - 1]}` : (userNameParts[0] || 'Usuário'); %>
@@ -69,10 +71,10 @@
       key: 'dashboard',
       label: 'Painel de controle',
         icon: iconMap.dashboard,
-      defaultOpen: true,
-      items: [
+      defaultOpen: false,
+      items: sortItems([
         { label: 'Dashboard', href: '/', active: title === 'Dashboard' }
-      ]
+      ])
     }); %>
 
     <% if (canReadMessages || canCreateMessages) { %>
@@ -85,22 +87,25 @@
         ); %>
       <% } %>
       <% if (canCreateMessages) { registroItems.push({ label: 'Novo Recado', href: '/novo-recado', active: title === 'Novo Recado' }); } %>
-      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Registros', icon: iconMap.records, items: registroItems, defaultOpen: true }); } %>
+      <% if (registroItems.length) { navSections.push({ key: 'records', label: 'Recados', icon: iconMap.records, items: sortItems(registroItems), defaultOpen: false }); } %>
     <% } %>
 
     <% if (user) { %>
+      <% const crmItems = [
+        { label: 'Dashboard', href: '/crm/dashboard', active: title === 'CRM · Dashboard' },
+        { label: 'Oportunidades', href: '/crm/oportunidades', active: title === 'CRM · Oportunidades' },
+        { label: 'Kanban', href: '/crm/opportunities/kanban', active: title === 'CRM · Kanban' },
+        { label: 'Leads', href: '/crm/leads', active: title === 'CRM · Leads' },
+        { label: 'Importar CSV', href: '/crm/importar', active: title === 'CRM · Importação' },
+        { label: 'Calendário', href: '/crm/activities/calendario', active: title === 'CRM · Calendário' },
+      ]; %>
+      <% if (showCrmConfig) { crmItems.push({ label: 'Configuração', href: '/crm/config', active: title === 'CRM · Configuração' }); } %>
       <% navSections.push({
         key: 'crm',
         label: 'CRM',
         icon: iconMap.records,
         defaultOpen: false,
-        items: [
-          { label: 'Dashboard', href: '/crm/dashboard', active: title === 'CRM · Dashboard' },
-          { label: 'Pipelines (API)', href: '/api/crm/pipelines', active: false, external: true },
-          { label: 'Leads', href: '/crm/leads', active: title === 'CRM · Leads' },
-          { label: 'Oportunidades', href: '/crm/oportunidades', active: title === 'CRM · Oportunidades' },
-          { label: 'Importar CSV', href: '/crm/importar', active: title === 'CRM · Importação' },
-        ]
+        items: sortItems(crmItems)
       }); %>
     <% } %>
 
@@ -109,25 +114,27 @@
         key: 'reports',
         label: 'Relatórios',
         icon: iconMap.reports,
-        items: [
+        defaultOpen: false,
+        items: sortItems([
           { label: 'Estatísticas', href: '/relatorios/estatisticas', active: title && title.includes('Relatórios · Estatísticas') },
           { label: 'Auditoria', href: '/relatorios/auditoria', active: title && title.includes('Relatórios · Auditoria') },
           { label: 'Exportações', href: '/relatorios/exportacoes', active: title && title.includes('Relatórios · Exportações') },
           { label: 'Status Operacional', href: '/relatorios/status', active: title && title.includes('Relatórios · Status Operacional') }
-        ]
+        ])
       }); %>
     <% } %>
 
     <% if (roleSlug === 'admin') { %>
       <% navSections.push({
         key: 'admin',
-        label: 'Administração',
+        label: 'Configuração',
         icon: iconMap.admin,
-        items: [
+        defaultOpen: false,
+        items: sortItems([
           { label: 'Usuários', href: '/admin/usuarios', active: title === 'Admin · Usuários' },
           { label: 'Setores', href: '/admin/setores', active: title === 'Admin · Setores' },
           { label: 'Notificações', href: '/admin/notificacoes', active: title === 'Configurações de Notificações' }
-        ]
+        ])
       }); %>
     <% } %>
 
@@ -137,17 +144,18 @@
         label: 'Suporte & Docs',
         icon: iconMap.support,
         defaultOpen: false,
-        items: [
+        items: sortItems([
           { label: 'Novidades', href: '/news', active: title === 'Novidades' },
           { label: 'Manual Operacional', href: '/manual-operacional', active: title === 'Manual Operacional' },
           { label: 'Plano de evolução', href: '/roadmap', active: title === 'Roadmap' },
           { label: 'Central de ajuda', href: '/help', active: title === 'Central de Ajuda' }
-        ]
+        ])
       }); %>
     <% } %>
 
     <ul class="app-navbar__menu-list">
-      <% navSections.forEach((section, index) => {
+      <% const sortedSections = navSections.slice().sort((a, b) => a.label.localeCompare(b.label, 'pt-BR')); %>
+      <% sortedSections.forEach((section, index) => {
         const hasItems = Array.isArray(section.items) && section.items.length;
         if (!hasItems) { return; }
         const sectionId = `navSection${index}`;

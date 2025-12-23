@@ -17,15 +17,44 @@ if (driver !== 'pg') {
 const { Pool } = require('pg');
 
 // Aceita PG_* (padrão Node) e PG* (psql/libpq)
+function normalizeSslMode(raw) {
+  if (raw === undefined || raw === null) return '';
+  return String(raw).trim().toLowerCase();
+}
+
+function buildSslConfig() {
+  const sslMode = normalizeSslMode(process.env.PG_SSL_MODE || process.env.PGSSLMODE);
+  const legacySsl = ['1', 'true', 'yes', 'on', 'require'].includes(String(process.env.PG_SSL).toLowerCase());
+
+  if (sslMode === 'disable' || sslMode === 'false' || sslMode === '0') {
+    return false;
+  }
+
+  if (!sslMode && !legacySsl) {
+    return false;
+  }
+
+  const rejectUnauthorizedRaw = normalizeSslMode(process.env.PG_SSL_REJECT_UNAUTHORIZED);
+  const shouldVerify = sslMode.startsWith('verify');
+  const rejectUnauthorized =
+    rejectUnauthorizedRaw === ''
+      ? shouldVerify
+      : ['1', 'true', 'yes', 'on'].includes(rejectUnauthorizedRaw);
+
+  const ssl = { rejectUnauthorized };
+  if (process.env.PG_SSL_CA) ssl.ca = process.env.PG_SSL_CA;
+  if (process.env.PG_SSL_CERT) ssl.cert = process.env.PG_SSL_CERT;
+  if (process.env.PG_SSL_KEY) ssl.key = process.env.PG_SSL_KEY;
+  return ssl;
+}
+
 const pgConfig = {
   host:     process.env.PG_HOST     || process.env.PGHOST     || '127.0.0.1',
   port:    (process.env.PG_PORT     || process.env.PGPORT     || 5432) * 1,
   user:     process.env.PG_USER     || process.env.PGUSER,
   password: process.env.PG_PASSWORD || process.env.PGPASSWORD,
   database: process.env.PG_DATABASE || process.env.PGDATABASE,
-  ssl: ['1', 'true', 'yes', 'on', 'require'].includes(String(process.env.PG_SSL).toLowerCase())
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: buildSslConfig(),
 };
 
 const defaultStatementTimeout =

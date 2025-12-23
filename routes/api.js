@@ -33,6 +33,7 @@ const customFieldController = require('../controllers/customFieldController');
 const recadoSyncController = require('../controllers/recadoSyncController');
 const dedupController = require('../controllers/dedupController');
 const messageSendEventController = require('../controllers/messageSendEventController');
+const cspReportController = require('../controllers/cspReportController');
 const { collectDevInfo } = require('../utils/devInfo');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
 
@@ -186,6 +187,14 @@ const intakeLimiter = rateLimit({
 const intakeRequiresCsrf = String(process.env.INTAKE_REQUIRE_CSRF || '').trim() === '1';
 const intakeGuards = intakeRequiresCsrf ? [intakeLimiter, csrfProtection] : [intakeLimiter];
 
+const cspReportLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Limite de relatórios CSP atingido.' },
+});
+
 // CSRF refresh para clientes não autenticados (ex.: tela de login)
 router.get('/csrf', csrfProtection, (req, res) => {
   try {
@@ -202,6 +211,7 @@ router.get('/csrf', csrfProtection, (req, res) => {
 
 // Utilitários
 router.get('/health', healthController.getHealth);
+router.post('/csp-report', cspReportLimiter, cspReportController.report);
 router.get('/version', metaController.version);
 router.get(
   '/status',
