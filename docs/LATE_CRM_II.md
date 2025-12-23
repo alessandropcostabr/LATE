@@ -108,7 +108,7 @@ try {
 ## Sprint 3 — Import CSV Avançado (🚧 em andamento)
 - Fluxo: upload → mapeamento de colunas → preview (primeiras 50) com validação → dedup/merge sugerido → dry-run → aplicar.
 - Dedup: regras phone/email normalizados (E.164), match opcional por documento; opção “force new”.
-- Escopo: suportar leads, contacts e opportunities; vincular pipeline/owner default por param.
+- Escopo: suportar leads e oportunidades; vincular pipeline/owner default por parâmetro.
 - UX: indicadores de risco (campos faltando, colunas não mapeadas); relatório final exportável (CSV/JSON).
 - Testes: casos de preview, dry-run, dedup merge, rollback em erro.
 - Critérios de aceite:
@@ -123,7 +123,7 @@ try {
 - Dedup: normalizar phone/email; buscas por hash (`email_norm`, `phone_norm`) com índice; sugerir merge e exibir causas.
 - Oportunidades: aceitar `pipeline_name`/`stage_name` no CSV e resolver para IDs automaticamente (case-insensitive e sem acentos; fallback para IDs quando informados).
 - Dry-run: executar em transação com `ROLLBACK` no final ou em tabela temporária; relatório consolidado por tipo de ação.
-- Aplicar: mesma lógica do dry-run, mas com `COMMIT`; chunking por 1k linhas para evitar locks longos.
+- Aplicar: mesma lógica do dry-run, mas com `COMMIT`; chunking por 100–500 linhas para evitar locks longos.
 - UI: wizard de 5 passos com persistência de mapeamento; barra de progresso; download do relatório final.
 - Testes: cenários de import lead/contact/opp, dedup por telefone, erro proposital para garantir rollback.
 
@@ -148,7 +148,7 @@ const existing = await db('contacts')
 - (Concluído) UI simples de importação (`/crm/importar`) com preview e simulação.
 - (Concluído) Wizard em 5 passos com mapeamento interativo de colunas.
 - (Concluído) Relatório exportável (CSV/JSON) após dry‑run.
-- (Concluído) Aplicar chunking por 1k linhas com transação e rollback.
+- (Concluído) Aplicar chunking por 100–500 linhas com transação e rollback.
 - (Concluído) UI: consolidar botões “Voltar” duplicados no wizard.
 - (Concluído) UI: adicionar barra de progresso e validações visuais (erros por coluna/campo).
 - TO_DO UI: barra de progresso do upload (arquivos grandes).

@@ -19,9 +19,8 @@ O LATE evolui como central de registros e CRM leve, mantendo simplicidade operac
 
 ## 4. Na sequência
 1. **Recados integrados ao histórico de atividades** para visão única do relacionamento.
-2. **CRUD completo no CRM** (editar/excluir com escopo e soft delete).
-3. **Exportações mais completas** (CSV/JSON) com filtros e escopos aplicados.
-4. **Calendário avançado** com filtros por responsável e assinaturas.
+2. **Exportações mais completas** (CSV/JSON) com filtros e escopos aplicados.
+3. **Calendário avançado** com filtros por responsável e assinaturas.
 
 ## 5. Benefícios esperados
 - Menos retrabalho no cadastro de leads e oportunidades.

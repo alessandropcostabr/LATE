@@ -1,7 +1,7 @@
 ## Sprint — Opus Security Review & Hardening (ATUALIZADO)
 > Criado em 2025/12/19 por Claude Code (Opus 4)
 > Revisado em 2025/12/19 após análise detalhada do código
-> **Atualizado em 2025/12/20 com progresso da implementação**
+> **Atualizado em 23 de dezembro de 2025 com consolidação final**
 
 **Objetivo:** Corrigir vulnerabilidades reais confirmadas no código e melhorar a segurança do sistema LATE, com foco em XSS, validação de upload e performance do módulo CRM.
 
@@ -57,7 +57,7 @@
 - [x] Criado `middleware/fileValidation.js` com validação robusta
 - [x] Validações implementadas:
   - Extensão permitida apenas `.csv`
-  - Tamanho máximo reduzido de 100MB para 10MB
+  - Tamanho máximo mantido em 100MB (alinhado ao UI)
   - Verificação de conteúdo binário
   - Detecção de CSV injection (fórmulas, scripts)
   - Estrutura mínima (header + dados)
@@ -72,33 +72,10 @@
 - [x] Progress logging a cada 5 segundos
 - [x] Logs detalhados de sucesso/erro com tempo decorrido
 
-### 📋 O que falta fazer:
-
-#### Fase 2 - ALTO (Próximas prioridades)
-1. **Rate Limiting CRM**
-   - Criar `middleware/rateLimitCRM.js`
-   - Import: 5 req/15min, APIs: 100 req/15min
-   - Integrar com Redis
-
-2. **Otimização N+1 Queries**
-   - Refatorar `messageAlerts.js:141-179`
-   - Criar `listPipelinesWithStages()` com agregação
-
-#### Fase 3 - MÉDIO
-3. **Refatoração crmController.js**
-   - Dividir 816 linhas em módulos menores
-   - Estrutura: `controllers/crm/[pipeline|lead|opportunity|activity|import].js`
-
-4. **Suite de Testes de Segurança**
-   - Criar `__tests__/crm-security.test.js`
-   - Casos: XSS, upload .exe, CSV malformado
-   - Testes de rate limiting
-
-#### Fase 4 - BAIXO
-5. **Melhorias de Código**
-   - Documentar SQL complexo
-   - Criar constantes para magic numbers
-   - Atualizar documentação
+### 📋 Pendências remanescentes:
+- [ ] Reaproveitar fixtures de `crmImportService.test.js` em `crm-security.test.js`.
+- [ ] Cobertura mínima de 70% no módulo CRM.
+- [ ] Documentar exemplos de CSV válidos.
 
 ---
 
@@ -192,13 +169,13 @@ if (file) {
 - [x] Progress logging a cada 5 segundos
 - [x] Teste de stress com CSV de 10MB (21 de dezembro de 2025) — `scripts/stress-crm-import.js`
 
-### 2. Rate Limiting Específico CRM — CONFIRMADO
+### 2. Rate Limiting Específico CRM — ✅ CONCLUÍDO
 **Problema:** Rotas CRM não têm rate limit dedicado, vulnerável a DoS.
 
 - [x] Criar `middleware/rateLimitCRM.js` com política específica (20 de dezembro de 2025)
 - [x] Import CSV: 5 requisições / 15 minutos (20 de dezembro de 2025)
 - [x] APIs gerais CRM: 100 requisições / 15 minutos (20 de dezembro de 2025)
-- [x] Integrar com Redis para distribuir entre workers (21 de dezembro de 2025)
+- [x] Redis opcional via `CRM_RATE_LIMIT_REDIS`; fallback em memória quando indisponível (21 de dezembro de 2025)
 - [x] Teste de rate limit (21 de dezembro de 2025)
 
 ### 3. Performance N+1 Sistema Base — MANTIDO
@@ -224,9 +201,8 @@ if (file) {
 - [x] Benefício: facilita testes e manutenção
 
 ### 2. Manutenibilidade Sistema Base
-- [ ] Dividir `models/message.js` (1520 linhas) em módulos
-- [ ] Sugestão: messageQueries, messageStats, messageFilters
-- [ ] Manter API pública do model
+- [x] Dividir `models/message.js` em módulos (`messageQueries`, `messageStats`, `messageFilters`) (23 de dezembro de 2025)
+- [x] Manter API pública do model
 
 ### 3. Race Conditions no Import (se confirmado em testes)
 - [x] Avaliar necessidade real com testes de concorrência (21 de dezembro de 2025)

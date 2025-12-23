@@ -1,20 +1,24 @@
 ## Sprint — Hardening PG + CSP
-> Atualizado em 2025/11/12.
+> Atualizado em 23 de dezembro de 2025.
+
+**Status:** ✅ Implementado no app; ativação do TLS no PostgreSQL ainda pendente na infra.
 
 **Objetivo:** aplicar as três frentes remanescentes do plano de endurecimento (TLS no PostgreSQL, CSP progressiva e eliminação de SQL nos controllers) garantindo rollout seguro no cluster.
 
 ### 1. TLS no PostgreSQL (PG_SSL) — prioridade alta
 - [ ] Habilitar `ssl = on` no PostgreSQL do mach1, configurar `hostssl` em `pg_hba.conf` e provisionar certificados.
+- [x] Suporte a TLS no cliente (`config/database.js`) + novas variáveis `PG_SSL_*`.
+- [x] `.env.example` atualizado com `PG_SSL_MODE`, `PG_SSL_CA`, `PG_SSL_CERT`, `PG_SSL_KEY`.
 - [ ] Ajustar `.env` do mach1 com `PG_SSL_MODE=require` (ou `verify-full`) e `PG_SSL_CA` quando aplicável.
 - [ ] `pm2 reload late-prod` no canário e validar com `psql ... sslmode=require` + logs do app.
 - [ ] Monitorar 24h; em seguida repetir para mach2/mach3.
-- [ ] Atualizar DEPLOY/README com a matriz de envs (`PG_SSL`/`PG_SSL_MODE`).
+- [ ] Atualizar DEPLOY/README com a matriz de envs (`PG_SSL_*`).
 
 ### 2. CSP global em duas fases — prioridade média-alta
-- [ ] Criar `middleware/csp.js` com Helmet `contentSecurityPolicy({ reportOnly: true, ... })`.
-- [ ] Registrar middleware em `server.js` logo após o Helmet padrão (desabilitando o CSP built-in).
+- [x] CSP configurado no `server.js` com `reportOnly` controlado por `CSP_REPORT_ONLY`.
+- [x] Endpoint de coleta `/api/csp-report` com rate limit e parse seguro.
 - [ ] Adicionar teste Supertest garantindo presença de `content-security-policy-report-only`.
-- [ ] Coletar violações (via logs/report-uri) por pelo menos 3 dias.
+- [ ] Coletar violações por pelo menos 3 dias e ajustar diretivas.
 - [ ] Após ajustes nas views, mudar para enforce (`reportOnly: false`, remover `'unsafe-inline'`) e atualizar testes.
 
 #### Endpoint de coleta (DEV)
@@ -35,10 +39,10 @@ Exemplo de log:
 ```
 
 ### 3. SQL fora dos controllers (health/status) — prioridade média
-- [ ] Criar `models/diagnostics.js` com helpers (`ping()`, `dbVersion()` etc.).
-- [ ] Atualizar `controllers/healthController.js` e `statusController.js` para usar o model.
-- [ ] Garantir cobertura em `__tests__/` verificando as respostas de `/health` e `/status`.
-- [ ] Rodar `rg "db.query" controllers/` para confirmar que não restou SQL direto.
+- [x] Criado `models/diagnostics.js` com helpers (`ping()`, `dbVersion()` etc.).
+- [x] `controllers/healthController.js` e `statusController.js` refatorados para usar o model.
+- [x] Cobertura em `__tests__/` validando `/health` e `/status`.
+- [x] `rg "db.query" controllers/` sem SQL direto restante.
 
 ### Sequência sugerida
 1. TLS em mach1 (canário) → monitorar → replicar nos demais.
