@@ -257,6 +257,7 @@ if (file) {
 - [ ] Criar constantes para magic numbers
 - [ ] Logger configurável por ambiente
 - [ ] Remover console.logs desnecessários
+- [ ] Remover uso da opção `scope` do EJS (warning no log) — pendência registrada em 23 de dezembro de 2025
 
 ### 3. Documentação Técnica
 - [x] Atualizar README com limites de import (21 de dezembro de 2025)
