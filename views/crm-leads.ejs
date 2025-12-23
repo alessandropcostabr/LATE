@@ -45,6 +45,15 @@
             </select>
           </div>
           <div>
+            <label>Pipeline</label>
+            <select name="pipeline_id" class="input" required>
+              <option value="">Selecionar pipeline</option>
+              <% (pipelines || []).forEach((p) => { %>
+                <option value="<%= p.id %>"><%= p.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
             <label>Score</label>
             <input name="score" type="number" class="input" min="0" value="0">
           </div>
@@ -102,7 +111,7 @@
                 <td><%= lead.phone || lead.phone_normalized || '-' %></td>
                 <td><%= lead.email || '-' %></td>
                 <td><%= lead.status || '-' %></td>
-                <td><%= lead.pipeline_id ? lead.pipeline_id : '-' %></td>
+                <td><%= lead.pipeline_name || lead.pipeline_id || '-' %></td>
                 <td><%= lead.score || 0 %></td>
                 <td><%= lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-' %></td>
                 <td class="muted">-</td>
@@ -142,6 +151,15 @@
             <select name="status" class="input">
               <option value="open">Aberto</option>
               <option value="closed">Fechado</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Pipeline</label>
+            <select name="pipeline_id" class="input">
+              <option value="">Selecionar pipeline</option>
+              <% (pipelines || []).forEach((p) => { %>
+                <option value="<%= p.id %>"><%= p.name %></option>
+              <% }); %>
             </select>
           </div>
           <div>

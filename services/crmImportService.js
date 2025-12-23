@@ -306,7 +306,7 @@ function buildLeadPayload(mapped = {}, options = {}, user) {
       phone: mapped.phone || null,
       email: mapped.email || null,
     },
-    pipeline_id: options.pipeline_id || null,
+    pipeline_id: mapped.pipeline_id || options.pipeline_id || null,
     owner_id: user?.id || null,
     source: mapped.source || options.source || 'import_csv',
     status: mapped.status || options.status || 'open',
@@ -350,6 +350,9 @@ function validateRequired(mapped = {}, targetType = 'lead', options = {}) {
   if (targetType === 'lead') {
     if (!mapped.phone && !mapped.email) {
       return 'Informe telefone ou e-mail do lead.';
+    }
+    if (!mapped.pipeline_id && !mapped.pipeline_name && !options.pipeline_id && !options.pipeline_name) {
+      return 'pipeline_id ou pipeline_name é obrigatório para leads.';
     }
     return null;
   }
@@ -455,6 +458,10 @@ async function dryRunImport({ csv, filePath, mapping = {}, targetType = 'lead', 
           }
           return;
         }
+      } else if (targetType === 'lead') {
+        const lookup = await ensureLookup();
+        const resolvedIds = resolvePipelineStage(resolved, options, lookup);
+        if (resolvedIds.pipeline_id) resolved.pipeline_id = resolvedIds.pipeline_id;
       }
       const error = validateRequired(resolved, targetType, options);
       if (error) {
@@ -554,6 +561,10 @@ async function applyImport({
             summary.errors += 1;
             continue;
           }
+        } else if (targetType === 'lead') {
+          const lookup = await ensureLookup();
+          const resolvedIds = resolvePipelineStage(resolved, options, lookup);
+          if (resolvedIds.pipeline_id) resolved.pipeline_id = resolvedIds.pipeline_id;
         }
         const error = validateRequired(resolved, targetType, options);
         if (error) {

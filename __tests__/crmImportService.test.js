@@ -25,6 +25,8 @@ jest.mock('../models/pipeline', () => ({
 describe('CrmImportService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    PipelineModel.listPipelines.mockResolvedValue([]);
+    PipelineModel.getStages.mockResolvedValue([]);
   });
 
   test('previewCsv auto-mapeia colunas e marca duplicados', async () => {
@@ -54,7 +56,7 @@ describe('CrmImportService', () => {
     const data = await CrmImportService.dryRunImport({
       csv,
       targetType: 'lead',
-      options: { duplicate_mode: 'skip' },
+      options: { duplicate_mode: 'skip', pipeline_id: 'pipe-1' },
     });
 
     expect(data.total).toBe(2);
@@ -73,7 +75,7 @@ describe('CrmImportService', () => {
     const result = await CrmImportService.applyImport({
       csv,
       targetType: 'lead',
-      options: { duplicate_mode: 'merge' },
+      options: { duplicate_mode: 'merge', pipeline_id: 'pipe-1' },
       user: { id: 10 },
       dbClient: fakeClient,
     });
@@ -97,7 +99,7 @@ describe('CrmImportService', () => {
     const result = await CrmImportService.applyImport({
       csv,
       targetType: 'lead',
-      options: { duplicate_mode: 'skip' },
+      options: { duplicate_mode: 'skip', pipeline_id: 'pipe-1' },
       user: { id: 10 },
       dbClient: fakeClient,
     });
@@ -123,7 +125,7 @@ describe('CrmImportService', () => {
     await expect(CrmImportService.applyImport({
       csv,
       targetType: 'lead',
-      options: { duplicate_mode: 'merge' },
+      options: { duplicate_mode: 'merge', pipeline_id: 'pipe-1' },
       user: { id: 10 },
       dbClient: fakeClient,
     })).rejects.toThrow('boom');
@@ -193,14 +195,14 @@ describe('CrmImportService', () => {
       CrmImportService.applyImport({
         csv,
         targetType: 'lead',
-        options: { duplicate_mode: 'merge' },
+        options: { duplicate_mode: 'merge', pipeline_id: 'pipe-1' },
         user: { id: 10 },
         dbClient: fakeClient,
       }),
       CrmImportService.applyImport({
         csv,
         targetType: 'lead',
-        options: { duplicate_mode: 'merge' },
+        options: { duplicate_mode: 'merge', pipeline_id: 'pipe-1' },
         user: { id: 11 },
         dbClient: fakeClient,
       }),

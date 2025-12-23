@@ -20,12 +20,14 @@ async function leadsPage(req, res) {
       filter.owner_id = userId;
     }
     const leads = await LeadModel.listLeads(filter, { limit: 100, offset: 0 });
+    const pipelines = await PipelineModel.listPipelines('opportunity');
     const customFields = await CustomField.list('lead');
     const csrfToken = typeof req.csrfToken === 'function' ? req.csrfToken() : undefined;
     return res.render('crm-leads', {
       title: 'CRM · Leads',
       user: req.session.user || null,
       leads,
+      pipelines,
       customFields,
       csrfToken,
       scope: 'me',
