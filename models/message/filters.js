@@ -9,7 +9,42 @@ const {
   trim,
 } = require('./utils');
 
-function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1, { dateMode = 'date_ref' } = {}) {
+function buildSearchClause(search, startIndex = 1) {
+  const term = trim(search);
+  if (!term) {
+    return { clause: '', params: [], nextIndex: startIndex };
+  }
+
+  let index = startIndex;
+  const clauses = [];
+  const params = [];
+  const likeTerm = `%${term.toLowerCase()}%`;
+
+  const likeFields = [
+    `LOWER(COALESCE(TRIM(sender_name), '')) LIKE ${ph(index)}`,
+    `LOWER(COALESCE(TRIM(sender_email), '')) LIKE ${ph(index + 1)}`,
+    `LOWER(COALESCE(TRIM(recipient), '')) LIKE ${ph(index + 2)}`,
+  ];
+
+  clauses.push(...likeFields);
+  params.push(likeTerm, likeTerm, likeTerm);
+  index += 3;
+
+  const normalizedPhone = normalizePhone(term);
+  if (normalizedPhone) {
+    clauses.push(`regexp_replace(COALESCE(sender_phone, ''), '[^0-9]+', '', 'g') LIKE ${ph(index)}`);
+    params.push(`%${normalizedPhone}%`);
+    index += 1;
+  }
+
+  return {
+    clause: clauses.length ? `(${clauses.join(' OR ')})` : '',
+    params,
+    nextIndex: index,
+  };
+}
+
+function buildFilters({ status, startDate, endDate, recipient, search }, startIndex = 1, { dateMode = 'date_ref' } = {}) {
   let index = startIndex;
   const clauses = [];
   const params = [];
@@ -40,6 +75,15 @@ function buildFilters({ status, startDate, endDate, recipient }, startIndex = 1,
     clauses.push(`LOWER(COALESCE(TRIM(recipient), '')) LIKE ${ph(index)}`);
     params.push(`%${recipient.toLowerCase()}%`);
     index += 1;
+  }
+
+  if (search) {
+    const searchClause = buildSearchClause(search, index);
+    if (searchClause.clause) {
+      clauses.push(searchClause.clause);
+      params.push(...searchClause.params);
+      index = searchClause.nextIndex;
+    }
   }
 
   return {
@@ -94,7 +138,7 @@ function appendCondition(baseClause, condition) {
 }
 
 async function buildFilterClause(
-  { status, startDate, endDate, recipient, sectorId, label, dateMode = 'date_ref' },
+  { status, startDate, endDate, recipient, search, sectorId, label, dateMode = 'date_ref' },
   {
     viewer,
     includeCreatedBy,
@@ -104,7 +148,7 @@ async function buildFilterClause(
   } = {}
 ) {
   const baseFilters = buildFilters(
-    { status, startDate, endDate, recipient },
+    { status, startDate, endDate, recipient, search },
     startIndex,
     { dateMode }
   );
@@ -162,4 +206,5 @@ module.exports = {
   buildContactMatchConditions,
   buildFilterClause,
   buildFilters,
+  buildSearchClause,
 };

@@ -582,6 +582,7 @@ async function list(options = {}, retrying = false) {
     status,
     start_date,
     end_date,
+    search,
     recipient,
     order_by = 'created_at',
     order = 'desc',
@@ -622,6 +623,7 @@ async function list(options = {}, retrying = false) {
   const statusFilter = translateStatusForQuery(status);
   const startDate = trim(start_date);
   const endDate = trim(end_date);
+  const searchFilter = trim(search);
   const recipientFilter = trim(recipient);
   const sectorId = normalizeRecipientSectorId(
     options.sector_id ??
@@ -639,6 +641,7 @@ async function list(options = {}, retrying = false) {
       status: statusFilter,
       startDate: startDate || null,
       endDate: endDate || null,
+      search: searchFilter || null,
       recipient: recipientFilter || null,
       sectorId,
       label: labelFilter,
@@ -688,6 +691,7 @@ async function listWithTotal(options = {}, retrying = false) {
     status,
     start_date,
     end_date,
+    search,
     recipient,
     order_by = 'created_at',
     order = 'desc',
@@ -720,6 +724,7 @@ async function listWithTotal(options = {}, retrying = false) {
   const statusFilter = translateStatusForQuery(status);
   const startDate = trim(start_date);
   const endDate = trim(end_date);
+  const searchFilter = trim(search);
   const recipientFilter = trim(recipient);
   const sectorId = normalizeRecipientSectorId(
     options.sector_id ??
@@ -736,6 +741,7 @@ async function listWithTotal(options = {}, retrying = false) {
       status: statusFilter,
       startDate: startDate || null,
       endDate: endDate || null,
+      search: searchFilter || null,
       recipient: recipientFilter || null,
       sectorId,
       label: labelFilter,
