@@ -3,6 +3,9 @@ _Atualizado em 23 de dezembro de 2025_
 
 > Documento dedicado à sprint de CRUD completo no CRM. Mantém o desenho técnico e critérios de aceite alinhados ao módulo de recados.
 
+**Status:** ✅ Concluída em 23 de dezembro de 2025  
+**PRs principais:** #360, #361
+
 ## Objetivo
 Completar **editar/excluir** no CRM com o mesmo rigor de escopo, CSRF e auditoria do módulo de recados.
 

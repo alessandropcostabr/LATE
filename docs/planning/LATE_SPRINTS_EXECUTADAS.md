@@ -1,8 +1,8 @@
 # 📦 LATE — Sprints Executadas (Histórico Completo)
-> Atualizado em 2025/12/16.
+> Atualizado em 23 de dezembro de 2025.
 
 **Período:** Outubro - Dezembro 2025  
-**Versão Atual:** 2.1.0
+**Versão Atual:** 2.7.0
 
 ---
 
@@ -19,6 +19,8 @@
 | Sprint 02B | ✅ Concluída | Nov/2025 | #266-268 | 0 |
 | Sprint CRM Core | ✅ Concluída | Dez/2025 | #292-301 | 4 |
 | Sprint Opus Security Review | ✅ Concluída | Dez/2025 | #318, #330-334 | 5 |
+| Sprint Hardening PG + CSP | ✅ Concluída | 23 de dezembro de 2025 | #345-347 | 0 |
+| Sprint CRM CRUD Completo | ✅ Concluída | 23 de dezembro de 2025 | #360-361 | 1 |
 
 ---
 
@@ -67,6 +69,40 @@ Hardening do CRM com foco em vulnerabilidades confirmadas (XSS, upload, DoS) e p
 ### Encerramento
 - ✅ Hardening concluído e documentado.
 - 🔜 Cobertura mínima 70% no módulo CRM e documentação de exemplos CSV válidos.
+
+---
+
+## Sprint Hardening PG + CSP — 23 de dezembro de 2025
+
+### Objetivo
+Aplicar as frentes finais de hardening: suporte a TLS no PostgreSQL (cliente), CSP progressiva e remoção de SQL direto nos controllers de saúde/status.
+
+### Entregas Principais
+1. **TLS no cliente PostgreSQL**: variáveis `PG_SSL_*` suportadas em `config/database.js` e `.env.example`.
+2. **CSP report-only + endpoint**: middleware CSP com `report-only` e coleta via `/api/csp-report`.
+3. **Health/Status refatorados**: SQL movido para `models/diagnostics.js`.
+4. **Documentação**: sprint registrada e checklist de verificação atualizado.
+
+### Encerramento
+- ✅ Código pronto e aplicado em produção em 23 de dezembro de 2025.
+- 🔜 Ativação do TLS no servidor PostgreSQL permanece decisão operacional (infra).
+
+---
+
+## Sprint CRM CRUD Completo — 23 de dezembro de 2025
+
+### Objetivo
+Completar editar/excluir no CRM com escopo, CSRF, soft delete e auditoria padronizada.
+
+### Entregas Principais
+1. **API CRUD**: `PATCH/DELETE` para leads, contatos, oportunidades e atividades + `/dependencies`.
+2. **Soft delete**: migration `20251223_add_crm_soft_delete.sql` e filtros padrão em listagens.
+3. **UI mínima**: botões de editar/excluir com confirmação e feedback.
+4. **Auditoria**: eventos `crm.*.updated/deleted` com diff simples.
+5. **Ajuste final**: pipeline obrigatório em leads (UI + API + import).
+
+### Encerramento
+- ✅ Sprint encerrada em 23 de dezembro de 2025 (PRs #360-361).
 
 ---
 

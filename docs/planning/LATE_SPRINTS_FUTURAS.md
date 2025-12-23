@@ -13,12 +13,11 @@ Este documento mantém **apenas** sprints e pendências futuras. Sprints conclu�
 ### Próximas prioridades (ordenadas por impacto)
 
 1. 🟡 **Sprint CRM Fase III — Import CSV Avançado (pendências finais)**
-2. 🟡 **Sprint CRM — CRUD Completo (Leads/Contatos/Oportunidades/Atividades)**
-3. 🟡 **Sprint 4 — Custom Fields UI**
-4. 🟠 **Correção PR #217 — Watchers fora do escopo**
-5. 🟡 **Sprint 5 — Recados → Activities**
-6. 🟡 **Sprint 6 — Automações de Estágio/SLA**
-7. 🟡 **Sprint 7 — ICS/CalDAV Avançado**
+2. 🟡 **Sprint 4 — Custom Fields UI**
+3. 🟠 **Correção PR #217 — Watchers fora do escopo**
+4. 🟡 **Sprint 5 — Recados → Activities**
+5. 🟡 **Sprint 6 — Automações de Estágio/SLA**
+6. 🟡 **Sprint 7 — ICS/CalDAV Avançado**
 
 ---
 
@@ -32,25 +31,6 @@ Este documento mantém **apenas** sprints e pendências futuras. Sprints conclu�
 **Pendências atuais**
 - Barra de progresso do upload (arquivos grandes).
 - Testes de dedup/rollback e carga 200k linhas (sem OOM).
-
-### Sprint CRM — CRUD Completo (Leads/Contatos/Oportunidades/Atividades)
-
-**Status:** 🟡 Planejada  
-**Prioridade:** 🔴 Alta
-
-**Objetivo**  
-Completar operações de **editar/excluir** no CRM com regras de acesso iguais às de recados (escopo por owner/team/admin) e respostas padronizadas.
-
-**Detalhes**  
-Ver `docs/LATE_CRM_III.md`.
-
-**Entregas (resumo)**
-- API: endpoints `PATCH/DELETE` + `/dependencies` por entidade.
-- Regras: escopo com namespace `crm:update`/`crm:delete`, 403 fora do escopo.
-- Soft delete padrão com `deleted_at` e filtros em listagens.
-- UI mínima: editar/excluir + resumo de impacto.
-- Auditoria: `event_logs` com diff simples.
-- Testes: RBAC/CSRF/400/403/404 + 1 fluxo Cypress.
 
 ### Sprint 4 — Custom Fields UI
 
