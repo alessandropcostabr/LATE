@@ -4,6 +4,8 @@
 const db = require('../config/database');
 const ContactModel = require('./contact');
 
+const DEFAULT_LIST_LIMIT = 50;
+
 function buildFilters(filter = {}) {
   const clauses = [];
   const params = [];
@@ -16,14 +18,14 @@ function buildFilters(filter = {}) {
     const term = `%${filter.search.toLowerCase()}%`;
     clauses.push(`(LOWER(source) LIKE $${i} OR EXISTS (SELECT 1 FROM contacts c WHERE c.id = leads.contact_id AND (LOWER(c.email) LIKE $${i} OR c.phone_normalized LIKE $${i} OR LOWER(c.name) LIKE $${i})))`);
     params.push(term);
-    i += 0; // same param used thrice
+    i += 0; // intencional: reutiliza o mesmo placeholder $i em múltiplas colunas
   }
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   return { where, params };
 }
 
-async function listLeads(filter = {}, { limit = 50, offset = 0 } = {}) {
+async function listLeads(filter = {}, { limit = DEFAULT_LIST_LIMIT, offset = 0 } = {}) {
   const { where, params } = buildFilters(filter);
   const sql = `
     SELECT l.*, c.name AS contact_name, c.email, c.phone, c.phone_normalized, c.email_normalized
