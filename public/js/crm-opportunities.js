@@ -3,10 +3,17 @@
   const form = document.getElementById('opportunityFilters');
   const tableBody = document.querySelector('table tbody');
   const createForm = document.getElementById('opportunityCreateForm');
+  const permissionsEl = document.querySelector('[data-crm-permissions]');
+  const canUpdate = permissionsEl?.dataset?.canUpdate === 'true';
+  const canDelete = permissionsEl?.dataset?.canDelete === 'true';
   const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
   const pipelines = window.CRM_OPP_PIPELINES || [];
   const stagesByPipeline = window.CRM_OPP_STAGES || {};
   const stageRequiredAlert = document.getElementById('oppStageRequiredAlert');
+  const editModalEl = document.getElementById('oppEditModal');
+  const editForm = document.getElementById('oppEditForm');
+  let editModal;
+  const oppCache = new Map();
 
   const STANDARD_FIELD_MAP = {
     title: 'title',
@@ -187,6 +194,13 @@
     return qs.toString();
   }
 
+  function formatDateInput(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
+  }
+
   async function loadOpps() {
     const search = form?.search?.value?.trim() || '';
     const scope = form?.scope?.value || 'me';
@@ -194,9 +208,11 @@
     const res = await fetch(`/api/crm/opportunities?${qs}`);
     const json = await res.json();
     const opps = json.data || [];
+    oppCache.clear();
+    opps.forEach((opp) => oppCache.set(String(opp.id), opp));
     if (!tableBody) return;
     if (!opps.length) {
-      tableBody.innerHTML = '<tr><td colspan="7" class="muted">Nenhuma oportunidade encontrada.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="8" class="muted">Nenhuma oportunidade encontrada.</td></tr>';
       return;
     }
     tableBody.innerHTML = opps.map((opp) => `
@@ -208,6 +224,10 @@
         <td>${escapeHtml(opp.amount ? `R$ ${Number(opp.amount).toFixed(2)}` : '-')}</td>
         <td>${escapeHtml(opp.close_date ? new Date(opp.close_date).toLocaleDateString('pt-BR') : '-')}</td>
         <td>${escapeHtml(opp.source || '-')}</td>
+        <td>
+          ${canUpdate ? `<button class="btn btn-sm btn-outline" data-action="edit" data-id="${opp.id}">Editar</button>` : ''}
+          ${canDelete ? `<button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${opp.id}">Excluir</button>` : ''}
+        </td>
       </tr>
     `).join('');
   }
@@ -230,6 +250,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    if (editModalEl && window.bootstrap) {
+      editModal = new bootstrap.Modal(editModalEl);
+    }
     if (form) {
       hydrateFromUrl();
       loadOpps();
@@ -308,6 +331,102 @@
           return;
         }
         createForm.reset();
+        loadOpps();
+      });
+    }
+
+    if (tableBody) {
+      tableBody.addEventListener('click', async (e) => {
+        const button = e.target.closest('button[data-action]');
+        if (!button) return;
+        const action = button.dataset.action;
+        const oppId = button.dataset.id;
+        if (!oppId) return;
+        const opp = oppCache.get(String(oppId));
+        if (!opp) return;
+
+        if (action === 'edit') {
+          if (!editForm) return;
+          editForm.opportunity_id.value = opp.id;
+          editForm.title.value = opp.title || '';
+          editForm.contact_name.value = opp.contact_name || '';
+          editForm.contact_email.value = opp.email || '';
+          editForm.contact_phone.value = opp.phone || '';
+          editForm.amount.value = opp.amount ?? '';
+          editForm.close_date.value = formatDateInput(opp.close_date);
+          editForm.source.value = opp.source || '';
+          editForm.description.value = opp.description || '';
+          editModal?.show();
+        }
+
+        if (action === 'delete') {
+          const depRes = await fetch(`/api/crm/opportunities/${oppId}/dependencies`);
+          const depJson = await depRes.json();
+          const counts = depJson?.data?.counts || {};
+          const activities = counts.activities || 0;
+          if (activities > 0) {
+            alert(`Não é possível excluir. Atividades vinculadas: ${activities}.`);
+            return;
+          }
+          if (!confirm('Confirmar exclusão da oportunidade?')) return;
+          const res = await fetch(`/api/crm/opportunities/${oppId}`, {
+            method: 'DELETE',
+            headers: { ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
+          });
+          const json = await res.json();
+          if (!json.success) {
+            alert(json.error || 'Erro ao excluir oportunidade');
+            return;
+          }
+          loadOpps();
+        }
+      });
+    }
+
+    if (editForm) {
+      editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const oppId = editForm.opportunity_id.value;
+        if (!oppId) return;
+        const original = oppCache.get(String(oppId)) || {};
+        const data = {};
+
+        const title = editForm.title.value.trim();
+        if (title && title !== (original.title || '')) data.title = title;
+        const contactName = editForm.contact_name.value.trim();
+        if (contactName && contactName !== (original.contact_name || '')) data.contact_name = contactName;
+        const contactEmail = editForm.contact_email.value.trim();
+        if (contactEmail && contactEmail !== (original.email || '')) data.contact_email = contactEmail;
+        const contactPhone = editForm.contact_phone.value.trim();
+        if (contactPhone && contactPhone !== (original.phone || '')) data.contact_phone = contactPhone;
+        const amount = editForm.amount.value;
+        if (amount && String(amount) !== String(original.amount || '')) data.amount = amount;
+        const closeDate = editForm.close_date.value;
+        if (closeDate && closeDate !== formatDateInput(original.close_date)) data.close_date = closeDate;
+        const source = editForm.source.value.trim();
+        if (source && source !== (original.source || '')) data.source = source;
+        const description = editForm.description.value.trim();
+        if (description && description !== (original.description || '')) data.description = description;
+
+        if (!Object.keys(data).length) {
+          alert('Nenhuma alteração informada.');
+          return;
+        }
+
+        const res = await fetch(`/api/crm/opportunities/${oppId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+          },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          alert(json.error || 'Erro ao atualizar oportunidade');
+          return;
+        }
+        editModal?.hide();
         loadOpps();
       });
     }

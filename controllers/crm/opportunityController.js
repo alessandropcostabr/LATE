@@ -1,11 +1,14 @@
 // controllers/crm/opportunityController.js
 
+const ContactModel = require('../../models/contact');
 const OpportunityModel = require('../../models/opportunity');
 const PipelineModel = require('../../models/pipeline');
 const CustomFieldValueModel = require('../../models/customFieldValue');
 const { applyOwnerScope } = require('../../utils/scope');
+const { logEvent: logAuditEvent } = require('../../utils/auditLogger');
 const {
   applyAutoActions,
+  buildDiff,
   combineData,
   isPrivileged,
   isUuid,
@@ -16,6 +19,31 @@ const {
   toCsvRow,
   validateOpportunityRequired,
 } = require('./helpers');
+
+const OPPORTUNITY_ALLOWED_FIELDS = new Set([
+  'title',
+  'amount',
+  'close_date',
+  'source',
+  'description',
+  'probability_override',
+  'custom_fields',
+  'name',
+  'email',
+  'phone',
+  'contact_name',
+  'contact_email',
+  'contact_phone',
+]);
+
+function collectInvalidFields(body = {}, allowedSet) {
+  return Object.keys(body).filter((key) => !allowedSet.has(key));
+}
+
+function hasContactPayload(body = {}) {
+  return ['name', 'email', 'phone', 'contact_name', 'contact_email', 'contact_phone']
+    .some((key) => Object.prototype.hasOwnProperty.call(body, key));
+}
 
 async function listOpportunities(req, res) {
   try {
@@ -101,7 +129,7 @@ async function moveOpportunityStage(req, res) {
 
     const role = req.session?.user?.role || '';
     const userId = req.session?.user?.id;
-    if (!isPrivileged(role) && opp.owner_id && opp.owner_id !== userId) {
+    if (!isPrivileged(role) && (!userId || opp.owner_id !== userId)) {
       return res.status(403).json({ success: false, error: 'Acesso negado' });
     }
 
@@ -142,6 +170,148 @@ async function moveOpportunityStage(req, res) {
   }
 }
 
+async function updateOpportunity(req, res) {
+  try {
+    const id = req.params.id;
+    const body = req.body || {};
+    const invalid = collectInvalidFields(body, OPPORTUNITY_ALLOWED_FIELDS);
+    if (invalid.length) {
+      return res.status(400).json({ success: false, error: `Campos não permitidos: ${invalid.join(', ')}` });
+    }
+
+    const opp = await OpportunityModel.findById(id);
+    if (!opp) return res.status(404).json({ success: false, error: 'Oportunidade não encontrada' });
+
+    const role = req.session?.user?.role || '';
+    const userId = req.session?.user?.id;
+    if (!isPrivileged(role) && (!userId || opp.owner_id !== userId)) {
+      return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+
+    const updates = {};
+    if (Object.prototype.hasOwnProperty.call(body, 'title')) updates.title = (body.title || '').trim();
+    if (Object.prototype.hasOwnProperty.call(body, 'amount')) updates.amount = body.amount;
+    if (Object.prototype.hasOwnProperty.call(body, 'close_date')) updates.close_date = body.close_date || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'source')) updates.source = body.source || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'description')) updates.description = body.description || null;
+    if (Object.prototype.hasOwnProperty.call(body, 'probability_override')) updates.probability_override = body.probability_override;
+
+    const customInput = body.custom_fields || {};
+    let updated = null;
+    let contactAfter = null;
+    const contactBefore = await ContactModel.findById(opp.contact_id);
+
+    if (hasContactPayload(body)) {
+      const contactPayload = normalizeContactInput(body);
+      if (contactPayload.name || contactPayload.phone || contactPayload.email) {
+        contactAfter = await ContactModel.updateById(opp.contact_id, {
+          name: contactPayload.name,
+          phone: contactPayload.phone,
+          email: contactPayload.email,
+        });
+      }
+    }
+
+    if (Object.keys(customInput).length) {
+      const existingCustomValues = isUuid(opp.id) ? await CustomFieldValueModel.listValues('opportunity', opp.id) : [];
+      const stage = await PipelineModel.getStageById(opp.stage_id);
+      const missing = await validateOpportunityRequired({
+        stage,
+        payload: combineData(opp, body),
+        customInput,
+        existingCustomValues,
+      });
+      if (missing.length) {
+        return res.status(400).json({ success: false, error: `Campos obrigatórios no estágio: ${missing.join(', ')}` });
+      }
+      await persistCustomFields('opportunity', opp.id, customInput);
+    }
+
+    if (Object.keys(updates).length) {
+      updated = await OpportunityModel.updateOpportunity(id, updates);
+    }
+
+    if (!updated && !contactAfter && !Object.keys(customInput).length) {
+      return res.status(400).json({ success: false, error: 'Nenhuma alteração informada' });
+    }
+
+    const currentOpp = updated || await OpportunityModel.findById(id);
+    const oppDiff = buildDiff(opp, currentOpp, ['title', 'amount', 'close_date', 'source', 'description', 'probability_override']);
+    const contactDiff = contactBefore && contactAfter
+      ? buildDiff(contactBefore, contactAfter, ['name', 'phone', 'email'], 'contact')
+      : {};
+
+    const changed = { ...oppDiff, ...contactDiff };
+    if (Object.keys(changed).length) {
+      await logAuditEvent('crm.opportunity.updated', {
+        entityType: 'opportunity',
+        entityId: id,
+        actorUserId: userId || null,
+        metadata: { changed },
+      });
+    }
+
+    return res.json({ success: true, data: currentOpp });
+  } catch (err) {
+    console.error('[crm] updateOpportunity', err);
+    return res.status(500).json({ success: false, error: 'Erro ao atualizar oportunidade' });
+  }
+}
+
+async function deleteOpportunity(req, res) {
+  try {
+    const id = req.params.id;
+    const opp = await OpportunityModel.findById(id);
+    if (!opp) return res.status(404).json({ success: false, error: 'Oportunidade não encontrada' });
+
+    const role = req.session?.user?.role || '';
+    const userId = req.session?.user?.id;
+    if (!isPrivileged(role) && (!userId || opp.owner_id !== userId)) {
+      return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+
+    const deps = await OpportunityModel.dependencies(id);
+    if (deps.activities > 0) {
+      return res.status(409).json({ success: false, error: 'Oportunidade possui atividades vinculadas' });
+    }
+
+    const removed = await OpportunityModel.softDelete(id);
+    if (!removed) return res.status(404).json({ success: false, error: 'Oportunidade não encontrada' });
+
+    await logAuditEvent('crm.opportunity.deleted', {
+      entityType: 'opportunity',
+      entityId: id,
+      actorUserId: userId || null,
+      metadata: { dependencies: deps },
+    });
+
+    return res.json({ success: true, data: removed });
+  } catch (err) {
+    console.error('[crm] deleteOpportunity', err);
+    return res.status(500).json({ success: false, error: 'Erro ao excluir oportunidade' });
+  }
+}
+
+async function opportunityDependencies(req, res) {
+  try {
+    const id = req.params.id;
+    const opp = await OpportunityModel.findById(id);
+    if (!opp) return res.status(404).json({ success: false, error: 'Oportunidade não encontrada' });
+
+    const role = req.session?.user?.role || '';
+    const userId = req.session?.user?.id;
+    if (!isPrivileged(role) && opp.owner_id && opp.owner_id !== userId) {
+      return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+
+    const deps = await OpportunityModel.dependencies(id);
+    return res.json({ success: true, data: { counts: deps } });
+  } catch (err) {
+    console.error('[crm] opportunityDependencies', err);
+    return res.status(500).json({ success: false, error: 'Erro ao carregar dependências' });
+  }
+}
+
 async function exportOpportunitiesCsv(_req, res) {
   try {
     const rows = await OpportunityModel.listOpportunities({}, { limit: 1000, offset: 0 });
@@ -161,6 +331,9 @@ async function exportOpportunitiesCsv(_req, res) {
 module.exports = {
   listOpportunities,
   createOpportunity,
+  updateOpportunity,
+  deleteOpportunity,
+  opportunityDependencies,
   moveOpportunityStage,
   exportOpportunitiesCsv,
 };

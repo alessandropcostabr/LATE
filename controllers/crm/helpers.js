@@ -41,6 +41,24 @@ function combineData(existing = {}, incoming = {}) {
   return { ...existing, ...incoming };
 }
 
+function buildDiff(before = {}, after = {}, fields = [], prefix = '') {
+  const changed = {};
+  fields.forEach((field) => {
+    const key = prefix ? `${prefix}.${field}` : field;
+    const beforeVal = before?.[field];
+    const afterVal = after?.[field];
+    const normalizedBefore = beforeVal ?? null;
+    const normalizedAfter = afterVal ?? null;
+    const same = Number.isFinite(normalizedBefore) && Number.isFinite(normalizedAfter)
+      ? normalizedBefore === normalizedAfter
+      : String(normalizedBefore) === String(normalizedAfter);
+    if (!same) {
+      changed[key] = { from: normalizedBefore, to: normalizedAfter };
+    }
+  });
+  return changed;
+}
+
 function resolveCustomValue(identifier, customInput = {}, existingValues = []) {
   if (!identifier) return undefined;
   const key = String(identifier).toLowerCase();
@@ -304,6 +322,7 @@ async function parseImportRequest(req) {
 
 module.exports = {
   applyAutoActions,
+  buildDiff,
   checkRequiredFields,
   combineData,
   formatIcsDate,

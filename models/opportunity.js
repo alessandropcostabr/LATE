@@ -12,18 +12,19 @@ function sanitizeAmount(value) {
   return Number.isFinite(num) ? num : 0;
 }
 
-function buildFilters(filter = {}) {
+function buildFilters(filter = {}, { opportunityAlias = 'opportunities', contactAlias = 'contacts' } = {}) {
   const clauses = [];
   const params = [];
   let i = 1;
 
-  if (filter.pipeline_id) { clauses.push(`o.pipeline_id = $${i++}`); params.push(filter.pipeline_id); }
-  if (filter.stage_id) { clauses.push(`o.stage_id = $${i++}`); params.push(filter.stage_id); }
-  if (filter.owner_id) { clauses.push(`o.owner_id = $${i++}`); params.push(filter.owner_id); }
-  if (filter.contact_id) { clauses.push(`o.contact_id = $${i++}`); params.push(filter.contact_id); }
+  clauses.push(`${opportunityAlias}.deleted_at IS NULL`);
+  if (filter.pipeline_id) { clauses.push(`${opportunityAlias}.pipeline_id = $${i++}`); params.push(filter.pipeline_id); }
+  if (filter.stage_id) { clauses.push(`${opportunityAlias}.stage_id = $${i++}`); params.push(filter.stage_id); }
+  if (filter.owner_id) { clauses.push(`${opportunityAlias}.owner_id = $${i++}`); params.push(filter.owner_id); }
+  if (filter.contact_id) { clauses.push(`${opportunityAlias}.contact_id = $${i++}`); params.push(filter.contact_id); }
   if (filter.search) {
     const term = `%${filter.search.toLowerCase()}%`;
-    clauses.push(`(LOWER(o.title) LIKE $${i} OR LOWER(c.name) LIKE $${i} OR c.phone_normalized LIKE $${i})`);
+    clauses.push(`(LOWER(${opportunityAlias}.title) LIKE $${i} OR LOWER(${contactAlias}.name) LIKE $${i} OR ${contactAlias}.phone_normalized LIKE $${i})`);
     params.push(term);
     i += 0; // intencional: reutiliza o mesmo placeholder $i em múltiplas colunas
   }
@@ -33,11 +34,11 @@ function buildFilters(filter = {}) {
 }
 
 async function listOpportunities(filter = {}, { limit = DEFAULT_LIST_LIMIT, offset = 0 } = {}) {
-  const { where, params } = buildFilters(filter);
+  const { where, params } = buildFilters(filter, { opportunityAlias: 'o', contactAlias: 'c' });
   const sql = `
     SELECT o.*, c.name AS contact_name, c.phone, c.email
       FROM opportunities o
-      JOIN contacts c ON c.id = o.contact_id
+      JOIN contacts c ON c.id = o.contact_id AND c.deleted_at IS NULL
       ${where}
      ORDER BY o.created_at DESC
      LIMIT $${params.length + 1}
@@ -105,8 +106,13 @@ async function createOpportunity({
   return rows?.[0] || null;
 }
 
-async function findById(id) {
-  const sql = 'SELECT * FROM opportunities WHERE id = $1 LIMIT 1';
+async function findById(id, { includeDeleted = false } = {}) {
+  const sql = `
+    SELECT * FROM opportunities
+     WHERE id = $1
+       ${includeDeleted ? '' : 'AND deleted_at IS NULL'}
+     LIMIT 1
+  `;
   const { rows } = await db.query(sql, [id]);
   return rows?.[0] || null;
 }
@@ -117,6 +123,7 @@ async function updateStage(opportunityId, targetStageId) {
        SET stage_id = $2,
            updated_at = NOW()
      WHERE id = $1
+       AND deleted_at IS NULL
      RETURNING *
   `;
   const { rows } = await db.query(sql, [opportunityId, targetStageId]);
@@ -131,9 +138,90 @@ module.exports = {
 };
 
 async function updateProbability(id, value) {
-  const sql = 'UPDATE opportunities SET probability_override = $2, updated_at = NOW() WHERE id = $1 RETURNING *';
+  const sql = `
+    UPDATE opportunities
+       SET probability_override = $2,
+           updated_at = NOW()
+     WHERE id = $1
+       AND deleted_at IS NULL
+     RETURNING *
+  `;
   const { rows } = await db.query(sql, [id, value]);
   return rows?.[0] || null;
 }
 
 module.exports.updateProbability = updateProbability;
+
+async function updateOpportunity(id, updates = {}, client = null) {
+  if (!id) return null;
+  const fields = [];
+  const params = [id];
+  let i = 2;
+
+  if (Object.prototype.hasOwnProperty.call(updates, 'title')) {
+    fields.push(`title = $${i++}`);
+    params.push(updates.title || null);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'amount')) {
+    fields.push(`amount = $${i++}`);
+    params.push(sanitizeAmount(updates.amount));
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'close_date')) {
+    fields.push(`close_date = $${i++}`);
+    params.push(updates.close_date || null);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'source')) {
+    fields.push(`source = $${i++}`);
+    params.push(updates.source || null);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'description')) {
+    fields.push(`description = $${i++}`);
+    params.push(updates.description || null);
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'probability_override')) {
+    fields.push(`probability_override = $${i++}`);
+    params.push(updates.probability_override !== undefined ? updates.probability_override : null);
+  }
+
+  if (!fields.length) return null;
+  fields.push('updated_at = NOW()');
+
+  const sql = `
+    UPDATE opportunities
+       SET ${fields.join(', ')}
+     WHERE id = $1
+       AND deleted_at IS NULL
+     RETURNING *
+  `;
+  const runner = client || db;
+  const { rows } = await runner.query(sql, params);
+  return rows?.[0] || null;
+}
+
+async function softDelete(id, client = null) {
+  if (!id) return null;
+  const sql = `
+    UPDATE opportunities
+       SET deleted_at = NOW(),
+           updated_at = NOW()
+     WHERE id = $1
+       AND deleted_at IS NULL
+     RETURNING *
+  `;
+  const runner = client || db;
+  const { rows } = await runner.query(sql, [id]);
+  return rows?.[0] || null;
+}
+
+async function dependencies(id) {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*)::int FROM activities WHERE related_type = 'opportunity' AND related_id = $1 AND deleted_at IS NULL) AS activities
+  `;
+  const { rows } = await db.query(sql, [id]);
+  return rows?.[0] || { activities: 0 };
+}
+
+module.exports.updateOpportunity = updateOpportunity;
+module.exports.softDelete = softDelete;
+module.exports.dependencies = dependencies;

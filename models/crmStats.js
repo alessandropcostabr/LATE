@@ -52,6 +52,7 @@ async function pipelineByStageMonth({ user, months = 6 } = {}) {
         LEFT JOIN opportunities o
           ON date_trunc('month', o.created_at) = m
          ${clause ? 'AND ' + clause : ''}
+         AND o.deleted_at IS NULL
        GROUP BY 1,2,3
        ORDER BY month DESC, pipeline_id, stage_id`;
   }
@@ -65,7 +66,8 @@ async function activitiesByOwner({ user } = {}) {
   let sql = `
     SELECT owner_id, status, COUNT(*)::int AS total
       FROM activities
-     ${clause ? 'WHERE ' + clause : ''}
+     WHERE deleted_at IS NULL
+     ${clause ? 'AND ' + clause : ''}
      GROUP BY owner_id, status
      ORDER BY owner_id, status`;
   let sqlParams = params;

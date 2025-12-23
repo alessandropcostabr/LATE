@@ -19,6 +19,7 @@ function mapRow(row) {
     email_normalized: row.email_normalized ?? '',
     created_at: row.created_at ?? null,
     updated_at: row.updated_at ?? null,
+    deleted_at: row.deleted_at ?? null,
   };
 }
 
@@ -56,7 +57,7 @@ async function upsert(contactInput = {}, client = null) {
       email_normalized
     )
     VALUES ($1, $2, $3, $4, $5)
-    ON CONFLICT (email_normalized, phone_normalized)
+    ON CONFLICT (email_normalized, phone_normalized) WHERE deleted_at IS NULL
     DO UPDATE SET
       name = COALESCE(EXCLUDED.name, contacts.name),
       phone = COALESCE(NULLIF(EXCLUDED.phone, ''), contacts.phone),
@@ -87,6 +88,19 @@ async function updateFromMessage(message = {}, client = null) {
   return upsert(input, client);
 }
 
+async function findById(contactId, { includeDeleted = false } = {}, client = null) {
+  if (!contactId) return null;
+  const sql = `
+    SELECT * FROM contacts
+     WHERE id = $1
+       ${includeDeleted ? '' : 'AND deleted_at IS NULL'}
+     LIMIT 1
+  `;
+  const runner = client || db;
+  const { rows } = await runner.query(sql, [contactId]);
+  return mapRow(rows?.[0]);
+}
+
 async function findByIdentifiers({ phone, email } = {}, client = null) {
   const lookup = buildLookup({ phone, email });
   if (!lookup) return null;
@@ -95,6 +109,7 @@ async function findByIdentifiers({ phone, email } = {}, client = null) {
       FROM contacts
      WHERE email_normalized = $1
        AND phone_normalized = $2
+       AND deleted_at IS NULL
      LIMIT 1
   `;
   const runner = client || db;
@@ -120,7 +135,8 @@ async function findByAnyIdentifier({ phone, email } = {}, client = null) {
   const sql = `
     SELECT *
       FROM contacts
-     WHERE ${clauses.join(' OR ')}
+     WHERE (${clauses.join(' OR ')})
+       AND deleted_at IS NULL
      ORDER BY updated_at DESC
      LIMIT 1
   `;
@@ -143,6 +159,7 @@ async function updateById(contactId, { name, phone, email } = {}, client = null)
            email_normalized = COALESCE($6, email_normalized),
            updated_at = NOW()
      WHERE id = $1
+       AND deleted_at IS NULL
      RETURNING *
   `;
   const params = [
@@ -166,6 +183,7 @@ module.exports = {
   upsert,
   touch,
   updateFromMessage,
+  findById,
   findByIdentifiers,
   findByAnyIdentifier,
   updateById,
@@ -177,7 +195,8 @@ async function findDuplicates({ limit = 50 } = {}) {
   const sql = `
     SELECT phone_normalized, email_normalized, array_agg(id) AS ids, COUNT(*) AS total
       FROM contacts
-     WHERE (phone_normalized <> '' OR email_normalized <> '')
+     WHERE deleted_at IS NULL
+       AND (phone_normalized <> '' OR email_normalized <> '')
      GROUP BY phone_normalized, email_normalized
     HAVING COUNT(*) > 1
      ORDER BY total DESC
@@ -192,10 +211,53 @@ async function mergeContacts(sourceId, targetId) {
   await db.query('UPDATE leads SET contact_id = $2 WHERE contact_id = $1', [sourceId, targetId]);
   await db.query('UPDATE opportunities SET contact_id = $2 WHERE contact_id = $1', [sourceId, targetId]);
   await db.query("UPDATE activities SET related_id = $2 WHERE related_type = 'contact' AND related_id = $1", [sourceId, targetId]);
-  // Remove contato duplicado
-  await db.query('DELETE FROM contacts WHERE id = $1', [sourceId]);
+  // Marca contato duplicado como removido
+  await db.query('UPDATE contacts SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL', [sourceId]);
   return true;
 }
 
 module.exports.findDuplicates = findDuplicates;
 module.exports.mergeContacts = mergeContacts;
+
+async function softDelete(contactId, client = null) {
+  if (!contactId) return null;
+  const sql = `
+    UPDATE contacts
+       SET deleted_at = NOW(),
+           updated_at = NOW()
+     WHERE id = $1
+       AND deleted_at IS NULL
+     RETURNING *
+  `;
+  const runner = client || db;
+  const { rows } = await runner.query(sql, [contactId]);
+  return mapRow(rows?.[0]);
+}
+
+async function dependencies(contactId) {
+  const sql = `
+    SELECT
+      (SELECT COUNT(*)::int FROM leads WHERE contact_id = $1 AND deleted_at IS NULL) AS leads,
+      (SELECT COUNT(*)::int FROM opportunities WHERE contact_id = $1 AND deleted_at IS NULL) AS opportunities,
+      (SELECT COUNT(*)::int FROM activities WHERE related_type = 'contact' AND related_id = $1 AND deleted_at IS NULL) AS activities
+  `;
+  const { rows } = await db.query(sql, [contactId]);
+  return rows?.[0] || { leads: 0, opportunities: 0, activities: 0 };
+}
+
+async function isOwnedBy(contactId, userId) {
+  if (!contactId || !userId) return false;
+  const sql = `
+    SELECT
+      EXISTS(SELECT 1 FROM leads WHERE contact_id = $1 AND owner_id = $2 AND deleted_at IS NULL)
+      OR EXISTS(SELECT 1 FROM opportunities WHERE contact_id = $1 AND owner_id = $2 AND deleted_at IS NULL)
+      OR EXISTS(SELECT 1 FROM activities WHERE related_type = 'contact' AND related_id = $1 AND owner_id = $2 AND deleted_at IS NULL)
+      AS allowed
+  `;
+  const { rows } = await db.query(sql, [contactId, userId]);
+  return rows?.[0]?.allowed === true;
+}
+
+module.exports.softDelete = softDelete;
+module.exports.dependencies = dependencies;
+module.exports.isOwnedBy = isOwnedBy;
