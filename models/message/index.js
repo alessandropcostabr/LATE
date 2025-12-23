@@ -1,7 +1,7 @@
 // models/message/index.js
 
-const queries = require('./queries');
-const stats = require('./stats');
+const queries = require('./messageQueries');
+const stats = require('./messageStats');
 const {
   STATUS_EN_TO_PT,
   STATUS_LABELS_PT,
