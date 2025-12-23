@@ -41,12 +41,16 @@ Este documento mantém **apenas** sprints e pendências futuras. Sprints conclu�
 **Objetivo**  
 Completar operações de **editar/excluir** no CRM com regras de acesso iguais às de recados (escopo por owner/team/admin) e respostas padronizadas.
 
-**Entregas**
-- API: endpoints `PATCH/DELETE` para leads, contacts, opportunities e activities.
-- Regras: escopo e permissões consistentes (owner/team/admin), com 403 quando fora do escopo.
-- UI: ações de editar/excluir nas listagens e telas de detalhe; confirmação de exclusão.
-- Auditoria: registrar `created/updated/deleted` em `event_logs` com metadata mínima.
-- Testes: casos permitidos/negados por RBAC e validações de payload.
+**Detalhes**  
+Ver `docs/LATE_CRM_III.md`.
+
+**Entregas (resumo)**
+- API: endpoints `PATCH/DELETE` + `/dependencies` por entidade.
+- Regras: escopo com namespace `crm:update`/`crm:delete`, 403 fora do escopo.
+- Soft delete padrão com `deleted_at` e filtros em listagens.
+- UI mínima: editar/excluir + resumo de impacto.
+- Auditoria: `event_logs` com diff simples.
+- Testes: RBAC/CSRF/400/403/404 + 1 fluxo Cypress.
 
 ### Sprint 4 — Custom Fields UI
 
@@ -84,7 +88,6 @@ Garantir que `/api/messages/:id/watchers` respeite o escopo do usuário.
 ## 🧾 Backlog de Melhorias (não-sprint)
 
 - Remover uso da opção `scope` do EJS (warning no log).
-- Definir política de soft-delete vs hard-delete para entidades CRM.
 - Melhorar observabilidade de jobs e rotinas (logs e métricas).
 
 ---

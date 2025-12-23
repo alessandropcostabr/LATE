@@ -2,6 +2,7 @@
 _Atualizado em 23 de dezembro de 2025_
 
 > Documento para organizar pendências e próximas sprints do CRM. O histórico concluído permanece em `docs/LATE_CRM.md`.
+> Nova sprint de CRUD completo está detalhada em `docs/LATE_CRM_III.md`.
 
 ## Opus Security Review (22/12/2025) — ✅ concluído
 - XSS sanitizado no frontend CRM (listas, kanban e import).
@@ -250,23 +251,6 @@ await db.transaction(async trx => {
   - ICS carrega sem warnings; clientes atualizam em até X minutos (aceitar comportamento do cliente).
   - Endpoint ICS responde com ETag/Last-Modified e 304 quando não mudou.
   - CalDAV é opcional; se habilitado, deve respeitar escopos “me/team/all”.
-
-## Sprint 8 — CRM CRUD Completo (Leads/Contatos/Oportunidades/Atividades)
-- API: endpoints `PATCH/DELETE` para leads, contacts, opportunities e activities.
-- Regras: aplicar escopo e permissões iguais às de recados (owner/team/admin); bloquear edições fora do escopo.
-- UI: ações de editar/excluir nas listas e telas de detalhe; confirmação de exclusão com resumo do impacto.
-- Auditoria: registrar eventos principais (`created/updated/deleted`) em `event_logs` com metadata mínima.
-- Testes: casos de RBAC (permitido/negado) e validação de payload; cobertura mínima para update/delete.
-- Critérios de aceite:
-  - Usuário comum só edita/exclui registros do próprio escopo (“me”/“team” quando permitido).
-  - Admin consegue editar/excluir qualquer registro.
-  - Respostas de erro seguem padrão JSON e retornam 403 quando fora do escopo.
-  - UI exibe feedback claro e não quebra navegação após delete.
-
-### TO_DO sprint 8
-- Definir se exclusão será soft-delete ou hard-delete por entidade (decisão técnica).
-- Padronizar validações de update (campos obrigatórios e regras por estágio/pipeline).
-- Garantir que actions de delete respeitem dependências (ex.: opportunity ligada a contact).
 
 ## Outras pendências herdadas
 - Testes adicionais: filtros, activities, custom fields, recado→lead→opp, CSV importer.
