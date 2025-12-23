@@ -1,6 +1,7 @@
 // models/message/index.js
 
 const queries = require('./queries');
+const stats = require('./stats');
 const {
   STATUS_EN_TO_PT,
   STATUS_LABELS_PT,
@@ -11,6 +12,7 @@ const { normalizeStatus } = require('./utils');
 
 module.exports = {
   ...queries,
+  ...stats,
   normalizeStatus,
   STATUS_VALUES,
   STATUS_LABELS_PT,

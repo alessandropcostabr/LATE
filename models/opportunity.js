@@ -5,6 +5,8 @@ const db = require('../config/database');
 const ContactModel = require('./contact');
 const PipelineModel = require('./pipeline');
 
+const DEFAULT_LIST_LIMIT = 50;
+
 function sanitizeAmount(value) {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
@@ -23,14 +25,14 @@ function buildFilters(filter = {}) {
     const term = `%${filter.search.toLowerCase()}%`;
     clauses.push(`(LOWER(o.title) LIKE $${i} OR LOWER(c.name) LIKE $${i} OR c.phone_normalized LIKE $${i})`);
     params.push(term);
-    i += 0;
+    i += 0; // intencional: reutiliza o mesmo placeholder $i em múltiplas colunas
   }
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
   return { where, params };
 }
 
-async function listOpportunities(filter = {}, { limit = 50, offset = 0 } = {}) {
+async function listOpportunities(filter = {}, { limit = DEFAULT_LIST_LIMIT, offset = 0 } = {}) {
   const { where, params } = buildFilters(filter);
   const sql = `
     SELECT o.*, c.name AS contact_name, c.phone, c.email
