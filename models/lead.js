@@ -1,5 +1,5 @@
 // models/lead.js
-// Leads 1:1 com contato; pipeline opcional.
+// Leads 1:1 com contato; pipeline obrigatório.
 
 const db = require('../config/database');
 const ContactModel = require('./contact');
@@ -29,9 +29,16 @@ function buildFilters(filter = {}, { leadAlias = 'leads', contactAlias = 'contac
 async function listLeads(filter = {}, { limit = DEFAULT_LIST_LIMIT, offset = 0 } = {}) {
   const { where, params } = buildFilters(filter, { leadAlias: 'l' });
   const sql = `
-    SELECT l.*, c.name AS contact_name, c.email, c.phone, c.phone_normalized, c.email_normalized
+    SELECT l.*,
+           c.name AS contact_name,
+           c.email,
+           c.phone,
+           c.phone_normalized,
+           c.email_normalized,
+           p.name AS pipeline_name
       FROM leads l
       JOIN contacts c ON c.id = l.contact_id AND c.deleted_at IS NULL
+      LEFT JOIN pipelines p ON p.id = l.pipeline_id
       ${where}
      ORDER BY l.created_at DESC
      LIMIT $${params.length + 1}

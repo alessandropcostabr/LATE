@@ -49,6 +49,7 @@
   const REQUIRED_GROUPS = {
     lead: [
       { label: 'telefone ou e-mail', fields: ['phone', 'email'] },
+      { key: 'pipeline', label: 'pipeline (ID ou nome)', fields: ['pipeline_id', 'pipeline_name'] },
     ],
     opportunity: [
       { label: 'título ou nome do contato', fields: ['title', 'name'] },
@@ -120,13 +121,11 @@
     if (!getSelectedFile()) {
       return { ok: false, message: 'CSV obrigatório.' };
     }
-    if (isOpportunityTarget()) {
-      if (!pipelineSelect?.value) {
-        return { ok: false, message: 'Selecione o pipeline para oportunidades.' };
-      }
-      if (!stageSelect?.value) {
-        return { ok: false, message: 'Selecione o estágio para oportunidades.' };
-      }
+    if (!pipelineSelect?.value) {
+      return { ok: false, message: 'Selecione o pipeline.' };
+    }
+    if (isOpportunityTarget() && !stageSelect?.value) {
+      return { ok: false, message: 'Selecione o estágio para oportunidades.' };
     }
     return { ok: true };
   }

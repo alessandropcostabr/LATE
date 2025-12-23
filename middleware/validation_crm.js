@@ -13,7 +13,7 @@ const requireTitle = body('title').notEmpty().withMessage('Título é obrigatór
 const validateLeadCreate = [
   body('phone').optional().isString(),
   body('email').optional().isEmail().withMessage('E-mail inválido'),
-  body('pipeline_id').optional().isUUID().withMessage('pipeline_id deve ser UUID'),
+  body('pipeline_id').isUUID().withMessage('pipeline_id é obrigatório e deve ser UUID'),
   body('status').optional().isString(),
   body('score').optional().isInt({ min: 0 }),
   body('notes').optional().isString(),

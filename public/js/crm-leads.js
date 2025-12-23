@@ -52,7 +52,7 @@
         <td>${escapeHtml(lead.phone || lead.phone_normalized || '-')}</td>
         <td>${escapeHtml(lead.email || '-')}</td>
         <td>${escapeHtml(lead.status || '-')}</td>
-        <td>${escapeHtml(lead.pipeline_id ? lead.pipeline_id : '-')}</td>
+        <td>${escapeHtml(lead.pipeline_name || lead.pipeline_id || '-')}</td>
         <td>${escapeHtml(lead.score || 0)}</td>
         <td>${escapeHtml(lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-')}</td>
         <td>
@@ -141,6 +141,7 @@
           editForm.contact_email.value = lead.email || '';
           editForm.contact_phone.value = lead.phone || lead.phone_normalized || '';
           editForm.status.value = lead.status || '';
+          editForm.pipeline_id.value = lead.pipeline_id || '';
           editForm.score.value = lead.score ?? '';
           editForm.source.value = lead.source || '';
           editForm.notes.value = lead.notes || '';
@@ -185,6 +186,8 @@
         if (contactPhone && contactPhone !== (original.phone || original.phone_normalized || '')) data.contact_phone = contactPhone;
         const status = editForm.status.value.trim();
         if (status && status !== (original.status || '')) data.status = status;
+        const pipelineId = editForm.pipeline_id.value;
+        if (pipelineId && pipelineId !== (original.pipeline_id || '')) data.pipeline_id = pipelineId;
         const score = editForm.score.value;
         if (score !== '' && String(score) !== String(original.score ?? '')) data.score = score;
         const source = editForm.source.value.trim();

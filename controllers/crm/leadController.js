@@ -4,6 +4,7 @@ const fs = require('fs');
 const ContactModel = require('../../models/contact');
 const CustomFieldValueModel = require('../../models/customFieldValue');
 const LeadModel = require('../../models/lead');
+const PipelineModel = require('../../models/pipeline');
 const CrmImportService = require('../../services/crmImportService');
 const { applyOwnerScope } = require('../../utils/scope');
 const { logEvent: logAuditEvent } = require('../../utils/auditLogger');
@@ -72,10 +73,18 @@ async function createLead(req, res) {
     if (!contact.phone && !contact.email) {
       return res.status(400).json({ success: false, error: 'Informe telefone ou e-mail do lead' });
     }
+    const pipelineId = req.body.pipeline_id || null;
+    if (!pipelineId) {
+      return res.status(400).json({ success: false, error: 'Pipeline é obrigatório' });
+    }
+    const pipeline = await PipelineModel.getPipelineById(pipelineId);
+    if (!pipeline) {
+      return res.status(400).json({ success: false, error: 'Pipeline inválido' });
+    }
 
     const payload = {
       contact,
-      pipeline_id: req.body.pipeline_id || null,
+      pipeline_id: pipelineId,
       owner_id: req.session.user.id,
       source: req.body.source || 'desconhecida',
       status: req.body.status || 'open',
@@ -132,7 +141,17 @@ async function updateLead(req, res) {
     }
 
     const updates = {};
-    if (Object.prototype.hasOwnProperty.call(body, 'pipeline_id')) updates.pipeline_id = normalizeFormValue(body.pipeline_id);
+    if (Object.prototype.hasOwnProperty.call(body, 'pipeline_id')) {
+      const value = normalizeFormValue(body.pipeline_id);
+      if (!value) {
+        return res.status(400).json({ success: false, error: 'Pipeline é obrigatório' });
+      }
+      updates.pipeline_id = value;
+      const pipeline = await PipelineModel.getPipelineById(updates.pipeline_id);
+      if (!pipeline) {
+        return res.status(400).json({ success: false, error: 'Pipeline inválido' });
+      }
+    }
     if (Object.prototype.hasOwnProperty.call(body, 'status')) updates.status = normalizeFormValue(body.status);
     if (Object.prototype.hasOwnProperty.call(body, 'score')) updates.score = body.score;
     if (Object.prototype.hasOwnProperty.call(body, 'notes')) updates.notes = normalizeFormValue(body.notes);
