@@ -1,3 +1,28 @@
+<article class="card" aria-labelledby="news-2025-12-23">
+
+  <div class="card-header">
+    <h1 class="card-title" id="news-2025-12-23">🗞️ Novidades — 23/12/2025</h1>
+    <p class="card-subtitle">Dashboard com CRM + busca em recados (v2.7.0)</p>
+  </div>
+  <div class="card-body">
+    <p style="margin-bottom:1.5rem;color:var(--text-secondary);">
+      Publicado em 23/12/2025 · Atualização de interface
+    </p>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🧩 Dashboard reorganizado</h2>
+      <p>O dashboard agora separa claramente os cards de <strong>Recados</strong> e o bloco de <strong>CRM</strong>, mantendo a visão geral mais enxuta e rápida de ler.</p>
+    </section>
+    <section style="margin-bottom:1.5rem;">
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">🔎 Pesquisa em recados</h2>
+      <p>Adicionamos um campo de pesquisa por telefone, nome ou e‑mail, com filtros organizados em duas linhas (3×2) para facilitar o uso diário.</p>
+    </section>
+    <section>
+      <h2 style="font-size:1.125rem;font-weight:600;margin-bottom:0.5rem;">✨ Mais foco</h2>
+      <p>O bloco de “Registros Recentes” foi removido da home para reduzir ruído e priorizar métricas essenciais.</p>
+    </section>
+  </div>
+</article>
+
 <article class="card" aria-labelledby="news-2025-12-22">
 
   <div class="card-header">
