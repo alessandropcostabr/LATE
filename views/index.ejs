@@ -8,30 +8,38 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <div>
                 <h1 style="font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem;">Dashboard</h1>
-                <p style="color: var(--text-secondary);">Visão geral dos registros</p>
+                <p style="color: var(--text-secondary);">Visão geral</p>
             </div>
             <a href="/novo-recado" class="btn btn-primary btn-lg">
                 <span aria-hidden="true">➕</span> Novo Registro
             </a>
         </div>
 
-        <!-- Estatísticas Gerais -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card total">
-                <div class="stat-number" id="totalRecados">-</div>
-                <div class="stat-label">Total de Registros</div>
+        <!-- Recados -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-header">
+                <h2 class="card-title">Recados</h2>
+                <p class="card-subtitle">Resumo geral dos registros</p>
             </div>
-            <div class="stat-card pendente">
-                <div class="stat-number" id="totalPendentes">-</div>
-                <div class="stat-label">Pendentes</div>
-            </div>
-            <div class="stat-card andamento">
-                <div class="stat-number" id="totalAndamento">-</div>
-                <div class="stat-label">Em Andamento</div>
-            </div>
-            <div class="stat-card resolvido">
-                <div class="stat-number" id="totalResolvidos">-</div>
-                <div class="stat-label">Resolvidos</div>
+            <div class="card-body">
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card total">
+                        <div class="stat-number" id="totalRecados">-</div>
+                        <div class="stat-label">Total de Registros</div>
+                    </div>
+                    <div class="stat-card pendente">
+                        <div class="stat-number" id="totalPendentes">-</div>
+                        <div class="stat-label">Pendentes</div>
+                    </div>
+                    <div class="stat-card andamento">
+                        <div class="stat-number" id="totalAndamento">-</div>
+                        <div class="stat-label">Em Andamento</div>
+                    </div>
+                    <div class="stat-card resolvido">
+                        <div class="stat-number" id="totalResolvidos">-</div>
+                        <div class="stat-label">Resolvidos</div>
+                    </div>
+                </div>
             </div>
         </div>
 
