@@ -13,7 +13,7 @@ const requireTitle = body('title').notEmpty().withMessage('Título é obrigatór
 const validateLeadCreate = [
   body('phone').optional().isString(),
   body('email').optional().isEmail().withMessage('E-mail inválido'),
-  body('pipeline_id').optional().isUUID().withMessage('pipeline_id deve ser UUID'),
+  body('pipeline_id').isUUID().withMessage('pipeline_id é obrigatório e deve ser UUID'),
   body('status').optional().isString(),
   body('score').optional().isInt({ min: 0 }),
   body('notes').optional().isString(),
@@ -25,6 +25,21 @@ const validateLeadCreate = [
     }
     return true;
   }),
+];
+
+const validateLeadUpdate = [
+  validateUUIDParam('id'),
+  body('pipeline_id').optional().isUUID().withMessage('pipeline_id deve ser UUID'),
+  body('status').optional().isString(),
+  body('score').optional().isInt({ min: 0 }),
+  body('notes').optional().isString(),
+  body('source').optional().isString(),
+  body('name').optional().isString(),
+  body('email').optional().isEmail().withMessage('E-mail inválido'),
+  body('phone').optional().isString(),
+  body('contact_name').optional().isString(),
+  body('contact_email').optional().isEmail().withMessage('E-mail inválido'),
+  body('contact_phone').optional().isString(),
 ];
 
 const validateLeadList = [limitRule, offsetRule,
@@ -67,6 +82,22 @@ const validateOpportunityMove = [
   body('stage_id').isUUID().withMessage('stage_id é obrigatório e deve ser UUID'),
 ];
 
+const validateOpportunityUpdate = [
+  validateUUIDParam('id'),
+  body('title').optional().isString(),
+  body('amount').optional().isNumeric().withMessage('amount deve ser numérico'),
+  body('close_date').optional().isISO8601().withMessage('close_date deve ser data ISO'),
+  body('source').optional().isString(),
+  body('description').optional().isString(),
+  body('probability_override').optional().isNumeric(),
+  body('name').optional().isString(),
+  body('email').optional().isEmail().withMessage('E-mail inválido'),
+  body('phone').optional().isString(),
+  body('contact_name').optional().isString(),
+  body('contact_email').optional().isEmail().withMessage('E-mail inválido'),
+  body('contact_phone').optional().isString(),
+];
+
 const validateActivityCreate = [
   body('type').optional().isIn(['task', 'meeting', 'call']).withMessage('type inválido'),
   body('subject').notEmpty().withMessage('Assunto é obrigatório'),
@@ -81,6 +112,28 @@ const validateActivityList = [
   query('related_type').optional().isIn(['lead', 'contact', 'account', 'opportunity']),
   query('related_id').optional().isUUID(),
   query('scope').optional().isIn(['me', 'team', 'all']).withMessage('scope inválido'),
+];
+
+const validateActivityUpdate = [
+  validateUUIDParam('id'),
+  body('type').optional().isIn(['task', 'meeting', 'call']).withMessage('type inválido'),
+  body('subject').optional().isString(),
+  body('starts_at').optional().isISO8601(),
+  body('ends_at').optional().isISO8601(),
+  body('related_type').optional().isIn(['lead', 'contact', 'account', 'opportunity']).withMessage('related_type inválido'),
+  body('related_id').optional().isUUID(),
+  body('status').optional().isString(),
+  body('location').optional().isString(),
+];
+
+const validateContactUpdate = [
+  validateUUIDParam('id'),
+  body('name').optional().isString(),
+  body('email').optional().isEmail().withMessage('E-mail inválido'),
+  body('phone').optional().isString(),
+  body('contact_name').optional().isString(),
+  body('contact_email').optional().isEmail().withMessage('E-mail inválido'),
+  body('contact_phone').optional().isString(),
 ];
 
 // Custom fields
@@ -152,12 +205,16 @@ const validateCustomFieldValuesList = [
 
 module.exports = {
   validateLeadCreate,
+  validateLeadUpdate,
   validateLeadList,
   validateOpportunityCreate,
   validateOpportunityList,
   validateOpportunityMove,
+  validateOpportunityUpdate,
   validateActivityCreate,
   validateActivityList,
+  validateActivityUpdate,
+  validateContactUpdate,
   validateCustomFieldCreate,
   validateCustomFieldUpdate,
   validateCustomFieldValue,

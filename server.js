@@ -231,6 +231,10 @@ app.use((req, res, next) => {
     createMessages: hasPermission(roleSlug, 'create'),
     updateMessages: hasPermission(roleSlug, 'update'),
     deleteMessages: hasPermission(roleSlug, 'delete'),
+    readCrm: hasPermission(roleSlug, 'crm:read'),
+    createCrm: hasPermission(roleSlug, 'crm:create'),
+    updateCrm: hasPermission(roleSlug, 'crm:update'),
+    deleteCrm: hasPermission(roleSlug, 'crm:delete'),
   };
 
   next();

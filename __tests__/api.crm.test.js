@@ -58,6 +58,7 @@ describe('CRM API', () => {
     jest.resetAllMocks();
     // Defaults para mocks
     PipelineModel.getStageById.mockResolvedValue(null);
+    PipelineModel.getPipelineById?.mockResolvedValue({ id: 'p1' });
     PipelineModel.listPipelines?.mockResolvedValue([]);
     PipelineModel.getStages?.mockResolvedValue([]);
     LeadModel.createLead.mockResolvedValue({ id: 'lead-mock' });
@@ -72,7 +73,7 @@ describe('CRM API', () => {
 
   test('criar lead exige telefone ou e-mail', async () => {
     const request = createApp();
-    const res = await request.post('/crm/leads').send({ name: 'Fulana' });
+    const res = await request.post('/crm/leads').send({ name: 'Fulana', pipeline_id: 'p1' });
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
     expect(res.body.error).toMatch(/telefone ou e-mail/);
@@ -82,7 +83,7 @@ describe('CRM API', () => {
   test('criar lead com telefone retorna sucesso', async () => {
     LeadModel.createLead.mockResolvedValue({ id: 'lead-1' });
     const request = createApp();
-    const res = await request.post('/crm/leads').send({ name: 'Fulana', phone: '11999999999' });
+    const res = await request.post('/crm/leads').send({ name: 'Fulana', phone: '11999999999', pipeline_id: 'p1' });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.id).toBe('lead-1');

@@ -1,6 +1,10 @@
 <%- include('partials/header', { title }) %>
 <%- include('partials/navbar', { title, user }) %>
-<main class="container page">
+<main class="container page"
+  data-crm-permissions
+  data-can-update="<%= permissions && permissions.updateCrm ? 'true' : 'false' %>"
+  data-can-delete="<%= permissions && permissions.deleteCrm ? 'true' : 'false' %>"
+>
   <header class="page__header">
     <div>
       <p class="eyebrow">CRM</p>
@@ -36,8 +40,17 @@
           <div>
             <label>Status</label>
             <select name="status" class="input">
-              <option value="open">open</option>
-              <option value="closed">closed</option>
+              <option value="open">Aberto</option>
+              <option value="closed">Fechado</option>
+            </select>
+          </div>
+          <div>
+            <label>Pipeline</label>
+            <select name="pipeline_id" class="input" required>
+              <option value="">Selecionar pipeline</option>
+              <% (pipelines || []).forEach((p) => { %>
+                <option value="<%= p.id %>"><%= p.name %></option>
+              <% }); %>
             </select>
           </div>
           <div>
@@ -85,11 +98,12 @@
             <th>Pipeline</th>
             <th>Score</th>
             <th>Criado em</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <% if (!leads || leads.length === 0) { %>
-            <tr><td colspan="7" class="muted">Nenhum lead encontrado.</td></tr>
+            <tr><td colspan="8" class="muted">Nenhum lead encontrado.</td></tr>
           <% } else { %>
             <% leads.forEach((lead) => { %>
               <tr>
@@ -97,9 +111,10 @@
                 <td><%= lead.phone || lead.phone_normalized || '-' %></td>
                 <td><%= lead.email || '-' %></td>
                 <td><%= lead.status || '-' %></td>
-                <td><%= lead.pipeline_id ? lead.pipeline_id : '-' %></td>
+                <td><%= lead.pipeline_name || lead.pipeline_id || '-' %></td>
                 <td><%= lead.score || 0 %></td>
                 <td><%= lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-' %></td>
+                <td class="muted">-</td>
               </tr>
             <% }); %>
           <% } %>
@@ -108,5 +123,66 @@
     </div>
   </section>
 </main>
+
+<div class="modal fade" id="leadEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <form class="modal-content" id="leadEditForm">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar lead</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="lead_id">
+        <div class="grid">
+          <div>
+            <label class="form-label">Nome</label>
+            <input name="contact_name" class="input">
+          </div>
+          <div>
+            <label class="form-label">E-mail</label>
+            <input name="contact_email" type="email" class="input">
+          </div>
+          <div>
+            <label class="form-label">Telefone</label>
+            <input name="contact_phone" class="input">
+          </div>
+          <div>
+            <label class="form-label">Status</label>
+            <select name="status" class="input">
+              <option value="open">Aberto</option>
+              <option value="closed">Fechado</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Pipeline</label>
+            <select name="pipeline_id" class="input">
+              <option value="">Selecionar pipeline</option>
+              <% (pipelines || []).forEach((p) => { %>
+                <option value="<%= p.id %>"><%= p.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Score</label>
+            <input name="score" type="number" class="input" min="0">
+          </div>
+          <div>
+            <label class="form-label">Fonte</label>
+            <input name="source" class="input">
+          </div>
+          <div style="grid-column:1 / -1;">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="input" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar alterações</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <meta name="csrf-token" content="<%= csrfToken %>">
 <%- include('partials/footer', { scripts: ['/js/crm-leads.js'] }) %>
