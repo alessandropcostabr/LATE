@@ -155,12 +155,14 @@ function buildQueryFromForm(form, { includeLimit = true, page } = {}) {
   const p = new URLSearchParams();
   const start = form.start_date?.value?.trim();
   const end   = form.end_date?.value?.trim();
+  const search = form.search?.value?.trim();
   const rec   = form.recipient?.value?.trim();
   const st    = form.status?.value?.trim();
   const order = form.order?.value?.trim();
 
   if (start) p.set('start_date', start);
   if (end)   p.set('end_date', end);
+  if (search) p.set('search', search);
   if (rec)   p.set('recipient', rec);
   if (st)    p.set('status', st);
   if (order) p.set('order', order);
@@ -178,6 +180,7 @@ function hydrateFormFromUrl(form, searchParams = new URLSearchParams(window.loca
   const mappings = [
     ['start_date', 'start_date'],
     ['end_date', 'end_date'],
+    ['search', 'search'],
     ['recipient', 'recipient'],
     ['status', 'status'],
     ['order', 'order'],
@@ -303,7 +306,7 @@ async function carregarRecados() {
 
       // preserva parâmetros que não fazem parte do formulário (ex: paginação)
       qs.forEach((value, key) => {
-        if (!['start_date', 'end_date', 'recipient', 'status', 'limit', 'order', 'page'].includes(key)) {
+        if (!['start_date', 'end_date', 'search', 'recipient', 'status', 'limit', 'order', 'page'].includes(key)) {
           apiParams.set(key, value);
         }
       });

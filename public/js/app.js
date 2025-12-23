@@ -1,7 +1,6 @@
 // public/js/app.js
 // Comentários em pt-BR; identificadores em inglês.
-// Este arquivo agora cuida APENAS de "Registros Recentes" no Dashboard.
-// As estatísticas de cards ficam a cargo do utils.js para evitar chamadas duplicadas.
+// Dashboard: atalhos de data + cards do CRM.
 
 // Helpers de requisição (compatível com a API atual)
 async function request(url, opts = {}) {
@@ -20,116 +19,69 @@ async function request(url, opts = {}) {
   return json;
 }
 
-// Normaliza vetor de itens aceitando { data: [...] } OU { items: [...], total }
-function asItems(payload) {
-  if (!payload) return [];
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload.items)) return payload.items;
-  if (Array.isArray(payload.data)) return payload.data;
-  return [];
+function formatNumber(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return '-';
+  return new Intl.NumberFormat('pt-BR').format(num);
 }
 
-function formatDateTimeBR(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  try {
-    return new Intl.DateTimeFormat('pt-BR', {
-      dateStyle: 'short',
-      timeStyle: 'short',
-      timeZone: 'America/Sao_Paulo'
-    }).format(d);
-  } catch (_e) {
-    return d.toLocaleString('pt-BR');
+function getLatestMonth(rows) {
+  const months = rows.map((row) => row?.month).filter(Boolean);
+  if (!months.length) return null;
+  return months.reduce((max, value) => (value > max ? value : max), months[0]);
+}
+
+function sumTotals(rows) {
+  return rows.reduce((sum, row) => sum + (Number(row?.total) || 0), 0);
+}
+
+function setText(el, value) {
+  if (!el) return;
+  el.textContent = value;
+}
+
+async function carregarStatsCrm() {
+  const oppsMonthEl = document.getElementById('crmOppsMonth');
+  const oppsPeriodEl = document.getElementById('crmOppsPeriod');
+  const activitiesPendingEl = document.getElementById('crmActivitiesPending');
+  const activitiesTotalEl = document.getElementById('crmActivitiesTotal');
+
+  if (!oppsMonthEl && !oppsPeriodEl && !activitiesPendingEl && !activitiesTotalEl) {
+    return;
   }
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => {
-    switch (char) {
-      case '&': return '&amp;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '"': return '&quot;';
-      case "'": return '&#39;';
-      default: return char;
-    }
-  });
-}
-
-const STATUS_META = {
-  pending: {
-    label: 'Pendente',
-    badgeClass: 'badge badge-pendente',
-  },
-  in_progress: {
-    label: 'Em andamento',
-    badgeClass: 'badge badge-andamento',
-  },
-  resolved: {
-    label: 'Resolvido',
-    badgeClass: 'badge badge-resolvido',
-  },
-};
-
-// ---- Registros Recentes (somente) ----
-async function carregarRecadosRecentes() {
-  const container = document.getElementById('recadosRecentes');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-      <div class="loading" style="margin: 0 auto 1rem;"></div>
-      Carregando registros...
-    </div>
-  `;
 
   try {
-    // Busca últimos 10 (o back já ordena por created_at desc)
-    const resp = await request('/api/messages?limit=10');
-    const list = asItems(resp);
+    const resp = await request('/api/crm/stats');
+    const data = resp?.data || {};
+    const pipeline = Array.isArray(data.pipeline) ? data.pipeline : [];
+    const activities = Array.isArray(data.activities) ? data.activities : [];
 
-    if (!list.length) {
-      container.innerHTML = `
-        <div style="text-align:center; padding: 1.5rem; color: var(--text-secondary);">
-          Nenhum registro encontrado.
-        </div>`;
-      return;
-    }
+    const latestMonth = getLatestMonth(pipeline);
+    const oppsMonthTotal = latestMonth
+      ? pipeline.reduce((sum, row) => sum + (row.month === latestMonth ? Number(row.total || 0) : 0), 0)
+      : 0;
+    const oppsPeriodTotal = sumTotals(pipeline);
 
-    const html = list.map((m) => {
-      const created = m.created_label || formatDateTimeBR(m.createdAt || m.created_at);
-      const subject = m.subject || '(Sem assunto)';
-      const sender  = m.sender_name || m.sender_email || '—';
-      const recipient = m.recipient || 'Não informado';
-      const meta = STATUS_META[m.status] || { label: m.status || '—', badgeClass: 'badge' };
-      const statusLabel = m.status_label || meta.label;
+    const pendingActivities = activities
+      .filter((row) => String(row?.status || '').toLowerCase() === 'pending')
+      .reduce((sum, row) => sum + (Number(row?.total) || 0), 0);
+    const totalActivities = sumTotals(activities);
 
-      return `
-        <a class="recent-message" href="/visualizar-recado/${m.id}" aria-label="Abrir registro ${escapeHtml(subject)}">
-          <div style="min-width:0;">
-            <div class="recent-message__title">${escapeHtml(subject)}</div>
-            <div class="recent-message__meta">De: ${escapeHtml(sender)} • Para: ${escapeHtml(recipient)}</div>
-            <div class="recent-message__meta">Criado em: ${escapeHtml(created)}</div>
-          </div>
-          <span class="${meta.badgeClass}">${escapeHtml(statusLabel)}</span>
-        </a>
-      `;
-    }).join('');
-
-    container.innerHTML = html;
+    setText(oppsMonthEl, formatNumber(oppsMonthTotal));
+    setText(oppsPeriodEl, formatNumber(oppsPeriodTotal));
+    setText(activitiesPendingEl, formatNumber(pendingActivities));
+    setText(activitiesTotalEl, formatNumber(totalActivities));
   } catch (err) {
-    console.error('Erro ao carregar contatos recentes:', err);
-    container.innerHTML = `
-      <div class="alert alert-danger" role="alert">
-        Erro ao carregar contatos recentes
-      </div>`;
+    console.error('Erro ao carregar estatísticas do CRM:', err);
+    setText(oppsMonthEl, '-');
+    setText(oppsPeriodEl, '-');
+    setText(activitiesPendingEl, '-');
+    setText(activitiesTotalEl, '-');
   }
 }
 
 function initDashboard() {
-  // ⚠️ NÃO chamar estatísticas aqui para evitar duplicidade com utils.js
-  carregarRecadosRecentes();
+  carregarStatsCrm();
 
   // Links rápidos "Hoje / Semana" (mantidos)
   const btnHoje   = document.getElementById('btnHoje');

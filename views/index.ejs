@@ -62,21 +62,29 @@
             </div>
         </div>
 
-        <!-- Registros Recentes -->
+        <!-- CRM -->
         <div class="card">
             <div class="card-header">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h2 class="card-title">Registros Recentes</h2>
-                        <p class="card-subtitle">Últimos 10 registros salvos</p>
-                    </div>
-                </div>
+                <h2 class="card-title">CRM</h2>
+                <p class="card-subtitle">Resumo de oportunidades e atividades</p>
             </div>
             <div class="card-body">
-                <div id="recadosRecentes" role="region" aria-live="polite" aria-label="Registros Recentes">
-                    <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                        <div class="loading" style="margin: 0 auto 1rem;"></div>
-                        Carregando registros...
+                <div class="stats-grid" id="crmStatsGrid">
+                    <div class="stat-card total">
+                        <div class="stat-number" id="crmOppsMonth">-</div>
+                        <div class="stat-label">Oportunidades (mês)</div>
+                    </div>
+                    <div class="stat-card andamento">
+                        <div class="stat-number" id="crmOppsPeriod">-</div>
+                        <div class="stat-label">Oportunidades (6 meses)</div>
+                    </div>
+                    <div class="stat-card pendente">
+                        <div class="stat-number" id="crmActivitiesPending">-</div>
+                        <div class="stat-label">Atividades pendentes</div>
+                    </div>
+                    <div class="stat-card resolvido">
+                        <div class="stat-number" id="crmActivitiesTotal">-</div>
+                        <div class="stat-label">Atividades (total)</div>
                     </div>
                 </div>
             </div>
