@@ -18,7 +18,19 @@ function ensureRouterApi(baseRouter) {
   return routerApi;
 }
 
-const router = ensureRouterApi(Router());
+const baseRouter = Router();
+const routerSupportsUse = typeof baseRouter.use === 'function';
+const router = ensureRouterApi(baseRouter);
+
+function registerRouterUse(path, ...handlers) {
+  if (!routerSupportsUse) {
+    console.warn('[router] Método "use" ausente na instância; middleware não foi aplicado', {
+      path,
+    });
+    return;
+  }
+  router.use(path, ...handlers);
+}
 
 // Controllers existentes
 const messageController = require('../controllers/messageController');
@@ -263,7 +275,7 @@ router.get(
 );
 
 // CRM: pipelines, leads e oportunidades
-router.use('/crm', crmLimiter);
+registerRouterUse('/crm', crmLimiter);
 router.get(
   '/crm/pipelines',
   ...flatFns(canReadCRM),
