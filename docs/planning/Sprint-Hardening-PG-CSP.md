@@ -9,6 +9,7 @@
 - [ ] Habilitar `ssl = on` no PostgreSQL do mach1, configurar `hostssl` em `pg_hba.conf` e provisionar certificados.
 - [x] Suporte a TLS no cliente (`config/database.js`) + novas variáveis `PG_SSL_*`.
 - [x] `.env.example` atualizado com `PG_SSL_MODE`, `PG_SSL_CA`, `PG_SSL_CERT`, `PG_SSL_KEY`.
+- [ ] **Nota:** `PG_SSL=1` habilita TLS sem validação de certificado. Para hardening, prefira `PG_SSL_MODE=verify-full` e/ou `PG_SSL_REJECT_UNAUTHORIZED=true` com CA configurada.
 - [ ] Ajustar `.env` do mach1 com `PG_SSL_MODE=require` (ou `verify-full`) e `PG_SSL_CA` quando aplicável.
 - [ ] `pm2 reload late-prod` no canário e validar com `psql ... sslmode=require` + logs do app.
 - [ ] Monitorar 24h; em seguida repetir para mach2/mach3.
@@ -17,6 +18,7 @@
 ### 2. CSP global em duas fases — prioridade média-alta
 - [x] CSP configurado no `server.js` com `reportOnly` controlado por `CSP_REPORT_ONLY`.
 - [x] Endpoint de coleta `/api/csp-report` com rate limit e parse seguro.
+- [ ] **Nota:** quando usar `report-to`, é necessário configurar o header `Report-To` (ou manter `report-uri`).
 - [ ] Adicionar teste Supertest garantindo presença de `content-security-policy-report-only`.
 - [ ] Coletar violações por pelo menos 3 dias e ajustar diretivas.
 - [ ] Após ajustes nas views, mudar para enforce (`reportOnly: false`, remover `'unsafe-inline'`) e atualizar testes.

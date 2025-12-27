@@ -5,5 +5,5 @@ module.exports = {
   testPathIgnorePatterns: ['<rootDir>/__tests__/setup/'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  setupFilesAfterEnv: [],
+  setupFilesAfterEnv: ['<rootDir>/jest.pgmem.setup.js'],
 };

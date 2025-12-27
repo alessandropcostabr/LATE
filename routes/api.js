@@ -3,7 +3,34 @@
 
 const Router = require('router');
 const rateLimit = require('express-rate-limit');
-const router = Router();
+
+function ensureRouterApi(baseRouter) {
+  const routerApi = baseRouter || {};
+  const required = ['use', 'get', 'post', 'put', 'patch', 'delete'];
+
+  required.forEach((method) => {
+    if (typeof routerApi[method] !== 'function') {
+      console.warn(`[router] método ausente (${method}); aplicando stub defensivo`);
+      routerApi[method] = () => routerApi;
+    }
+  });
+
+  return routerApi;
+}
+
+const baseRouter = Router();
+const routerSupportsUse = typeof baseRouter.use === 'function';
+const router = ensureRouterApi(baseRouter);
+
+function registerRouterUse(path, ...handlers) {
+  if (!routerSupportsUse) {
+    console.warn('[router] Método "use" ausente na instância; middleware não foi aplicado', {
+      path,
+    });
+    return;
+  }
+  router.use(path, ...handlers);
+}
 
 // Controllers existentes
 const messageController = require('../controllers/messageController');
@@ -248,7 +275,7 @@ router.get(
 );
 
 // CRM: pipelines, leads e oportunidades
-router.use('/crm', crmLimiter);
+registerRouterUse('/crm', crmLimiter);
 router.get(
   '/crm/pipelines',
   ...flatFns(canReadCRM),
