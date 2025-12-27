@@ -76,12 +76,19 @@ const statementTimeoutMs = parseTimeout(
   process.env.PG_STATEMENT_TIMEOUT_MS ?? process.env.STATEMENT_TIMEOUT_MS
 );
 
+const usingCustomPoolFactory = typeof global.__LATE_POOL_FACTORY === 'function';
+
 if (!pgConfig.user || !pgConfig.password || !pgConfig.database) {
-  console.error('[db] Variáveis PG_* ausentes. Verifique PG_USER, PG_PASSWORD e PG_DATABASE.');
+  const message = '[db] Variáveis PG_* ausentes. Verifique PG_USER, PG_PASSWORD e PG_DATABASE.';
+  if (process.env.NODE_ENV === 'test' && usingCustomPoolFactory) {
+    console.warn(`${message} (ignorado em testes com pool simulado).`);
+  } else {
+    console.error(message);
+  }
 }
 
 function createPool() {
-  if (typeof global.__LATE_POOL_FACTORY === 'function') return global.__LATE_POOL_FACTORY();
+  if (usingCustomPoolFactory) return global.__LATE_POOL_FACTORY();
   return new Pool(pgConfig);
 }
 
