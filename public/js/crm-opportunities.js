@@ -7,8 +7,23 @@
   const canUpdate = permissionsEl?.dataset?.canUpdate === 'true';
   const canDelete = permissionsEl?.dataset?.canDelete === 'true';
   const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-  const pipelines = window.CRM_OPP_PIPELINES || [];
-  const stagesByPipeline = window.CRM_OPP_STAGES || {};
+  const oppRoot = document.querySelector('[data-crm-opp-pipelines]');
+  let pipelines = [];
+  let stagesByPipeline = {};
+  if (oppRoot?.dataset?.crmOppPipelines) {
+    try {
+      pipelines = JSON.parse(oppRoot.dataset.crmOppPipelines) || [];
+    } catch (_err) {
+      pipelines = [];
+    }
+  }
+  if (oppRoot?.dataset?.crmOppStages) {
+    try {
+      stagesByPipeline = JSON.parse(oppRoot.dataset.crmOppStages) || {};
+    } catch (_err) {
+      stagesByPipeline = {};
+    }
+  }
   const stageRequiredAlert = document.getElementById('oppStageRequiredAlert');
   const editModalEl = document.getElementById('oppEditModal');
   const editForm = document.getElementById('oppEditForm');
