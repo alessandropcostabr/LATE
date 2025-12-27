@@ -1,5 +1,13 @@
 (() => {
-  const data = window.CRM_IMPORT_DATA || { pipelines: [], stagesByPipeline: {} };
+  const importRoot = document.querySelector('[data-crm-import]');
+  let data = { pipelines: [], stagesByPipeline: {} };
+  if (importRoot?.dataset?.crmImport) {
+    try {
+      data = JSON.parse(importRoot.dataset.crmImport);
+    } catch (_err) {
+      data = { pipelines: [], stagesByPipeline: {} };
+    }
+  }
   const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
   const form = document.getElementById('crmImportForm');

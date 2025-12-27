@@ -4,6 +4,8 @@
   data-crm-permissions
   data-can-update="<%= permissions && permissions.updateCrm ? 'true' : 'false' %>"
   data-can-delete="<%= permissions && permissions.deleteCrm ? 'true' : 'false' %>"
+  data-crm-opp-pipelines="<%= JSON.stringify(pipelines || []) %>"
+  data-crm-opp-stages="<%= JSON.stringify(stagesByPipeline || {}) %>"
 >
   <header class="page__header">
     <div>
@@ -185,8 +187,4 @@
 </div>
 
 <meta name="csrf-token" content="<%= csrfToken %>">
-<script>
-  window.CRM_OPP_PIPELINES = <%- JSON.stringify(pipelines || []) %>;
-  window.CRM_OPP_STAGES = <%- JSON.stringify(stagesByPipeline || {}) %>;
-</script>
 <%- include('partials/footer', { scripts: ['/js/crm-opportunities.js'] }) %>

@@ -17,7 +17,9 @@
   .mapping-hint { margin-top: 0.35rem; font-size: 0.8rem; color: #b91c1c; }
   .mapping-row.is-warning .mapping-hint { color: #92400e; }
 </style>
-<main class="container page">
+<main class="container page"
+  data-crm-import="<%= JSON.stringify({ pipelines, stagesByPipeline }) %>"
+>
   <header class="page__header">
     <div>
       <p class="eyebrow">CRM</p>
@@ -161,7 +163,4 @@
 </main>
 
 <meta name="csrf-token" content="<%= csrfToken %>">
-<script>
-  window.CRM_IMPORT_DATA = <%- JSON.stringify({ pipelines, stagesByPipeline }) %>;
-</script>
 <%- include('partials/footer', { scripts: ['/js/crm-import.js'] }) %>
