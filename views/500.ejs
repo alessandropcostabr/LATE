@@ -11,7 +11,7 @@
         <p style="color: var(--text-secondary); margin-bottom: 2rem; max-width: 500px; margin-left: auto; margin-right: auto;">
           Ocorreu um erro inesperado ao processar sua solicitação. Nossa equipe foi notificada e está trabalhando para resolver o problema.
         </p>
-        <% if (error) { %>
+        <% if (typeof error !== 'undefined' && error) { %>
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin: 2rem auto; max-width: 600px; text-align: left;">
           <strong style="color: var(--text-primary);">Detalhes do erro (modo desenvolvimento):</strong>
           <pre style="margin-top: 0.5rem; color: var(--text-secondary); white-space: pre-wrap; word-wrap: break-word;"><%= error %></pre>
