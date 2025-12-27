@@ -70,6 +70,8 @@ Garantir que `/api/messages/:id/watchers` respeite o escopo do usuário.
 - Remover uso da opção `scope` do EJS (warning no log).
 - Melhorar observabilidade de jobs e rotinas (logs e métricas).
 - Ajustar `views/500.ejs` para não quebrar quando `error` estiver indefinido.
+- Deduplicar rotas CRM duplicadas em `routes/api.js` (stats/custom fields/recado sync).
+- Telephony ingress: revisar allowlist padrão e adicionar rate limit dedicado.
 
 ---
 

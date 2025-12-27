@@ -1,4 +1,4 @@
-// __tests__/setup/pgmem.js
+// jest.pgmem.setup.js
 // Usa pg-mem para evitar conexão real ao PostgreSQL nos testes.
 const { newDb } = require('pg-mem');
 

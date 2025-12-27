@@ -3,7 +3,22 @@
 
 const Router = require('router');
 const rateLimit = require('express-rate-limit');
-const router = Router();
+
+function ensureRouterApi(baseRouter) {
+  const routerApi = baseRouter || {};
+  const required = ['use', 'get', 'post', 'put', 'patch', 'delete'];
+
+  required.forEach((method) => {
+    if (typeof routerApi[method] !== 'function') {
+      console.warn(`[router] método ausente (${method}); aplicando stub defensivo`);
+      routerApi[method] = () => routerApi;
+    }
+  });
+
+  return routerApi;
+}
+
+const router = ensureRouterApi(Router());
 
 // Controllers existentes
 const messageController = require('../controllers/messageController');
